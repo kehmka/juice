@@ -7,10 +7,10 @@ StreamStatus helps manage different UI states (updating, waiting, error, canceli
 @override
 Widget onBuild(BuildContext context, StreamStatus status) {
   return status.when(
-    updating: (_, __, ___) => Text('Count: ${bloc.state.count}'),
-    waiting: (_, __, ___) => CircularProgressIndicator(),
-    error: (_, __, ___) => Text('Error occurred'),
-    canceling: (_, __, ___) => Text('Operation cancelled'),
+    updating: (_) => Text('Count: ${bloc.state.count}'),
+    waiting: (_) => CircularProgressIndicator(),
+    error: (_) => Text('Error occurred'),
+    canceling: (_) => Text('Operation cancelled'),
   );
 }
 ```

@@ -1,0 +1,59 @@
+# Exclude OS and IDE-related files
+.DS_Store
+__MACOSX/
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# Exclude temporary and build-related files
+.dart_tool/
+.packages
+.pub/
+build/
+example/build/
+
+# Exclude unnecessary platform-specific files
+android/*
+ios/*
+linux/*
+macos/*
+windows/*
+web/*
+
+lib/example/android/*
+lib/example/ios/*
+lib/example/linux/*
+lib/example/macos/*
+lib/example/windows/*
+
+
+# Retain only necessary files for examples
+example/android/app/src/main/
+example/ios/Runner/
+example/linux/
+example/macos/
+example/windows/
+example/web/
+
+# Exclude example's build output and temporary files
+example/.dart_tool/
+example/.packages
+example/.pub/
+example/build/
+example/ios/Flutter/
+example/ios/Pods/
+example/ios/Runner.xcworkspace/
+example/ios/Runner.xcodeproj/
+example/linux/.cxx/
+example/linux/.build/
+example/macos/Flutter/
+example/macos/Runner.xcodeproj/
+example/macos/Runner.xcworkspace/
+example/windows/flutter/
+example/windows/runner/
+
+juice logo.png
+juice logo.psd
+juice_droplet.png
+juice_droplet.psd

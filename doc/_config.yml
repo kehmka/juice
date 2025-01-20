@@ -1,0 +1,11 @@
+
+
+remote_theme: just-the-docs/just-the-docs
+title: Juice
+description: Clean Architecture Framework for Flutter with Enhanced Bloc Pattern
+baseurl: "/juice"  # Repository name
+url: "https://kehmka.github.io"  # Replace with your GitHub username
+
+# Just the Docs specific settings
+search_enabled: true
+heading_anchors: true

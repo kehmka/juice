@@ -1,9 +1,6 @@
 name: juice
 description: "
-  Juice is a lightweight, modular state management library for Flutter, built
-  on the BLoC (Business Logic Component) architecture. It simplifies application
-  development with reusable components, clean architecture integration, and
-  robust tools for managing state, events, and UI in a scalable and maintainable way."
+  Juice is a lightweight, modular reactive state management library for Flutter, combining clean design with BLoC, Stream-Based State Management"
 version: 1.0.0
 
 

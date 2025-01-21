@@ -371,11 +371,29 @@ Key points about bloc registration:
 
 ## Next Steps
 
-Now that you understand the basics, try:
-1. Adding validation (prevent negative numbers)
-2. Implementing undo/redo
-3. Adding persistence
-4. Creating an animated counter display
+Now that you've built your first Juice app, here are some simple ways to enhance it:
+
+### Add Validation
+
+- Prevent negative numbers by adding logic in the DecrementUseCase
+- Add a maximum value limit
+- Show an error message when limits are reached
+
+
+### Add a Display Color Feature
+
+- Update CounterState to include a color
+- Add an event to change colors
+- Create a ColorChangeUseCase
+- Make the counter text change color
+
+
+These enhancements will help you practice:
+
+- Updating state with new fields
+- Adding new events and use cases
+- Handling error conditions
+- Managing UI updates efficiently
 
 ## Common Questions
 

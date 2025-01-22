@@ -6,9 +6,16 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
-    return Text(
-      'Count: ${bloc.state.count}',
-      style: const TextStyle(fontSize: 32),
+    // Using match without specifying the return type
+    return status.match<CounterState, Widget>(
+      updating: (_) => Text(
+        'Count: ${bloc.state.count}',
+        style: const TextStyle(fontSize: 32),
+      ),
+      waiting: (_) => Text("Waiting for the counter to reply"),
+      failure: (_) => Text("The counter failed to count"),
+      canceling: (_) => Text("The counter canceled the count"),
+      orElse: (_) => Text("Unknown where the counter is"),
     );
   }
 }

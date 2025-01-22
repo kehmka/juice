@@ -191,6 +191,16 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
   }) {
     return failure(state, oldState, event);
   }
+
+  String get debugDescription {
+    return match(
+      updating: (status) => 'Updating: ${status.state}',
+      waiting: (_) => 'Waiting...',
+      canceling: (_) => 'Canceling...',
+      failure: (status) => 'Failure: ${status.state}',
+      orElse: (_) => 'Unknown status type',
+    );
+  }
 }
 
 extension StatusChecks<T extends BlocState> on StreamStatus {
@@ -207,4 +217,31 @@ extension StatusChecks<T extends BlocState> on StreamStatus {
 
   bool isCancelingFor<S extends BlocState>() =>
       this is StreamStatus<S> && this is CancelingStatus;
+
+  UpdatingStatus<S>? tryCastToUpdating<S extends BlocState>() =>
+      this is UpdatingStatus<S> ? this as UpdatingStatus<S> : null;
+
+  WaitingStatus<S>? tryCastToWaiting<S extends BlocState>() =>
+      this is WaitingStatus<S> ? this as WaitingStatus<S> : null;
+
+  FailureStatus<S>? tryCastToFailure<S extends BlocState>() =>
+      this is FailureStatus<S> ? this as FailureStatus<S> : null;
+
+  CancelingStatus<S>? tryCastToCanceling<S extends BlocState>() =>
+      this is CancelingStatus<S> ? this as CancelingStatus<S> : null;
+
+  R match<S extends BlocState, R>({
+    required R Function(UpdatingStatus<S>) updating,
+    required R Function(WaitingStatus<S>) waiting,
+    required R Function(CancelingStatus<S>) canceling,
+    required R Function(FailureStatus<S>) failure,
+    required R Function(StreamStatus)? orElse,
+  }) {
+    if (isUpdatingFor<S>()) return updating(this as UpdatingStatus<S>);
+    if (isWaitingFor<S>()) return waiting(this as WaitingStatus<S>);
+    if (isCancelingFor<S>()) return canceling(this as CancelingStatus<S>);
+    if (isFailureFor<S>()) return failure(this as FailureStatus<S>);
+    if (orElse != null) return orElse(this);
+    throw ArgumentError('Unhandled status type: $runtimeType');
+  }
 }

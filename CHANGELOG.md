@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.1] - 2025-01-23
+
+### Enhancements
+- Added `StatusChecks` extension for `StreamStatus`:
+  - Includes methods for type-checking (`isUpdatingFor`, `isWaitingFor`, etc.).
+  - Added safe casting methods (`tryCastToUpdating`, `tryCastToWaiting`, etc.).
+  - Introduced a `match` method for pattern-matching on `StreamStatus` types.
+  - Simplified handling of `StreamStatus` across widgets and logic.
+
+### Developer Experience
+- Improved type safety and reduced boilerplate for handling transient states.
+- Enhanced readability and maintainability of `StreamStatus` usage.
+
 ## [1.0.0] - 2025-01-16
 
 ### Core Features
@@ -43,3 +56,4 @@
 - Kevin Ehmka
 
 Note: This is the first stable release of Juice, a state management solution designed to provide a clean architecture plus bloc approach to Flutter applications.
+

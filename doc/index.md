@@ -285,6 +285,5 @@ New to Juice? Here's a suggested learning path:
 Ready to dive in? Choose your path:
 
 - [Quick Start Guide](guides/getting-started/quick-start) - Get up and running quickly
-- [Core Concepts](concepts/overview) - Learn the fundamentals
-- [Examples](examples/overview) - See Juice in action
-- [API Reference](api/overview) - Detailed API documentation
+- [Core Concepts](overview/introduction.md) - Learn the fundamentals
+- [Example](examples/counter-tutorial.md) - See Juice in action

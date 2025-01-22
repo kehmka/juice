@@ -11,7 +11,7 @@ A Flutter framework that combines clean architecture with reactive state managem
 [![pub package](https://img.shields.io/pub/v/juice.svg)](https://pub.dev/packages/juice)
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
 
-[Get Started](guides/getting-started) | [View on GitHub](https://github.com/kehmka/juice)
+[Get Started](guides/getting-started/quick-start.md) | [View on GitHub](https://github.com/kehmka/juice)
 
 ---
 
@@ -248,7 +248,7 @@ Juice was created to solve common challenges in Flutter development:
 
 ## Getting Started
 
-Ready to try Juice? Start with our [Quick Start Guide](guides/getting-started/quick-start) or dive into the [Core Concepts](concepts/overview).
+Ready to try Juice? Start with our [Quick Start Guide](guides/getting-started/quick-start.md) or dive into the [Core Concepts](concepts/bloc-basics.md).
 
 ### Installation
 
@@ -269,16 +269,15 @@ flutter pub add juice
 
 New to Juice? Here's a suggested learning path:
 
-1. Follow the [Counter Tutorial](guides/getting-started/counter-tutorial) to build your first Juice app
-2. Learn about [Use Cases](concepts/use-cases) and how they organize business logic
-3. Master [State Management](concepts/state-management) with StreamStatus
-4. Explore [Smart Rebuilds](concepts/group-rebuilds) to optimize performance
+1. Follow the [Counter Tutorial](examples/counter-tutorial.md) to build your first Juice app
+2. Learn about [Use Cases](concepts/use-cases.md) and how they organize business logic
+3. Master [State Management](concepts/state-management.md) with StreamStatus
+4. Explore [Smart Rebuilds](concepts/group-rebuilds.md) to optimize performance
 
 ## Community and Support
 
 - [GitHub Discussions](https://github.com/kehmka/juice/discussions) - Ask questions and share ideas
 - [Issue Tracker](https://github.com/kehmka/juice/issues) - Report bugs or request features
-- [Examples](examples/overview) - Browse example applications
 
 ## Next Steps
 
@@ -286,4 +285,3 @@ Ready to dive in? Choose your path:
 
 - [Quick Start Guide](guides/getting-started/quick-start) - Get up and running quickly
 - [Core Concepts](overview/introduction.md) - Learn the fundamentals
-- [Example](examples/counter-tutorial.md) - See Juice in action

@@ -268,11 +268,16 @@ Handle different states elegantly:
 ```dart
 @override
 Widget onBuild(BuildContext context, StreamStatus status) {
-  return status.when(
-    building: (state, _, __) => Text(state.data),
-    loading: (_, __, ___) => CircularProgressIndicator(),
-    error: (_, __, ___) => Text('Error loading data'),
-  );
+  // Handle status changes while keeping type safety
+  if (status.isWaitingFor<DataState>()) {
+    return CircularProgressIndicator();
+  }
+  if (status.isFailureFor<DataState>()) {
+    return Text('Error loading data');
+  }
+  
+  // Access state directly through bloc for type safety
+  return Text(bloc.state.data);
 }
 ```
 

@@ -149,6 +149,7 @@ Juice blocs emit `StreamStatus` objects that include state and status informatio
 class ProfileWidget extends StatelessJuiceWidget<ProfileBloc> {
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
+    // status.when is fine for single-bloc widgets
     return status.when(
       updating: (state, _, __) => ProfileView(data: bloc.state.profile),
       waiting: (_, __, ___) => LoadingSpinner(),

@@ -2,37 +2,44 @@
 
 Relay use cases create connections between blocs, allowing state changes in one bloc to trigger events in another. This creates a reactive flow of data while maintaining clean separation between features.
 
-## Basic Implementation
+## Type-Safe Implementation
 
-A relay connects a source bloc to a destination bloc:
+A relay connects a single source bloc to a destination bloc:
 
 ```dart
-// In destination bloc
+// Events must be of a single type for type safety
+class LoadProfileEvent extends EventBase {
+  final String? userId;  // Can be null for clearing
+  final bool isLoading;
+  
+  LoadProfileEvent({
+    this.userId,
+    this.isLoading = false,
+  });
+}
+
+// In ProfileBloc (destination)
 () => RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
   typeOfEvent: LoadProfileEvent,
-  statusToEventTransformer: (status) {
-    return status.when(
-      updating: (state, _, __) {
-        if (state.isAuthenticated) {
-          return LoadProfileEvent(userId: state.userId);
-        } else {
-          return ClearProfileEvent();
-        }
-      },
-      waiting: (_, __, ___) => LoadingProfileEvent(),
-      error: (_, __, ___) => ClearProfileEvent(),
-      canceling: (_, __, ___) => ClearProfileEvent(),
-    );
-  },
+  // Transform source bloc state into destination bloc event
+  statusToEventTransformer: (status) => status.when(
+    updating: (state, _, __) => LoadProfileEvent(
+      userId: state.userId,
+      isLoading: false
+    ),
+    waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+    failure: (_, __, ___) => LoadProfileEvent(userId: null),
+    canceling: (_, __, ___) => LoadProfileEvent(userId: null),
+  ),
   useCaseGenerator: () => LoadProfileUseCase(),
 )
 ```
 
 ## How It Works
 
-1. The relay monitors the source bloc's stream
-2. When the source emits a new status, the transformer creates an event
-3. The event is sent to the destination bloc
+1. The relay monitors the source bloc's stream (e.g., AuthBloc)
+2. When source emits a new status, transformer creates a destination event (e.g., LoadProfileEvent)
+3. The event is sent to destination bloc (e.g., ProfileBloc)
 4. A use case in the destination bloc handles the event
 
 ### Complete Example
@@ -53,16 +60,18 @@ class ProfileState extends BlocState {
   ProfileState({this.profile, this.isLoaded = false});
 }
 
-// Events
+// Single event type for type safety
 class LoadProfileEvent extends EventBase {
-  final String userId;
-  LoadProfileEvent({required this.userId});
+  final String? userId;
+  final bool isLoading;
+  
+  LoadProfileEvent({
+    this.userId,
+    this.isLoading = false,
+  });
 }
 
-class ClearProfileEvent extends EventBase {}
-class LoadingProfileEvent extends EventBase {}
-
-// Relay setup in destination bloc (ProfileBloc)
+// Relay setup in ProfileBloc (destination)
 class ProfileBloc extends JuiceBloc<ProfileState> {
   ProfileBloc() : super(
     ProfileState(),
@@ -76,237 +85,143 @@ class ProfileBloc extends JuiceBloc<ProfileState> {
       // Relay from AuthBloc
       () => RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
         typeOfEvent: LoadProfileEvent,
-        statusToEventTransformer: (status) {
-          return status.when(
-            updating: (state, oldState, _) {
-              // Load profile when user authenticates
-              if (state.isAuthenticated && !oldState.isAuthenticated) {
-                return LoadProfileEvent(userId: state.userId!);
-              }
-              // Clear profile when user logs out
-              if (!state.isAuthenticated && oldState.isAuthenticated) {
-                return ClearProfileEvent();
-              }
-              // No event needed for other updates
-              return null;
-            },
-            waiting: (_, __, ___) => LoadingProfileEvent(),
-            error: (_, __, ___) => ClearProfileEvent(),
-            canceling: (_, __, ___) => ClearProfileEvent(),
-          );
-        },
+        statusToEventTransformer: (status) => status.when(
+          updating: (state, oldState, _) {
+            if (state.isAuthenticated && !oldState.isAuthenticated) {
+              return LoadProfileEvent(userId: state.userId);
+            }
+            if (!state.isAuthenticated && oldState.isAuthenticated) {
+              return LoadProfileEvent(userId: null);
+            }
+            return LoadProfileEvent(userId: state.userId);
+          },
+          waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+          failure: (_, __, ___) => LoadProfileEvent(userId: null),
+          canceling: (_, __, ___) => LoadProfileEvent(userId: null),
+        ),
         useCaseGenerator: () => LoadProfileUseCase(),
-      ),
+      )
     ],
-    [], // No aviators needed
+    [],
   );
 }
-```
 
-## Key Features
+// Type-safe use case handling a single event type
+class LoadProfileUseCase extends BlocUseCase<ProfileBloc, LoadProfileEvent> {
+  @override
+  Future<void> execute(LoadProfileEvent event) async {
+    if (event.isLoading) {
+      emitWaiting(groupsToRebuild: {"profile_status"});
+      return;
+    }
 
-### Type Safety
+    if (event.userId == null) {
+      emitUpdate(
+        newState: ProfileState(),
+        groupsToRebuild: {"profile_content"}
+      );
+      return;
+    }
 
-The relay enforces type safety through generics:
-```dart
-RelayUseCaseBuilder<
-  TSourceBloc extends JuiceBloc,   // Source bloc type
-  TDestBloc extends JuiceBloc,     // Destination bloc type
-  TSourceState extends BlocState   // Source state type
->
-```
-
-### Automatic Lifecycle Management
-
-Relays are automatically cleaned up when blocs are closed:
-```dart
-void _setupPump() {
-  _subscription = sourceBloc.stream.listen(
-    (ss) async {
-      if (_isClosed) return;
-      try {
-        final event = statusToEventTransformer(ss);
-        if (event != null) {
-          destBloc.send(event);
-        }
-      } catch (e, stackTrace) {
-        JuiceLoggerConfig.logger.logError('Error in relay', e, stackTrace);
-        await close();
-      }
-    },
-    onError: (error, stackTrace) async {
-      JuiceLoggerConfig.logger
-          .logError('Stream error in relay', error, stackTrace);
-      await close();
-    },
-    onDone: () async => await close(),
-  );
+    try {
+      emitWaiting(groupsToRebuild: {"profile_status"});
+      final profile = await loadProfile(event.userId!);
+      
+      emitUpdate(
+        newState: ProfileState(
+          profile: profile,
+          isLoaded: true
+        ),
+        groupsToRebuild: {"profile_content"}
+      );
+    } catch (e, stack) {
+      logError(e, stack);
+      emitFailure(groupsToRebuild: {"profile_status"});
+    }
+  }
 }
-```
-
-### Error Handling
-
-Relays include built-in error handling and logging:
-```dart
-try {
-  event = statusToEventTransformer(ss);
-  destBloc.send(event);
-} catch (e, stackTrace) {
-  JuiceLoggerConfig.logger.logError(
-    'Error in relay between ${TSourceBloc.runtimeType} and ${TDestBloc.runtimeType}',
-    e,
-    stackTrace
-  );
-  await close();
-}
-```
-
-## Common Patterns
-
-### Authentication Flow
-
-Connect auth state to other features:
-```dart
-// In ProfileBloc
-() => RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
-  typeOfEvent: LoadProfileEvent,
-  statusToEventTransformer: (status) => status.when(
-    updating: (state, oldState, _) {
-      if (state.isAuthenticated && !oldState.isAuthenticated) {
-        return LoadProfileEvent(userId: state.userId!);
-      }
-      return null;
-    },
-    error: (_, __, ___) => ClearProfileEvent(),
-    waiting: (_, __, ___) => null,
-    canceling: (_, __, ___) => null,
-  ),
-  useCaseGenerator: () => LoadProfileUseCase(),
-)
-
-// In CartBloc
-() => RelayUseCaseBuilder<AuthBloc, CartBloc, AuthState>(
-  typeOfEvent: LoadCartEvent,
-  statusToEventTransformer: (status) => status.when(
-    updating: (state, oldState, _) {
-      if (state.isAuthenticated && !oldState.isAuthenticated) {
-        return LoadCartEvent(userId: state.userId!);
-      }
-      if (!state.isAuthenticated && oldState.isAuthenticated) {
-        return ClearCartEvent();
-      }
-      return null;
-    },
-    error: (_, __, ___) => ClearCartEvent(),
-    waiting: (_, __, ___) => null,
-    canceling: (_, __, ___) => null,
-  ),
-  useCaseGenerator: () => LoadCartUseCase(),
-)
-```
-
-### Data Dependencies
-
-Load dependent data automatically:
-```dart
-// In OrderDetailsBloc
-() => RelayUseCaseBuilder<OrderBloc, OrderDetailsBloc, OrderState>(
-  typeOfEvent: LoadDetailsEvent,
-  statusToEventTransformer: (status) => status.when(
-    updating: (state, _, __) {
-      if (state.selectedOrderId != null) {
-        return LoadDetailsEvent(orderId: state.selectedOrderId!);
-      }
-      return null;
-    },
-    error: (_, __, ___) => ClearDetailsEvent(),
-    waiting: (_, __, ___) => LoadingDetailsEvent(),
-    canceling: (_, __, ___) => ClearDetailsEvent(),
-  ),
-  useCaseGenerator: () => LoadDetailsUseCase(),
-)
 ```
 
 ## Best Practices
 
-1. **Clear Dependencies**
+1. **Single Event Type**
+   - Each relay should transform to a single event type
+   - Use event properties to handle different states
+   - Maintain type safety throughout
+
+2. **State Access**
+   - Use status.when() to handle different status types cleanly
+   - Compare old and new states for changes
+   - Keep transformations focused and clear
+
+3. **Clear Dependencies**
    - Keep relay chains simple and direct
    - Avoid circular dependencies
-   - Document the flow of data
+   - Document the data flow
 
-2. **Selective Event Creation**
-   - Only create events when needed
-   - Return null from transformer to skip event
-   - Consider old state when deciding
-
-3. **Error Handling**
-   - Handle all StreamStatus types
+4. **Error Handling**
+   - Handle errors in the transformer
    - Log errors with context
    - Clean up resources properly
 
-4. **State Transitions**
-   - Consider all possible state changes
-   - Handle edge cases explicitly
-   - Document expected behavior
+## Common Anti-Patterns to Avoid
 
-## Common Pitfalls
-
-1. **Circular Dependencies**
+1. **Multiple Event Types**
 ```dart
-// ❌ Bad: Blocs depend on each other
-class BlocA extends JuiceBloc {
-  // Relay from BlocB
+// ❌ Bad: Returning different event types
+statusToEventTransformer: (status) {
+  if (status is WaitingStatus) {
+    return LoadingEvent();  // Different event type!
+  }
+  return LoadProfileEvent();
 }
 
-class BlocB extends JuiceBloc {
-  // Relay from BlocA
-}
-
-// ✅ Good: Clear dependency direction
-class BlocA extends JuiceBloc {
-  // Source of truth, no relays
-}
-
-class BlocB extends JuiceBloc {
-  // Relays from BlocA only
-}
+// ✅ Good: Single event type with properties
+statusToEventTransformer: (status) => status.when(
+  updating: (state, _, __) => LoadProfileEvent(userId: state.userId),
+  waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+  failure: (_, __, ___) => LoadProfileEvent(userId: null),
+  canceling: (_, __, ___) => LoadProfileEvent(userId: null),
+);
 ```
 
-2. **Over-Relaying**
+2. **Ignoring Old State**
 ```dart
-// ❌ Bad: Creating unnecessary events
-statusToEventTransformer: (status) => status.when(
-  updating: (state, _, __) => UpdateEvent(),  // Every update!
-)
+// ❌ Bad: Not comparing state changes
+statusToEventTransformer: (status) => LoadProfileEvent(
+  userId: status.state.userId
+);
 
-// ✅ Good: Selective events
+// ✅ Good: Checking state transitions
 statusToEventTransformer: (status) => status.when(
   updating: (state, oldState, _) {
-    if (state.value != oldState.value) {  // Only when needed
-      return UpdateEvent(state.value);
+    if (state.isAuthenticated && !oldState.isAuthenticated) {
+      return LoadProfileEvent(userId: state.userId);
     }
-    return null;
-  }
-)
+    return LoadProfileEvent(userId: null);
+  },
+  waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+  failure: (_, __, ___) => LoadProfileEvent(userId: null),
+  canceling: (_, __, ___) => LoadProfileEvent(userId: null),
+);
 ```
 
 3. **Missing Status Types**
 ```dart
-// ❌ Bad: Incomplete status handling
+// ❌ Bad: Not handling all status types
 statusToEventTransformer: (status) => status.when(
-  updating: (state, _, __) => UpdateEvent(),
-  waiting: (_, __, ___) => null,
-  error: (_, __, ___) => null,
-  // Forgot canceling!
-)
+  updating: (state, _, __) => LoadProfileEvent(userId: state.userId),
+  waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+  // Missing failure and canceling!
+);
 
-// ✅ Good: Handle all status types
+// ✅ Good: Handling all status types
 statusToEventTransformer: (status) => status.when(
-  updating: (state, _, __) => UpdateEvent(),
-  waiting: (_, __, ___) => LoadingEvent(),
-  error: (_, __, ___) => ErrorEvent(),
-  canceling: (_, __, ___) => CancelEvent(),
-)
+  updating: (state, _, __) => LoadProfileEvent(userId: state.userId),
+  waiting: (_, __, ___) => LoadProfileEvent(isLoading: true),
+  failure: (_, __, ___) => LoadProfileEvent(userId: null),
+  canceling: (_, __, ___) => LoadProfileEvent(userId: null),
+);
 ```
 
 ## Testing
@@ -326,14 +241,27 @@ void main() {
     await profileBloc.close();
   });
   
-  test('loads profile on authentication', () async {
-    // Trigger auth state change
-    authBloc.send(LoginEvent(userId: '123'));
+  test('transforms auth state to profile event', () async {
+    // Given
+    const userId = '123';
     
-    // Verify profile load was triggered
+    // When
+    authBloc.send(LoginEvent(userId: userId));
+    
+    // Then
     await expectLater(
       profileBloc.stream,
-      emits(isA<LoadingProfileEvent>())
+      emitsInOrder([
+        isA<StreamStatus>().having(
+          (s) => s.state,
+          'loads profile for user',
+          isA<ProfileState>().having(
+            (s) => s.profile?.userId,
+            'has correct userId',
+            equals(userId)
+          )
+        ),
+      ])
     );
   });
 }
@@ -341,6 +269,5 @@ void main() {
 
 ## Next Steps
 
-- Learn about [Stateful Use Cases](stateful-use-cases.md) for managing resources
-- Explore [Testing Patterns](../testing/testing-relay-use-cases) for relay testing
-- See [Advanced Use Cases](advanced-use-cases.md) for complex patterns
+- Learn about [State Management](state-management.md) 
+- Explore [Testing Patterns](../testing/testing-relay-use-cases.md)

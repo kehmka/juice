@@ -24,6 +24,7 @@ emitFailure(
 );
 
 // Error handling in widgets
+// ❌ Problematic: For multi-bloc widgets, its unclear which bloc's status we're checking
 Widget onBuild(BuildContext context, StreamStatus status) {
   return status.when(
     updating: (state, _, __) => ContentView(state),
@@ -31,6 +32,23 @@ Widget onBuild(BuildContext context, StreamStatus status) {
     failure: (state, _, __) => ErrorView(state.error),
     canceling: (_, __, ___) => Text('Cancelled')
   );
+}
+
+// ✅ Better use extension for Type-safe status checking
+Widget onBuild(BuildContext context, StreamStatus status) {
+  // Explicitly check which bloc's status we're handling
+  if (status.isFailureFor<OrderState>()) {
+    return ErrorView(bloc.state.orderError);
+  } else if (status.isFailureFor<PaymentState>()) {
+    return ErrorView(bloc2.state.paymentError);
+  }
+
+  // Handle other states...
+  if (status.isWaitingFor<OrderState>()) {
+    return LoadingSpinner('Processing order...');
+  }
+
+  return ContentView(bloc.state);
 }
 ```
 
@@ -158,22 +176,40 @@ class ComplexFormUseCase extends BlocUseCase<FormBloc, SubmitEvent> {
 Implement clear recovery paths:
 
 ```dart
-class DataWidget extends StatelessJuiceWidget<DataBloc> {
+class ComplexDataWidget extends StatelessJuiceWidget2<DataBloc, ProcessingBloc> {
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
-    return status.when(
-      updating: (state, _, __) => DataView(state.data!),
-      waiting: (_, __, ___) => LoadingSpinner(),
-      failure: (state, _, __) => ErrorView(
-        error: state.errorMessage!,
-        // Provide retry mechanism
-        onRetry: () => bloc.send(RetryEvent()),
-        // Allow skip/continue if appropriate
-        onSkip: state.canSkip 
-            ? () => bloc.send(SkipEvent())
+    // Handle data loading errors
+    if (status.isFailureFor<DataState>()) {
+      return ErrorView(
+        error: bloc1.state.errorMessage,
+        onRetry: () => bloc1.send(RetryDataEvent()),
+        onSkip: bloc1.state.canSkip 
+            ? () => bloc1.send(SkipEvent())
             : null,
-      ),
-      canceling: (_, __, ___) => Text('Operation cancelled')
+      );
+    }
+
+    // Handle processing errors
+    if (status.isFailureFor<ProcessingState>()) {
+      return ErrorView(
+        error: bloc2.state.processingError,
+        onRetry: () => bloc2.send(RetryProcessingEvent()),
+      );
+    }
+
+    // Handle waiting states
+    if (status.isWaitingFor<DataState>()) {
+      return LoadingSpinner('Loading data...');
+    }
+    if (status.isWaitingFor<ProcessingState>()) {
+      return LoadingSpinner('Processing...');
+    }
+
+    // Render content when no errors
+    return DataView(
+      data: bloc1.state.data,
+      processedData: bloc2.state.processedData,
     );
   }
 }

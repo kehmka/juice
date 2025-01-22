@@ -192,3 +192,19 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
     return failure(state, oldState, event);
   }
 }
+
+extension StatusChecks<T extends BlocState> on StreamStatus {
+  bool matchesState<S extends BlocState>() => this is StreamStatus<S>;
+
+  bool isUpdatingFor<S extends BlocState>() =>
+      this is StreamStatus<S> && this is UpdatingStatus;
+
+  bool isWaitingFor<S extends BlocState>() =>
+      this is StreamStatus<S> && this is WaitingStatus;
+
+  bool isFailureFor<S extends BlocState>() =>
+      this is StreamStatus<S> && this is FailureStatus;
+
+  bool isCancelingFor<S extends BlocState>() =>
+      this is StreamStatus<S> && this is CancelingStatus;
+}

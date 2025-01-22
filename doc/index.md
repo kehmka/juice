@@ -69,13 +69,15 @@ class MessageList extends StatelessJuiceWidget<ChatBloc> {
 // Status bar updates independently
 class ChatStatus extends StatelessJuiceWidget<ChatBloc> {
   ChatStatus({super.key, super.groups = const {"chat_status"}});
-  
+
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
+    // status.when is fine for single-bloc widgets
     return status.when(
-      updating: (_) => Text("Online"),
+      updating: (_) => Text(bloc.state.isOnline ? "Online" : "Offline"),
       waiting: (_) => Text("Sending..."),
-      error: (_) => Text("Failed to send"),
+      failure: (_) => Text("Failed to send"),
+      canceling: (_) => Text("Cancelled"),
     );
   }
 }
@@ -211,7 +213,7 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
-    // Handle different states
+    // status.when is fine for single-bloc widgets
     return status.when(
       updating: (state, _, __) => Text('Count: ${state.count}'),
       waiting: (_, __, ___) => CircularProgressIndicator(),

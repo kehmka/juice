@@ -78,9 +78,8 @@ Juice solves common architectural challenges:
 class IncrementUseCase extends BlocUseCase<CounterBloc, IncrementEvent> {
   @override
   Future<void> execute(IncrementEvent event) async {
-    emitWaiting();  // Show loading state
-    await incrementCounter();
-    emitUpdate(newState: CounterState(count: bloc.state.count + 1));
+    final newState = bloc.state.copyWith(count: bloc.state.count + 1);
+    emitUpdate(groupsToRebuild: {"counter"}, newState: newState);
   }
 }
 
@@ -391,7 +390,7 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 
 ## Project Status
 
-Juice is currently at version 1.0.0 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
+Juice is currently at version 1.0.1 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
 
 - Comprehensive documentation and guides
 - Additional examples and use cases
@@ -447,3 +446,6 @@ Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTIN
 
 ## License
 Juice is available under the MIT license. See the [LICENSE](LICENSE) file for more information.
+
+## Author
+Juice was created and is maintained by Kevin Ehmka. For inquiries, please feel free to reach out via email at kehmka@gmail.com.

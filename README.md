@@ -120,7 +120,7 @@ Alternatively, add it manually:
 
 ```yaml
 dependencies:
-  juice: ^1.0.0
+  juice: ^1.0.1
 ```
 
 Then, run:
@@ -441,8 +441,15 @@ Coming soon:
 - **Examples**: Check our [example projects](https://github.com/kehmka/juice/tree/main/lib/example/lib) for common use cases
 
 ## Contributing
-
 Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) before submitting pull requests.
+
+## Acknowledgments
+We deeply appreciate everyone who supports the Juice framework!
+
+- Contributors: Developers who have helped improve Juice by submitting code, reporting bugs, or enhancing documentation.
+- Sponsors: Individuals and organizations providing financial support to drive Juice's ongoing development.
+- View the [Sponsors' Hall of Fame](CONTRIBUTORS.md) to see our valued contributors.
+- Learn more about becoming a sponsor in our Sponsorship Tiers.
 
 ## License
 Juice is available under the MIT license. See the [LICENSE](LICENSE) file for more information.

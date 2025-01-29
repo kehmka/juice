@@ -3,10 +3,18 @@
 /// BlocState is intentionally minimal to provide maximum flexibility while
 /// ensuring type safety in the framework. Concrete implementations should:
 ///
-/// * Implement appropriate fields for their data
+/// - Prefer immutable state when possible
+/// - If using mutable state, document clearly why it's needed
 /// * Consider implementing a copy or clone mechanism
-/// * Use immutable state when possible
-/// * Document their state structure clearly
+/// - Be aware that widgets can potentially modify mutable state
+///
+/// While BlocState is minimal, derived states often implement:
+/// * Immutable data structures
+/// * Copyable state patterns
+/// * Equatable comparisons
+/// * Complex nested states
+/// * Collection management
+///
 ///
 /// Example:
 /// ```dart

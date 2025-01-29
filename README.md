@@ -448,7 +448,8 @@ We deeply appreciate everyone who supports the Juice framework!
 
 - Contributors: Developers who have helped improve Juice by submitting code, reporting bugs, or enhancing documentation.
 - Sponsors: Individuals and organizations providing financial support to drive Juice's ongoing development.
-- View the [Sponsors' Hall of Fame](CONTRIBUTORS.md) to see our valued contributors.
+- View the [Contributors' Hall of Fame](CONTRIBUTORS.md) to see who has made an impact.
+- View the [Sponsors' Hall of Fame](SPONSORS.md) to see our valued sponsors.
 - Learn more about becoming a sponsor in our Sponsorship Tiers.
 
 ## License

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/blocs/blocs.dart';
+import 'package:example/blocs/blocs.dart';
 
 void main() {
   group('CounterBloc Tests', () {

@@ -8,7 +8,7 @@ import "package:juice/juice.dart";
 abstract class BlocDependencyResolver {
   /// Resolves and returns an instance of the specified bloc type.
   ///
-  /// [T] - The type of bloc to resolve, must extend JuiceBloc<BlocState>
+  /// Type parameter `T` must extend `JuiceBloc` of `BlocState`
   /// [args] - Optional arguments that can be passed to customize bloc creation
   ///
   /// Returns an instance of the requested bloc type.
@@ -32,7 +32,6 @@ class BlocResolver implements BlocDependencyResolver {
   ///
   /// Calls `BlocScope.clearAll()` to ensure all registered blocs
   /// are disposed and resources are cleaned up.
-
   @override
   void disposeAll() {
     JuiceLoggerConfig.logger.log('Disposing all blocs through BlocResolver');

@@ -49,7 +49,7 @@ class GlobalBlocResolver {
 
   /// Resolves a bloc of the specified type using the configured resolver
   ///
-  /// [T] - The type of bloc to resolve, must extend JuiceBloc<BlocState>
+  /// Type parameter `T` must extend `JuiceBloc` of `BlocState`
   ///
   /// Returns an instance of the requested bloc type
   ///

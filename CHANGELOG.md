@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.2] - 2025-01-30
+
+### Documentation
+- Updated `README.md` with various improvements.
+- Improved package documentation for better clarity.
+- Removed misleading `copyWith` mention in comments within `bloc_state.dart`.
+- Properly escaped angle brackets in dartdoc comments
+
+### Community & Support
+- Added initial setup for `FUNDING.yaml` to support sponsorship options.
+
+### Maintenance
+- Version bump in `pubspec.yaml` to `1.0.2`.
+
 ## [1.0.1] - 2025-01-23
 
 ### Enhancements
@@ -56,4 +70,3 @@
 - Kevin Ehmka
 
 Note: This is the first stable release of Juice, a state management solution designed to provide a clean architecture plus bloc approach to Flutter applications.
-

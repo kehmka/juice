@@ -156,22 +156,22 @@ class RelayUseCaseBuilder<
 ///   final bool isAuthenticated;
 ///   AuthState({this.userId, this.isAuthenticated = false});
 /// }
-/// 
+///
 /// class ProfileState extends BlocState {
 ///   final String? name;
 ///   final bool isLoaded;
 ///   ProfileState({this.name, this.isLoaded = false});
 /// }
-/// 
+///
 /// // Events
 /// class UpdateProfileEvent extends EventBase {
 ///   final String userId;
 ///   UpdateProfileEvent({required this.userId});
 /// }
-/// 
+///
 /// class LoadingProfileEvent extends EventBase {}
 /// class ClearProfileEvent extends EventBase {}
-/// 
+///
 /// // Relay setup with complete status handling
 /// () => RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
 ///   typeOfEvent: UpdateProfileEvent,

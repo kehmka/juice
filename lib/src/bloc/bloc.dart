@@ -1,3 +1,5 @@
+export 'dart:async';
+
 export 'src/juice_async_builder.dart';
 export 'src/aviators/aviator.dart';
 export 'src/bloc_dependency_resolver.dart';

@@ -1,4 +1,3 @@
-import 'dart:async';
 import '../../../bloc.dart';
 
 /// A specialized use case builder that connects two blocs, allowing events from one

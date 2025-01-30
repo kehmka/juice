@@ -1,10 +1,6 @@
-export 'dart:async';
-export 'dart:convert';
-export 'dart:math';
-export 'dart:collection';
+library juice;
 
 export 'package:flutter/material.dart';
-export 'package:flutter/foundation.dart';
 export 'package:logger/logger.dart';
 
 export 'src/bloc/bloc.dart';

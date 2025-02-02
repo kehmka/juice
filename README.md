@@ -120,7 +120,7 @@ Alternatively, add it manually:
 
 ```yaml
 dependencies:
-  juice: ^1.0.1
+  juice: ^1.0.3
 ```
 
 Then, run:
@@ -390,7 +390,7 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 
 ## Project Status
 
-Juice is currently at version 1.0.1 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
+Juice is currently at version 1.0.3 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
 
 - Comprehensive documentation and guides
 - Additional examples and use cases

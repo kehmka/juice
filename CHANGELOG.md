@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3] - 2025-02-07
+
+### Documentation
+- Updated `README.md` with various improvements.
+- Improved package documentation for better clarity.
+- Improved dart doc processing
+
+### Maintenance
+- Version bump in `pubspec.yaml` to `1.0.3`.
+
 ## [1.0.2] - 2025-01-30
 
 ### Documentation

@@ -93,3 +93,5 @@ example/macos/*
 example/windows/*
 example/web/*
 example/linux/*
+CLAUDE.md
+test/navigation/aviator_test.dart

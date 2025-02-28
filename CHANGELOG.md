@@ -1,5 +1,17 @@
 # Changelog
 
+# Changelog
+
+## [1.0.4] - 2025-02-08
+
+### Tests
+- Created new `StatelessJuiceWidget` tests to verify rebuild behavior across groups.
+- Added BLoC lifecycle tests ensuring proper close and cleanup.
+- Increased test coverage for error-handling and wildcard group rebuild logic.
+
+### Maintenance
+- Version bump in `pubspec.yaml` to `1.0.4`.
+
 ## [1.0.3] - 2025-02-07
 
 ### Documentation

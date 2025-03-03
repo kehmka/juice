@@ -17,6 +17,7 @@ final exampleRoutes = {
   '/form': (context) => const FormPage(),
   '/weather': (context) => const WeatherPage(),
   '/upload': (context) => const FileUploadPage(),
+  '/onboard': (context) => OnboardingScreen(),
 };
 
 void main() {
@@ -109,6 +110,7 @@ class MyHomePage extends StatelessWidget {
       {'title': 'Form Example', 'route': '/form'},
       {'title': 'Weather Example', 'route': '/weather'},
       {'title': 'File Upload', 'route': '/upload'},
+      {'title': 'Onboard example', 'route': '/onboard'},
     ];
 
     return Scaffold(
@@ -144,6 +146,7 @@ class ExampleDeepLinkConfig {
       'form': DeepLinkRoute(path: ['/form']),
       'weather': DeepLinkRoute(path: ['/weather']),
       'upload': DeepLinkRoute(path: ['/upload']),
+      'onboard': DeepLinkRoute(path: ['/onboard']),
     },
   );
 }

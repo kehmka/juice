@@ -11,6 +11,7 @@ class BlocRegistry {
     BlocScope.registerFactory<ChatBloc>(() => ChatBloc(WebSocketService()));
     BlocScope.registerFactory<FileUploadBloc>(() => FileUploadBloc());
     BlocScope.registerFactory<FormBloc>(() => FormBloc());
+    BlocScope.registerFactory<OnboardingBloc>(() => OnboardingBloc());
     BlocScope.registerFactory<WeatherBloc>(() => WeatherBloc());
     BlocScope.registerFactory<SettingsBloc>(() => SettingsBloc());
   }

@@ -1,5 +1,6 @@
 import 'package:juice/juice.dart';
 
+import 'blocs/auth/ui/auth_page.dart';
 import 'blocs/file_upload/src/ui/file_upload_page.dart';
 import 'blocs/chat/ui/chat_page.dart';
 import 'blocs/counter/ui/counter_page.dart';
@@ -12,6 +13,7 @@ import 'config/bloc_registration.dart';
 
 // Example routes definition
 final exampleRoutes = {
+  '/auth': (context) => const AuthPage(),
   '/counter': (context) => const CounterPage(),
   '/counter-builder': (context) => const CounterBuilderPage(),
   '/todo': (context) => const TodoPage(),
@@ -106,6 +108,7 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final examples = [
+      {'title': 'Auth & EventSubscription', 'route': '/auth'},
       {'title': 'Counter Example', 'route': '/counter'},
       {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
       {'title': 'Todo Example', 'route': '/todo'},
@@ -143,6 +146,7 @@ class ExampleDeepLinkConfig {
   static final config = DeepLinkConfig(
     authRoute: '/', // No auth needed for examples
     routes: {
+      'auth': DeepLinkRoute(path: ['/auth']),
       'counter': DeepLinkRoute(path: ['/counter']),
       'todo': DeepLinkRoute(path: ['/todo']),
       'chat': DeepLinkRoute(path: ['/chat']),

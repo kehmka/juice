@@ -1,4 +1,5 @@
 export 'app/app.dart';
+export 'auth/auth.dart';
 export 'chat/chat.dart';
 export 'counter/counter.dart';
 export 'file_upload/file_upload.dart';
@@ -6,4 +7,5 @@ export 'form/form.dart';
 export 'onboard/onboard.dart';
 export 'settings/settings.dart';
 export 'todo/todo.dart';
+export 'user_profile/user_profile.dart';
 export 'weather/weather.dart';

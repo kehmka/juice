@@ -199,6 +199,8 @@ class JuiceBloc<TState extends BlocState>
 
     await _useCaseRegistry.closeAll();
     await _aviatorManager.closeAll();
+    await Future.wait(_eventSubscriptions.map((s) => s.close()));
+    _eventSubscriptions.clear();
     _dispatcher.clear();
     await _stateManager.close();
   }
@@ -232,10 +234,18 @@ class JuiceBloc<TState extends BlocState>
     ));
   }
 
+  final List<EventSubscription> _eventSubscriptions = [];
+
   void _registerUseCases(List<UseCaseBuilderGenerator> useCases) {
     for (final generator in useCases) {
       final builder = generator();
-      _registerUseCase(builder);
+
+      // Handle EventSubscription specially
+      if (builder is EventSubscription) {
+        _registerEventSubscription(builder);
+      } else {
+        _registerUseCase(builder);
+      }
 
       // Fire initial event if configured
       if (builder.initialEventBuilder != null) {
@@ -254,6 +264,24 @@ class JuiceBloc<TState extends BlocState>
       (event) => _useCaseExecutor.execute(builder, event),
       eventType: builder.eventType,
     );
+  }
+
+  void _registerEventSubscription(EventSubscription subscription) {
+    _eventSubscriptions.add(subscription);
+
+    // Only register the use case if no handler exists for this event type
+    final eventType = subscription.eventType;
+    if (!_useCaseRegistry.hasBuilder(eventType)) {
+      _registerUseCase(subscription);
+    }
+
+    // Wire up to dispatch transformed events via send()
+    subscription.setEventHandler((event) {
+      send(event);
+    });
+
+    // Initialize the subscription to listen to source bloc
+    subscription.initialize();
   }
 
   void _registerAviators(List<AviatorBuilder> aviatorBuilders) {

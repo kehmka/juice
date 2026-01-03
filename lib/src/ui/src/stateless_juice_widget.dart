@@ -60,23 +60,19 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc>
       }),
       initial: bloc.currentStatus,
       initiator: onInit,
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (context, status, o, ex) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  /// Internal method to process build requests with error handling.
-  /// Wraps onBuild with try-catch and converts errors to JuiceExceptionWidget.
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.
@@ -140,7 +136,6 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc,
     return JuiceAsyncBuilder<StreamStatus>(
       initial: bloc1.currentStatus,
       initiator: onInit,
-      // Combines streams from both blocs.
       stream: MergeStream<StreamStatus>([bloc1.stream, bloc2.stream])
           .where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
@@ -148,22 +143,19 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc,
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (context, status, o, ex) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  /// Internal method to process state changes and safely call [onBuild].
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.
@@ -230,7 +222,6 @@ abstract class StatelessJuiceWidget3<
     return JuiceAsyncBuilder<StreamStatus>(
       initial: bloc1.currentStatus,
       initiator: onInit,
-      // Combines streams from all three blocs.
       stream:
           MergeStream<StreamStatus>([bloc1.stream, bloc2.stream, bloc3.stream])
               .where((status) {
@@ -239,22 +230,19 @@ abstract class StatelessJuiceWidget3<
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (c, status, o, s) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (c, status, o, s) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  /// Internal method to process state changes and safely call [onBuild].
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.

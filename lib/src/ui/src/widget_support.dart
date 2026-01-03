@@ -75,3 +75,30 @@ bool _isInRebuildGroup(EventBase? event, Set<String> rebuildGroups) {
   return groups.contains(_alwaysRebuild) ||
       groups.intersection(rebuildGroups).isNotEmpty;
 }
+
+/// Internal helper for shared widget build logic.
+///
+/// Provides common functionality used by StatelessJuiceWidget and JuiceWidgetState
+/// variants to reduce code duplication.
+class JuiceWidgetSupport {
+  JuiceWidgetSupport._();
+
+  /// Wraps a build callback with error handling.
+  ///
+  /// If [onBuild] throws an exception, returns a [JuiceExceptionWidget]
+  /// displaying the error details instead of propagating the exception.
+  static Widget processWithErrorHandling({
+    required BuildContext context,
+    required StreamStatus status,
+    required Widget Function(BuildContext, StreamStatus) onBuild,
+  }) {
+    try {
+      return onBuild(context, status);
+    } catch (error, stackTrace) {
+      return JuiceExceptionWidget(
+        exception: error is Exception ? error : Exception(error),
+        stackTrace: stackTrace,
+      );
+    }
+  }
+}

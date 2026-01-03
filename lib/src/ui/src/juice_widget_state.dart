@@ -75,23 +75,19 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
         if (mounted) setState(() {});
         return true;
       }),
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (c, status, o, s) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (c, status, o, s) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  /// Internal method to process build requests with error handling.
-  /// Wraps onBuild with try-catch and converts errors to JuiceExceptionWidget.
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.
@@ -184,21 +180,19 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
         if (mounted) setState(() {});
         return true;
       }),
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (c, status, o, s) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (c, status, o, s) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.
@@ -295,21 +289,19 @@ class JuiceWidgetState3<
         if (mounted) setState(() {});
         return true;
       }),
-      waiting: (context, status) => _process(context, status),
-      builder: (context, status) => _process(context, status),
-      error: (c, status, o, s) => _process(context, status),
+      waiting: (context, status) => _build(context, status),
+      builder: (context, status) => _build(context, status),
+      error: (c, status, o, s) => _build(context, status),
       closed: (context, value) => close(context),
     );
   }
 
-  Widget _process(BuildContext context, StreamStatus status) {
-    try {
-      return onBuild(context, status);
-    } catch (error, stackTrace) {
-      return JuiceExceptionWidget(
-          exception: error is Exception ? error : Exception(error),
-          stackTrace: stackTrace);
-    }
+  Widget _build(BuildContext context, StreamStatus status) {
+    return JuiceWidgetSupport.processWithErrorHandling(
+      context: context,
+      status: status,
+      onBuild: onBuild,
+    );
   }
 
   /// Called when the widget is first initialized.

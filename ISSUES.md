@@ -32,7 +32,7 @@ This document tracks known issues, bugs, and areas for improvement in the Juice 
 
 ## Medium Issues
 
-### 4. Unsafe Type Cast to Dynamic
+### 4. Unsafe Type Cast to Dynamic (Open)
 
 **File:** `lib/src/bloc/src/core/use_case_executor.dart`, Line 142
 
@@ -48,27 +48,15 @@ This document tracks known issues, bugs, and areas for improvement in the Juice 
 
 ---
 
-### 5. Race Condition in EventSubscription Initialization
+### 5. ~~Race Condition in EventSubscription Initialization~~ FIXED
 
-**File:** `lib/src/bloc/src/use_case_builders/src/event_subscription.dart`, Lines 93-96
+**File:** `lib/src/bloc/src/use_case_builders/src/event_subscription.dart`
 
-**Description:** Initialization is deferred via `Future.microtask()`. If `close()` is called before the microtask executes, initialization may still attempt to run. The `_onEvent` callback could be null when first triggered.
-
-```dart
-void initialize() {
-  if (!_isInitialized && !_isClosed) {
-    Future.microtask(() => _initialize());  // Deferred initialization
-  }
-}
-```
-
-**Impact:** Medium - Race condition risk in rapid initialization/closure cycles.
-
-**Fix:** Add a guard in `_initialize()` to check `_isClosed` before proceeding, or use synchronous initialization.
+**Status:** Fixed - Added `_isClosed` guard at start of `_initialize()` to prevent race condition when `close()` is called before the deferred microtask executes. Also fixed in `RelayUseCaseBuilder`.
 
 ---
 
-### 6. Forced Non-Null Access Without Safety Checks
+### 6. Forced Non-Null Access Without Safety Checks (Open)
 
 **File:** `lib/src/ui/src/widget_support.dart`, Line 74
 
@@ -87,7 +75,7 @@ final groups = event?.groupsToRebuild ?? {};
 
 ---
 
-### 7. Inconsistent Default Groups in StatelessJuiceWidget Variants
+### 7. Inconsistent Default Groups in StatelessJuiceWidget Variants (Open)
 
 **File:** `lib/src/ui/src/stateless_juice_widget.dart`
 
@@ -102,20 +90,19 @@ final groups = event?.groupsToRebuild ?? {};
 
 ---
 
-### 8. Unchecked Late Variable Access
+### 8. ~~Unchecked Late Variable Access~~ PARTIALLY FIXED
 
 **File:** `lib/src/bloc/src/use_case_builders/src/relay_use_case_builder.dart`, Lines 60-63
 
-**Description:** These `late` variables are accessed in `_setupPump()` without null-coalescing. If initialization fails partially, accessing these will crash with "Late variable not initialized" error.
+**Status:** Partially Fixed - The BlocLease system now provides:
+- try-catch wrapper that throws explicit `StateError` on initialization failure
+- Closed bloc checks before proceeding (`if (sourceBloc.isClosed || destBloc.isClosed)`)
+- Proper lease cleanup in `close()` method
+- Race condition guard (`if (_isClosed) return;`)
 
-```dart
-late TSourceBloc sourceBloc;
-late TDestBloc destBloc;
-```
+The `late` variables are still used but initialization failures now produce clear errors rather than cryptic "Late variable not initialized" crashes.
 
-**Impact:** Medium - Hard-to-debug runtime errors if bloc resolution fails.
-
-**Fix:** Either use nullable types with null checks, or ensure initialization cannot fail.
+**Remaining:** Could convert to nullable types for full safety, but current implementation is acceptable.
 
 ---
 
@@ -310,20 +297,21 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 
 ## Summary
 
-| Priority | Count | Categories |
-|----------|-------|------------|
-| Critical | 3 | Resource leaks, invalid signatures |
-| Medium | 5 | Type safety, race conditions, inconsistencies |
-| Low | 6 | Logging, dead code, API design |
-| Tests | 4 | Coverage gaps |
-| Docs | 3 | Documentation gaps |
-| **Total** | **21** | |
+| Priority | Count | Status |
+|----------|-------|--------|
+| Critical | 3 | All Fixed (#1-3) |
+| Medium | 5 | 2 Fixed (#5, #8), 3 Open (#4, #6, #7) |
+| Low | 6 | Open |
+| Tests | 4 | Open |
+| Docs | 3 | Open |
+| **Total** | **21** | **5 Fixed, 16 Open** |
 
 ---
 
 ## Fix Priority Recommendation
 
-1. **First:** Fix critical issues #1-3 (dispose/close cleanup)
-2. **Second:** Fix medium issues #4-8 (type safety, race conditions)
-3. **Third:** Add missing tests #15-18
-4. **Fourth:** Address low priority and documentation issues
+1. ~~**First:** Fix critical issues #1-3 (dispose/close cleanup)~~ DONE
+2. ~~**Second:** Fix race conditions #5, #8~~ DONE
+3. **Next:** Fix remaining medium issues #4, #6, #7 (type safety, inconsistencies)
+4. **Then:** Add missing tests #15-18
+5. **Finally:** Address low priority and documentation issues

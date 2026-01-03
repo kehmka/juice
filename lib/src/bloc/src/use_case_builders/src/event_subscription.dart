@@ -130,6 +130,10 @@ class EventSubscription<
   Type get sourceBlocType => TSourceBloc;
 
   void _initialize() {
+    // Guard against race condition: close() may have been called
+    // after initialize() scheduled this microtask but before it executed
+    if (_isClosed) return;
+
     try {
       if (_customResolver != null) {
         // Legacy path: use custom resolver directly

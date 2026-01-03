@@ -42,7 +42,7 @@ class RelayUseCaseBuilder<
     BlocDependencyResolver? resolver,
   }) : _customResolver = resolver {
     Future.microtask(() {
-      if (!_isInitialized) {
+      if (!_isInitialized && !_isClosed) {
         _initialize();
       }
     });
@@ -102,6 +102,10 @@ class RelayUseCaseBuilder<
   ///
   /// Throws StateError if initialization fails or blocs cannot be resolved.
   void _initialize() {
+    // Guard against race condition: close() may have been called
+    // after constructor scheduled this microtask but before it executed
+    if (_isClosed) return;
+
     try {
       if (_customResolver != null) {
         // Legacy path: use custom resolver directly

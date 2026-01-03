@@ -146,14 +146,14 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   StatelessJuiceWidget2({
     Key? key,
     BlocDependencyResolver? resolver,
-    this.groups = const {},
+    this.groups = const {"*"},
     this.scope1,
     this.scope2,
   })  : _customResolver = resolver,
         super(key: key);
 
   /// Groups that control when this widget rebuilds.
-  /// Default is an empty set, meaning rebuild on all state changes.
+  /// Default is {"*"} which means rebuild on all state changes.
   final Set<String> groups;
 
   /// Optional scope key for first bloc.

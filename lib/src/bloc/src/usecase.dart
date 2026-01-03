@@ -37,8 +37,16 @@ abstract class UseCase<TBloc extends JuiceBloc, TEvent extends EventBase> {
   Future<void> execute(TEvent event);
 
   /// Reference to the bloc that owns this use case.
-  /// Set automatically by the framework.
+  /// Set automatically by the framework via [setBloc].
   late TBloc bloc;
+
+  /// Sets the bloc reference for this use case.
+  ///
+  /// Called by the framework during use case execution setup.
+  /// Performs a type-safe cast from JuiceBloc to the specific TBloc type.
+  void setBloc(JuiceBloc blocInstance) {
+    bloc = blocInstance as TBloc;
+  }
 
   /// Emits an update state to indicate successful operation completion.
   ///

@@ -32,19 +32,11 @@ This document tracks known issues, bugs, and areas for improvement in the Juice 
 
 ## Medium Issues
 
-### 4. Unsafe Type Cast to Dynamic (Open)
+### 4. ~~Unsafe Type Cast to Dynamic~~ FIXED
 
-**File:** `lib/src/bloc/src/core/use_case_executor.dart`, Line 142
+**File:** `lib/src/bloc/src/core/use_case_executor.dart`
 
-**Description:** Unsafe cast to `dynamic` bypasses type checking. If a use case doesn't have a `bloc` property or it's read-only, this will fail at runtime with no compile-time warning.
-
-```dart
-(useCase as dynamic).bloc = context.bloc;
-```
-
-**Impact:** Medium - Runtime errors if use case structure changes unexpectedly.
-
-**Fix:** Add a proper interface or mixin that defines the `bloc` setter, and use type-safe casting.
+**Status:** Fixed - Added `setBloc(JuiceBloc blocInstance)` method to UseCase class. The executor now calls `useCase.setBloc(context.bloc as JuiceBloc)` instead of `(useCase as dynamic).bloc = context.bloc`. The cast is now contained within the UseCase class with proper type safety.
 
 ---
 
@@ -56,37 +48,28 @@ This document tracks known issues, bugs, and areas for improvement in the Juice 
 
 ---
 
-### 6. Forced Non-Null Access Without Safety Checks (Open)
+### 6. ~~Forced Non-Null Access Without Safety Checks~~ FIXED
 
-**File:** `lib/src/ui/src/widget_support.dart`, Line 74
+**File:** `lib/src/ui/src/widget_support.dart`
 
-**Description:** Double forced non-null access without null checks. If `event` or `groupsToRebuild` is unexpectedly null, the app will crash.
-
+**Status:** Fixed - Replaced forced non-null access with safe null-coalescing pattern:
 ```dart
-final groups = event!.groupsToRebuild!;
-```
-
-**Impact:** Medium - Runtime crash if assumptions about non-null values are violated.
-
-**Fix:** Add null coalescing or proper null checks:
-```dart
-final groups = event?.groupsToRebuild ?? {};
+final groups = event?.groupsToRebuild;
+if (groups == null || groups.isEmpty) return false;
 ```
 
 ---
 
-### 7. Inconsistent Default Groups in StatelessJuiceWidget Variants (Open)
+### 7. ~~Inconsistent Default Groups in StatelessJuiceWidget Variants~~ FIXED
 
 **File:** `lib/src/ui/src/stateless_juice_widget.dart`
 
-**Description:** Different widget variants have inconsistent default rebuild group behavior:
-- Line 34: `StatelessJuiceWidget` defaults to `groups = const {"*"}` (rebuilds on all)
-- Line 113: `StatelessJuiceWidget2` defaults to `groups = const {}` (empty set - no rebuilds)
-- Line 195: `StatelessJuiceWidget3` defaults to `groups = const {"*"}` (rebuilds on all)
+**Status:** Fixed - Standardized all widget variants to use `groups = const {"*"}` as default:
+- `StatelessJuiceWidget`: `{"*"}` (unchanged)
+- `StatelessJuiceWidget2`: `{"*"}` (was `{}`)
+- `StatelessJuiceWidget3`: `{"*"}` (unchanged)
 
-**Impact:** Medium - Confusing for developers, possible unintended rebuild patterns when using `StatelessJuiceWidget2`.
-
-**Fix:** Standardize default groups across all widget variants.
+All variants now consistently rebuild on all state changes by default.
 
 ---
 
@@ -300,11 +283,11 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 | Priority | Count | Status |
 |----------|-------|--------|
 | Critical | 3 | All Fixed (#1-3) |
-| Medium | 5 | 2 Fixed (#5, #8), 3 Open (#4, #6, #7) |
+| Medium | 5 | All Fixed (#4-7, #8 partial) |
 | Low | 6 | Open |
 | Tests | 4 | Open |
 | Docs | 3 | Open |
-| **Total** | **21** | **5 Fixed, 16 Open** |
+| **Total** | **21** | **8 Fixed, 13 Open** |
 
 ---
 
@@ -312,6 +295,6 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 
 1. ~~**First:** Fix critical issues #1-3 (dispose/close cleanup)~~ DONE
 2. ~~**Second:** Fix race conditions #5, #8~~ DONE
-3. **Next:** Fix remaining medium issues #4, #6, #7 (type safety, inconsistencies)
-4. **Then:** Add missing tests #15-18
+3. ~~**Third:** Fix remaining medium issues #4, #6, #7 (type safety, inconsistencies)~~ DONE
+4. **Next:** Add missing tests #15-18
 5. **Finally:** Address low priority and documentation issues

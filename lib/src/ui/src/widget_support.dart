@@ -70,8 +70,8 @@ bool denyRebuild({
 ///
 /// If the event has no rebuild groups specified, returns false (no rebuild).
 bool _isInRebuildGroup(EventBase? event, Set<String> rebuildGroups) {
-  if (event?.groupsToRebuild == null) return false;
-  final groups = event!.groupsToRebuild!;
+  final groups = event?.groupsToRebuild;
+  if (groups == null || groups.isEmpty) return false;
   return groups.contains(_alwaysRebuild) ||
       groups.intersection(rebuildGroups).isNotEmpty;
 }

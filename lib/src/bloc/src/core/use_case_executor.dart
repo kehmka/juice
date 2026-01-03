@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../bloc_state.dart';
 import '../bloc_event.dart';
+import '../juice_bloc.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
 import '../use_case_builders/use_case_builder.dart';
@@ -137,9 +138,9 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
 
   /// Wires a use case with its context dependencies.
   void _wireUseCase(UseCase useCase, UseCaseContext<TBloc, TState> context) {
-    // UseCase.bloc is a late property typed to the specific bloc subtype.
-    // The assignment works at runtime due to Dart's type system.
-    (useCase as dynamic).bloc = context.bloc;
+    // Set the bloc reference via the type-safe setBloc method.
+    // This avoids unsafe dynamic casts while still supporting generic bloc types.
+    useCase.setBloc(context.bloc as JuiceBloc);
 
     useCase.emitUpdate = ({
       BlocState? newState,

@@ -25,7 +25,7 @@ final exampleRoutes = {
 };
 
 void main() {
-  GlobalBlocResolver().resolver = BlocResolver();
+  // Initialize bloc registrations with lifecycle management
   BlocRegistry.initialize(ExampleDeepLinkConfig.config);
 
   // Get initial deep link if any
@@ -52,7 +52,8 @@ class _MyAppState extends State<MyApp> {
     // Handle initial deep link after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialExample != null) {
-        final appBloc = GlobalBlocResolver().resolver.resolve<AppBloc>();
+        // Use BlocScope.get for permanent blocs
+        final appBloc = BlocScope.get<AppBloc>();
         appBloc.send(UpdateEvent(
           aviatorName: 'deepLink',
           aviatorArgs: {'deepLink': widget.initialExample},
@@ -62,10 +63,16 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void dispose() {
+    // Clean up all blocs on app shutdown
+    BlocScope.endAll();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey:
-          GlobalBlocResolver().resolver.resolve<AppBloc>().navigatorKey,
+      navigatorKey: BlocScope.get<AppBloc>().navigatorKey,
       title: 'Juice Examples',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -84,11 +91,7 @@ class _MyAppState extends State<MyApp> {
         final builder = exampleRoutes[settings.name];
         if (builder != null) {
           return MaterialPageRoute(
-            builder: (context) => PopScope(
-              onPopInvokedWithResult: (b, r) =>
-                  GlobalBlocResolver().resolver.disposeAll(),
-              child: builder(context),
-            ),
+            builder: (context) => builder(context),
           );
         }
 

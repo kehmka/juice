@@ -76,16 +76,22 @@ class JuiceBuilder<TBloc extends JuiceBloc> extends StatefulWidget {
 
 class _JuiceBuilderState<TBloc extends JuiceBloc>
     extends State<JuiceBuilder<TBloc>> {
-  late final BlocDependencyResolver _resolver;
   late final TBloc _bloc;
   late StreamStatus _status;
   StreamSubscription<StreamStatus>? _subscription;
+  BlocLease<TBloc>? _lease;
 
   @override
   void initState() {
     super.initState();
-    _resolver = widget.resolver ?? GlobalBlocResolver().resolver;
-    _bloc = _resolver.resolve<TBloc>();
+    if (widget.resolver != null) {
+      // Legacy path: use custom resolver directly
+      _bloc = widget.resolver!.resolve<TBloc>();
+    } else {
+      // New path: use BlocScope with lease for proper lifecycle management
+      _lease = BlocScope.lease<TBloc>();
+      _bloc = _lease!.bloc;
+    }
     _status = _bloc.currentStatus;
     _subscribe();
     widget.onInit?.call();
@@ -120,6 +126,8 @@ class _JuiceBuilderState<TBloc extends JuiceBloc>
   @override
   void dispose() {
     _subscription?.cancel();
+    _lease?.dispose();
+    _lease = null;
     widget.onDispose?.call();
     super.dispose();
   }
@@ -195,18 +203,27 @@ class JuiceBuilder2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc>
 
 class _JuiceBuilder2State<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc>
     extends State<JuiceBuilder2<TBloc1, TBloc2>> {
-  late final BlocDependencyResolver _resolver;
   late final TBloc1 _bloc1;
   late final TBloc2 _bloc2;
   late StreamStatus _status;
   StreamSubscription<StreamStatus>? _subscription;
+  BlocLease<TBloc1>? _lease1;
+  BlocLease<TBloc2>? _lease2;
 
   @override
   void initState() {
     super.initState();
-    _resolver = widget.resolver ?? GlobalBlocResolver().resolver;
-    _bloc1 = _resolver.resolve<TBloc1>();
-    _bloc2 = _resolver.resolve<TBloc2>();
+    if (widget.resolver != null) {
+      // Legacy path: use custom resolver directly
+      _bloc1 = widget.resolver!.resolve<TBloc1>();
+      _bloc2 = widget.resolver!.resolve<TBloc2>();
+    } else {
+      // New path: use BlocScope with lease for proper lifecycle management
+      _lease1 = BlocScope.lease<TBloc1>();
+      _lease2 = BlocScope.lease<TBloc2>();
+      _bloc1 = _lease1!.bloc;
+      _bloc2 = _lease2!.bloc;
+    }
     _status = _bloc1.currentStatus;
     _subscribe();
     widget.onInit?.call();
@@ -240,6 +257,10 @@ class _JuiceBuilder2State<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc>
   @override
   void dispose() {
     _subscription?.cancel();
+    _lease1?.dispose();
+    _lease1 = null;
+    _lease2?.dispose();
+    _lease2 = null;
     widget.onDispose?.call();
     super.dispose();
   }
@@ -345,13 +366,15 @@ class _JuiceMultiBuilderState extends State<JuiceMultiBuilder> {
   late final List<JuiceBloc> _blocs;
   late StreamStatus _status;
   StreamSubscription<StreamStatus>? _subscription;
+  final List<BlocLease> _leases = [];
 
   @override
   void initState() {
     super.initState();
 
     if (widget.resolve != null) {
-      final resolver = GlobalBlocResolver().resolver;
+      // Use a lease-tracking resolver
+      final resolver = _LeaseTrackingResolver(_leases);
       _blocs = widget.resolve!(resolver);
     } else {
       _blocs = widget.blocs;
@@ -395,6 +418,10 @@ class _JuiceMultiBuilderState extends State<JuiceMultiBuilder> {
   @override
   void dispose() {
     _subscription?.cancel();
+    for (final lease in _leases) {
+      lease.dispose();
+    }
+    _leases.clear();
     widget.onDispose?.call();
     super.dispose();
   }
@@ -409,5 +436,34 @@ class _JuiceMultiBuilderState extends State<JuiceMultiBuilder> {
         stackTrace: stackTrace,
       );
     }
+  }
+}
+
+/// Internal resolver that tracks leases for proper lifecycle management.
+class _LeaseTrackingResolver implements BlocDependencyResolver {
+  _LeaseTrackingResolver(this._leases);
+
+  final List<BlocLease> _leases;
+
+  @override
+  T resolve<T extends JuiceBloc<BlocState>>({Map<String, dynamic>? args}) {
+    final lease = BlocScope.lease<T>();
+    _leases.add(lease);
+    return lease.bloc;
+  }
+
+  @override
+  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    final blocLease = BlocScope.lease<T>(scope: scope);
+    _leases.add(blocLease);
+    return blocLease;
+  }
+
+  @override
+  Future<void> disposeAll() async {
+    for (final lease in _leases) {
+      lease.dispose();
+    }
+    _leases.clear();
   }
 }

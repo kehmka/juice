@@ -14,28 +14,40 @@ abstract class BlocDependencyResolver {
   /// Returns an instance of the requested bloc type.
   T resolve<T extends JuiceBloc<BlocState>>({Map<String, dynamic>? args});
 
-  void disposeAll() {}
+  /// Acquires a lease on a bloc for reference-counted lifecycle management.
+  ///
+  /// For [BlocLifecycle.leased] blocs, this is the required way to access them.
+  /// The lease must be released when the bloc is no longer needed.
+  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    return BlocScope.lease<T>(scope: scope);
+  }
+
+  Future<void> disposeAll() async {}
 }
 
 /// Default implementation that resolves blocs from a global BlocScope.
 ///
-/// This resolver uses a simple singleton pattern where all blocs are retrieved
-/// from a global scope. Suitable for simpler applications with straightforward
-/// dependency needs.
+/// This resolver uses the lifecycle-aware BlocScope for bloc management.
+/// Suitable for most applications with straightforward dependency needs.
 class BlocResolver implements BlocDependencyResolver {
   @override
   T resolve<T extends JuiceBloc<BlocState>>({Map<String, dynamic>? args}) {
     return BlocScope.get<T>();
   }
 
+  @override
+  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    return BlocScope.lease<T>(scope: scope);
+  }
+
   /// Disposes all blocs and clears the registry.
   ///
-  /// Calls `BlocScope.clearAll()` to ensure all registered blocs
+  /// Calls `BlocScope.endAll()` to ensure all registered blocs
   /// are disposed and resources are cleaned up.
   @override
-  void disposeAll() {
+  Future<void> disposeAll() async {
     JuiceLoggerConfig.logger.log('Disposing all blocs through BlocResolver');
-    BlocScope.clearAll();
+    await BlocScope.endAll();
   }
 }
 
@@ -62,9 +74,18 @@ class CompositeResolver implements BlocDependencyResolver {
   }
 
   @override
-  void disposeAll() {
+  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    final resolver = resolvers[T];
+    if (resolver != null) {
+      return resolver.lease<T>(scope: scope);
+    }
+    return BlocScope.lease<T>(scope: scope);
+  }
+
+  @override
+  Future<void> disposeAll() async {
     for (var resolver in resolvers.values) {
-      resolver.disposeAll();
+      await resolver.disposeAll();
     }
   }
 }

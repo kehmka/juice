@@ -5,25 +5,26 @@ import '../test_helpers.dart';
 
 void main() {
   group('StatelessJuiceWidget Tests', () {
+    late TestResolver resolver;
+
     setUp(() {
-      // Initialize global resolver for widget tests
-      GlobalBlocResolver().resolver = TestResolver();
+      resolver = TestResolver();
     });
 
-    tearDown(() {
+    tearDown(() async {
       // Clean up blocs between tests
-      GlobalBlocResolver().resolver.disposeAll();
+      await resolver.disposeAll();
     });
 
     testWidgets('StatelessJuiceWidget displays initial state', (tester) async {
       // Create bloc with known initial state
       final bloc = TestBloc(initialState: TestState(value: 42));
-      GlobalBlocResolver().resolver = TestResolver(blocs: {TestBloc: bloc});
+      resolver = TestResolver(blocs: {TestBloc: bloc});
 
-      // Build widget
+      // Build widget with explicit resolver
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: TestWidget(),
+          body: TestWidget(resolver: resolver),
         ),
       ));
 
@@ -35,12 +36,12 @@ void main() {
         (tester) async {
       // Create bloc with initial state
       final bloc = TestBloc(initialState: TestState(value: 0));
-      GlobalBlocResolver().resolver = TestResolver(blocs: {TestBloc: bloc});
+      resolver = TestResolver(blocs: {TestBloc: bloc});
 
-      // Build widget
+      // Build widget with explicit resolver
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: TestWidget(),
+          body: TestWidget(resolver: resolver),
         ),
       ));
 
@@ -58,15 +59,16 @@ void main() {
     testWidgets('Widget rebuilds only for specified groups', (tester) async {
       // Create bloc with initial state
       final bloc = TestBloc(initialState: TestState(value: 0));
-      GlobalBlocResolver().resolver = TestResolver(blocs: {TestBloc: bloc});
+      resolver = TestResolver(blocs: {TestBloc: bloc});
 
       // Track build count
       int buildCount = 0;
 
-      // Build widget with specific group
+      // Build widget with specific group and explicit resolver
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: TestWidget(
+            resolver: resolver,
             groups: const {"specific-group"},
             doOnBuild: () => buildCount++,
           ),
@@ -95,7 +97,7 @@ void main() {
         (tester) async {
       // Create bloc with initial state
       final bloc = TestBloc(initialState: TestState(value: 0));
-      GlobalBlocResolver().resolver = TestResolver(blocs: {TestBloc: bloc});
+      resolver = TestResolver(blocs: {TestBloc: bloc});
 
       // Track build count
       int buildCount = 0;
@@ -103,6 +105,7 @@ void main() {
       var widget = MaterialApp(
         home: Scaffold(
           body: TestWidget(
+            resolver: resolver,
             groups: const {"my-group"},
             doOnBuild: () => buildCount++,
           ),
@@ -113,7 +116,7 @@ void main() {
       await tester.pumpWidget(widget);
       expect(buildCount, 1);
 
-      // // Send event with specific group
+      // Send event with specific group
       await bloc.send(TestEvent(groups: {"*"}));
       await tester.pump();
 

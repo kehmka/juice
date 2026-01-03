@@ -90,7 +90,7 @@ class TestResolver implements BlocDependencyResolver {
   }
 
   @override
-  T resolve<T extends JuiceBloc>({Map<String, dynamic>? args}) {
+  T resolve<T extends JuiceBloc<BlocState>>({Map<String, dynamic>? args}) {
     if (!_blocs.containsKey(T)) {
       if (T == TestBloc) {
         _blocs[T] = TestBloc(initialState: TestState(value: 0)) as JuiceBloc;
@@ -102,6 +102,11 @@ class TestResolver implements BlocDependencyResolver {
   }
 
   @override
+  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    final bloc = resolve<T>();
+    return BlocLease<T>(bloc, () {});
+  }
+
   void dispose<T extends JuiceBloc>() {
     if (_blocs.containsKey(T)) {
       _blocs[T]!.close();
@@ -110,9 +115,9 @@ class TestResolver implements BlocDependencyResolver {
   }
 
   @override
-  void disposeAll() {
+  Future<void> disposeAll() async {
     for (var bloc in _blocs.values) {
-      bloc.close();
+      await bloc.close();
     }
     _blocs.clear();
   }
@@ -120,8 +125,12 @@ class TestResolver implements BlocDependencyResolver {
 
 // Test Widget
 class TestWidget extends StatelessJuiceWidget<TestBloc> {
-  TestWidget(
-      {super.key, super.groups = const {"test-group"}, this.doOnBuild = _noop});
+  TestWidget({
+    super.key,
+    super.resolver,
+    super.groups = const {"test-group"},
+    this.doOnBuild = _noop,
+  });
 
   final Function doOnBuild;
 

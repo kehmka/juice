@@ -4,17 +4,52 @@ import '../services/services.dart';
 
 class BlocRegistry {
   static void initialize(DeepLinkConfig deeplinkconfig) {
-    BlocScope.registerFactory<AppBloc>(
-        () => AppBloc(deeplinkconfig: deeplinkconfig));
-    BlocScope.registerFactory<AuthBloc>(() => AuthBloc());
-    BlocScope.registerFactory<CounterBloc>(() => CounterBloc());
-    BlocScope.registerFactory<TodoBloc>(() => TodoBloc());
-    BlocScope.registerFactory<ChatBloc>(() => ChatBloc(WebSocketService()));
-    BlocScope.registerFactory<FileUploadBloc>(() => FileUploadBloc());
-    BlocScope.registerFactory<FormBloc>(() => FormBloc());
-    BlocScope.registerFactory<OnboardingBloc>(() => OnboardingBloc());
-    BlocScope.registerFactory<UserProfileBloc>(() => UserProfileBloc());
-    BlocScope.registerFactory<WeatherBloc>(() => WeatherBloc());
-    BlocScope.registerFactory<SettingsBloc>(() => SettingsBloc());
+    // App-level blocs - permanent lifecycle (live for entire app lifetime)
+    BlocScope.register<AppBloc>(
+      () => AppBloc(deeplinkconfig: deeplinkconfig),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<AuthBloc>(
+      () => AuthBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<SettingsBloc>(
+      () => SettingsBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+
+    // Feature blocs - permanent for now, could be feature-scoped later
+    BlocScope.register<CounterBloc>(
+      () => CounterBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<TodoBloc>(
+      () => TodoBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<ChatBloc>(
+      () => ChatBloc(WebSocketService()),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<FileUploadBloc>(
+      () => FileUploadBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<FormBloc>(
+      () => FormBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<OnboardingBloc>(
+      () => OnboardingBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<UserProfileBloc>(
+      () => UserProfileBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<WeatherBloc>(
+      () => WeatherBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
   }
 }

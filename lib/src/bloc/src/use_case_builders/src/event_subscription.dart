@@ -1,4 +1,6 @@
 import '../../../bloc.dart';
+import '../../bloc_scope.dart';
+import '../../lifecycle/lifecycle.dart';
 
 /// Subscribes to specific events from another bloc and executes a local use case.
 ///
@@ -31,7 +33,7 @@ import '../../../bloc.dart';
 /// }
 /// ```
 class EventSubscription<
-    TSourceBloc extends JuiceBloc,
+    TSourceBloc extends JuiceBloc<BlocState>,
     TSourceEvent extends EventBase,
     TLocalEvent extends EventBase> implements UseCaseBuilderBase {
   /// Creates an EventSubscription.
@@ -42,14 +44,16 @@ class EventSubscription<
   /// * [useCaseGenerator] - Creates the use case that handles the local event.
   /// * [when] - Optional predicate to filter which source events trigger execution.
   /// * [statusTypes] - Which status types to listen for. Defaults to [UpdatingStatus] only.
-  /// * [resolver] - Optional custom bloc resolver.
+  /// * [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// * [scope] - Optional scope key for resolving scoped bloc instances.
   EventSubscription({
     required this.toEvent,
     required this.useCaseGenerator,
     this.when,
     this.statusTypes = const {UpdatingStatus},
+    this.scope,
     BlocDependencyResolver? resolver,
-  }) : resolver = resolver ?? GlobalBlocResolver().resolver;
+  }) : _customResolver = resolver;
 
   /// Transforms the source event to a local event type.
   final TLocalEvent Function(TSourceEvent sourceEvent) toEvent;
@@ -64,11 +68,17 @@ class EventSubscription<
   /// Defaults to {UpdatingStatus} - only successful state updates.
   final Set<Type> statusTypes;
 
-  /// Resolver used to obtain bloc instances.
-  final BlocDependencyResolver resolver;
+  /// Optional scope key for resolving scoped bloc instances.
+  final Object? scope;
+
+  /// Custom resolver for legacy compatibility.
+  final BlocDependencyResolver? _customResolver;
 
   /// The source bloc to subscribe to.
   late TSourceBloc _sourceBloc;
+
+  /// Lease on the source bloc (when using BlocScope).
+  BlocLease<TSourceBloc>? _sourceLease;
 
   /// Subscription to the source bloc's stream.
   StreamSubscription<dynamic>? _subscription;
@@ -121,7 +131,14 @@ class EventSubscription<
 
   void _initialize() {
     try {
-      _sourceBloc = resolver.resolve<TSourceBloc>();
+      if (_customResolver != null) {
+        // Legacy path: use custom resolver directly
+        _sourceBloc = _customResolver.resolve<TSourceBloc>();
+      } else {
+        // New path: use BlocScope with lease for proper lifecycle management
+        _sourceLease = BlocScope.lease<TSourceBloc>(scope: scope);
+        _sourceBloc = _sourceLease!.bloc;
+      }
 
       if (_sourceBloc.isClosed) {
         throw StateError('Cannot subscribe to closed bloc: $TSourceBloc');
@@ -223,6 +240,10 @@ class EventSubscription<
 
     await _subscription?.cancel();
     _subscription = null;
+
+    // Release the lease if we acquired one
+    _sourceLease?.dispose();
+    _sourceLease = null;
 
     JuiceLoggerConfig.logger.log(
       'EventSubscription closed',

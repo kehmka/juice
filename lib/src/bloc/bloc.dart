@@ -13,6 +13,7 @@ export 'src/cancellable_event.dart';
 export 'src/global_bloc_resolver.dart';
 export 'src/juice_bloc.dart';
 export 'src/juice_logger.dart';
+export 'src/lifecycle/lifecycle.dart';
 export 'src/stream_status.dart';
 export 'src/use_case_builders/use_case_builder.dart';
 export 'src/usecase.dart';

@@ -206,8 +206,8 @@ class JuiceBloc<TState extends BlocState>
   }
 
   @override
-  void dispose() async {
-    await close();
+  void dispose() {
+    close();
   }
 
   // ============================================================

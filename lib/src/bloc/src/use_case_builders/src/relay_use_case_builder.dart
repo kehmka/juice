@@ -1,4 +1,6 @@
 import '../../../bloc.dart';
+import '../../bloc_scope.dart';
+import '../../lifecycle/lifecycle.dart';
 
 /// A specialized use case builder that connects two blocs, allowing events from one
 /// to trigger events in another.
@@ -18,8 +20,8 @@ import '../../../bloc.dart';
 /// * [TDestBloc] - The type of bloc to send transformed events to
 /// * [TSourceBlocState] - The state type of the source bloc, must match TSourceBloc's state type
 class RelayUseCaseBuilder<
-    TSourceBloc extends JuiceBloc,
-    TDestBloc extends JuiceBloc,
+    TSourceBloc extends JuiceBloc<BlocState>,
+    TDestBloc extends JuiceBloc<BlocState>,
     TSourceBlocState extends BlocState> implements UseCaseBuilderBase {
   /// Creates a RelayUseCaseBuilder to connect two blocs.
   ///
@@ -28,13 +30,17 @@ class RelayUseCaseBuilder<
   /// * [statusToEventTransformer] - Function to convert source state changes to destination events.
   ///   Should handle all StreamStatus types (Updating, Waiting, Error) appropriately.
   /// * [useCaseGenerator] - Generator for the use case that will handle the transformed events
-  /// * [resolver] - Optional custom resolver for bloc instances
+  /// * [resolver] - Optional custom resolver for bloc instances (legacy). If not provided, uses BlocScope.
+  /// * [sourceScope] - Optional scope key for resolving source bloc.
+  /// * [destScope] - Optional scope key for resolving destination bloc.
   RelayUseCaseBuilder({
     required this.typeOfEvent,
     required this.statusToEventTransformer,
     required this.useCaseGenerator,
+    this.sourceScope,
+    this.destScope,
     BlocDependencyResolver? resolver,
-  }) : resolver = resolver ?? GlobalBlocResolver().resolver {
+  }) : _customResolver = resolver {
     Future.microtask(() {
       if (!_isInitialized) {
         _initialize();
@@ -53,14 +59,26 @@ class RelayUseCaseBuilder<
   /// Generator for the use case that will handle transformed events
   final UseCaseGenerator useCaseGenerator;
 
-  /// Resolver used to obtain bloc instances
-  final BlocDependencyResolver resolver;
+  /// Optional scope key for resolving source bloc.
+  final Object? sourceScope;
+
+  /// Optional scope key for resolving destination bloc.
+  final Object? destScope;
+
+  /// Custom resolver for legacy compatibility.
+  final BlocDependencyResolver? _customResolver;
 
   /// The source bloc whose states will be transformed
   late TSourceBloc sourceBloc;
 
   /// The destination bloc that will receive transformed events
   late TDestBloc destBloc;
+
+  /// Lease on the source bloc (when using BlocScope).
+  BlocLease<TSourceBloc>? _sourceLease;
+
+  /// Lease on the destination bloc (when using BlocScope).
+  BlocLease<TDestBloc>? _destLease;
 
   /// Subscription to the source bloc's stream
   StreamSubscription<dynamic>? _subscription;
@@ -85,8 +103,17 @@ class RelayUseCaseBuilder<
   /// Throws StateError if initialization fails or blocs cannot be resolved.
   void _initialize() {
     try {
-      sourceBloc = resolver.resolve<TSourceBloc>();
-      destBloc = resolver.resolve<TDestBloc>();
+      if (_customResolver != null) {
+        // Legacy path: use custom resolver directly
+        sourceBloc = _customResolver.resolve<TSourceBloc>();
+        destBloc = _customResolver.resolve<TDestBloc>();
+      } else {
+        // New path: use BlocScope with leases for proper lifecycle management
+        _sourceLease = BlocScope.lease<TSourceBloc>(scope: sourceScope);
+        _destLease = BlocScope.lease<TDestBloc>(scope: destScope);
+        sourceBloc = _sourceLease!.bloc;
+        destBloc = _destLease!.bloc;
+      }
 
       if (sourceBloc.isClosed || destBloc.isClosed) {
         throw StateError('Cannot initialize relay with closed blocs');
@@ -145,6 +172,12 @@ class RelayUseCaseBuilder<
 
     await _subscription?.cancel();
     _subscription = null;
+
+    // Release the leases if we acquired them
+    _sourceLease?.dispose();
+    _sourceLease = null;
+    _destLease?.dispose();
+    _destLease = null;
   }
 }
 

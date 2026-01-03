@@ -86,11 +86,10 @@ packages:
   juice:
     dependency: "direct main"
     description:
-      name: juice
-      sha256: "6cf514f662395d66014543775add31e10dda7a0d31d6e85ba00d218f4bbbb397"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
+      path: ".."
+      relative: true
+    source: path
+    version: "1.0.4"
   leak_tracker:
     dependency: transitive
     description:

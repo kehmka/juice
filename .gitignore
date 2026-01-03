@@ -94,3 +94,6 @@ example/windows/*
 example/web/*
 example/linux/*
 CLAUDE.md
+
+# Generated rollups
+rollups/

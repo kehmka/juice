@@ -3,6 +3,7 @@ import 'package:juice/juice.dart';
 import 'blocs/file_upload/src/ui/file_upload_page.dart';
 import 'blocs/chat/ui/chat_page.dart';
 import 'blocs/counter/ui/counter_page.dart';
+import 'blocs/counter/ui/counter_builder_page.dart';
 import 'blocs/form/ui/form_page.dart';
 import 'blocs/todo/ui/todo_page.dart';
 import 'blocs/weather/ui/weather_page.dart';
@@ -12,6 +13,7 @@ import 'config/bloc_registration.dart';
 // Example routes definition
 final exampleRoutes = {
   '/counter': (context) => const CounterPage(),
+  '/counter-builder': (context) => const CounterBuilderPage(),
   '/todo': (context) => const TodoPage(),
   '/chat': (context) => const ChatPage(),
   '/form': (context) => const FormPage(),
@@ -105,6 +107,7 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final examples = [
       {'title': 'Counter Example', 'route': '/counter'},
+      {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
       {'title': 'Todo Example', 'route': '/todo'},
       {'title': 'Chat Example', 'route': '/chat'},
       {'title': 'Form Example', 'route': '/form'},

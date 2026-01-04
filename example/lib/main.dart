@@ -6,6 +6,7 @@ import 'blocs/chat/ui/chat_page.dart';
 import 'blocs/counter/ui/counter_page.dart';
 import 'blocs/counter/ui/counter_builder_page.dart';
 import 'blocs/form/ui/form_page.dart';
+import 'blocs/relay_demo/ui/relay_demo_page.dart';
 import 'blocs/todo/ui/todo_page.dart';
 import 'blocs/weather/ui/weather_page.dart';
 import 'blocs/blocs.dart';
@@ -19,6 +20,7 @@ final exampleRoutes = {
   '/todo': (context) => const TodoPage(),
   '/chat': (context) => const ChatPage(),
   '/form': (context) => const FormPage(),
+  '/relay-demo': (context) => const RelayDemoPage(),
   '/weather': (context) => const WeatherPage(),
   '/upload': (context) => const FileUploadPage(),
   '/onboard': (context) => OnboardingScreen(),
@@ -114,6 +116,7 @@ class MyHomePage extends StatelessWidget {
       {'title': 'Auth & EventSubscription', 'route': '/auth'},
       {'title': 'Counter Example', 'route': '/counter'},
       {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
+      {'title': 'StateRelay & StatusRelay Demo', 'route': '/relay-demo'},
       {'title': 'Todo Example', 'route': '/todo'},
       {'title': 'Chat Example', 'route': '/chat'},
       {'title': 'Form Example', 'route': '/form'},
@@ -151,6 +154,7 @@ class ExampleDeepLinkConfig {
     routes: {
       'auth': DeepLinkRoute(path: ['/auth']),
       'counter': DeepLinkRoute(path: ['/counter']),
+      'relay-demo': DeepLinkRoute(path: ['/relay-demo']),
       'todo': DeepLinkRoute(path: ['/todo']),
       'chat': DeepLinkRoute(path: ['/chat']),
       'form': DeepLinkRoute(path: ['/form']),

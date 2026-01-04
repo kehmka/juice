@@ -51,5 +51,15 @@ class BlocRegistry {
       () => WeatherBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
+
+    // Relay demo blocs
+    BlocScope.register<SourceBloc>(
+      () => SourceBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+    BlocScope.register<DestBloc>(
+      () => DestBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
   }
 }

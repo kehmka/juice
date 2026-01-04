@@ -5,6 +5,7 @@ export 'counter/counter.dart';
 export 'file_upload/file_upload.dart';
 export 'form/form.dart';
 export 'onboard/onboard.dart';
+export 'relay_demo/relay_demo.dart';
 export 'settings/settings.dart';
 export 'todo/todo.dart';
 export 'user_profile/user_profile.dart';

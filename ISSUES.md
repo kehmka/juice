@@ -204,50 +204,69 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 
 ## Test Coverage Gaps
 
-### 15. Missing Resource Cleanup Tests
+### 15. ~~Missing Resource Cleanup Tests~~ FIXED
 
-**Files Affected:**
-- `lib/src/bloc/src/juice_bloc.dart`
-- `lib/src/bloc/src/bloc_scope.dart`
+**File:** `test/bloc/resource_cleanup_test.dart`
 
-**Missing Tests:**
-- Verify all resources are cleaned up when bloc closes
-- Test that stream subscriptions are cancelled
-- Test that nested blocs are properly disposed
-
----
-
-### 16. Missing EventSubscription Tests
-
-**File:** `lib/src/bloc/src/use_case_builders/src/event_subscription.dart`
-
-**Missing Tests:**
-- Initialization/closure race conditions
-- Behavior when source bloc is closed before subscription initializes
-- Error handling when `toEvent` transformer throws
-- Multiple subscriptions to same source event
+**Status:** Fixed - Created comprehensive test suite covering:
+- Bloc close/isClosed flag
+- Stream subscription cleanup (onDone events)
+- Stream stops emitting after close
+- State preservation after close
+- Nested bloc cleanup with BlocScope
+- Leased bloc cleanup when last lease is released
+- Multiple lease reference counting
 
 ---
 
-### 17. Missing RelayUseCaseBuilder Error Tests
+### 16. ~~Missing EventSubscription Tests~~ FIXED
 
-**File:** `lib/src/bloc/src/use_case_builders/src/relay_use_case_builder.dart`
+**File:** `test/bloc/event_subscription_test.dart`
 
-**Missing Tests:**
-- Behavior when source bloc closes mid-relay
-- Error propagation from transformer function
-- Recovery behavior after errors
+**Status:** Fixed - Created comprehensive test suite covering:
+- Event transformation and forwarding
+- Clean close handling
+- `when` predicate filtering
+- Source bloc close handling
+- Close-before-initialize race condition
+- Transformer error handling (graceful recovery)
+- Multiple rapid initialize/close cycles
 
 ---
 
-### 18. Missing BlocScope Eviction Tests
+### 17. ~~Missing RelayUseCaseBuilder Error Tests~~ FIXED
 
-**File:** `lib/src/bloc/src/bloc_scope.dart`
+**File:** `test/bloc/relay_use_case_builder_test.dart`
 
-**Missing Tests:**
-- LRU eviction behavior
-- Resource cleanup on eviction
-- Behavior when evicted bloc is still in use by widgets
+**Status:** Fixed - Created comprehensive test suite covering:
+- State change transformation and forwarding
+- Clean close and idempotent close
+- Stops relaying after close
+- Source bloc close handling
+- Transformer error handling (closes relay)
+- Dest bloc close handling
+- Close during initialization race condition
+- Multiple relays on same source bloc
+
+---
+
+### 18. ~~Missing BlocScope Eviction Tests~~ FIXED
+
+**File:** `test/bloc/bloc_scope_test.dart`
+
+**Status:** Fixed - Created comprehensive test suite covering:
+- Permanent lifecycle (persistence until endAll, individual end)
+- Leased lifecycle (create on first lease, dispose on last release)
+- Multiple leases keeping bloc alive
+- Lease count tracking
+- New instance creation after close
+- Feature lifecycle (dispose when feature ends)
+- Multiple blocs in same feature scope
+- Scoped vs global bloc independence
+- Registration validation (duplicate, missing)
+- Async lease acquisition
+- Diagnostics API
+- Edge cases (closing during active use, mixed lifecycles)
 
 ---
 
@@ -283,11 +302,11 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 | Priority | Count | Status |
 |----------|-------|--------|
 | Critical | 3 | All Fixed (#1-3) |
-| Medium | 5 | All Fixed (#4-7, #8 partial) |
+| Medium | 5 | All Fixed (#4-8) |
 | Low | 6 | Open |
-| Tests | 4 | Open |
+| Tests | 4 | All Fixed (#15-18) |
 | Docs | 3 | Open |
-| **Total** | **21** | **8 Fixed, 13 Open** |
+| **Total** | **21** | **12 Fixed, 9 Open** |
 
 ---
 
@@ -296,5 +315,6 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 1. ~~**First:** Fix critical issues #1-3 (dispose/close cleanup)~~ DONE
 2. ~~**Second:** Fix race conditions #5, #8~~ DONE
 3. ~~**Third:** Fix remaining medium issues #4, #6, #7 (type safety, inconsistencies)~~ DONE
-4. **Next:** Add missing tests #15-18
-5. **Finally:** Address low priority and documentation issues
+4. ~~**Fourth:** Add missing tests #15-18~~ DONE
+5. **Next:** Address low priority issues (#9-14)
+6. **Finally:** Address documentation gaps (#19-21)

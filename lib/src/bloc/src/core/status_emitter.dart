@@ -98,6 +98,7 @@ class StatusEmitter<TState extends BlocState> {
       'state': '${newState ?? state}',
       'bloc': _blocName,
       'groups': groupsToRebuild?.toString(),
+      'event': event.runtimeType.toString(),
     });
 
     // Apply default groups if not specified

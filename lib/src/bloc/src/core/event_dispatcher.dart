@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'package:logger/logger.dart';
+
+import '../juice_logger.dart';
+
 /// Signature for async event handlers.
 typedef EventHandler<E> = Future<void> Function(E event);
 
@@ -73,6 +77,10 @@ class EventDispatcher<Event> {
     final handler = _handlers[event.runtimeType];
     if (handler == null) {
       if (_onUnhandledEvent != null) {
+        JuiceLoggerConfig.logger.log(
+          'No handler registered for ${event.runtimeType}, using fallback handler',
+          level: Level.warning,
+        );
         _onUnhandledEvent(event);
         return;
       }

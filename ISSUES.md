@@ -91,114 +91,75 @@ The `late` variables are still used but initialization failures now produce clea
 
 ## Low Priority Issues
 
-### 9. Missing Exception Context in Error Logging
+### 9. ~~Missing Exception Context in Error Logging~~ FIXED
 
-**File:** `lib/src/bloc/src/use_case_builders/src/relay_use_case_builder.dart`, Lines 124-126
+**File:** `lib/src/bloc/src/use_case_builders/src/state_relay.dart`
 
-**Description:** Error logging doesn't include which source and destination blocs are involved in the relay, making debugging difficult in applications with multiple relays.
-
+**Status:** Fixed - Added bloc type information to error messages in StateRelay and StatusRelay:
 ```dart
-} catch (e, stackTrace) {
-  JuiceLoggerConfig.logger.logError('Error in relay', e, stackTrace);
-  await close();  // Closes without context about which relay failed
-}
+'Error in StateRelay<$TSourceBloc, $TDestBloc>'
+'Error in StatusRelay<$TSourceBloc, $TDestBloc>'
 ```
 
-**Impact:** Low - Poor observability, but functionality works.
+---
 
-**Fix:** Add bloc type information to error context:
+### 10. ~~Silent Event Swallowing in EventDispatcher~~ FIXED
+
+**File:** `lib/src/bloc/src/core/event_dispatcher.dart`
+
+**Status:** Fixed - Added warning log when unhandled event fallback is used:
 ```dart
-JuiceLoggerConfig.logger.logError('Error in relay', e, stackTrace, context: {
-  'sourceBloc': TSourceBloc.toString(),
-  'destBloc': TDestBloc.toString(),
+JuiceLoggerConfig.logger.log(
+  'No handler registered for ${event.runtimeType}, using fallback handler',
+  level: Level.warning,
+);
+```
+
+---
+
+### 11. ~~Unused `disposeAll()` Method~~ NOT AN ISSUE
+
+**File:** `lib/src/bloc/src/bloc_dependency_resolver.dart`
+
+**Status:** Not an issue - `disposeAll()` is actively used in tests for cleanup. The method is part of the `BlocDependencyResolver` interface and properly implemented in concrete classes.
+
+---
+
+### 12. ~~Verbose Inline Error Throwing Pattern~~ FIXED
+
+**File:** `lib/src/bloc/src/juice_async_builder.dart`
+
+**Status:** Fixed - Added helper getters to encapsulate the error throwing pattern:
+```dart
+T get _requiredInitial =>
+    widget.initial ?? (throw ArgumentError('widget.initial must not be null'));
+
+T get _requiredSnapshotData =>
+    _snapshotNotifier.value.data ??
+    (throw StateError('Snapshot data must not be null'));
+```
+
+---
+
+### 13. ~~Ambiguous `_Disposable` Interface~~ FIXED
+
+**File:** `lib/src/bloc/src/juice_bloc.dart`
+
+**Status:** Fixed - Removed the private `_Disposable` interface. The `dispose()` method is now a standalone public method with documentation explaining its relationship to `close()`.
+
+---
+
+### 14. ~~UseCase Emit Functions Lack Event Context~~ FIXED
+
+**File:** `lib/src/bloc/src/core/status_emitter.dart`
+
+**Status:** Fixed - Added event type to logging context when emitting state changes:
+```dart
+_logger.log('Emitting $statusName', context: {
+  ...
+  'event': event.runtimeType.toString(),
 });
 ```
-
----
-
-### 10. Silent Event Swallowing in EventDispatcher
-
-**File:** `lib/src/bloc/src/core/event_dispatcher.dart`, Line 76
-
-**Description:** When `_onUnhandledEvent` is provided, unhandled events are silently processed without any error indication. This can mask configuration issues where events aren't properly registered.
-
-```dart
-if (_onUnhandledEvent != null) {
-  _onUnhandledEvent(event);
-  return;  // Returns without error, silently swallows event
-}
-```
-
-**Impact:** Low - Silent failures make debugging difficult.
-
-**Fix:** Consider logging a warning even when handler is provided.
-
----
-
-### 11. Unused `disposeAll()` Method
-
-**File:** `lib/src/bloc/src/bloc_dependency_resolver.dart`, Line 17
-
-**Description:** Base class has empty `disposeAll()` that's never called. `BlocResolver` and `CompositeResolver` implement it but `JuiceBloc` doesn't use it.
-
-```dart
-void disposeAll() {}
-```
-
-**Impact:** Low - Unused API, potential dead code.
-
-**Fix:** Either integrate into bloc lifecycle or remove.
-
----
-
-### 12. Verbose Inline Error Throwing Pattern
-
-**File:** `lib/src/bloc/src/juice_async_builder.dart`, Lines 99-100, 117-118, 144-145, 203-204
-
-**Description:** Multiple lines throw errors inline without option for null coalescing. Pattern is verbose and error-prone.
-
-```dart
-widget.initial ?? (throw ArgumentError("widget.initial must not be null"))
-```
-
-**Impact:** Low - Code maintainability concern.
-
-**Fix:** Consider using a helper function or extracting to clearer error handling.
-
----
-
-### 13. Ambiguous `_Disposable` Interface
-
-**File:** `lib/src/bloc/src/juice_bloc.dart`, Lines 21-23
-
-**Description:** Implements private interface but method is async-unsafe. Also conflicts semantically with the actual async `close()` method.
-
-```dart
-abstract class _Disposable {
-  void dispose();
-}
-```
-
-**Impact:** Low - Interface confusion, poor API design.
-
-**Fix:** Either remove the interface (it's private anyway) or align with Flutter's actual `Disposable` patterns.
-
----
-
-### 14. UseCase Emit Functions Lack Event Context
-
-**File:** `lib/src/bloc/src/usecase.dart`, Lines 50-87
-
-**Description:** Emit functions have no context about the triggering event for debugging/logging purposes.
-
-```dart
-late void Function({BlocState? newState, ...}) emitUpdate;
-// No way to know which event triggered this emit
-```
-
-**Impact:** Low - Observability issue when debugging complex state flows.
-
-**Fix:** Consider adding optional event context to emit functions.
 
 ---
 
@@ -303,10 +264,10 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 |----------|-------|--------|
 | Critical | 3 | All Fixed (#1-3) |
 | Medium | 5 | All Fixed (#4-8) |
-| Low | 6 | Open |
+| Low | 6 | All Fixed (#9-14) |
 | Tests | 4 | All Fixed (#15-18) |
 | Docs | 3 | Open |
-| **Total** | **21** | **12 Fixed, 9 Open** |
+| **Total** | **21** | **18 Fixed, 3 Open** |
 
 ---
 
@@ -316,5 +277,5 @@ late void Function({BlocState? newState, ...}) emitUpdate;
 2. ~~**Second:** Fix race conditions #5, #8~~ DONE
 3. ~~**Third:** Fix remaining medium issues #4, #6, #7 (type safety, inconsistencies)~~ DONE
 4. ~~**Fourth:** Add missing tests #15-18~~ DONE
-5. **Next:** Address low priority issues (#9-14)
+5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)

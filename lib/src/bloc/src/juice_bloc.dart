@@ -18,10 +18,6 @@ import 'core/status_emitter.dart';
 import 'core/aviator_manager.dart';
 import 'bloc.dart' show Emittable, ErrorSink, StateStreamableSource;
 
-abstract class _Disposable {
-  void dispose();
-}
-
 /// A bloc that manages state through use cases.
 ///
 /// JuiceBloc provides structured state management by routing events to
@@ -47,8 +43,7 @@ class JuiceBloc<TState extends BlocState>
     implements
         StateStreamableSource<StreamStatus<TState>>,
         Emittable<StreamStatus<TState>>,
-        ErrorSink,
-        _Disposable {
+        ErrorSink {
   /// Creates a JuiceBloc with initial state and use cases.
   ///
   /// [initialState] - The initial state of the bloc
@@ -205,7 +200,10 @@ class JuiceBloc<TState extends BlocState>
     await _stateManager.close();
   }
 
-  @override
+  /// Synchronous cleanup method for Flutter widget compatibility.
+  ///
+  /// This calls [close] internally. Prefer using [close] directly
+  /// when you need to await cleanup completion.
   void dispose() {
     close();
   }

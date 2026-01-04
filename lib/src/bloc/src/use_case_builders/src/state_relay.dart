@@ -158,7 +158,7 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
           _destBloc.send(event);
         } catch (e, stackTrace) {
           JuiceLoggerConfig.logger.logError(
-            'Error in StateRelay',
+            'Error in StateRelay<$TSourceBloc, $TDestBloc>',
             e,
             stackTrace,
           );
@@ -167,7 +167,7 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       },
       onError: (error, stackTrace) async {
         JuiceLoggerConfig.logger.logError(
-          'Stream error in StateRelay',
+          'Stream error in StateRelay<$TSourceBloc, $TDestBloc>',
           error,
           stackTrace,
         );
@@ -314,7 +314,7 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
           _destBloc.send(event);
         } catch (e, stackTrace) {
           JuiceLoggerConfig.logger.logError(
-            'Error in StatusRelay',
+            'Error in StatusRelay<$TSourceBloc, $TDestBloc>',
             e,
             stackTrace,
           );
@@ -322,7 +322,7 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       },
       onError: (error, stackTrace) async {
         JuiceLoggerConfig.logger.logError(
-          'Stream error in StatusRelay',
+          'Stream error in StatusRelay<$TSourceBloc, $TDestBloc>',
           error,
           stackTrace,
         );

@@ -88,16 +88,22 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
 
   StreamSubscription? _subscription;
 
+  /// Returns the initial value, throwing if null.
+  T get _requiredInitial =>
+      widget.initial ?? (throw ArgumentError('widget.initial must not be null'));
+
+  /// Returns the current snapshot data, throwing if null.
+  T get _requiredSnapshotData =>
+      _snapshotNotifier.value.data ??
+      (throw StateError('Snapshot data must not be null'));
+
   @override
   void initState() {
     super.initState();
 
     // Initialize the ValueNotifier with the initial state
     _snapshotNotifier = ValueNotifier<AsyncSnapshot<T>>(
-        AsyncSnapshot<T>.withData(
-            ConnectionState.none,
-            widget.initial ??
-                (throw ArgumentError("widget.initial must not be null"))));
+        AsyncSnapshot<T>.withData(ConnectionState.none, _requiredInitial));
 
     // Initialize the appropriate source (Future or Stream)
     if (widget.future != null) {
@@ -113,9 +119,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
     _cancel();
     final Future<T> future = widget.future!;
     _snapshotNotifier.value = AsyncSnapshot<T>.withData(
-        ConnectionState.none,
-        widget.initial ??
-            (throw ArgumentError("widget.initial must not be null")));
+        ConnectionState.none, _requiredInitial);
 
     future.then((T value) {
       if (future != widget.future || !mounted) return;
@@ -140,9 +144,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
     _cancel();
     final Stream<T> stream = widget.stream!;
     _snapshotNotifier.value = AsyncSnapshot<T>.withData(
-        ConnectionState.none,
-        widget.initial ??
-            (throw ArgumentError("widget.initial must not be null")));
+        ConnectionState.none, _requiredInitial);
 
     bool skipFirst = false;
     if (stream is ValueStream<T> && stream.hasValue) {
@@ -176,10 +178,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
       },
       onDone: () {
         _snapshotNotifier.value = AsyncSnapshot<T>.withData(
-            ConnectionState.done,
-            _snapshotNotifier.value.data ??
-                (throw ArgumentError(
-                    "_snapshotNotifier.value.data must not be null")));
+            ConnectionState.done, _requiredSnapshotData);
       },
     );
   }
@@ -199,9 +198,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
     _subscription = null;
     if (!widget.retain) {
       _snapshotNotifier.value = AsyncSnapshot<T>.withData(
-          ConnectionState.none,
-          widget.initial ??
-              (throw ArgumentError("widget.initial must not be null")));
+          ConnectionState.none, _requiredInitial);
     }
   }
 

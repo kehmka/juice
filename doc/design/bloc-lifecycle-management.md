@@ -43,7 +43,7 @@ These are the core invariants that prevent misuse:
 1. **Increment on mount** - Lease count increases in `initState()` or equivalent.
 2. **Decrement on dispose** - Lease count decreases in `dispose()` or equivalent.
 3. **Never in build()** - Lease operations MUST NOT occur in `build()` methods.
-4. **Cross-bloc leases** - EventSubscription, RelayUseCaseBuilder, and any cross-bloc dependency MUST hold leases.
+4. **Cross-bloc leases** - EventSubscription, StateRelay, StatusRelay, and any cross-bloc dependency MUST hold leases.
 
 ---
 
@@ -109,7 +109,7 @@ A **lease** represents active usage of a bloc. Anything that depends on a bloc i
 
 This includes:
 - UI widgets
-- Cross-bloc subscriptions (EventSubscription, RelayUseCaseBuilder)
+- Cross-bloc subscriptions (EventSubscription, StateRelay, StatusRelay)
 - Any other dependent code
 
 **Critical rule:** Increment on mount, decrement on dispose — never in `build()`.
@@ -406,7 +406,7 @@ class _BlocLeaseHolderState<TBloc extends JuiceBloc>
 
 ## Cross-Bloc Dependencies
 
-EventSubscription and RelayUseCaseBuilder must also hold leases:
+EventSubscription, StateRelay, and StatusRelay must also hold leases:
 
 ```dart
 class EventSubscription<TSourceBloc, TSourceEvent, TLocalEvent>
@@ -544,7 +544,7 @@ static Future<BlocLease<T>> lease<T extends JuiceBloc>({Object? scope}) async {
 
 ### Phase 3: Update Cross-Bloc
 - Update `EventSubscription` to use leases
-- Update `RelayUseCaseBuilder` to use leases
+- Update `StateRelay` and `StatusRelay` to use leases
 
 ### Phase 4: Remove Legacy
 - Remove LRU cache code

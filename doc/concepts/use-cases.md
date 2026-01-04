@@ -164,31 +164,36 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 }
 ```
 
-### Relay Use Cases
+### Cross-Bloc Communication
 
-For connecting multiple blocs:
+For connecting multiple blocs, use `StateRelay` or `StatusRelay`:
 
 ```dart
-class ProfileBloc extends JuiceBloc<ProfileState> {
-  ProfileBloc() : super(
-    ProfileState.initial(),
-    [
-      // Relay from auth bloc changes to profile updates
-      () => RelayUseCaseBuilder<AuthBloc, ProfileBloc>(
-        typeOfEvent: UpdateProfileEvent,
-        statusToEventTransformer: (status) {
-          if (status.state.isAuthenticated) {
-            return UpdateProfileEvent(userId: status.state.userId);
-          }
-          return ClearProfileEvent();
-        },
-        useCaseGenerator: () => UpdateProfileUseCase(),
-      ),
-    ],
-    [],
-  );
-}
+// StateRelay - Simple state-to-event transformation
+final authToProfileRelay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
+  toEvent: (state) => state.isAuthenticated
+      ? LoadProfileEvent(userId: state.userId!)
+      : ClearProfileEvent(),
+  when: (state) => state.userId != null,
+);
+
+// StatusRelay - When you need to handle waiting/error states
+final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
+  toEvent: (status) => status.when(
+    updating: (state, _, __) => state.isAuthenticated
+        ? LoadProfileEvent(userId: state.userId!)
+        : ClearProfileEvent(),
+    waiting: (_, __, ___) => ProfileLoadingEvent(),
+    failure: (_, __, ___) => ClearProfileEvent(),
+    canceling: (_, __, ___) => ClearProfileEvent(),
+  ),
+);
+
+// Don't forget to close when done
+await authToProfileRelay.close();
 ```
+
+See [Cross-Bloc Communication](relay-use-cases.md) for more details.
 
 ### Cancellable Use Cases
 

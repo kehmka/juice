@@ -2,23 +2,36 @@ import '../../../bloc.dart';
 import '../../bloc_scope.dart';
 import '../../lifecycle/lifecycle.dart';
 
+/// @Deprecated('Use StateRelay or StatusRelay instead. RelayUseCaseBuilder will be removed in v2.0.0')
+///
 /// A specialized use case builder that connects two blocs, allowing events from one
 /// to trigger events in another.
 ///
-/// RelayUseCaseBuilder creates a bridge between two blocs by listening to state changes
-/// in a source bloc and transforming them into events for a destination bloc. This enables
-/// loosely coupled communication between different parts of your application.
+/// **DEPRECATED:** This class has been replaced by simpler alternatives:
+/// - [StateRelay] - For reacting to state changes (most common use case)
+/// - [StatusRelay] - For reacting to full StreamStatus (waiting, error states)
 ///
-/// IMPORTANT: When using RelayUseCaseBuilder, ensure that:
-/// 1. Source bloc exists and is initialized before the relay starts
-/// 2. Destination bloc exists and can handle the transformed events
-/// 3. Blocs are disposed in the correct order (destination before source)
-/// 4. The statusToEventTransformer handles all possible StreamStatus types appropriately
+/// Migration example:
+/// ```dart
+/// // Before (deprecated):
+/// RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
+///   typeOfEvent: LoadProfileEvent,           // No longer needed
+///   useCaseGenerator: () => LoadProfileUseCase(), // No longer needed
+///   statusToEventTransformer: (status) => LoadProfileEvent(userId: status.state.userId),
+/// )
+///
+/// // After (recommended):
+/// StateRelay<AuthBloc, ProfileBloc, AuthState>(
+///   toEvent: (state) => LoadProfileEvent(userId: state.userId),
+///   when: (state) => state.isAuthenticated, // Optional filter
+/// )
+/// ```
 ///
 /// Type Parameters:
 /// * [TSourceBloc] - The type of bloc to listen to for state changes
 /// * [TDestBloc] - The type of bloc to send transformed events to
 /// * [TSourceBlocState] - The state type of the source bloc, must match TSourceBloc's state type
+@Deprecated('Use StateRelay or StatusRelay instead. Will be removed in v2.0.0')
 class RelayUseCaseBuilder<
     TSourceBloc extends JuiceBloc<BlocState>,
     TDestBloc extends JuiceBloc<BlocState>,

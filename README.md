@@ -483,21 +483,41 @@ class DestBloc extends JuiceBloc<DestState> {
 }
 ```
 
-#### RelayUseCaseBuilder
+#### StateRelay
 React to state changes from one bloc and trigger events in another:
 
 ```dart
-final relay = RelayUseCaseBuilder<SourceBloc, DestBloc, SourceState>(
-  typeOfEvent: UpdateDestEvent,
-  statusToEventTransformer: (status) {
-    return UpdateDestEvent(value: 'Source count: ${status.state.count}');
-  },
-  useCaseGenerator: () => UpdateDestUseCase(),
-  resolver: resolver,
+// Simple state relay
+final relay = StateRelay<CartBloc, OrderBloc, CartState>(
+  toEvent: (state) => UpdateTotalEvent(
+    total: state.items.fold(0, (sum, item) => sum + item.price),
+  ),
+);
+
+// With filtering - only relay when condition is met
+final authRelay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
+  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
+  when: (state) => state.isAuthenticated && state.userId != null,
 );
 
 // Clean up when done
 await relay.close();
+```
+
+#### StatusRelay
+For when you need access to the full StreamStatus (waiting, error states):
+
+```dart
+final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
+  toEvent: (status) => status.when(
+    updating: (state, _, __) => state.isAuthenticated
+      ? LoadProfileEvent(userId: state.userId!)
+      : ClearProfileEvent(),
+    waiting: (_, __, ___) => ProfileLoadingEvent(),
+    failure: (_, __, ___) => ClearProfileEvent(),
+    canceling: (_, __, ___) => ClearProfileEvent(),
+  ),
+);
 ```
 
 ## Best Practices
@@ -531,7 +551,8 @@ await relay.close();
 
 ### Cross-Bloc Communication
 - Use `EventSubscription` for event-to-event forwarding between blocs
-- Use `RelayUseCaseBuilder` for state-to-event transformation
+- Use `StateRelay` for simple state-to-event transformation
+- Use `StatusRelay` when you need to handle waiting/error states
 - Always close relays when no longer needed
 - Use `when` predicates to filter unnecessary events
 

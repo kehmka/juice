@@ -16,8 +16,15 @@
 
 #### Cross-Bloc Communication
 - Added `EventSubscription` for listening to events from one bloc and forwarding to another
-- Enhanced `RelayUseCaseBuilder` for state-to-event transformation between blocs
-- Added `when` predicate filtering for event subscriptions
+- Added `StateRelay` for simple state-to-event transformation between blocs
+- Added `StatusRelay` for full StreamStatus access when reacting to state changes
+- Added `when` predicate filtering for both event subscriptions and relays
+
+### Deprecated
+- `RelayUseCaseBuilder` is now deprecated in favor of `StateRelay` and `StatusRelay`
+  - `StateRelay` - Use when you only need to react to state changes (most common)
+  - `StatusRelay` - Use when you need to handle waiting/error states
+  - Will be removed in v2.0.0
 
 ### Bug Fixes
 - Fixed race condition in `EventSubscription` initialization when `close()` called before microtask executes
@@ -30,8 +37,9 @@
 - Added comprehensive test suite for `BlocScope` lifecycle management (20 tests)
 - Added `EventSubscription` tests covering transformation, filtering, and race conditions (10 tests)
 - Added `RelayUseCaseBuilder` tests covering relay, error handling, and multi-relay scenarios (10 tests)
+- Added `StateRelay` and `StatusRelay` tests (13 tests)
 - Added resource cleanup tests for bloc close, stream cleanup, and lease disposal (9 tests)
-- Total: 49 new tests, 80 tests overall
+- Total: 62 new tests, 93 tests overall
 
 ### Documentation
 - Updated README to use `BlocScope` instead of `GlobalBlocResolver`

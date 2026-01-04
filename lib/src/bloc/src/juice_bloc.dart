@@ -320,12 +320,12 @@ class JuiceBloc<TState extends BlocState>
 
   void _handleUnhandledEvent(EventBase event) {
     final message = 'No use case registered for ${event.runtimeType}';
-    _logger.logError(message, StateError(message), StackTrace.current,
-        context: {
-          'type': 'unhandled_event',
-          'bloc': runtimeType.toString(),
-          'event': event.runtimeType.toString(),
-        });
+    _logger
+        .logError(message, StateError(message), StackTrace.current, context: {
+      'type': 'unhandled_event',
+      'bloc': runtimeType.toString(),
+      'event': event.runtimeType.toString(),
+    });
     _errorHandler.handleError(message);
   }
 

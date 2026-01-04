@@ -51,7 +51,8 @@ class JuiceBuilder<TBloc extends JuiceBloc> extends StatefulWidget {
   });
 
   /// Builds the widget based on the current bloc state.
-  final Widget Function(BuildContext context, TBloc bloc, StreamStatus status) builder;
+  final Widget Function(BuildContext context, TBloc bloc, StreamStatus status)
+      builder;
 
   /// Groups that control when this widget rebuilds.
   /// Default is `{'*'}` which means rebuild on all state changes.
@@ -325,7 +326,8 @@ class JuiceMultiBuilder extends StatefulWidget {
   /// Creates a JuiceMultiBuilder that resolves blocs from the resolver.
   const JuiceMultiBuilder.resolve({
     super.key,
-    required List<JuiceBloc> Function(BlocDependencyResolver resolver) this.resolve,
+    required List<JuiceBloc> Function(BlocDependencyResolver resolver)
+        this.resolve,
     required this.builder,
     this.groups = const {'*'},
     this.buildWhen,

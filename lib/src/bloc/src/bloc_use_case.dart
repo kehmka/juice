@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:juice/juice.dart';
 
 /// Base class for bloc-specific use cases that provides logging and naming capabilities.
@@ -85,17 +87,15 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
   }
 }
 
-/// A special use case that handles state updates without requiring a dedicated use case.
+/// Built-in use case that handles [UpdateEvent]s for navigation and status changes.
 ///
-/// WARNING: While convenient for prototyping and simple state updates, use with caution
-/// in production code as it bypasses the explicit use case pattern.
+/// This use case is automatically registered with all blocs. It handles:
+/// - Navigation triggers via aviator system
+/// - Stream status changes (update/waiting/failure)
+/// - Widget rebuild control via groups
 ///
-/// This use case is automatically registered with all blocs and handles [UpdateEvent]s.
-/// It can:
-/// - Update the bloc state
-/// - Trigger navigation
-/// - Control widget rebuilds
-/// - Set different stream status types (update/waiting/failure)
+/// **Note**: The [UpdateEvent.newState] parameter is deprecated. State changes
+/// should go through dedicated use cases to maintain clean architecture.
 class UpdateUseCase<TBloc extends JuiceBloc>
     extends BlocUseCase<TBloc, UpdateEvent> {
   @override

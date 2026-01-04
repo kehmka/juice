@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.2] - 2025-01-04
+
+### Deprecated
+- `UpdateEvent.newState` parameter is now deprecated
+  - State changes should go through dedicated use cases to maintain clean architecture
+  - Will be removed in v2.0.0
+  - Use `UpdateEvent` only for navigation triggers and status resets
+
+### Documentation
+- Added comprehensive dartdoc to `UpdateEvent` with usage examples
+- Clarified correct vs incorrect usage patterns
+
+---
+
 ## [1.1.1] - 2025-01-04
 
 ### Documentation

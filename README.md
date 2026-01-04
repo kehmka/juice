@@ -17,12 +17,17 @@
 - **Smart Widget Rebuilding** - Precise control over UI updates
 - **State Lifecycle** - Built-in handling of loading, error, cancel and success states
 
-### Architecture 
+### Architecture
 - **First-Class Use Cases** - Isolated, testable business logic
 - **Clean Dependencies** - Flexible dependency resolution
 - **Strong Boundaries** - Clear separation between UI, business logic, and state
 
-### Enhanced Performance 
+### Bloc Lifecycle Management
+- **Permanent Blocs** - App-level blocs that live for the entire application lifetime
+- **Feature Blocs** - Scoped blocs that are disposed when a feature completes
+- **Leased Blocs** - Widget-level blocs with automatic reference-counted disposal
+
+### Enhanced Performance
 - **Smart Widget Rebuilding** - Powerful group-based system gives you precise control over UI updates
 - **Efficient State Updates** - Optimized stream-based state management prevents unnecessary rebuilds
 - **Resource Management** - Automatic cleanup and disposal prevents memory leaks
@@ -45,13 +50,16 @@ Juice creates a clean separation between:
 UI Layer (Widgets)
     ↕️
 Business Logic (Use Cases)
-    ↕️  
+    ↕️
 State Management (Blocs)
+    ↕️
+Lifecycle Management (BlocScope)
 ```
 
 - **Widgets** focus purely on UI rendering and user interaction
 - **Use Cases** encapsulate individual business operations
 - **Blocs** manage state and coordinate use cases
+- **BlocScope** controls bloc registration, resolution, and lifecycle
 
 This separation provides clear boundaries while maintaining reactive state updates throughout the application.
 
@@ -61,6 +69,7 @@ Juice solves common architectural challenges:
 
 - **Business Logic Organization**: Use cases make complex operations manageable and testable
 - **State Management**: Built-in handling of loading, error, and success states
+- **Lifecycle Management**: Semantic control over bloc creation and disposal with permanent, feature, and leased lifecycles
 - **UI Performance**: Fine-grained control over widget rebuilds
 - **Navigation**: Type-safe routing with deep linking support
 - **Testing**: Clear boundaries make unit and integration testing straightforward
@@ -134,9 +143,12 @@ flutter pub get
 
 ```dart
 void main() {
-  // Set up the global resolver for bloc dependencies
-  // This manages bloc instances throughout your app
-  GlobalBlocResolver().resolver = BlocResolver();
+  // Register your blocs with appropriate lifecycles
+  BlocScope.register<CounterBloc>(
+    () => CounterBloc(),
+    lifecycle: BlocLifecycle.permanent, // Lives for app lifetime
+  );
+
   runApp(MyApp());
 }
 ```
@@ -285,41 +297,41 @@ Widget onBuild(BuildContext context, StreamStatus status) {
 Type-safe navigation management:
 
 ```dart
- // Specific route aviator
-      () => Aviator(
-        name: 'profile',
-        navigate: (args) {
-          final bloc = GlobalBlocResolver().resolver.resolve<AppBloc>();
-          final userId = args['userId'] as String;
-          bloc.navigatorKey.currentState?.pushNamed('/account/$userId/profile');
-        },
-      ),
+// Specific route aviator
+() => Aviator(
+  name: 'profile',
+  navigate: (args) {
+    final bloc = BlocScope.get<AppBloc>();
+    final userId = args['userId'] as String;
+    bloc.navigatorKey.currentState?.pushNamed('/account/$userId/profile');
+  },
+),
 
-      // Area aviator with section routing
-      () => Aviator(
-        name: 'account',
-        navigate: (args) {
-          final bloc = GlobalBlocResolver().resolver.resolve<AppBloc>();
-          final section = args['section'] as String;
-          final userId = args['userId'] as String;
-          
-          switch (section) {
-            case 'profile':
-              bloc.navigatorKey.currentState?.pushNamed('/account/$userId/profile');
-              break;
-            case 'settings':
-              bloc.navigatorKey.currentState?.pushNamed('/account/$userId/settings');
-              break;
-            case 'orders':
-              final orderId = args['orderId'] as String?;
-              final path = orderId != null 
-                ? '/account/$userId/orders/$orderId'
-                : '/account/$userId/orders';
-              bloc.navigatorKey.currentState?.pushNamed(path);
-              break;
-          }
-        },
-      )
+// Area aviator with section routing
+() => Aviator(
+  name: 'account',
+  navigate: (args) {
+    final bloc = BlocScope.get<AppBloc>();
+    final section = args['section'] as String;
+    final userId = args['userId'] as String;
+
+    switch (section) {
+      case 'profile':
+        bloc.navigatorKey.currentState?.pushNamed('/account/$userId/profile');
+        break;
+      case 'settings':
+        bloc.navigatorKey.currentState?.pushNamed('/account/$userId/settings');
+        break;
+      case 'orders':
+        final orderId = args['orderId'] as String?;
+        final path = orderId != null
+          ? '/account/$userId/orders/$orderId'
+          : '/account/$userId/orders';
+        bloc.navigatorKey.currentState?.pushNamed(path);
+        break;
+    }
+  },
+)
 ```
 
 ### Stateful Use Cases
@@ -329,13 +341,13 @@ Maintain state across multiple events:
 ```dart
 class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
   WebSocket? _socket;
-  
+
   @override
   Future<void> execute(ConnectEvent event) async {
     _socket = await WebSocket.connect('ws://...');
     // Handle connection
   }
-  
+
   @override
   Future<void> close() async {
     await _socket?.close();
@@ -344,11 +356,162 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 }
 ```
 
+### Bloc Lifecycle Management
+
+Juice provides three lifecycle options for blocs, giving you precise control over when blocs are created and disposed:
+
+#### Permanent Blocs
+App-level blocs that live for the entire application lifetime:
+
+```dart
+// Register at app startup
+BlocScope.register<AuthBloc>(
+  () => AuthBloc(),
+  lifecycle: BlocLifecycle.permanent,
+);
+
+// Access anywhere in your app
+final authBloc = BlocScope.get<AuthBloc>();
+```
+
+#### Feature Blocs
+Blocs scoped to a feature or user flow that are disposed together:
+
+```dart
+class CheckoutFlow {
+  final scope = FeatureScope('checkout');
+
+  void start() {
+    // Register blocs for this feature
+    BlocScope.register<CartBloc>(
+      () => CartBloc(),
+      lifecycle: BlocLifecycle.feature,
+      scope: scope,
+    );
+    BlocScope.register<PaymentBloc>(
+      () => PaymentBloc(),
+      lifecycle: BlocLifecycle.feature,
+      scope: scope,
+    );
+  }
+
+  Future<void> complete() async {
+    // Dispose all blocs in this feature scope
+    await BlocScope.endFeature(scope);
+  }
+}
+```
+
+#### Leased Blocs
+Widget-level blocs with automatic reference-counted disposal:
+
+```dart
+// Register as leased
+BlocScope.register<FormBloc>(
+  () => FormBloc(),
+  lifecycle: BlocLifecycle.leased,
+);
+
+// In your widget, acquire a lease
+class MyFormWidget extends StatefulWidget {
+  @override
+  State<MyFormWidget> createState() => _MyFormWidgetState();
+}
+
+class _MyFormWidgetState extends State<MyFormWidget> {
+  late final BlocLease<FormBloc> _lease;
+
+  @override
+  void initState() {
+    super.initState();
+    _lease = BlocScope.lease<FormBloc>();
+  }
+
+  @override
+  void dispose() {
+    _lease.dispose(); // Bloc closes when last lease is released
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(_lease.bloc.state.value);
+  }
+}
+```
+
+#### Diagnostics
+
+Monitor bloc lifecycle in development:
+
+```dart
+// Get diagnostic info for a bloc
+final info = BlocScope.diagnostics<MyBloc>();
+print('Active: ${info?.isActive}');
+print('Lease count: ${info?.leaseCount}');
+print('Created at: ${info?.createdAt}');
+
+// Dump all registered blocs (debug only)
+BlocScope.debugDump();
+```
+
+### Cross-Bloc Communication
+
+#### EventSubscription
+Listen to events from one bloc and transform them for another:
+
+```dart
+class DestBloc extends JuiceBloc<DestState> {
+  DestBloc() : super(
+    DestState(),
+    [
+      () => UseCaseBuilder(
+        typeOfEvent: DestEvent,
+        useCaseGenerator: () => DestUseCase(),
+      ),
+      // Subscribe to events from SourceBloc
+      () => EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+        toEvent: (sourceEvent) => DestEvent(
+          message: 'Received: ${sourceEvent.data}',
+        ),
+        useCaseGenerator: () => DestUseCase(),
+        when: (event) => event.shouldForward, // Optional filter
+      ),
+    ],
+    [],
+  );
+}
+```
+
+#### RelayUseCaseBuilder
+React to state changes from one bloc and trigger events in another:
+
+```dart
+final relay = RelayUseCaseBuilder<SourceBloc, DestBloc, SourceState>(
+  typeOfEvent: UpdateDestEvent,
+  statusToEventTransformer: (status) {
+    return UpdateDestEvent(value: 'Source count: ${status.state.count}');
+  },
+  useCaseGenerator: () => UpdateDestUseCase(),
+  resolver: resolver,
+);
+
+// Clean up when done
+await relay.close();
+```
+
 ## Best Practices
+
+### Bloc Lifecycle
+- Use `BlocLifecycle.permanent` for app-level blocs (auth, settings, theme)
+- Use `BlocLifecycle.feature` for multi-screen flows (checkout, onboarding)
+- Use `BlocLifecycle.leased` for widget-specific blocs (forms, modals)
+- Always call `BlocScope.endFeature()` when a feature completes
+- Release leases in widget `dispose()` methods
 
 ### Use Cases
 - One use case per business operation
-- Keep use cases focused and single-purpose 
+- Keep use cases focused and single-purpose
 - Handle errors consistently using emitFailure
 - Follow event-handler pattern for clear input/output
 - Clean up resources in close() method
@@ -359,12 +522,18 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 - Keep bloc states laser focused on feature needs only
 - Don't duplicate state across blocs
 
-### Widget Optimization  
+### Widget Optimization
 - Use targeted group-based rebuilds
 - Define rebuild groups by UI update needs
 - Keep widgets focused on UI logic
 - Separate stateless and stateful juice widgets
 - Handle loading/error states consistently
+
+### Cross-Bloc Communication
+- Use `EventSubscription` for event-to-event forwarding between blocs
+- Use `RelayUseCaseBuilder` for state-to-event transformation
+- Always close relays when no longer needed
+- Use `when` predicates to filter unnecessary events
 
 ### Navigation
 - Keep aviators simple and single-purpose
@@ -376,21 +545,23 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 ### Testing
 - Test use cases in isolation
 - Verify state transitions through StreamStatus
-- Test error handling and cancellation paths 
+- Test error handling and cancellation paths
 - Validate group-based rebuild logic
 - Test aviator navigation flows
+- Test bloc lifecycle (creation, disposal, lease counting)
 
 ### Resource Management
-- Implement close() methods properly
-- Clean up subscriptions and streams
-- Dispose blocs when no longer needed
+- Choose appropriate lifecycle for each bloc type
+- Use `BlocScope.diagnostics()` to monitor bloc state in development
+- Call `BlocScope.endAll()` on app shutdown
+- Release all leases before widget disposal
 - Handle cancellation appropriately
-- Monitor for memory leaks
+- Use `BlocScope.debugDump()` to detect leaks during development
 
 
 ## Project Status
 
-Juice is currently at version 1.0.3 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
+Juice is currently at version 1.0.4 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
 
 - Comprehensive documentation and guides
 - Additional examples and use cases

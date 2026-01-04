@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.1] - 2025-01-04
+
+### Documentation
+- Added comprehensive library-level dartdoc to `juice.dart`
+- Improved pub.dev documentation score
+
+### Fixes
+- Suppressed `must_be_immutable` analyzer warnings (intentional design for late-initialized bloc fields)
+
+---
+
 ## [1.1.0] - 2025-01-04
 
 ### New Features

@@ -129,7 +129,7 @@ Alternatively, add it manually:
 
 ```yaml
 dependencies:
-  juice: ^1.1.0
+  juice: ^1.1.1
 ```
 
 Then, run:

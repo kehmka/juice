@@ -8,7 +8,7 @@ This guide will walk you through creating your first Juice application. By the e
 
 ```yaml
 dependencies:
-  juice: ^1.0.4
+  juice: ^1.1.0
 ```
 
 2. Or run:
@@ -166,9 +166,12 @@ Create your main app:
 
 ```dart
 void main() {
-  // Initialize Juice
-  GlobalBlocResolver().resolver = BlocResolver();
-  
+  // Register blocs with BlocScope
+  BlocScope.register<CounterBloc>(
+    () => CounterBloc(),
+    lifecycle: BlocLifecycle.permanent,
+  );
+
   runApp(const MyApp());
 }
 
@@ -200,22 +203,27 @@ class MyApp extends StatelessWidget {
 
 This simple example shows several key Juice features:
 
-1. **State Management**
+1. **Lifecycle Management**
+   - Register blocs with `BlocScope.register()`
+   - Choose appropriate lifecycle (permanent, feature, leased)
+   - Automatic cleanup and disposal
+
+2. **State Management**
    - Clean state class with immutable updates
    - State changes through events and use cases
    - Reactive UI updates
 
-2. **Use Cases**
+3. **Use Cases**
    - Isolated business logic
    - Handling async operations
    - State update control
 
-3. **Smart Rebuilds**
+4. **Smart Rebuilds**
    - Group-based widget updates
    - Loading state handling
    - Error state management
 
-4. **Clean Architecture**
+5. **Clean Architecture**
    - Clear separation of concerns
    - Testable components
    - Maintainable structure

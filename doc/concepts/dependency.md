@@ -2,69 +2,92 @@
 
 ## BlocScope Overview
 
-BlocScope is Juice's built-in dependency resolution system that manages bloc instances and their lifecycles.
+BlocScope is Juice's built-in dependency resolution system that manages bloc instances and their lifecycles. It provides semantic lifecycle control with three options:
+
+- **Permanent** - App-level blocs that live for the entire application lifetime
+- **Feature** - Blocs scoped to a feature, disposed together via `FeatureScope`
+- **Leased** - Widget-level blocs with automatic reference-counted disposal
 
 ### Basic Setup
 
 ```dart
 void main() {
-  // Register bloc factories
-  BlocScope.registerFactory<CounterBloc>(
-    () => CounterBloc(),
-  );
-  
-  BlocScope.registerFactory<ProfileBloc>(
-    () => ProfileBloc(userService),
+  // Register app-level blocs (live forever)
+  BlocScope.register<AuthBloc>(
+    () => AuthBloc(),
+    lifecycle: BlocLifecycle.permanent,
   );
 
-  // Set the global resolver
-  GlobalBlocResolver().resolver = BlocResolver();
-  
+  BlocScope.register<SettingsBloc>(
+    () => SettingsBloc(),
+    lifecycle: BlocLifecycle.permanent,
+  );
+
   runApp(MyApp());
 }
 ```
 
 ### Bloc Registration Patterns
 
-1. **Simple Registration**
+1. **Permanent Blocs** - App-level, live forever
 ```dart
-BlocScope.registerFactory<CounterBloc>(
+BlocScope.register<CounterBloc>(
   () => CounterBloc(),
+  lifecycle: BlocLifecycle.permanent,
 );
 ```
 
-2. **With Dependencies**
+2. **Feature Blocs** - Scoped to a feature flow
 ```dart
-BlocScope.registerFactory<AuthBloc>(
-  () => AuthBloc(
-    authService: getIt<AuthService>(),
-    userService: getIt<UserService>(),
-  ),
+final checkoutScope = FeatureScope('checkout');
+
+BlocScope.register<CartBloc>(
+  () => CartBloc(),
+  lifecycle: BlocLifecycle.feature,
+  scope: checkoutScope,
 );
+
+// Later, when feature completes:
+await BlocScope.endFeature(checkoutScope);
 ```
 
-3. **Scoped Registration**
+3. **Leased Blocs** - Widget-level, reference counted
 ```dart
-BlocScope.registerFactory<UserBloc>(
-  () => UserBloc(userService),
-  singleton: false,  // Create new instance each time
+BlocScope.register<FormBloc>(
+  () => FormBloc(),
+  lifecycle: BlocLifecycle.leased,
 );
+
+// In widget initState:
+final lease = BlocScope.lease<FormBloc>();
+
+// In widget dispose:
+lease.dispose(); // Bloc closes when last lease releases
 ```
 
 ### Bloc Resolution
 
 ```dart
-// Get singleton instance
-final counterBloc = BlocScope.get<CounterBloc>();
+// Get permanent or feature bloc
+final authBloc = BlocScope.get<AuthBloc>();
 
-// Get scoped instance with key
-final userBloc = BlocScope.get<UserBloc>(
-  key: userId,
-  singleton: false,
-);
+// Get leased bloc (acquire lease)
+final lease = BlocScope.lease<FormBloc>();
+final bloc = lease.bloc;
+
+// Check if registered
+if (BlocScope.isRegistered<MyBloc>()) {
+  // ...
+}
+
+// Get diagnostics
+final info = BlocScope.diagnostics<MyBloc>();
+print('Active: ${info?.isActive}, Leases: ${info?.leaseCount}');
 ```
 
-## GlobalBlocResolver
+## GlobalBlocResolver (Legacy)
+
+> **Note:** `GlobalBlocResolver` is still available for backwards compatibility, but `BlocScope` is the recommended approach for new code.
 
 The GlobalBlocResolver provides a central point for bloc resolution throughout your app.
 
@@ -72,18 +95,12 @@ The GlobalBlocResolver provides a central point for bloc resolution throughout y
 
 ```dart
 void main() {
-  // Basic setup
+  // Legacy setup (still works)
   GlobalBlocResolver().resolver = BlocResolver();
-  
+
   // With custom resolver
   GlobalBlocResolver().resolver = CustomResolver();
-  
-  // With composite resolver
-  GlobalBlocResolver().resolver = CompositeResolver({
-    AuthBloc: AuthBlocResolver(),
-    ProfileBloc: ProfileBlocResolver(),
-  });
-  
+
   runApp(MyApp());
 }
 ```

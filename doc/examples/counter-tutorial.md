@@ -314,32 +314,32 @@ class CounterPage extends StatelessWidget {
 }
 ```
 
-## Step 7: Initialize Juice and Register Blocs
+## Step 7: Register Blocs with BlocScope
 
 First, create a `bloc_registration.dart` file to organize bloc registration:
 
 ```dart
 import 'package:juice/juice.dart';
-import 'counter/bloc/counter_bloc.dart';
+import 'counter/counter_bloc.dart';
 
 class BlocRegistry {
   static void initialize() {
-    // Register bloc factories
-    BlocScope.registerFactory<CounterBloc>(() => CounterBloc());
+    // Register bloc with permanent lifecycle (lives for app lifetime)
+    BlocScope.register<CounterBloc>(
+      () => CounterBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
   }
 }
 ```
 
-Then in your `main.dart`, initialize Juice and register blocs:
+Then in your `main.dart`, register blocs and run the app:
 
 ```dart
 void main() {
-  // Set up bloc resolution
-  GlobalBlocResolver().resolver = BlocResolver();
-  
-  // Register blocs
+  // Register blocs with BlocScope
   BlocRegistry.initialize();
-  
+
   runApp(MaterialApp(
     home: CounterPage(),
   ));
@@ -347,8 +347,11 @@ void main() {
 ```
 
 Key points about bloc registration:
-- Use `BlocScope.registerFactory` to register bloc creation functions
-- This tells Juice how to create bloc instances when requested
+- Use `BlocScope.register<T>()` to register bloc factories
+- Choose the appropriate lifecycle:
+  - `BlocLifecycle.permanent` - App-level blocs (auth, settings)
+  - `BlocLifecycle.feature` - Feature-scoped blocs (checkout flow)
+  - `BlocLifecycle.leased` - Widget-level blocs (forms, modals)
 - Registration must happen before any widgets try to access blocs
 - Each bloc type needs to be registered exactly once
 - The bloc instance will be created lazily when first requested

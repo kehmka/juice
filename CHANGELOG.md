@@ -1,6 +1,59 @@
 # Changelog
 
-# Changelog
+## [1.1.0] - 2025-01-04
+
+### New Features
+
+#### BlocScope Lifecycle Management
+- Introduced `BlocScope` for semantic bloc lifecycle control
+- Added three lifecycle options:
+  - `BlocLifecycle.permanent` - App-level blocs that live for entire app lifetime
+  - `BlocLifecycle.feature` - Blocs scoped to a feature, disposed together via `FeatureScope`
+  - `BlocLifecycle.leased` - Widget-level blocs with automatic reference-counted disposal
+- Added `BlocLease<T>` for safe bloc access with automatic cleanup
+- Added `BlocScope.diagnostics<T>()` for debugging bloc state
+- Added `BlocScope.debugDump()` for development diagnostics
+
+#### Cross-Bloc Communication
+- Added `EventSubscription` for listening to events from one bloc and forwarding to another
+- Enhanced `RelayUseCaseBuilder` for state-to-event transformation between blocs
+- Added `when` predicate filtering for event subscriptions
+
+### Bug Fixes
+- Fixed race condition in `EventSubscription` initialization when `close()` called before microtask executes
+- Fixed race condition in `RelayUseCaseBuilder` initialization
+- Fixed unsafe dynamic cast in `UseCaseExecutor` - replaced with type-safe `setBloc()` method
+- Fixed forced non-null access in `widget_support.dart` with safe null-coalescing
+- Fixed inconsistent default groups in `StatelessJuiceWidget2` (now uses `{"*"}` like other variants)
+
+### Tests
+- Added comprehensive test suite for `BlocScope` lifecycle management (20 tests)
+- Added `EventSubscription` tests covering transformation, filtering, and race conditions (10 tests)
+- Added `RelayUseCaseBuilder` tests covering relay, error handling, and multi-relay scenarios (10 tests)
+- Added resource cleanup tests for bloc close, stream cleanup, and lease disposal (9 tests)
+- Total: 49 new tests, 80 tests overall
+
+### Documentation
+- Updated README to use `BlocScope` instead of `GlobalBlocResolver`
+- Added comprehensive documentation for lifecycle management
+- Added cross-bloc communication examples
+- Updated Best Practices with lifecycle and communication guidelines
+
+### Migration Guide
+`GlobalBlocResolver` is still available for backwards compatibility, but `BlocScope` is now the recommended approach:
+
+```dart
+// Before (still works)
+GlobalBlocResolver().resolver = BlocResolver();
+
+// After (recommended)
+BlocScope.register<MyBloc>(
+  () => MyBloc(),
+  lifecycle: BlocLifecycle.permanent,
+);
+```
+
+---
 
 ## [1.0.4] - 2025-02-08
 

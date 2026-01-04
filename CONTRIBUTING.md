@@ -27,19 +27,40 @@ The Juice framework's core components are organized as follows:
 lib/
 ├── src/
 │   ├── bloc/
-│   │   ├── bloc.dart           # Base bloc implementation
-│   │   ├── stream_status.dart  # Stream status handling
-│   │   └── use_case.dart       # Base use case classes
-│   │   └── bloc_resolver.dart
-│   │   └── juice_logger.dart
-│   ├── ui/
-        └── stateless_juice_widget.dart
+│   │   ├── src/
+│   │   │   ├── juice_bloc.dart         # Base bloc implementation
+│   │   │   ├── bloc_state.dart         # State base class
+│   │   │   ├── bloc_event.dart         # Event base classes
+│   │   │   ├── bloc_scope.dart         # Lifecycle management
+│   │   │   ├── usecase.dart            # Base use case classes
+│   │   │   ├── juice_logger.dart       # Logging system
+│   │   │   ├── core/
+│   │   │   │   ├── event_dispatcher.dart
+│   │   │   │   ├── status_emitter.dart
+│   │   │   │   └── use_case_executor.dart
+│   │   │   ├── lifecycle/
+│   │   │   │   ├── bloc_lifecycle.dart  # Lifecycle enum
+│   │   │   │   ├── bloc_lease.dart      # Lease system
+│   │   │   │   ├── bloc_entry.dart      # Registration entry
+│   │   │   │   └── feature_scope.dart   # Feature grouping
+│   │   │   └── use_case_builders/
+│   │   │       ├── use_case_builder.dart
+│   │   │       ├── event_subscription.dart
+│   │   │       └── relay_use_case_builder.dart
+│   │   └── stream_status.dart          # Stream status types
+│   └── ui/
+│       └── src/
+│           ├── stateless_juice_widget.dart
+│           ├── juice_widget_state.dart
+│           └── widget_support.dart
 
 test/
-└── src/
-    └── core/
-        └── bloc_test.dart
-
+├── bloc/
+│   ├── bloc_scope_test.dart
+│   ├── event_subscription_test.dart
+│   ├── relay_use_case_builder_test.dart
+│   └── resource_cleanup_test.dart
+└── test_helpers.dart
 ```
 
 ### Recommended Application Structure

@@ -6,23 +6,30 @@ const String _alwaysRebuild = '*';
 /// Special marker for indicating opt-out behavior
 const String _optOut = '-';
 
-/// Constant with special meaning in the rebuild system:
+/// Constant for triggering rebuilds in all participating widgets.
 ///
 /// When an event includes this in its rebuild groups, it will trigger rebuilds
 /// in all widgets that haven't opted out using [optOutOfRebuilds].
 ///
 /// For events (emitUpdate):
-/// - Makes all participating widgets rebuild
 /// ```dart
 /// emitUpdate(groupsToRebuild: rebuildAlways);
 /// ```
 ///
-/// For widgets:
-/// - Makes widget participate in all rebuilds
+/// For widgets (rebuild on all state changes):
 /// ```dart
 /// class MyWidget extends StatelessJuiceWidget<MyBloc> {
 ///   MyWidget({super.key, super.groups = rebuildAlways});
 /// }
+/// ```
+///
+/// **Tip**: For type-safe groups, use [RebuildGroup] instead of magic strings:
+/// ```dart
+/// abstract class MyGroups {
+///   static const header = RebuildGroup('header');
+///   static const content = RebuildGroup('content');
+/// }
+/// emitUpdate(groupsToRebuild: {MyGroups.header}.toStringSet());
 /// ```
 const Set<String> rebuildAlways = {_alwaysRebuild};
 

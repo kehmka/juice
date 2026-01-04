@@ -1,3 +1,5 @@
+// ignore_for_file: must_be_immutable
+
 import 'package:juice/juice.dart';
 import 'package:rxdart/rxdart.dart';
 

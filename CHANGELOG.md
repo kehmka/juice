@@ -33,6 +33,13 @@
 - Fixed forced non-null access in `widget_support.dart` with safe null-coalescing
 - Fixed inconsistent default groups in `StatelessJuiceWidget2` (now uses `{"*"}` like other variants)
 
+### Improvements
+- Added bloc type context to relay error messages for better debugging
+- Added warning log when `EventDispatcher` uses unhandled event fallback
+- Simplified verbose error throwing patterns in `JuiceAsyncBuilder` with helper getters
+- Removed ambiguous `_Disposable` interface from `JuiceBloc`, documented `dispose()` method
+- Added event type to state emission logs for improved observability
+
 ### Tests
 - Added comprehensive test suite for `BlocScope` lifecycle management (20 tests)
 - Added `EventSubscription` tests covering transformation, filtering, and race conditions (10 tests)

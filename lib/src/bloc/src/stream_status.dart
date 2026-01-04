@@ -1,51 +1,90 @@
 import 'package:juice/juice.dart';
 
+/// Represents the current status of a bloc's state stream.
 ///
-/// StreamStatus States
+/// [StreamStatus] wraps state changes with metadata about the type of change:
+/// - [UpdatingStatus]: Normal state transition (success)
+/// - [WaitingStatus]: Async operation in progress (loading)
+/// - [CancelingStatus]: Operation was cancelled
+/// - [FailureStatus]: Operation failed with an error
 ///
-/// `Updating`: Represents a general state transition.
-/// `Waiting`: Indicates an async operation in progress.
-/// `Canceling`: Indicates an operation is being cancelled.
-/// `Failure`: Represents an error encountered during state transition.
+/// ## Usage in Widgets
 ///
-/// **Best Practices**:
-/// - Use `StreamStatus` for transient states (UI feedback, async operations, errors)
-/// - Use `BlocState` for persistent application state
+/// ```dart
+/// @override
+/// Widget onBuild(BuildContext context, StreamStatus status) {
+///   if (status is WaitingStatus) {
+///     return CircularProgressIndicator();
+///   }
+///   if (status is FailureStatus) {
+///     return Text('Error occurred');
+///   }
+///   return Text('Count: ${bloc.state.count}');
+/// }
+/// ```
 ///
-
+/// ## Pattern Matching
+///
+/// Use [when] for exhaustive pattern matching:
+///
+/// ```dart
+/// status.when(
+///   updating: (state, oldState, event) => Text('$state'),
+///   waiting: (state, oldState, event) => CircularProgressIndicator(),
+///   failure: (state, oldState, event) => Text('Error'),
+///   canceling: (state, oldState, event) => Text('Cancelled'),
+/// );
+/// ```
+///
+/// ## Best Practices
+///
+/// - Use [StreamStatus] for transient UI states (loading, error feedback)
+/// - Use [BlocState] for persistent application data
+/// - Check status type before accessing state in UI
 @immutable
 abstract class StreamStatus<TState extends BlocState> {
+  /// The current state value.
   final TState state;
+
+  /// The previous state value before this status change.
   final TState oldState;
+
+  /// The event that triggered this status change, if any.
   final EventBase? event;
 
+  /// Creates a StreamStatus with the given state values and event.
   const StreamStatus(this.state, this.oldState, this.event);
 
-  // Factory constructors for different transient statuses
+  /// Creates an [UpdatingStatus] indicating a successful state transition.
   factory StreamStatus.updating(
           TState state, TState oldState, EventBase? event) =>
       UpdatingStatus(state, oldState, event);
 
+  /// Creates a [WaitingStatus] indicating an async operation in progress.
   factory StreamStatus.waiting(
           TState state, TState oldState, EventBase? event) =>
       WaitingStatus(state, oldState, event);
 
+  /// Creates a [CancelingStatus] indicating an operation was cancelled.
   factory StreamStatus.canceling(
           TState state, TState oldState, EventBase? event) =>
       CancelingStatus(state, oldState, event);
 
+  /// Creates a [FailureStatus] indicating an operation failed.
   factory StreamStatus.failure(
           TState state, TState oldState, EventBase? event) =>
       FailureStatus(state, oldState, event);
 
-  // CopyWith method
+  /// Creates a copy of this status with optionally overridden values.
   StreamStatus<TState> copyWith({
     TState? state,
     TState? oldState,
     EventBase? event,
   });
 
-  // Pattern matching utility
+  /// Pattern matches on the status type and executes the corresponding callback.
+  ///
+  /// All callbacks are required, ensuring exhaustive handling of all status types.
   R when<R>({
     required R Function(TState state, TState oldState, EventBase? event)
         updating,
@@ -69,7 +108,20 @@ abstract class StreamStatus<TState extends BlocState> {
   int get hashCode => Object.hash(state, oldState, event);
 }
 
+/// Represents a successful state transition.
+///
+/// This is the most common status type, indicating that a use case completed
+/// successfully and the state has been updated.
+///
+/// Example:
+/// ```dart
+/// if (status is UpdatingStatus) {
+///   // Safe to display state data
+///   return Text(bloc.state.data);
+/// }
+/// ```
 class UpdatingStatus<TState extends BlocState> extends StreamStatus<TState> {
+  /// Creates an updating status with the given state values.
   const UpdatingStatus(super.state, super.oldState, super.event);
 
   @override
@@ -100,7 +152,19 @@ class UpdatingStatus<TState extends BlocState> extends StreamStatus<TState> {
   }
 }
 
+/// Represents an async operation in progress.
+///
+/// Use this status to show loading indicators while data is being fetched
+/// or processed. The state may contain partial or placeholder data.
+///
+/// Example:
+/// ```dart
+/// if (status is WaitingStatus) {
+///   return CircularProgressIndicator();
+/// }
+/// ```
 class WaitingStatus<TState extends BlocState> extends StreamStatus<TState> {
+  /// Creates a waiting status with the given state values.
   const WaitingStatus(super.state, super.oldState, super.event);
 
   @override
@@ -131,7 +195,19 @@ class WaitingStatus<TState extends BlocState> extends StreamStatus<TState> {
   }
 }
 
+/// Represents an operation that was cancelled.
+///
+/// Used when a [CancellableEvent] is cancelled during execution.
+/// The UI can use this to show cancellation feedback or restore previous state.
+///
+/// Example:
+/// ```dart
+/// if (status is CancelingStatus) {
+///   return Text('Operation cancelled');
+/// }
+/// ```
 class CancelingStatus<TState extends BlocState> extends StreamStatus<TState> {
+  /// Creates a canceling status with the given state values.
   const CancelingStatus(super.state, super.oldState, super.event);
 
   @override
@@ -162,7 +238,27 @@ class CancelingStatus<TState extends BlocState> extends StreamStatus<TState> {
   }
 }
 
+/// Represents an operation that failed with an error.
+///
+/// Use this status to show error messages and retry options.
+/// The state typically contains the last known good state or error details.
+///
+/// Example:
+/// ```dart
+/// if (status is FailureStatus) {
+///   return Column(
+///     children: [
+///       Text('Something went wrong'),
+///       ElevatedButton(
+///         onPressed: () => bloc.send(RetryEvent()),
+///         child: Text('Retry'),
+///       ),
+///     ],
+///   );
+/// }
+/// ```
 class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
+  /// Creates a failure status with the given state values.
   const FailureStatus(super.state, super.oldState, super.event);
 
   @override
@@ -192,6 +288,7 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
     return failure(state, oldState, event);
   }
 
+  /// Returns a human-readable description of this status for debugging.
   String get debugDescription {
     return match(
       updating: (status) => 'Updating: ${status.state}',
@@ -203,33 +300,83 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
   }
 }
 
+/// Extension methods for type-safe status checking and casting.
+///
+/// These methods provide safe ways to check and cast [StreamStatus] instances
+/// to specific types without manual type checking.
+///
+/// ## Type Checking
+///
+/// ```dart
+/// if (status.isWaitingFor<MyState>()) {
+///   // Show loading indicator
+/// }
+/// ```
+///
+/// ## Safe Casting
+///
+/// ```dart
+/// final updating = status.tryCastToUpdating<MyState>();
+/// if (updating != null) {
+///   // Work with UpdatingStatus<MyState>
+/// }
+/// ```
+///
+/// ## Pattern Matching
+///
+/// ```dart
+/// final result = status.match<MyState, Widget>(
+///   updating: (s) => Text(s.state.data),
+///   waiting: (s) => CircularProgressIndicator(),
+///   canceling: (s) => Text('Cancelled'),
+///   failure: (s) => Text('Error'),
+///   orElse: (s) => SizedBox.shrink(),
+/// );
+/// ```
 extension StatusChecks<T extends BlocState> on StreamStatus {
+  /// Returns true if this status is for the given state type.
   bool matchesState<S extends BlocState>() => this is StreamStatus<S>;
 
+  /// Returns true if this is an [UpdatingStatus] for the given state type.
   bool isUpdatingFor<S extends BlocState>() =>
       this is StreamStatus<S> && this is UpdatingStatus;
 
+  /// Returns true if this is a [WaitingStatus] for the given state type.
   bool isWaitingFor<S extends BlocState>() =>
       this is StreamStatus<S> && this is WaitingStatus;
 
+  /// Returns true if this is a [FailureStatus] for the given state type.
   bool isFailureFor<S extends BlocState>() =>
       this is StreamStatus<S> && this is FailureStatus;
 
+  /// Returns true if this is a [CancelingStatus] for the given state type.
   bool isCancelingFor<S extends BlocState>() =>
       this is StreamStatus<S> && this is CancelingStatus;
 
+  /// Attempts to cast this to [UpdatingStatus] for the given state type.
+  /// Returns null if the cast is not valid.
   UpdatingStatus<S>? tryCastToUpdating<S extends BlocState>() =>
       this is UpdatingStatus<S> ? this as UpdatingStatus<S> : null;
 
+  /// Attempts to cast this to [WaitingStatus] for the given state type.
+  /// Returns null if the cast is not valid.
   WaitingStatus<S>? tryCastToWaiting<S extends BlocState>() =>
       this is WaitingStatus<S> ? this as WaitingStatus<S> : null;
 
+  /// Attempts to cast this to [FailureStatus] for the given state type.
+  /// Returns null if the cast is not valid.
   FailureStatus<S>? tryCastToFailure<S extends BlocState>() =>
       this is FailureStatus<S> ? this as FailureStatus<S> : null;
 
+  /// Attempts to cast this to [CancelingStatus] for the given state type.
+  /// Returns null if the cast is not valid.
   CancelingStatus<S>? tryCastToCanceling<S extends BlocState>() =>
       this is CancelingStatus<S> ? this as CancelingStatus<S> : null;
 
+  /// Type-safe pattern matching with an optional fallback.
+  ///
+  /// Unlike [StreamStatus.when], this method includes an [orElse] callback
+  /// for handling unmatched types.
   R match<S extends BlocState, R>({
     required R Function(UpdatingStatus<S>) updating,
     required R Function(WaitingStatus<S>) waiting,

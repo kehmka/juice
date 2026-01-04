@@ -1,6 +1,7 @@
 import 'package:juice/juice.dart';
 import 'package:rxdart/rxdart.dart';
 
+/// Function called when the async builder is initialized.
 typedef InitiatorFn<T> = void Function();
 
 /// Signature for a function that builds a widget from a value.
@@ -13,6 +14,24 @@ typedef ErrorBuilderFn<T> = Widget Function(
 /// Signature for a function that reports a flutter error, e.g. [FlutterError.reportError].
 typedef ErrorReporterFn = void Function(FlutterErrorDetails details);
 
+/// A widget that builds based on the state of a [Future] or [Stream].
+///
+/// JuiceAsyncBuilder provides a declarative way to handle async data sources
+/// with support for different connection states (waiting, active, done, error).
+///
+/// This is an internal widget used by [StatelessJuiceWidget] and other
+/// Juice widgets to handle stream subscriptions and reactive rebuilding.
+///
+/// Example:
+/// ```dart
+/// JuiceAsyncBuilder<StreamStatus>(
+///   stream: bloc.stream,
+///   initial: bloc.currentStatus,
+///   builder: (context, status) => Text('Data: ${status.state}'),
+///   waiting: (context, status) => CircularProgressIndicator(),
+///   error: (context, status, error, stack) => Text('Error: $error'),
+/// )
+/// ```
 class JuiceAsyncBuilder<T> extends StatefulWidget {
   final InitiatorFn<T>? initiator;
 

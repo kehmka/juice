@@ -264,13 +264,50 @@ Control which widgets rebuild based on state changes:
 class UserProfileWidget extends StatelessJuiceWidget<ProfileBloc> {
   // Only rebuild when "profile" group is triggered
   UserProfileWidget({super.key, super.groups = const {"profile"}});
-  
+
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
     return Text(bloc.state.username);
   }
 }
 ```
+
+### Type-Safe Rebuild Groups
+
+Use `RebuildGroup` for compile-time safe rebuild groups instead of magic strings:
+
+```dart
+// Define type-safe groups
+abstract class ProfileGroups {
+  static const header = RebuildGroup('profile:header');
+  static const details = RebuildGroup('profile:details');
+  static const stats = RebuildGroup('profile:stats');
+}
+
+// Use in widgets
+class ProfileHeader extends StatelessJuiceWidget<ProfileBloc> {
+  ProfileHeader({
+    super.key,
+    super.groups = const {"profile:header"}, // String groups still work
+  });
+}
+
+// Use in use cases with .toStringSet()
+emitUpdate(
+  newState: newState,
+  groupsToRebuild: {ProfileGroups.header, ProfileGroups.stats}.toStringSet(),
+);
+
+// Or with inline use cases (auto-converts)
+ctx.emit.update(
+  newState: newState,
+  groups: {ProfileGroups.header}, // Accepts RebuildGroup, enum, or String
+);
+```
+
+Built-in groups:
+- `RebuildGroup.all` - Equivalent to `{"*"}`, rebuilds all widgets
+- `RebuildGroup.optOut` - Equivalent to `{"-"}`, never rebuilds
 
 ### StreamStatus for State Management
 
@@ -333,6 +370,44 @@ Type-safe navigation management:
   },
 )
 ```
+
+### Inline Use Cases
+
+For simple, stateless operations that don't require a dedicated class:
+
+```dart
+class CounterBloc extends JuiceBloc<CounterState> {
+  CounterBloc() : super(CounterState(), [
+    // Simple operations defined inline
+    () => InlineUseCaseBuilder<CounterBloc, CounterState, IncrementEvent>(
+      typeOfEvent: IncrementEvent,
+      handler: (ctx, event) async {
+        ctx.emit.update(
+          newState: ctx.state.copyWith(count: ctx.state.count + 1),
+          groups: {CounterGroups.counter},
+        );
+      },
+    ),
+
+    // Async operations with waiting state
+    () => InlineUseCaseBuilder<CounterBloc, CounterState, LoadEvent>(
+      typeOfEvent: LoadEvent,
+      handler: (ctx, event) async {
+        ctx.emit.waiting(groups: {CounterGroups.counter});
+        final data = await fetchData();
+        ctx.emit.update(
+          newState: ctx.state.copyWith(data: data),
+          groups: {CounterGroups.counter},
+        );
+      },
+    ),
+  ]);
+}
+```
+
+**When to use inline vs class-based:**
+- Use `InlineUseCaseBuilder` for simple state updates, toggles, and straightforward operations
+- Use class-based `UseCase` for I/O operations, caching, retry logic, or multi-step flows
 
 ### Stateful Use Cases
 
@@ -535,6 +610,8 @@ final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
 - Handle errors consistently using emitFailure
 - Follow event-handler pattern for clear input/output
 - Clean up resources in close() method
+- Use `InlineUseCaseBuilder` for simple, stateless operations
+- Use class-based `UseCase` for I/O, caching, or complex logic
 
 ### State Design
 - Make state classes immutable as first choice
@@ -545,6 +622,7 @@ final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
 ### Widget Optimization
 - Use targeted group-based rebuilds
 - Define rebuild groups by UI update needs
+- Use `RebuildGroup` for type-safe group definitions
 - Keep widgets focused on UI logic
 - Separate stateless and stateful juice widgets
 - Handle loading/error states consistently
@@ -582,7 +660,7 @@ final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
 
 ## Project Status
 
-Juice is currently at version 1.0.4 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
+Juice is currently at version 1.1.2 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
 
 - Comprehensive documentation and guides
 - Additional examples and use cases

@@ -2,12 +2,70 @@
 
 import 'package:juice/juice.dart';
 
-enum ResetStreamType { onUpdate, onWaiting, onFailure }
+/// Specifies which [StreamStatus] type to emit when using [UpdateEvent].
+///
+/// This enum controls the status transition behavior:
+/// - [onUpdate] - Emits [UpdatingStatus] (default, for normal state changes)
+/// - [onWaiting] - Emits [WaitingStatus] (for loading states)
+/// - [onFailure] - Emits [FailureStatus] (for error states)
+///
+/// Example:
+/// ```dart
+/// // Reset from error state back to normal
+/// bloc.send(UpdateEvent(resetStatusTo: ResetStreamType.onUpdate));
+/// ```
+enum ResetStreamType {
+  /// Emit an [UpdatingStatus] indicating successful operation.
+  onUpdate,
+
+  /// Emit a [WaitingStatus] indicating operation in progress.
+  onWaiting,
+
+  /// Emit a [FailureStatus] indicating operation failed.
+  onFailure,
+}
 
 /// Abstract base class for all events in JuiceBloc.
+///
+/// Events represent user actions or system triggers that cause state changes.
+/// Each event should be handled by a corresponding use case registered with the bloc.
+///
+/// ## Creating Events
+///
+/// ```dart
+/// class IncrementEvent extends EventBase {}
+///
+/// class SetCountEvent extends EventBase {
+///   final int value;
+///   SetCountEvent(this.value);
+/// }
+/// ```
+///
+/// ## Rebuild Groups
+///
+/// Events can specify which widget groups should rebuild:
+///
+/// ```dart
+/// class UpdateHeaderEvent extends EventBase {
+///   UpdateHeaderEvent() : super(groupsToRebuild: {'header'});
+/// }
+/// ```
 abstract class EventBase extends Object {
+  /// Creates an event with optional rebuild groups.
+  ///
+  /// [groupsToRebuild] - Optional set of widget groups to rebuild.
+  /// If null, defaults to rebuilding all widgets.
   EventBase({this.groupsToRebuild});
+
+  /// The set of widget rebuild groups this event should trigger.
+  ///
+  /// Use [rebuildAlways] ({"*"}) to rebuild all widgets.
+  /// Use specific group names to trigger targeted rebuilds.
   Set<String>? groupsToRebuild;
+
+  /// Called when the event is disposed.
+  ///
+  /// Override to clean up any resources associated with the event.
   Future<void> close() async {}
 }
 

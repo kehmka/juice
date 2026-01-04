@@ -130,6 +130,81 @@ class ProcessPaymentUseCase extends BlocUseCase<PaymentBloc, ProcessPaymentEvent
 }
 ```
 
+## Inline Use Cases
+
+For simple, stateless operations that don't need a dedicated class file, use `InlineUseCaseBuilder`:
+
+```dart
+class CounterBloc extends JuiceBloc<CounterState> {
+  CounterBloc() : super(CounterState(), [
+    // Simple increment - perfect for inline
+    () => InlineUseCaseBuilder<CounterBloc, CounterState, IncrementEvent>(
+      typeOfEvent: IncrementEvent,
+      handler: (ctx, event) async {
+        ctx.emit.update(
+          newState: ctx.state.copyWith(count: ctx.state.count + 1),
+          groups: {CounterGroups.counter},
+        );
+      },
+    ),
+
+    // Async with waiting state
+    () => InlineUseCaseBuilder<CounterBloc, CounterState, LoadEvent>(
+      typeOfEvent: LoadEvent,
+      handler: (ctx, event) async {
+        ctx.emit.waiting(groups: {CounterGroups.loading});
+
+        await Future.delayed(Duration(seconds: 1));
+
+        ctx.emit.update(
+          newState: ctx.state.copyWith(loaded: true),
+          groups: {CounterGroups.counter, CounterGroups.loading},
+        );
+      },
+    ),
+  ]);
+}
+```
+
+### InlineContext API
+
+The handler receives an `InlineContext<TBloc, TState>` with:
+
+- `ctx.bloc` - The bloc instance
+- `ctx.state` - Current state (typed)
+- `ctx.oldState` - Previous state (typed)
+- `ctx.emit` - Emitter for state changes
+
+### InlineEmitter Methods
+
+```dart
+ctx.emit.update(newState: state, groups: {Groups.counter});
+ctx.emit.waiting(newState: state, groups: {Groups.loading});
+ctx.emit.failure(newState: state, groups: {Groups.error});
+ctx.emit.cancel(groups: {Groups.status});
+```
+
+The `groups` parameter accepts `Set<Object>` and auto-converts:
+- `RebuildGroup` - uses `.name`
+- `Enum` - uses `.name`
+- `String` - used directly
+
+### When to Use Inline vs Class-Based
+
+**Use `InlineUseCaseBuilder` for:**
+- Simple state updates (increment, toggle, set value)
+- Operations that don't require I/O
+- Single-step synchronous logic
+- Quick prototyping
+
+**Use class-based `UseCase` for:**
+- I/O operations (network, file, database)
+- Caching or memoization
+- Retry logic or error recovery
+- Multi-step flows
+- Operations calling multiple services
+- Complex business logic that benefits from being testable in isolation
+
 ## Advanced Use Cases
 
 ### Stateful Use Cases

@@ -2,6 +2,44 @@
 
 ## [1.1.2] - 2025-01-04
 
+### New Features
+
+#### Inline Use Cases
+- Added `InlineUseCaseBuilder` for simple, stateless operations
+- Reduces boilerplate for operations that don't need dedicated class files
+- Features:
+  - `InlineContext<TBloc, TState>` with typed state access
+  - `InlineEmitter` with clean `emit.update/waiting/failure/cancel` API
+  - `Set<Object>` groups support (accepts `RebuildGroup`, enums, or strings)
+
+```dart
+() => InlineUseCaseBuilder<CounterBloc, CounterState, IncrementEvent>(
+  typeOfEvent: IncrementEvent,
+  handler: (ctx, event) async {
+    ctx.emit.update(
+      newState: ctx.state.copyWith(count: ctx.state.count + 1),
+      groups: {CounterGroups.counter},
+    );
+  },
+)
+```
+
+#### Type-Safe Rebuild Groups
+- Added `RebuildGroup` class for compile-time safe rebuild groups
+- Prevents typos, enables IDE autocomplete, supports refactoring
+- Built-in `RebuildGroup.all` and `RebuildGroup.optOut`
+- Extensions: `.toStringSet()` and `.toSet()` for conversion
+
+```dart
+abstract class CounterGroups {
+  static const counter = RebuildGroup('counter');
+  static const display = RebuildGroup('counter:display');
+}
+
+// Usage
+emitUpdate(groupsToRebuild: {CounterGroups.counter}.toStringSet());
+```
+
 ### Deprecated
 - `UpdateEvent.newState` parameter is now deprecated
   - State changes should go through dedicated use cases to maintain clean architecture
@@ -11,6 +49,11 @@
 ### Documentation
 - Added comprehensive dartdoc to `UpdateEvent` with usage examples
 - Clarified correct vs incorrect usage patterns
+
+### Tests
+- Added 13 inline use case tests
+- Added 10 RebuildGroup tests
+- Total: 116 tests
 
 ---
 

@@ -30,6 +30,80 @@ const Set<String> rebuildAlways = {"*"};
 const Set<String> optOutOfRebuilds = {"-"};
 ```
 
+## Type-Safe Rebuild Groups
+
+Instead of using magic strings, define type-safe groups with `RebuildGroup`:
+
+```dart
+// Define groups in a central location
+abstract class ProfileGroups {
+  static const header = RebuildGroup('profile:header');
+  static const details = RebuildGroup('profile:details');
+  static const stats = RebuildGroup('profile:stats');
+
+  // Convenience set for updating all profile widgets
+  static const all = {header, details, stats};
+}
+```
+
+### Benefits
+
+- **Compile-time safety** - Typos cause compile errors, not runtime bugs
+- **IDE autocomplete** - Discover available groups easily
+- **Refactoring support** - Rename groups safely across the codebase
+- **Self-documenting** - Groups are defined in one place
+
+### Using RebuildGroup
+
+In class-based use cases, convert to strings with `.toStringSet()`:
+
+```dart
+class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
+  @override
+  Future<void> execute(UpdateEvent event) async {
+    emitUpdate(
+      newState: bloc.state.copyWith(name: event.name),
+      groupsToRebuild: {ProfileGroups.header, ProfileGroups.details}.toStringSet(),
+    );
+  }
+}
+```
+
+In inline use cases, groups are auto-converted:
+
+```dart
+() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateEvent>(
+  typeOfEvent: UpdateEvent,
+  handler: (ctx, event) async {
+    ctx.emit.update(
+      newState: ctx.state.copyWith(name: event.name),
+      groups: {ProfileGroups.header, ProfileGroups.details}, // Auto-converts
+    );
+  },
+)
+```
+
+### Built-in Groups
+
+```dart
+// Rebuild all widgets (same as {"*"})
+RebuildGroup.all
+
+// Never rebuild (same as {"-"})
+RebuildGroup.optOut
+```
+
+### Single Group Conversion
+
+For a single group, use `.toSet()`:
+
+```dart
+emitUpdate(
+  newState: newState,
+  groupsToRebuild: ProfileGroups.header.toSet(), // Returns {"profile:header"}
+);
+```
+
 ## Configuring Widgets
 
 ### Single Group
@@ -234,37 +308,48 @@ const groups = {
 };
 ```
 
-### Group Organization
+### Group Organization with RebuildGroup (Recommended)
 ```dart
-// Define groups as constants
+// Define type-safe groups
 abstract class ProfileGroups {
-  static const header = "profile_header";
-  static const details = "profile_details";
-  static const stats = "profile_stats";
-  
+  static const header = RebuildGroup('profile:header');
+  static const details = RebuildGroup('profile:details');
+  static const stats = RebuildGroup('profile:stats');
+
   // Related groups
   static const all = {header, details, stats};
   static const summary = {header, stats};
 }
 
-// Use in widgets
+// Use in widgets (still use strings)
 class ProfileHeader extends StatelessJuiceWidget<ProfileBloc> {
   ProfileHeader({
-    super.key, 
-    super.groups = const {ProfileGroups.header}
+    super.key,
+    super.groups = const {"profile:header"}
   });
 }
 
-// Use in use cases
+// Use in class-based use cases with .toStringSet()
 class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
   @override
   Future<void> execute(UpdateEvent event) async {
     emitUpdate(
       newState: bloc.state.copyWith(profile: event.profile),
-      groupsToRebuild: ProfileGroups.all
+      groupsToRebuild: ProfileGroups.all.toStringSet()
     );
   }
 }
+
+// Use in inline use cases (auto-converts)
+() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateEvent>(
+  typeOfEvent: UpdateEvent,
+  handler: (ctx, event) async {
+    ctx.emit.update(
+      newState: ctx.state.copyWith(profile: event.profile),
+      groups: ProfileGroups.all, // No conversion needed
+    );
+  },
+)
 ```
 
 ### Performance Optimization

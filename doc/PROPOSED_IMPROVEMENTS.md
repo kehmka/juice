@@ -362,166 +362,21 @@ void main() {
 
 ---
 
-## 4. Scoped Bloc Registration
+## 4. ~~Scoped Bloc Registration~~ (Not Needed)
 
-### Problem
-`GlobalBlocResolver` creates implicit dependencies, making testing harder and registration order fragile.
-
-### Solution
-Add `JuiceScope` widget for scoped, explicit bloc registration.
-
-### Implementation
-
-```dart
-// lib/src/ui/src/juice_scope.dart
-
-/// Provides scoped bloc registration with InheritedWidget.
-/// Child scopes inherit parent blocs and can add their own.
-class JuiceScope extends StatefulWidget {
-  final List<JuiceBloc Function()> blocs;
-  final Widget child;
-  final bool disposeOnUnmount;
-
-  const JuiceScope({
-    super.key,
-    required this.blocs,
-    required this.child,
-    this.disposeOnUnmount = true,
-  });
-
-  /// Get the nearest JuiceScope's resolver
-  static BlocDependencyResolver of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<_JuiceScopeInherited>();
-    if (scope == null) {
-      throw StateError(
-        'No JuiceScope found in widget tree. '
-        'Wrap your app or feature with JuiceScope.',
-      );
-    }
-    return scope.resolver;
-  }
-
-  /// Try to get resolver, returns null if no scope found
-  static BlocDependencyResolver? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<_JuiceScopeInherited>()?.resolver;
-  }
-
-  @override
-  State<JuiceScope> createState() => _JuiceScopeState();
-}
-
-class _JuiceScopeState extends State<JuiceScope> {
-  late final _ScopedResolver _resolver;
-  final List<JuiceBloc> _createdBlocs = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _resolver = _ScopedResolver();
-
-    for (final factory in widget.blocs) {
-      final bloc = factory();
-      _createdBlocs.add(bloc);
-      _resolver.register(bloc);
-    }
-  }
-
-  @override
-  void dispose() {
-    if (widget.disposeOnUnmount) {
-      for (final bloc in _createdBlocs) {
-        bloc.close();
-      }
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Try to get parent resolver and chain it
-    final parentResolver = JuiceScope.maybeOf(context);
-    _resolver.parent = parentResolver;
-
-    return _JuiceScopeInherited(
-      resolver: _resolver,
-      child: widget.child,
-    );
-  }
-}
-
-class _JuiceScopeInherited extends InheritedWidget {
-  final BlocDependencyResolver resolver;
-
-  const _JuiceScopeInherited({
-    required this.resolver,
-    required super.child,
-  });
-
-  @override
-  bool updateShouldNotify(_JuiceScopeInherited oldWidget) {
-    return resolver != oldWidget.resolver;
-  }
-}
-
-class _ScopedResolver implements BlocDependencyResolver {
-  final Map<Type, JuiceBloc> _blocs = {};
-  BlocDependencyResolver? parent;
-
-  void register<T extends JuiceBloc>(T bloc) {
-    _blocs[T] = bloc;
-  }
-
-  @override
-  T resolve<T extends JuiceBloc>() {
-    // Check local scope first
-    if (_blocs.containsKey(T)) {
-      return _blocs[T] as T;
-    }
-    // Fall back to parent scope
-    if (parent != null) {
-      return parent!.resolve<T>();
-    }
-    throw StateError('No bloc of type $T found in scope hierarchy');
-  }
-}
-```
-
-### Usage
-
-```dart
-// App-level blocs
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return JuiceScope(
-      blocs: [
-        () => AuthBloc(),
-        () => SettingsBloc(),
-      ],
-      child: MaterialApp(
-        home: HomePage(),
-      ),
-    );
-  }
-}
-
-// Feature-level blocs (inherit app blocs)
-class CounterFeature extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return JuiceScope(
-      blocs: [
-        () => CounterBloc(),
-      ],
-      child: CounterPage(),
-    );
-  }
-}
-```
-
-### Migration Path
-- Keep `GlobalBlocResolver` for backward compatibility
-- Widgets check for `JuiceScope.maybeOf(context)` first, fall back to global
+> **Note:** This feature was removed from the roadmap. The existing `BlocScope` already supports multiple instances of the same bloc type via the `scope` parameter:
+>
+> ```dart
+> // Register with scope key
+> BlocScope.register<CartBloc>(() => CartBloc(), scope: 'user_123');
+> BlocScope.register<CartBloc>(() => CartBloc(), scope: 'user_456');
+>
+> // Resolve with scope key
+> final cart1 = BlocScope.get<CartBloc>(scope: 'user_123');
+> final cart2 = BlocScope.get<CartBloc>(scope: 'user_456');
+> ```
+>
+> Combined with `FeatureScope` and `BlocLifecycle.leased`, the current implementation already handles scoped bloc management without needing an InheritedWidget-based approach.
 
 ---
 
@@ -1131,7 +986,8 @@ All improvements are designed to be **additive and backward-compatible**:
 
 ### 🔄 In Progress / Planned
 
-1. [ ] Design and implement JuiceScope (scoped bloc registration)
-2. [ ] Event tracing and debugging (JuiceTracer)
-3. [ ] Build DevTools extension prototype
-4. [ ] Code generation support
+1. [ ] Event tracing and debugging (JuiceTracer)
+2. [ ] Build DevTools extension prototype
+3. [ ] Code generation support
+4. [ ] RetryableUseCaseBuilder (built-in retry with backoff)
+5. [ ] Event Middleware/Interceptors

@@ -224,29 +224,57 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 }
 ```
 
+## New in Latest Release
+
+### Testing Utilities
+- **[BlocTester](testing/bloc-tester.md)** - Simplified bloc testing with built-in assertions
+- `sendAndWaitForResult` for testing async operations
+- Status sequence verification
+
+### Typed Exceptions
+- **[JuiceException hierarchy](concepts/juice-exceptions.md)** - NetworkException, ValidationException, TimeoutException
+- `FailureStatus.error` and `errorStackTrace` for rich error context
+- `isRetryable` property for error recovery decisions
+
+### Performance Optimization
+- **[JuiceSelector](widgets/juice-selector.md)** - Widget that rebuilds only when selected state changes
+- `skipIfSame` parameter for state deduplication
+- `bloc.select()` stream extension for fine-grained state observation
+
+### Developer Tools
+- **[Memory Leak Detection](guides/getting-started/leak-detection.md)** - Debug-mode leak tracking
+- `BlocScope.enableLeakDetection()` for development
+- Detailed leak reports with stack traces
+
+### Async Helpers
+- **[sendAndWait](guides/getting-started/async-operations.md)** - Await event completion
+- Configurable timeouts for async operations
+
+---
+
 ## Why Juice?
 
 Juice was created to solve common challenges in Flutter development:
 
-### 🎯 Clear Organization
+### Clear Organization
 - Each piece of business logic gets its own use case
 - Strong separation between UI, logic, and state
 - Easy to understand where code should go
 
-### 🔄 Smart Updates
+### Smart Updates
 - Control exactly which widgets rebuild
 - Prevent unnecessary UI updates
 - Built-in loading and error states
 
-### 🧪 Testing Made Easy
+### Testing Made Easy
 - Use cases are independently testable
-- Clear boundaries make mocking simple
+- BlocTester for streamlined test assertions
 - Built-in error handling support
 
-### 🛠️ Developer Experience
+### Developer Experience
 - Great IDE support with type safety
 - Consistent patterns across your app
-- Built-in debugging and logging
+- Built-in debugging, logging, and leak detection
 
 ## Getting Started
 

@@ -134,12 +134,50 @@ Handle long-running operations with cancellation support:
 class DownloadBloc extends JuiceBloc<DownloadState> {
   Future<void> startDownload() async {
     final operation = sendCancellable(DownloadEvent(...));
-    
+
     // Later...
     operation.cancel();  // Cancel the operation
   }
 }
 ```
+
+### sendAndWait - Awaiting Event Completion
+
+The `sendAndWait` method lets you await the completion of an event:
+
+```dart
+// Send event and wait for result
+final status = await bloc.sendAndWait(SubmitFormEvent(data: formData));
+
+if (status is UpdatingStatus) {
+  // Success - form was submitted
+  Navigator.of(context).pop();
+} else if (status is FailureStatus) {
+  // Handle error
+  showError(status.error?.toString() ?? 'Submission failed');
+}
+```
+
+With timeout:
+
+```dart
+try {
+  final status = await bloc.sendAndWait(
+    SlowOperationEvent(),
+    timeout: Duration(seconds: 30),
+  );
+  // Handle result
+} on TimeoutException {
+  // Handle timeout
+}
+```
+
+This is useful for:
+- Sequential operations that depend on previous results
+- Form submissions with navigation on success
+- Coordinating multiple blocs
+
+See the [Async Operations Guide](../guides/getting-started/async-operations.md) for more patterns.
 
 ### StreamStatus States
 

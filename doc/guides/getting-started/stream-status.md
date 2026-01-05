@@ -15,6 +15,37 @@ Widget onBuild(BuildContext context, StreamStatus status) {
 }
 ```
 
+#### FailureStatus Error Context
+
+`FailureStatus` includes `error` and `errorStackTrace` properties for detailed error information:
+
+```dart
+@override
+Widget onBuild(BuildContext context, StreamStatus status) {
+  if (status is FailureStatus) {
+    final error = status.error;
+    final stackTrace = status.errorStackTrace;
+
+    // Handle typed errors
+    if (error is NetworkException) {
+      return NetworkErrorWidget(
+        message: error.message,
+        statusCode: error.statusCode,
+        canRetry: error.isRetryable,
+      );
+    }
+
+    if (error is ValidationException) {
+      return ValidationErrorWidget(field: error.field, message: error.message);
+    }
+
+    return GenericErrorWidget(error: error);
+  }
+
+  return ContentWidget(data: bloc.state.data);
+}
+```
+
 However, for complex UIs, there are better patterns:
 
 #### Pattern 1: Status-Aware Component Methods

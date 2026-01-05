@@ -8,19 +8,43 @@ Juice provides a comprehensive error handling system that integrates with its us
 
 In Juice, errors flow through three main layers:
 - Use Cases: Where errors are first caught and handled
-- StreamStatus: Carries error states to the UI
+- StreamStatus: Carries error states to the UI via `FailureStatus`
 - Widgets: Display errors and handle recovery
 
-### 2. Key Components
+### 2. JuiceException Hierarchy
+
+Juice provides a built-in exception hierarchy for consistent error handling:
 
 ```dart
-// Stream status for error state
+JuiceException (abstract)
+├── NetworkException      - Network/HTTP errors with statusCode
+├── ValidationException   - Input validation failures with field info
+├── JuiceTimeoutException - Operation timeouts with duration
+├── CancelledException    - User-cancelled operations
+├── StateException        - Invalid state transitions
+└── ConfigurationException - Setup/configuration errors
+```
+
+Each exception type includes:
+- `message` - Human-readable error description
+- `cause` - Underlying exception (optional)
+- `stackTrace` - Stack trace for debugging
+- `isRetryable` - Whether the operation can be retried
+
+See the full [JuiceException documentation](../../concepts/juice-exceptions.md) for details.
+
+### 3. Key Components
+
+```dart
+// Stream status for error state with error context
 StreamStatus.failure(state, oldState, event)
 
-// Error emission in use cases
+// Error emission in use cases - with error object and stack trace
 emitFailure(
   newState: ErrorState(message: "Failed to load"),
-  groupsToRebuild: {"error_view"}
+  error: NetworkException('Server unavailable', statusCode: 503),
+  errorStackTrace: StackTrace.current,
+  groupsToRebuild: {"error_view"},
 );
 
 // Error handling in widgets
@@ -381,6 +405,70 @@ class ContextualUseCase extends BlocUseCase<ContextBloc, ProcessEvent> {
 }
 ```
 
+## Accessing Errors in Widgets
+
+`FailureStatus` includes `error` and `errorStackTrace` properties for rich error handling in the UI:
+
+```dart
+class DataWidget extends StatelessJuiceWidget<DataBloc> {
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    if (status is FailureStatus) {
+      final error = status.error;
+
+      // Handle specific error types
+      if (error is NetworkException) {
+        return NetworkErrorView(
+          message: error.message,
+          statusCode: error.statusCode,
+          canRetry: error.isRetryable,
+          onRetry: () => bloc.send(RetryEvent()),
+        );
+      }
+
+      if (error is ValidationException) {
+        return ValidationErrorView(
+          field: error.field,
+          message: error.message,
+          errors: error.errors,
+        );
+      }
+
+      if (error is JuiceTimeoutException) {
+        return TimeoutErrorView(
+          duration: error.duration,
+          onRetry: () => bloc.send(RetryEvent()),
+        );
+      }
+
+      // Generic error fallback
+      return ErrorView(message: error?.toString() ?? 'Unknown error');
+    }
+
+    // Normal content
+    return DataView(data: bloc.state.data);
+  }
+}
+```
+
+### Using isRetryable for Error Recovery
+
+```dart
+Widget buildErrorView(FailureStatus status) {
+  final error = status.error;
+
+  if (error is JuiceException && error.isRetryable) {
+    return RetryableErrorView(
+      message: error.message,
+      onRetry: () => bloc.send(RetryEvent()),
+    );
+  }
+
+  // Non-retryable errors
+  return PermanentErrorView(message: error?.toString() ?? 'Error');
+}
+```
+
 ## Key Differences from Other Frameworks
 
 1. **Use Case Isolation**
@@ -390,15 +478,21 @@ class ContextualUseCase extends BlocUseCase<ContextBloc, ProcessEvent> {
 
 2. **StreamStatus Integration**
    - Error states are part of the StreamStatus system
+   - `FailureStatus.error` provides the original exception
+   - `FailureStatus.errorStackTrace` preserves debugging context
    - Consistent error handling across the app
-   - Type-safe error propagation
 
-3. **Granular Rebuilds**
+3. **Typed Exception Hierarchy**
+   - Built-in `JuiceException` types for common scenarios
+   - `isRetryable` property for recovery decisions
+   - Type-specific properties (statusCode, field, duration)
+
+4. **Granular Rebuilds**
    - Error states can trigger specific UI updates
    - Efficient error UI updates
    - Better error UX
 
-4. **Built-in Logging**
+5. **Built-in Logging**
    - Error logging integrated into use cases
    - Rich error context capture
    - Structured error reporting

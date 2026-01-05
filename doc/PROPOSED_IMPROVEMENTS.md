@@ -1103,11 +1103,35 @@ All improvements are designed to be **additive and backward-compatible**:
 
 ---
 
-## Next Steps
+## Implementation Status
 
-1. [ ] Create issues for each improvement
-2. [ ] Prioritize based on user feedback
-3. [ ] Implement type-safe rebuild groups (quick win)
-4. [ ] Implement inline use cases (quick win)
-5. [ ] Design and implement JuiceScope
-6. [ ] Build DevTools extension prototype
+### ✅ Completed (v1.0.4)
+
+**Phase 1 Quick Wins:**
+- [x] **BlocTester** - Test helper class with assertions (`lib/src/testing/bloc_tester.dart`)
+- [x] **JuiceException hierarchy** - NetworkException, ValidationException, JuiceTimeoutException, CancelledException, StateException, ConfigurationException
+- [x] **FailureStatus error context** - `error` and `errorStackTrace` properties
+- [x] **sendAndWait helper** - Await event completion with timeout
+- [x] **State deduplication** - `skipIfSame` parameter for emitUpdate
+
+**State Selection API:**
+- [x] **JuiceSelector widget** - Rebuilds only when selected state changes
+- [x] **JuiceSelectorWith** - Custom equality for complex types
+- [x] **bloc.select()** - Stream extension for state selection
+
+**Memory Leak Detection:**
+- [x] **LeakDetector** - Tracks unreleased leases and unclosed blocs
+- [x] **BlocScope.enableLeakDetection()** - Enable in debug mode
+
+**Previous Improvements:**
+- [x] Type-safe rebuild groups (`RebuildGroup` class)
+- [x] Inline use cases (`InlineUseCaseBuilder`)
+- [x] Deprecate `UpdateEvent.newState`
+- [x] Dartdoc documentation improvements
+
+### 🔄 In Progress / Planned
+
+1. [ ] Design and implement JuiceScope (scoped bloc registration)
+2. [ ] Event tracing and debugging (JuiceTracer)
+3. [ ] Build DevTools extension prototype
+4. [ ] Code generation support

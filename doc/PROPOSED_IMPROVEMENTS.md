@@ -989,5 +989,5 @@ All improvements are designed to be **additive and backward-compatible**:
 1. [ ] Event tracing and debugging (JuiceTracer)
 2. [ ] Build DevTools extension prototype
 3. [ ] Code generation support
-4. [ ] RetryableUseCaseBuilder (built-in retry with backoff)
+4. [x] ~~RetryableUseCaseBuilder~~ - **Completed** (built-in retry with backoff)
 5. [ ] Event Middleware/Interceptors

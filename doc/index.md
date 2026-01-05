@@ -250,6 +250,11 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 - **[sendAndWait](guides/getting-started/async-operations.md)** - Await event completion
 - Configurable timeouts for async operations
 
+### Retry Operations
+- **[RetryableUseCaseBuilder](guides/getting-started/retry-operations.md)** - Automatic retry with backoff
+- Exponential, linear, and fixed backoff strategies
+- Configurable retry conditions and callbacks
+
 ---
 
 ## Why Juice?
@@ -286,7 +291,7 @@ Add Juice to your pubspec.yaml:
 
 ```yaml
 dependencies:
-  juice: ^1.0.4
+  juice: ^1.1.2
 ```
 
 Or run:

@@ -1,6 +1,7 @@
 import 'package:juice/juice.dart';
 
 import 'blocs/auth/ui/auth_page.dart';
+import 'blocs/features_showcase/ui/features_showcase_page.dart';
 import 'blocs/file_upload/src/ui/file_upload_page.dart';
 import 'blocs/chat/ui/chat_page.dart';
 import 'blocs/counter/ui/counter_page.dart';
@@ -17,6 +18,7 @@ final exampleRoutes = {
   '/auth': (context) => const AuthPage(),
   '/counter': (context) => const CounterPage(),
   '/counter-builder': (context) => const CounterBuilderPage(),
+  '/features-showcase': (context) => const FeaturesShowcasePage(),
   '/todo': (context) => const TodoPage(),
   '/chat': (context) => const ChatPage(),
   '/form': (context) => const FormPage(),
@@ -113,6 +115,11 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final examples = [
+      {
+        'title': 'New Features Showcase',
+        'route': '/features-showcase',
+        'subtitle': 'JuiceSelector, sendAndWait, JuiceException, LeakDetector'
+      },
       {'title': 'Auth & EventSubscription', 'route': '/auth'},
       {'title': 'Counter Example', 'route': '/counter'},
       {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
@@ -134,8 +141,10 @@ class MyHomePage extends StatelessWidget {
         itemCount: examples.length,
         itemBuilder: (context, index) {
           final example = examples[index];
+          final subtitle = example['subtitle'] as String?;
           return ListTile(
             title: Text(example['title'] as String),
+            subtitle: subtitle != null ? Text(subtitle) : null,
             trailing: const Icon(Icons.arrow_forward),
             onTap: () {
               Navigator.pushNamed(context, example['route'] as String);
@@ -154,6 +163,7 @@ class ExampleDeepLinkConfig {
     routes: {
       'auth': DeepLinkRoute(path: ['/auth']),
       'counter': DeepLinkRoute(path: ['/counter']),
+      'features-showcase': DeepLinkRoute(path: ['/features-showcase']),
       'relay-demo': DeepLinkRoute(path: ['/relay-demo']),
       'todo': DeepLinkRoute(path: ['/todo']),
       'chat': DeepLinkRoute(path: ['/chat']),

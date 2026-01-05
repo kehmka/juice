@@ -71,9 +71,23 @@ abstract class StreamStatus<TState extends BlocState> {
       CancelingStatus(state, oldState, event);
 
   /// Creates a [FailureStatus] indicating an operation failed.
+  ///
+  /// [error] - The error that caused the failure.
+  /// [errorStackTrace] - The stack trace where the error occurred.
   factory StreamStatus.failure(
-          TState state, TState oldState, EventBase? event) =>
-      FailureStatus(state, oldState, event);
+    TState state,
+    TState oldState,
+    EventBase? event, {
+    Object? error,
+    StackTrace? errorStackTrace,
+  }) =>
+      FailureStatus(
+        state,
+        oldState,
+        event,
+        error: error,
+        errorStackTrace: errorStackTrace,
+      );
 
   /// Creates a copy of this status with optionally overridden values.
   StreamStatus<TState> copyWith({
@@ -243,12 +257,16 @@ class CancelingStatus<TState extends BlocState> extends StreamStatus<TState> {
 /// Use this status to show error messages and retry options.
 /// The state typically contains the last known good state or error details.
 ///
+/// The [error] and [errorStackTrace] properties provide access to the
+/// underlying exception details when available.
+///
 /// Example:
 /// ```dart
 /// if (status is FailureStatus) {
+///   final failure = status as FailureStatus;
 ///   return Column(
 ///     children: [
-///       Text('Something went wrong'),
+///       Text(failure.error?.toString() ?? 'Something went wrong'),
 ///       ElevatedButton(
 ///         onPressed: () => bloc.send(RetryEvent()),
 ///         child: Text('Retry'),
@@ -259,7 +277,27 @@ class CancelingStatus<TState extends BlocState> extends StreamStatus<TState> {
 /// ```
 class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
   /// Creates a failure status with the given state values.
-  const FailureStatus(super.state, super.oldState, super.event);
+  ///
+  /// [error] - The error that caused the failure, if available.
+  /// [errorStackTrace] - The stack trace where the error occurred.
+  const FailureStatus(
+    super.state,
+    super.oldState,
+    super.event, {
+    this.error,
+    this.errorStackTrace,
+  });
+
+  /// The error that caused this failure, if available.
+  ///
+  /// This can be any object, but is typically an [Exception] or [Error].
+  /// Use this to display error details to the user or for logging.
+  final Object? error;
+
+  /// The stack trace where the error occurred, if available.
+  ///
+  /// Useful for debugging and error reporting.
+  final StackTrace? errorStackTrace;
 
   @override
   StreamStatus<TState> copyWith({
@@ -271,6 +309,25 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
       state ?? this.state,
       oldState ?? this.oldState,
       event ?? this.event,
+      error: error,
+      errorStackTrace: errorStackTrace,
+    );
+  }
+
+  /// Creates a copy with updated error information.
+  FailureStatus<TState> copyWithError({
+    TState? state,
+    TState? oldState,
+    EventBase? event,
+    Object? error,
+    StackTrace? errorStackTrace,
+  }) {
+    return FailureStatus(
+      state ?? this.state,
+      oldState ?? this.oldState,
+      event ?? this.event,
+      error: error ?? this.error,
+      errorStackTrace: errorStackTrace ?? this.errorStackTrace,
     );
   }
 
@@ -290,14 +347,24 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
 
   /// Returns a human-readable description of this status for debugging.
   String get debugDescription {
+    final errorInfo = error != null ? ' (error: $error)' : '';
     return match(
       updating: (status) => 'Updating: ${status.state}',
       waiting: (_) => 'Waiting...',
       canceling: (_) => 'Canceling...',
-      failure: (status) => 'Failure: ${status.state}',
+      failure: (status) => 'Failure: ${status.state}$errorInfo',
       orElse: (_) => 'Unknown status type',
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is FailureStatus<TState> &&
+      super == other &&
+      error == other.error;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, error);
 }
 
 /// Extension methods for type-safe status checking and casting.

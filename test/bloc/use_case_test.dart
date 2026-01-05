@@ -13,7 +13,7 @@ void main() {
       useCase.bloc = bloc;
       
       // Set up emitter functions that the test use case needs
-      useCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+      useCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
         bloc.emit(StreamStatus.updating(
           newState as TestState? ?? bloc.state,
           bloc.state,
@@ -29,11 +29,13 @@ void main() {
         ));
       };
       
-      useCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+      useCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
         bloc.emit(StreamStatus.failure(
           newState as TestState? ?? bloc.state,
           bloc.state,
           TestEvent(groups: groupsToRebuild),
+          error: error,
+          errorStackTrace: errorStackTrace,
         ));
       };
       
@@ -84,7 +86,7 @@ void main() {
       // Replace emitUpdate with mock function to track calls
       bool updateCalled = false;
       useCase.emitUpdate =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
         updateCalled = true;
       };
 
@@ -126,7 +128,7 @@ void main() {
       // Replace emitUpdate with mock function to track calls
       bool updateCalled = false;
       useCase.emitUpdate =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
         updateCalled = true;
       };
 
@@ -140,11 +142,13 @@ void main() {
       
       // Set up all emitter functions
       failureUseCase.emitFailure =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
         bloc.emit(StreamStatus.failure(
           newState as TestState? ?? bloc.state,
           bloc.state,
           TestEvent(groups: groupsToRebuild),
+          error: error,
+          errorStackTrace: errorStackTrace,
         ));
       };
       failureUseCase.emitUpdate = useCase.emitUpdate;
@@ -180,7 +184,7 @@ void main() {
       relayUseCase.targetBloc = targetBloc;
       
       // Set up emitter functions
-      relayUseCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+      relayUseCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
         sourceBloc.emit(StreamStatus.updating(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
@@ -196,11 +200,13 @@ void main() {
         ));
       };
       
-      relayUseCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+      relayUseCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
         sourceBloc.emit(StreamStatus.failure(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
           TestEvent(groups: groupsToRebuild),
+          error: error,
+          errorStackTrace: errorStackTrace,
         ));
       };
       

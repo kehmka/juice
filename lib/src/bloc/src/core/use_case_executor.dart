@@ -36,13 +36,19 @@ class UseCaseContext<TBloc, TState extends BlocState> {
   final TState Function() getOldState;
 
   /// Emits an updating status.
-  final void Function(TState? newState, Set<String>? groups) emitUpdate;
+  ///
+  /// [skipIfSame] - If true, skips emission when newState equals current state.
+  final void Function(TState? newState, Set<String>? groups,
+      {bool skipIfSame}) emitUpdate;
 
   /// Emits a waiting status.
   final void Function(TState? newState, Set<String>? groups) emitWaiting;
 
   /// Emits a failure status.
-  final void Function(TState? newState, Set<String>? groups) emitFailure;
+  ///
+  /// [error] and [errorStackTrace] are stored in FailureStatus for debugging.
+  final void Function(TState? newState, Set<String>? groups,
+      {Object? error, StackTrace? errorStackTrace}) emitFailure;
 
   /// Emits a canceling status.
   final void Function(TState? newState, Set<String>? groups) emitCancel;
@@ -147,8 +153,10 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       Set<String>? groupsToRebuild,
       String? aviatorName,
       Map<String, dynamic>? aviatorArgs,
+      bool skipIfSame = false,
     }) {
-      context.emitUpdate(newState as TState?, groupsToRebuild);
+      context.emitUpdate(newState as TState?, groupsToRebuild,
+          skipIfSame: skipIfSame);
       context.navigate(aviatorName, aviatorArgs);
     };
 
@@ -167,8 +175,11 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       Set<String>? groupsToRebuild,
       String? aviatorName,
       Map<String, dynamic>? aviatorArgs,
+      Object? error,
+      StackTrace? errorStackTrace,
     }) {
-      context.emitFailure(newState as TState?, groupsToRebuild);
+      context.emitFailure(newState as TState?, groupsToRebuild,
+          error: error, errorStackTrace: errorStackTrace);
       context.navigate(aviatorName, aviatorArgs);
     };
 

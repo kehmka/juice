@@ -10,3 +10,4 @@ export 'bloc_lease.dart';
 export 'bloc_entry.dart';
 export 'bloc_diagnostics.dart';
 export 'feature_scope.dart';
+export 'leak_detector.dart';

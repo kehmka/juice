@@ -2,6 +2,7 @@ export 'app/app.dart';
 export 'auth/auth.dart';
 export 'chat/chat.dart';
 export 'counter/counter.dart';
+export 'features_showcase/features_showcase.dart';
 export 'file_upload/file_upload.dart';
 export 'form/form.dart';
 export 'onboard/onboard.dart';

@@ -56,7 +56,26 @@ class StatusEmitter<TState extends BlocState> {
   /// Emits an updating status.
   ///
   /// Used for normal state transitions after successful operations.
-  void emitUpdate(EventBase event, TState? newState, Set<String>? groups) {
+  ///
+  /// [event] - The event that triggered this update.
+  /// [newState] - The new state to emit. If null, uses current state.
+  /// [groups] - The rebuild groups to notify.
+  /// [skipIfSame] - If true, skips emission when newState equals current state.
+  ///   This helps prevent unnecessary widget rebuilds when state hasn't changed.
+  void emitUpdate(
+    EventBase event,
+    TState? newState,
+    Set<String>? groups, {
+    bool skipIfSame = false,
+  }) {
+    if (skipIfSame && newState == state) {
+      _logger.log('Skipping duplicate state emission', context: {
+        'type': 'state_emission_skipped',
+        'bloc': _blocName,
+        'event': event.runtimeType.toString(),
+      });
+      return;
+    }
     _emit(StreamStatus.updating, 'update', event, newState, groups);
   }
 
@@ -70,8 +89,17 @@ class StatusEmitter<TState extends BlocState> {
   /// Emits a failure status.
   ///
   /// Used to indicate an operation has failed.
-  void emitFailure(EventBase event, TState? newState, Set<String>? groups) {
-    _emit(StreamStatus.failure, 'failure', event, newState, groups);
+  ///
+  /// [error] - The error that caused the failure.
+  /// [errorStackTrace] - The stack trace where the error occurred.
+  void emitFailure(
+    EventBase event,
+    TState? newState,
+    Set<String>? groups, {
+    Object? error,
+    StackTrace? errorStackTrace,
+  }) {
+    _emitFailure(event, newState, groups, error, errorStackTrace);
   }
 
   /// Emits a canceling status.
@@ -115,5 +143,49 @@ class StatusEmitter<TState extends BlocState> {
 
     // Emit the status
     _stateManager.emit(factory(newState ?? state, state, event));
+  }
+
+  /// Internal helper for emitting failure status with error context.
+  void _emitFailure(
+    EventBase event,
+    TState? newState,
+    Set<String>? groupsToRebuild,
+    Object? error,
+    StackTrace? errorStackTrace,
+  ) {
+    if (_stateManager.isClosed) {
+      throw StateError('Cannot emit failure after bloc is closed');
+    }
+
+    _logger.log('Emitting failure', context: {
+      'type': 'state_emission',
+      'status': 'failure',
+      'state': '${newState ?? state}',
+      'bloc': _blocName,
+      'groups': groupsToRebuild?.toString(),
+      'event': event.runtimeType.toString(),
+      'error': error?.toString(),
+    });
+
+    // Apply default groups if not specified
+    final groups = groupsToRebuild ?? rebuildAlways;
+
+    // Validate group constraints
+    assert(
+      !groups.contains('*') || groups.length == 1,
+      "Cannot mix '*' with other groups",
+    );
+
+    // Merge groups onto the event
+    event.groupsToRebuild = {...?event.groupsToRebuild, ...groups};
+
+    // Emit the failure status with error context
+    _stateManager.emit(StreamStatus.failure(
+      newState ?? state,
+      state,
+      event,
+      error: error,
+      errorStackTrace: errorStackTrace,
+    ));
   }
 }

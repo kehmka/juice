@@ -55,20 +55,30 @@ abstract class UseCase<TBloc extends JuiceBloc, TEvent extends EventBase> {
   /// * [aviatorName] - Optional navigation target
   /// * [aviatorArgs] - Optional navigation arguments
   /// * [groupsToRebuild] - Optional set of widget groups to rebuild
+  /// * [skipIfSame] - If true, skips emission when newState equals current state
   late void Function(
       {BlocState? newState,
       String? aviatorName,
       Map<String, dynamic>? aviatorArgs,
-      Set<String>? groupsToRebuild}) emitUpdate;
+      Set<String>? groupsToRebuild,
+      bool skipIfSame}) emitUpdate;
 
   /// Emits a failure state to indicate operation failure.
   ///
-  /// Parameters match [emitUpdate].
+  /// Parameters:
+  /// * [newState] - Optional new state to set
+  /// * [aviatorName] - Optional navigation target
+  /// * [aviatorArgs] - Optional navigation arguments
+  /// * [groupsToRebuild] - Optional set of widget groups to rebuild
+  /// * [error] - The error that caused the failure
+  /// * [errorStackTrace] - The stack trace where the error occurred
   late void Function(
       {BlocState? newState,
       String? aviatorName,
       Map<String, dynamic>? aviatorArgs,
-      Set<String>? groupsToRebuild}) emitFailure;
+      Set<String>? groupsToRebuild,
+      Object? error,
+      StackTrace? errorStackTrace}) emitFailure;
 
   /// Emits a waiting state to indicate operation in progress.
   ///

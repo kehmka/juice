@@ -133,6 +133,37 @@ class JuiceBloc<TState extends BlocState>
     return event;
   }
 
+  /// Sends an event and waits for processing to complete.
+  ///
+  /// This method sends the event and returns when the status changes from
+  /// [WaitingStatus] to either [UpdatingStatus], [FailureStatus], or
+  /// [CancelingStatus].
+  ///
+  /// [event] - The event to send.
+  /// [timeout] - Maximum time to wait for completion (default: 30 seconds).
+  ///
+  /// Returns the final [StreamStatus] after processing completes.
+  ///
+  /// Throws [TimeoutException] if the operation doesn't complete within
+  /// the timeout duration.
+  ///
+  /// Example:
+  /// ```dart
+  /// final status = await bloc.sendAndWait(FetchDataEvent());
+  /// if (status is FailureStatus) {
+  ///   print('Failed: ${status.error}');
+  /// }
+  /// ```
+  Future<StreamStatus<TState>> sendAndWait(
+    EventBase event, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    await send(event);
+    return stream
+        .firstWhere((s) => s is! WaitingStatus<TState>)
+        .timeout(timeout);
+  }
+
   /// Triggers an update with the current state.
   void start() => send(UpdateEvent(newState: state));
 
@@ -297,12 +328,14 @@ class JuiceBloc<TState extends BlocState>
       bloc: this,
       getState: () => state,
       getOldState: () => oldState,
-      emitUpdate: (newState, groups) =>
-          _statusEmitter.emitUpdate(event, newState, groups),
+      emitUpdate: (newState, groups, {bool skipIfSame = false}) =>
+          _statusEmitter.emitUpdate(event, newState, groups,
+              skipIfSame: skipIfSame),
       emitWaiting: (newState, groups) =>
           _statusEmitter.emitWaiting(event, newState, groups),
-      emitFailure: (newState, groups) =>
-          _statusEmitter.emitFailure(event, newState, groups),
+      emitFailure: (newState, groups, {Object? error, StackTrace? errorStackTrace}) =>
+          _statusEmitter.emitFailure(event, newState, groups,
+              error: error, errorStackTrace: errorStackTrace),
       emitCancel: (newState, groups) =>
           _statusEmitter.emitCancel(event, newState, groups),
       emitEvent: (EventBase? e) {

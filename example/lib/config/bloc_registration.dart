@@ -61,5 +61,14 @@ class BlocRegistry {
       () => DestBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
+
+    // Features showcase - demonstrates new Juice features
+    BlocScope.register<FeaturesShowcaseBloc>(
+      () => FeaturesShowcaseBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+
+    // Enable leak detection in debug mode (demonstrates LeakDetector feature)
+    BlocScope.enableLeakDetection();
   }
 }

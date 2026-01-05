@@ -3,6 +3,7 @@ import 'juice_bloc.dart';
 import 'bloc_state.dart';
 import 'juice_logger.dart';
 import 'lifecycle/lifecycle.dart';
+import 'lifecycle/leak_detector.dart';
 
 /// Manages bloc registration, resolution, and lifecycle.
 ///
@@ -44,6 +45,35 @@ class BlocScope {
 
   /// All registered bloc entries, keyed by BlocId.
   static final Map<BlocId, BlocEntry> _entries = {};
+
+  // ============================================================
+  // Leak Detection
+  // ============================================================
+
+  /// Enable leak detection for debugging.
+  ///
+  /// When enabled, tracks all bloc creations and lease acquisitions
+  /// with stack traces for identifying memory leaks.
+  ///
+  /// Should be called early in app startup:
+  /// ```dart
+  /// void main() {
+  ///   BlocScope.enableLeakDetection();
+  ///   runApp(MyApp());
+  /// }
+  /// ```
+  ///
+  /// Only works in debug mode (asserts).
+  static void enableLeakDetection() {
+    LeakDetector.enable();
+  }
+
+  /// Check for memory leaks and print a report.
+  ///
+  /// Returns true if leaks were found.
+  static bool checkForLeaks() {
+    return LeakDetector.checkForLeaks();
+  }
 
   // ============================================================
   // Registration
@@ -185,6 +215,9 @@ class BlocScope {
 
     typedEntry.leaseCount++;
 
+    // Track lease for leak detection
+    LeakDetector.trackLeaseAcquire(id);
+
     JuiceLoggerConfig.logger.log('Lease acquired', context: {
       'type': 'bloc_lifecycle',
       'action': 'lease_acquire',
@@ -236,6 +269,9 @@ class BlocScope {
       entry.instance = entry.factory();
       entry.createdAt = DateTime.now();
 
+      // Track bloc creation for leak detection
+      LeakDetector.trackBlocCreation(id);
+
       JuiceLoggerConfig.logger.log('Bloc instance created', context: {
         'type': 'bloc_lifecycle',
         'action': 'create',
@@ -255,6 +291,9 @@ class BlocScope {
     if (entry.isClosing) return;
 
     entry.leaseCount--;
+
+    // Track lease release for leak detection
+    LeakDetector.trackLeaseRelease(id);
 
     JuiceLoggerConfig.logger.log('Lease released', context: {
       'type': 'bloc_lifecycle',
@@ -378,6 +417,9 @@ class BlocScope {
 
     await entry.closingFuture;
 
+    // Track bloc close for leak detection
+    LeakDetector.trackBlocClose(id);
+
     // Only clear after close completes
     entry.instance = null;
     entry.closingFuture = null;
@@ -435,5 +477,6 @@ class BlocScope {
     await endAll();
     _entries.clear();
     FeatureScope.resetTracking();
+    LeakDetector.reset();
   }
 }

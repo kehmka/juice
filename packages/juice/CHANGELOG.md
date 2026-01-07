@@ -40,6 +40,29 @@ abstract class CounterGroups {
 emitUpdate(groupsToRebuild: {CounterGroups.counter}.toStringSet());
 ```
 
+#### Retryable Use Cases
+- Added `RetryableUseCaseBuilder` for automatic retry with configurable backoff
+- Wraps any use case with retry logic, eliminating boilerplate
+- Features:
+  - Configurable `maxRetries` (default: 3)
+  - Multiple backoff strategies: `FixedBackoff`, `ExponentialBackoff`, `LinearBackoff`
+  - Custom retry conditions via `retryWhen` predicate
+  - `onRetry` callback for logging/metrics
+  - Respects `CancellableEvent` for early termination
+
+```dart
+() => RetryableUseCaseBuilder<MyBloc, MyState, FetchDataEvent>(
+  typeOfEvent: FetchDataEvent,
+  useCaseGenerator: () => FetchDataUseCase(),
+  maxRetries: 3,
+  backoff: ExponentialBackoff(
+    initial: Duration(seconds: 1),
+    maxDelay: Duration(seconds: 30),
+    jitter: true,
+  ),
+)
+```
+
 ### Deprecated
 - `UpdateEvent.newState` parameter is now deprecated
   - State changes should go through dedicated use cases to maintain clean architecture
@@ -53,7 +76,8 @@ emitUpdate(groupsToRebuild: {CounterGroups.counter}.toStringSet());
 ### Tests
 - Added 13 inline use case tests
 - Added 10 RebuildGroup tests
-- Total: 116 tests
+- Added 15 RetryableUseCaseBuilder tests
+- Total: 131 tests
 
 ---
 

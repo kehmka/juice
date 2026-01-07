@@ -431,6 +431,32 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 }
 ```
 
+### Retryable Use Cases
+
+Wrap any use case with automatic retry logic:
+
+```dart
+() => RetryableUseCaseBuilder<MyBloc, MyState, FetchDataEvent>(
+  typeOfEvent: FetchDataEvent,
+  useCaseGenerator: () => FetchDataUseCase(),
+  maxRetries: 3,
+  backoff: ExponentialBackoff(
+    initial: Duration(seconds: 1),
+    maxDelay: Duration(seconds: 30),
+    jitter: true,  // Prevents thundering herd
+  ),
+  retryWhen: (error) => error is NetworkException,
+  onRetry: (attempt, error, delay) {
+    print('Retry $attempt after ${delay.inSeconds}s');
+  },
+)
+```
+
+Backoff strategies:
+- `FixedBackoff` - Constant delay between retries
+- `ExponentialBackoff` - Delays grow exponentially (1s, 2s, 4s...)
+- `LinearBackoff` - Delays grow linearly (1s, 2s, 3s...)
+
 ### Bloc Lifecycle Management
 
 Juice provides three lifecycle options for blocs, giving you precise control over when blocs are created and disposed:

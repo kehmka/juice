@@ -1,0 +1,111 @@
+import 'package:juice/juice.dart';
+
+/// Special marker for indicating rebuild-all behavior
+const String _alwaysRebuild = '*';
+
+/// Special marker for indicating opt-out behavior
+const String _optOut = '-';
+
+/// Constant for triggering rebuilds in all participating widgets.
+///
+/// When an event includes this in its rebuild groups, it will trigger rebuilds
+/// in all widgets that haven't opted out using [optOutOfRebuilds].
+///
+/// For events (emitUpdate):
+/// ```dart
+/// emitUpdate(groupsToRebuild: rebuildAlways);
+/// ```
+///
+/// For widgets (rebuild on all state changes):
+/// ```dart
+/// class MyWidget extends StatelessJuiceWidget<MyBloc> {
+///   MyWidget({super.key, super.groups = rebuildAlways});
+/// }
+/// ```
+///
+/// **Tip**: For type-safe groups, use [RebuildGroup] instead of magic strings:
+/// ```dart
+/// abstract class MyGroups {
+///   static const header = RebuildGroup('header');
+///   static const content = RebuildGroup('content');
+/// }
+/// emitUpdate(groupsToRebuild: {MyGroups.header}.toStringSet());
+/// ```
+const Set<String> rebuildAlways = {_alwaysRebuild};
+
+/// When a widget specifies this in its rebuild groups, it will never rebuild
+/// in response to bloc events, regardless of the event's rebuild groups.
+///
+/// Example:
+/// ```dart
+/// class StaticWidget extends StatelessJuiceWidget<MyBloc> {
+///   StaticWidget({super.key, super.groups = optOutOfRebuilds});
+/// }
+/// ```
+const Set<String> optOutOfRebuilds = {_optOut};
+
+/// Determines whether a widget should skip rebuilding in response to an event.
+///
+/// This function implements the rebuild control logic:
+/// 1. If the widget has opted out using [optOutOfRebuilds], always deny rebuild
+/// 2. Otherwise, check if the event's rebuild groups include either:
+///    - [rebuildAlways]
+///    - Any group specified by the widget
+///
+/// Parameters:
+/// * [event] - The event that triggered the potential rebuild
+/// * [key] - The widget's key (reserved for future use)
+/// * [rebuildGroups] - The set of rebuild groups specified by the widget
+///
+/// Returns true if the widget should skip rebuilding, false if it should rebuild.
+bool denyRebuild({
+  EventBase? event,
+  Key? key,
+  required Set<String> rebuildGroups,
+}) {
+  if (rebuildGroups.contains(_optOut)) {
+    return true;
+  }
+  return !_isInRebuildGroup(event, rebuildGroups);
+}
+
+/// Internal helper to check if a widget's rebuild groups intersect with an event's groups.
+///
+/// Returns true if either:
+/// - The event specifies [rebuildAlways]
+/// - The event's rebuild groups overlap with the widget's rebuild groups
+///
+/// If the event has no rebuild groups specified, returns false (no rebuild).
+bool _isInRebuildGroup(EventBase? event, Set<String> rebuildGroups) {
+  final groups = event?.groupsToRebuild;
+  if (groups == null || groups.isEmpty) return false;
+  return groups.contains(_alwaysRebuild) ||
+      groups.intersection(rebuildGroups).isNotEmpty;
+}
+
+/// Internal helper for shared widget build logic.
+///
+/// Provides common functionality used by StatelessJuiceWidget and JuiceWidgetState
+/// variants to reduce code duplication.
+class JuiceWidgetSupport {
+  JuiceWidgetSupport._();
+
+  /// Wraps a build callback with error handling.
+  ///
+  /// If [onBuild] throws an exception, returns a [JuiceExceptionWidget]
+  /// displaying the error details instead of propagating the exception.
+  static Widget processWithErrorHandling({
+    required BuildContext context,
+    required StreamStatus status,
+    required Widget Function(BuildContext, StreamStatus) onBuild,
+  }) {
+    try {
+      return onBuild(context, status);
+    } catch (error, stackTrace) {
+      return JuiceExceptionWidget(
+        exception: error is Exception ? error : Exception(error),
+        stackTrace: stackTrace,
+      );
+    }
+  }
+}

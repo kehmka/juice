@@ -1,0 +1,42 @@
+name: juice_packages
+repository: https://github.com/kehmka/juice
+
+packages:
+  - packages/**
+
+command:
+  bootstrap:
+    usePubspecOverrides: true
+
+  version:
+    linkToCommits: true
+    workspaceChangelog: true
+
+scripts:
+  analyze:
+    run: melos exec -- flutter analyze
+    description: Run analyzer in all packages
+
+  test:
+    run: melos exec -- flutter test
+    description: Run tests in all packages
+
+  format:
+    run: melos exec -- dart format lib/ test/
+    description: Format all packages
+
+  format:check:
+    run: melos exec -- dart format --set-exit-if-changed lib/ test/
+    description: Check formatting in all packages
+
+  ci:
+    run: melos run format:check && melos run analyze && melos run test
+    description: Run full CI pipeline
+
+  publish:dry:
+    run: melos publish --dry-run
+    description: Dry run publish
+
+  publish:
+    run: melos publish --no-dry-run
+    description: Publish packages

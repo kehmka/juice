@@ -107,7 +107,7 @@ class _ArcadeScreenState extends State<ArcadeScreen> {
           await storage.secureWrite(key, value);
           break;
         case DemoBackend.sqlite:
-          // Create table if needed, then insert
+          // Create table if needed, then upsert
           await storage.sqliteRaw(
             'CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)',
           );

@@ -1,50 +1,8 @@
-name: juice
-description: "Juice is an opinionated, team-friendly, modular reactive state management framework for Flutter. It enforces clear boundaries and structured development, combining Clean Architecture-style use cases with a BLoC-inspired, stream-driven state model for predictable async workflows and scalable feature composition."
-version: 1.1.2
-
-repository: https://github.com/kehmka/juice
-issue_tracker: https://github.com/kehmka/juice/issues
-homepage: https://kehmka.github.io/juice/
-documentation: https://kehmka.github.io/juice/
-topics: [bloc, reactive, clean-architecture, state-management]
-# funding: [https://github.com/sponsors/kehmka]
+name: juice_workspace
+publish_to: none
 
 environment:
-  sdk: ^3.5.4
-
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
-dependencies:
-  flutter:
-    sdk: flutter
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  rxdart: ^0.28.0
-  logger: ^2.5.0
-  flutter_test:
-    sdk: flutter
+  sdk: '>=3.5.4 <4.0.0'
 
 dev_dependencies:
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^4.0.0
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
-flutter:
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
-  uses-material-design: true
+  melos: ^6.1.0

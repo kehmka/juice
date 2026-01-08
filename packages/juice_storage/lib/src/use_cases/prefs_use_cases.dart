@@ -49,9 +49,8 @@ class PrefsReadUseCase extends BlocUseCase<StorageBloc, PrefsReadEvent> {
       // Not expired: read and return value
       final value = await adapter.read(event.key);
 
-      // Emit update to signal success (no state change needed for reads)
-      emitUpdate(groupsToRebuild: {StorageBloc.groupPrefs});
-
+      // Emit status for sendAndWaitResult, but no rebuild groups (reads don't trigger rebuilds)
+      emitUpdate();
       event.succeed(value);
     } catch (e, st) {
       emitFailure(error: e, errorStackTrace: st);

@@ -22,6 +22,9 @@ class SecureReadUseCase extends BlocUseCase<StorageBloc, SecureReadEvent> {
       }
 
       final value = await adapter.read(event.key);
+
+      // Emit status for sendAndWaitResult (no rebuild groups for reads)
+      emitUpdate();
       event.succeed(value);
     } catch (e, st) {
       emitFailure(error: e, errorStackTrace: st);

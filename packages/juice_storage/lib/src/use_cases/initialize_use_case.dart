@@ -43,6 +43,10 @@ class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent>
           }
         }
 
+        // Initialize CacheIndex (uses Hive internally, must be after Hive.initFlutter)
+        // This must happen before opening user boxes so TTL tracking is ready
+        await cacheIndex.init();
+
         // Open configured boxes
         final hiveBoxes = <String, BoxInfo>{};
         for (final boxName in config.hiveBoxesToOpen) {
@@ -191,9 +195,6 @@ class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent>
           groupsToRebuild: {StorageBloc.groupInit},
         );
       }
-
-      // 5. Initialize Cache Index
-      await cacheIndex.init();
 
       // Mark as initialized
       emitUpdate(

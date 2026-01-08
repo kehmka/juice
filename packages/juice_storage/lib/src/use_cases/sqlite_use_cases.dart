@@ -20,6 +20,9 @@ class SqliteQueryUseCase extends BlocUseCase<StorageBloc, SqliteQueryEvent> {
       }
 
       final results = await gateway.query(event.sql, event.arguments);
+
+      // Emit status for sendAndWaitResult (no rebuild groups for queries)
+      emitUpdate();
       event.succeed(results);
     } catch (e, st) {
       emitFailure(error: e, errorStackTrace: st);
@@ -200,6 +203,9 @@ class SqliteRawUseCase extends BlocUseCase<StorageBloc, SqliteRawEvent> {
       }
 
       await gateway.execute(event.sql, event.arguments);
+
+      // Emit status for sendAndWaitResult
+      emitUpdate();
       event.succeed(null);
     } catch (e, st) {
       emitFailure(error: e, errorStackTrace: st);

@@ -3,6 +3,7 @@ import 'package:juice/juice.dart';
 import '../adapters/adapters.dart';
 import '../cache/cache_index.dart';
 import '../cache/cache_stats.dart';
+import '../core/storage_keys.dart';
 import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
@@ -32,18 +33,16 @@ class CacheCleanupUseCase extends BlocUseCase<StorageBloc, CacheCleanupEvent> {
 
       for (final meta in expiredEntries) {
         try {
-          // Parse storage key to determine backend
-          final parts = meta.storageKey.split(':');
-          if (parts.isEmpty) continue;
-
-          final backend = parts[0];
+          // Parse storage key using canonical parser
+          final parsed = StorageKeys.parse(meta.storageKey);
           var deleted = false;
 
-          switch (backend) {
+          switch (parsed.backend) {
             case 'hive':
-              if (parts.length >= 3) {
-                final box = parts[1];
-                final key = parts.sublist(2).join(':');
+              // parts[0] = box, parts[1] = key
+              if (parsed.parts.length >= 2) {
+                final box = parsed.parts[0];
+                final key = parsed.parts[1];
                 final adapter = HiveAdapterFactory.get<dynamic>(box);
                 if (adapter != null) {
                   await adapter.delete(key);
@@ -54,8 +53,9 @@ class CacheCleanupUseCase extends BlocUseCase<StorageBloc, CacheCleanupEvent> {
               break;
 
             case 'prefs':
-              if (parts.length >= 2) {
-                final key = parts.sublist(1).join(':');
+              // parts[0] = key
+              if (parsed.parts.isNotEmpty) {
+                final key = parsed.parts[0];
                 final adapter = PrefsAdapterFactory.instance;
                 if (adapter != null) {
                   await adapter.delete(key);

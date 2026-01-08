@@ -115,9 +115,8 @@ class HiveReadUseCase extends BlocUseCase<StorageBloc, HiveReadEvent> {
 
       final value = await adapter.read(event.key);
 
-      // Emit update to signal success (no state change needed for reads)
-      emitUpdate(groupsToRebuild: {StorageBloc.groupHive(event.box)});
-
+      // Emit status for sendAndWaitResult, but no rebuild groups (reads don't trigger rebuilds)
+      emitUpdate();
       event.succeed(value);
     } catch (e, st) {
       emitFailure(error: e, errorStackTrace: st);
@@ -154,15 +153,22 @@ class HiveWriteUseCase extends BlocUseCase<StorageBloc, HiveWriteEvent> {
         );
       }
 
-      await adapter.write(event.key, event.value);
-
-      // Set TTL if provided
       final storageKey = cacheIndex.canonicalKey('hive', event.key, event.box);
-      if (event.ttl != null) {
-        await cacheIndex.setExpiry(storageKey, event.ttl!);
-      } else {
-        // Remove any existing TTL
+
+      // Null value = delete (common cache semantics)
+      if (event.value == null) {
+        await adapter.delete(event.key);
         await cacheIndex.removeExpiry(storageKey);
+      } else {
+        await adapter.write(event.key, event.value);
+
+        // Set TTL if provided
+        if (event.ttl != null) {
+          await cacheIndex.setExpiry(storageKey, event.ttl!);
+        } else {
+          // Remove any existing TTL
+          await cacheIndex.removeExpiry(storageKey);
+        }
       }
 
       // Update entry count in state

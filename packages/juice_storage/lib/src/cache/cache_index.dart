@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:juice/juice.dart' show visibleForTesting;
+import '../core/storage_keys.dart';
 import 'cache_metadata.dart';
 
 /// Index for managing cache TTL metadata.
@@ -42,20 +43,24 @@ class CacheIndex {
     _initialized = false;
   }
 
-  /// Generate a canonical storage key.
+  /// Generate a canonical storage key for TTL-enabled backends.
   ///
-  /// Format: "{backend}:{box}:{key}" for Hive, "{backend}:{key}" for others.
+  /// Delegates to [StorageKeys] for consistent key format across the library.
+  /// Only 'hive' and 'prefs' backends support TTL.
+  ///
+  /// Format: "hive:{box}:{key}" for Hive, "prefs:{key}" for SharedPreferences.
   String canonicalKey(String backend, String key, [String? box]) {
-    if (backend == 'hive') {
-      if (box == null) {
-        throw ArgumentError('Box name required for Hive keys');
-      }
-      return 'hive:$box:$key';
+    switch (backend) {
+      case 'hive':
+        if (box == null) {
+          throw ArgumentError('Box name required for Hive keys');
+        }
+        return StorageKeys.hive(box, key);
+      case 'prefs':
+        return StorageKeys.prefs(key);
+      default:
+        throw ArgumentError('TTL not supported for backend: $backend');
     }
-    if (backend == 'prefs') {
-      return 'prefs:$key';
-    }
-    throw ArgumentError('TTL not supported for backend: $backend');
   }
 
   /// Set expiration for a storage key.

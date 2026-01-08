@@ -179,50 +179,56 @@ version: ## Show package version
 
 ROLLUPS_DIR := rollups
 
-# Helper to concatenate files into a rollup
+# Helper to concatenate files into a rollup (only if files exist)
 define make_rollup
-	@echo "// ROLLUP: $(2)" > $(1)
-	@echo "// Files: $$(echo $(3) | wc -w | tr -d ' ')" >> $(1)
-	@echo "// Generated: $$(date)" >> $(1)
-	@echo "" >> $(1)
-	@for f in $(3); do \
-		echo "// ═══════════════════════════════════════════════════════════════" >> $(1); \
-		echo "// FILE: $$f" >> $(1); \
-		echo "// ═══════════════════════════════════════════════════════════════" >> $(1); \
-		cat "$$f" >> $(1); \
+	@files="$(3)"; \
+	if [ -n "$$files" ] && [ "$$(echo $$files | wc -w | tr -d ' ')" -gt 0 ]; then \
+		echo "// ROLLUP: $(2)" > $(1); \
+		echo "// Files: $$(echo $$files | wc -w | tr -d ' ')" >> $(1); \
+		echo "// Generated: $$(date)" >> $(1); \
 		echo "" >> $(1); \
-	done
+		for f in $$files; do \
+			echo "// ═══════════════════════════════════════════════════════════════" >> $(1); \
+			echo "// FILE: $$f" >> $(1); \
+			echo "// ═══════════════════════════════════════════════════════════════" >> $(1); \
+			cat "$$f" >> $(1); \
+			echo "" >> $(1); \
+		done; \
+		echo "  $(GREEN)✓$(RESET) $$(basename $(1))"; \
+	fi
 endef
 
-rollups: rollups-clean ## Generate all rollup files (5-10 uploadable files)
+rollups: rollups-clean ## Generate all rollup files for all packages
 	@echo "$(CYAN)Generating rollups...$(RESET)"
 	@mkdir -p $(ROLLUPS_DIR)
-	@# 1. Library - BLoC Core (state management core)
-	$(call make_rollup,$(ROLLUPS_DIR)/1_lib_bloc.dart,Library BLoC Core,$$(find lib/src/bloc -name '*.dart' | sort))
-	@echo "  $(GREEN)✓$(RESET) 1_lib_bloc.dart"
-	@# 2. Library - UI Components
-	$(call make_rollup,$(ROLLUPS_DIR)/2_lib_ui.dart,Library UI Components,$$(find lib/src/ui -name '*.dart' | sort))
-	@echo "  $(GREEN)✓$(RESET) 2_lib_ui.dart"
-	@# 3. Library Tests
-	$(call make_rollup,$(ROLLUPS_DIR)/3_tests_lib.dart,Library Tests,$$(find test -name '*.dart' | sort))
-	@echo "  $(GREEN)✓$(RESET) 3_tests_lib.dart"
-	@# 4. Example - Core (main, config, services)
-	$(call make_rollup,$(ROLLUPS_DIR)/4_example_core.dart,Example App Core,example/lib/main.dart $$(find example/lib/config example/lib/services -name '*.dart' 2>/dev/null | sort))
-	@echo "  $(GREEN)✓$(RESET) 4_example_core.dart"
-	@# 5. Example - Counter & Todo (simple examples)
-	$(call make_rollup,$(ROLLUPS_DIR)/5_example_simple.dart,Example Simple Features,$$(find example/lib/blocs/counter example/lib/blocs/todo example/lib/blocs/settings -name '*.dart' 2>/dev/null | sort))
-	@echo "  $(GREEN)✓$(RESET) 5_example_simple.dart"
-	@# 6. Example - Complex features (chat, weather, form, file_upload)
-	$(call make_rollup,$(ROLLUPS_DIR)/6_example_complex.dart,Example Complex Features,$$(find example/lib/blocs/chat example/lib/blocs/weather example/lib/blocs/form example/lib/blocs/file_upload example/lib/blocs/onboard -name '*.dart' 2>/dev/null | sort))
-	@echo "  $(GREEN)✓$(RESET) 6_example_complex.dart"
-	@# 7. Example - App bloc
-	$(call make_rollup,$(ROLLUPS_DIR)/7_example_app.dart,Example App Bloc,$$(find example/lib/blocs/app -name '*.dart' 2>/dev/null | sort))
-	@echo "  $(GREEN)✓$(RESET) 7_example_app.dart"
-	@# 8. Example Tests
-	$(call make_rollup,$(ROLLUPS_DIR)/8_tests_example.dart,Example Tests,$$(find example/test -name '*.dart' | sort))
-	@echo "  $(GREEN)✓$(RESET) 8_tests_example.dart"
 	@echo ""
-	@echo "$(GREEN)Generated $$(ls -1 $(ROLLUPS_DIR)/*.dart | wc -l | tr -d ' ') rollup files in $(ROLLUPS_DIR)/$(RESET)"
+	@echo "$(YELLOW)── packages/juice (core) ──$(RESET)"
+	@# juice - BLoC Core
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_bloc.dart,juice - BLoC Core,$$(find packages/juice/lib/src/bloc -name '*.dart' 2>/dev/null | sort))
+	@# juice - UI Components
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_ui.dart,juice - UI Components,$$(find packages/juice/lib/src/ui -name '*.dart' 2>/dev/null | sort))
+	@# juice - Tests
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_tests.dart,juice - Tests,$$(find packages/juice/test -name '*.dart' 2>/dev/null | sort))
+	@echo ""
+	@echo "$(YELLOW)── packages/juice_storage ──$(RESET)"
+	@# juice_storage - Library
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_storage_lib.dart,juice_storage - Library,$$(find packages/juice_storage/lib -name '*.dart' 2>/dev/null | sort))
+	@# juice_storage - Tests
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_storage_tests.dart,juice_storage - Tests,$$(find packages/juice_storage/test -name '*.dart' 2>/dev/null | sort))
+	@# juice_storage - Example
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_storage_example.dart,juice_storage - Example App,$$(find packages/juice_storage/example/lib -name '*.dart' 2>/dev/null | sort))
+	@# juice_storage - Example Tests
+	$(call make_rollup,$(ROLLUPS_DIR)/juice_storage_example_tests.dart,juice_storage - Example Tests,$$(find packages/juice_storage/example/test -name '*.dart' 2>/dev/null | sort))
+	@echo ""
+	@echo "$(YELLOW)── example (root demo app) ──$(RESET)"
+	@# Root Example - Core (main, config, services)
+	$(call make_rollup,$(ROLLUPS_DIR)/example_core.dart,Root Example - Core,example/lib/main.dart $$(find example/lib/config example/lib/services -name '*.dart' 2>/dev/null | sort))
+	@# Root Example - BLoCs
+	$(call make_rollup,$(ROLLUPS_DIR)/example_blocs.dart,Root Example - BLoCs,$$(find example/lib/blocs -name '*.dart' 2>/dev/null | sort))
+	@# Root Example - Tests
+	$(call make_rollup,$(ROLLUPS_DIR)/example_tests.dart,Root Example - Tests,$$(find example/test -name '*.dart' 2>/dev/null | sort))
+	@echo ""
+	@echo "$(GREEN)Generated $$(ls -1 $(ROLLUPS_DIR)/*.dart 2>/dev/null | wc -l | tr -d ' ') rollup files in $(ROLLUPS_DIR)/$(RESET)"
 	@make --no-print-directory rollups-list
 
 rollups-clean: ## Remove existing rollups
@@ -232,7 +238,7 @@ rollups-list: ## List all generated rollup files with sizes
 	@echo ""
 	@echo "$(CYAN)Rollup Files:$(RESET)"
 	@echo ""
-	@if [ -d "$(ROLLUPS_DIR)" ]; then \
+	@if [ -d "$(ROLLUPS_DIR)" ] && [ "$$(ls -A $(ROLLUPS_DIR)/*.dart 2>/dev/null)" ]; then \
 		for f in $(ROLLUPS_DIR)/*.dart; do \
 			lines=$$(wc -l < "$$f" | tr -d ' '); \
 			files=$$(grep -c "^// FILE:" "$$f" || echo 0); \

@@ -1,120 +1,130 @@
+// ignore_for_file: must_be_immutable
+
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 
 import '../widgets/event_log.dart';
 
 /// Inspector screen showing StorageState, cache stats, and live event log.
-class InspectorScreen extends StatelessWidget {
-  const InspectorScreen({super.key});
+///
+/// Demonstrates proper Juice patterns:
+/// - [StatelessJuiceWidget] observes [StorageBloc]
+/// - Targeted rebuild groups for storage updates
+class InspectorScreen extends StatelessJuiceWidget<StorageBloc> {
+  InspectorScreen({super.key})
+      : super(
+          groups: const {
+            'storage:init',
+            'storage:prefs',
+            'storage:hive',
+            'storage:sqlite',
+            'storage:secure',
+          },
+        );
 
   @override
-  Widget build(BuildContext context) {
-    return JuiceBuilder<StorageBloc>(
-      groups: const {'*'},
-      builder: (context, storage, status) {
-        final s = storage.state;
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final s = bloc.state;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Inspector'),
-            actions: [
-              IconButton(
-                tooltip: 'Clear all storage',
-                onPressed: s.isInitialized
-                    ? () => _confirmClearAll(context, storage)
-                    : null,
-                icon: const Icon(Icons.delete_forever),
-              ),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Inspector'),
+        actions: [
+          IconButton(
+            tooltip: 'Clear all storage',
+            onPressed: s.isInitialized
+                ? () => _confirmClearAll(context)
+                : null,
+            icon: const Icon(Icons.delete_forever),
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(12),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          // Storage State Card
+          _SectionCard(
+            title: 'Storage State',
+            icon: Icons.storage,
             children: [
-              // Storage State Card
-              _SectionCard(
-                title: 'Storage State',
-                icon: Icons.storage,
-                children: [
-                  _InfoRow('isInitialized', s.isInitialized.toString()),
-                  _InfoRow(
-                      'secureStorageAvailable', s.secureStorageAvailable.toString()),
-                  _InfoRow(
-                    'Hive boxes',
-                    s.hiveBoxes.isEmpty
-                        ? 'none'
-                        : s.hiveBoxes.entries
-                            .map((e) => '${e.key}(${e.value.entryCount})')
-                            .join(', '),
-                  ),
-                  _InfoRow(
-                    'SQLite tables',
-                    s.sqliteTables.isEmpty
-                        ? 'none'
-                        : s.sqliteTables.entries
-                            .map((e) => '${e.key}(${e.value.rowCount})')
-                            .join(', '),
-                  ),
-                ],
+              _InfoRow('isInitialized', s.isInitialized.toString()),
+              _InfoRow(
+                  'secureStorageAvailable', s.secureStorageAvailable.toString()),
+              _InfoRow(
+                'Hive boxes',
+                s.hiveBoxes.isEmpty
+                    ? 'none'
+                    : s.hiveBoxes.entries
+                        .map((e) => '${e.key}(${e.value.entryCount})')
+                        .join(', '),
               ),
-              const SizedBox(height: 12),
-
-              // Backend Status Card
-              _SectionCard(
-                title: 'Backend Status',
-                icon: Icons.check_circle_outline,
-                children: [
-                  _StatusRow('Hive', s.backendStatus.hive),
-                  _StatusRow('Prefs', s.backendStatus.prefs),
-                  _StatusRow('SQLite', s.backendStatus.sqlite),
-                  _StatusRow('Secure', s.backendStatus.secure),
-                ],
+              _InfoRow(
+                'SQLite tables',
+                s.sqliteTables.isEmpty
+                    ? 'none'
+                    : s.sqliteTables.entries
+                        .map((e) => '${e.key}(${e.value.rowCount})')
+                        .join(', '),
               ),
-              const SizedBox(height: 12),
-
-              // Cache Stats Card
-              _SectionCard(
-                title: 'Cache Stats',
-                icon: Icons.timer,
-                children: [
-                  _InfoRow('Metadata entries', s.cacheStats.metadataCount.toString()),
-                  _InfoRow('Expired entries', s.cacheStats.expiredCount.toString()),
-                  _InfoRow(
-                    'Last cleanup',
-                    s.cacheStats.lastCleanupAt == null
-                        ? 'never'
-                        : _formatTime(s.cacheStats.lastCleanupAt!),
-                  ),
-                  _InfoRow(
-                    'Last cleanup removed',
-                    s.cacheStats.lastCleanupCleanedCount.toString(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Last Error Card (if any)
-              if (s.lastError != null) ...[
-                _SectionCard(
-                  title: 'Last Error',
-                  icon: Icons.error_outline,
-                  color: Theme.of(context).colorScheme.error,
-                  children: [
-                    _InfoRow('Type', s.lastError!.type.name),
-                    _InfoRow('Message', s.lastError!.message),
-                    if (s.lastError!.storageKey != null)
-                      _InfoRow('Key', s.lastError!.storageKey!),
-                    _InfoRow('Time', _formatTime(s.lastError!.timestamp)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // Event Log Card
-              const EventLogCard(),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 12),
+
+          // Backend Status Card
+          _SectionCard(
+            title: 'Backend Status',
+            icon: Icons.check_circle_outline,
+            children: [
+              _StatusRow('Hive', s.backendStatus.hive),
+              _StatusRow('Prefs', s.backendStatus.prefs),
+              _StatusRow('SQLite', s.backendStatus.sqlite),
+              _StatusRow('Secure', s.backendStatus.secure),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Cache Stats Card
+          _SectionCard(
+            title: 'Cache Stats',
+            icon: Icons.timer,
+            children: [
+              _InfoRow('Metadata entries', s.cacheStats.metadataCount.toString()),
+              _InfoRow('Expired entries', s.cacheStats.expiredCount.toString()),
+              _InfoRow(
+                'Last cleanup',
+                s.cacheStats.lastCleanupAt == null
+                    ? 'never'
+                    : _formatTime(s.cacheStats.lastCleanupAt!),
+              ),
+              _InfoRow(
+                'Last cleanup removed',
+                s.cacheStats.lastCleanupCleanedCount.toString(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Last Error Card (if any)
+          if (s.lastError != null) ...[
+            _SectionCard(
+              title: 'Last Error',
+              icon: Icons.error_outline,
+              color: Theme.of(context).colorScheme.error,
+              children: [
+                _InfoRow('Type', s.lastError!.type.name),
+                _InfoRow('Message', s.lastError!.message),
+                if (s.lastError!.storageKey != null)
+                  _InfoRow('Key', s.lastError!.storageKey!),
+                _InfoRow('Time', _formatTime(s.lastError!.timestamp)),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Event Log Card
+          const EventLogCard(),
+        ],
+      ),
     );
   }
 
@@ -124,7 +134,7 @@ class InspectorScreen extends StatelessWidget {
         '${dt.second.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _confirmClearAll(BuildContext context, StorageBloc storage) async {
+  Future<void> _confirmClearAll(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -147,7 +157,7 @@ class InspectorScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      await storage.clearAll();
+      await bloc.clearAll();
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 
+import 'blocs/arcade_demo_bloc.dart';
 import 'screens/arcade_screen.dart';
 import 'screens/inspector_screen.dart';
 
@@ -25,6 +26,15 @@ Future<void> main() async {
   // Initialize storage before running app
   final storage = BlocScope.get<StorageBloc>();
   await storage.initialize();
+
+  // Register ArcadeDemoBloc as leased (lives with Arcade screen)
+  // Uses BlocScope.get<StorageBloc>() internally for cross-bloc communication
+  if (!BlocScope.isRegistered<ArcadeDemoBloc>()) {
+    BlocScope.register<ArcadeDemoBloc>(
+      () => ArcadeDemoBloc(),
+      lifecycle: BlocLifecycle.leased,
+    );
+  }
 
   runApp(const StorageArcadeApp());
 }
@@ -65,8 +75,8 @@ class _HomeState extends State<_Home> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const ArcadeScreen(),
-      const InspectorScreen(),
+      ArcadeScreen(),
+      InspectorScreen(),
     ];
 
     return Scaffold(

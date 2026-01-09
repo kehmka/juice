@@ -13,6 +13,7 @@ class ArcadeDemoState extends BlocState {
     this.valueText = '{"data": "hello"}',
     this.currentTime,
     this.isOperationInProgress = false,
+    this.evictionsByBackend = const {},
   });
 
   /// List of demo entries (displayed in the UI).
@@ -39,6 +40,25 @@ class ArcadeDemoState extends BlocState {
   /// Whether an async operation is in progress.
   final bool isOperationInProgress;
 
+  /// Cumulative eviction counts by backend type.
+  final Map<DemoBackend, int> evictionsByBackend;
+
+  /// Total evictions across all backends.
+  int get totalEvictions => evictionsByBackend.values.fold(0, (a, b) => a + b);
+
+  /// Formatted eviction summary for display.
+  String get evictionSummary {
+    if (totalEvictions == 0) return 'No evictions yet';
+    final parts = <String>[];
+    for (final backend in DemoBackend.values) {
+      final count = evictionsByBackend[backend] ?? 0;
+      if (count > 0) {
+        parts.add('${backend.name}: $count');
+      }
+    }
+    return 'Evicted $totalEvictions total (${parts.join(', ')})';
+  }
+
   /// Whether TTL is supported for the selected backend.
   bool get ttlSupported =>
       selectedBackend == DemoBackend.prefs ||
@@ -56,6 +76,7 @@ class ArcadeDemoState extends BlocState {
     String? valueText,
     DateTime? currentTime,
     bool? isOperationInProgress,
+    Map<DemoBackend, int>? evictionsByBackend,
   }) {
     return ArcadeDemoState(
       entries: entries ?? this.entries,
@@ -67,6 +88,7 @@ class ArcadeDemoState extends BlocState {
       currentTime: currentTime ?? this.currentTime,
       isOperationInProgress:
           isOperationInProgress ?? this.isOperationInProgress,
+      evictionsByBackend: evictionsByBackend ?? this.evictionsByBackend,
     );
   }
 }

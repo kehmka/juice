@@ -16,7 +16,8 @@ Future<void> main() async {
           prefsKeyPrefix: 'arcade_',
           hiveBoxesToOpen: ['arcade_box'],
           sqliteDatabaseName: 'arcade.db',
-          enableBackgroundCleanup: false, // We'll trigger manually in demo
+          enableBackgroundCleanup: true,
+          cacheCleanupInterval: Duration(seconds: 1), // Fast cleanup for demo
         ),
       ),
       lifecycle: BlocLifecycle.permanent,

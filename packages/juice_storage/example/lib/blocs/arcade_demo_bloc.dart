@@ -103,6 +103,9 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
 }
 
 /// Stateful use case that manages a timer for countdown updates.
+///
+/// Also filters out expired entries from the UI list, syncing with
+/// StorageBloc's background cleanup. Tracks cumulative evictions by backend.
 class _TickUseCase extends BlocUseCase<ArcadeDemoBloc, TickEvent> {
   Timer? _timer;
 
@@ -113,9 +116,44 @@ class _TickUseCase extends BlocUseCase<ArcadeDemoBloc, TickEvent> {
       bloc.send(TickEvent());
     });
 
+    final now = DateTime.now();
+    final entries = bloc.state.entries;
+
+    // Partition entries into active and expired
+    final activeEntries = <DemoEntry>[];
+    final expiredEntries = <DemoEntry>[];
+    for (final entry in entries) {
+      if (entry.isExpired(now)) {
+        expiredEntries.add(entry);
+      } else {
+        activeEntries.add(entry);
+      }
+    }
+
+    // Accumulate evictions by backend type
+    Map<DemoBackend, int>? updatedEvictions;
+    if (expiredEntries.isNotEmpty) {
+      updatedEvictions = Map<DemoBackend, int>.from(bloc.state.evictionsByBackend);
+      for (final entry in expiredEntries) {
+        updatedEvictions[entry.backend] =
+            (updatedEvictions[entry.backend] ?? 0) + 1;
+      }
+    }
+
+    // Determine which groups need rebuild
+    final groups = <String>{ArcadeDemoBloc.groupTime};
+    if (expiredEntries.isNotEmpty) {
+      groups.add(ArcadeDemoBloc.groupEntries);
+      groups.add(ArcadeDemoBloc.groupBanner);
+    }
+
     emitUpdate(
-      newState: bloc.state.copyWith(currentTime: DateTime.now()),
-      groupsToRebuild: {ArcadeDemoBloc.groupTime},
+      newState: bloc.state.copyWith(
+        currentTime: now,
+        entries: activeEntries,
+        evictionsByBackend: updatedEvictions,
+      ),
+      groupsToRebuild: groups,
     );
   }
 

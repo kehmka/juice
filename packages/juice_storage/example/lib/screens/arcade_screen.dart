@@ -78,42 +78,81 @@ class ArcadeScreen
   }
 }
 
-/// Banner showing last operation result.
+/// Banner showing last operation result and eviction stats.
 class _Banner extends StatelessJuiceWidget<ArcadeDemoBloc> {
   _Banner() : super(groups: const {ArcadeDemoBloc.groupBanner});
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
-    final banner = bloc.state.banner;
+    final state = bloc.state;
+    final banner = state.banner;
+    final evictionSummary = state.evictionSummary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          key: ValueKey(banner),
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.terminal, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  banner,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
+      child: Column(
+        children: [
+          // Operation banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.terminal, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    banner,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          // Eviction stats
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: state.totalEvictions > 0
+                  ? Theme.of(context).colorScheme.errorContainer
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_delete,
+                  size: 18,
+                  color: state.totalEvictions > 0
+                      ? Theme.of(context).colorScheme.onErrorContainer
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    evictionSummary,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: state.totalEvictions > 0
+                          ? Theme.of(context).colorScheme.onErrorContainer
+                          : Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -112,6 +112,8 @@ class SqliteUpdateUseCase extends BlocUseCase<StorageBloc, SqliteUpdateEvent> {
         whereArgs: event.whereArgs,
       );
 
+      // Note: Unlike insert/delete, updates don't change row count,
+      // so we only emit rebuild groups without state changes.
       emitUpdate(
         groupsToRebuild: {StorageBloc.groupSqlite(event.table)},
       );

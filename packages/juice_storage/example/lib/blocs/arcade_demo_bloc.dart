@@ -32,22 +32,42 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
 
   static List<UseCaseBuilderGenerator> _buildUseCases() {
     return [
-      // Simple state updates
-      () => UseCaseBuilder(
+      // Simple state updates - using InlineUseCaseBuilder
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateKeyEvent>(
             typeOfEvent: UpdateKeyEvent,
-            useCaseGenerator: () => _UpdateKeyUseCase(),
+            handler: (ctx, event) async {
+              ctx.emit.update(
+                newState: ctx.state.copyWith(keyText: event.key),
+                groups: {groupForm},
+              );
+            },
           ),
-      () => UseCaseBuilder(
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateValueEvent>(
             typeOfEvent: UpdateValueEvent,
-            useCaseGenerator: () => _UpdateValueUseCase(),
+            handler: (ctx, event) async {
+              ctx.emit.update(
+                newState: ctx.state.copyWith(valueText: event.value),
+                groups: {groupForm},
+              );
+            },
           ),
-      () => UseCaseBuilder(
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, SelectBackendEvent>(
             typeOfEvent: SelectBackendEvent,
-            useCaseGenerator: () => _SelectBackendUseCase(),
+            handler: (ctx, event) async {
+              ctx.emit.update(
+                newState: ctx.state.copyWith(selectedBackend: event.backend),
+                groups: {groupForm},
+              );
+            },
           ),
-      () => UseCaseBuilder(
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateTtlEvent>(
             typeOfEvent: UpdateTtlEvent,
-            useCaseGenerator: () => _UpdateTtlUseCase(),
+            handler: (ctx, event) async {
+              ctx.emit.update(
+                newState: ctx.state.copyWith(ttlSeconds: event.seconds),
+                groups: {groupForm},
+              );
+            },
           ),
 
       // Storage operations
@@ -79,49 +99,6 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
             initialEventBuilder: () => TickEvent(),
           ),
     ];
-  }
-}
-
-// --- Simple state update use cases ---
-
-class _UpdateKeyUseCase extends BlocUseCase<ArcadeDemoBloc, UpdateKeyEvent> {
-  @override
-  Future<void> execute(UpdateKeyEvent event) async {
-    emitUpdate(
-      newState: bloc.state.copyWith(keyText: event.key),
-      groupsToRebuild: {ArcadeDemoBloc.groupForm},
-    );
-  }
-}
-
-class _UpdateValueUseCase extends BlocUseCase<ArcadeDemoBloc, UpdateValueEvent> {
-  @override
-  Future<void> execute(UpdateValueEvent event) async {
-    emitUpdate(
-      newState: bloc.state.copyWith(valueText: event.value),
-      groupsToRebuild: {ArcadeDemoBloc.groupForm},
-    );
-  }
-}
-
-class _SelectBackendUseCase
-    extends BlocUseCase<ArcadeDemoBloc, SelectBackendEvent> {
-  @override
-  Future<void> execute(SelectBackendEvent event) async {
-    emitUpdate(
-      newState: bloc.state.copyWith(selectedBackend: event.backend),
-      groupsToRebuild: {ArcadeDemoBloc.groupForm},
-    );
-  }
-}
-
-class _UpdateTtlUseCase extends BlocUseCase<ArcadeDemoBloc, UpdateTtlEvent> {
-  @override
-  Future<void> execute(UpdateTtlEvent event) async {
-    emitUpdate(
-      newState: bloc.state.copyWith(ttlSeconds: event.seconds),
-      groupsToRebuild: {ArcadeDemoBloc.groupForm},
-    );
   }
 }
 

@@ -1,16 +1,35 @@
-# juice_storage_example
+# Storage Arcade - juice_storage Example
 
-A new Flutter project.
+An interactive demo app showcasing all features of the `juice_storage` package.
 
-## Getting Started
+## Features Demonstrated
 
-This project is a starting point for a Flutter application.
+- **Multiple Storage Backends**: Hive, SharedPreferences, SQLite, and Secure Storage
+- **TTL Caching**: Create entries with configurable TTL and watch them expire
+- **Automatic Eviction**: Background cleanup removes expired entries in real-time
+- **Live Event Log**: See all storage events as they happen
+- **Storage Inspector**: Browse contents of all storage backends
 
-A few resources to get you started if this is your first Flutter project:
+## Running the Example
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+cd packages/juice_storage/example
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Screens
+
+### Arcade Screen
+Interactive storage playground:
+- Create entries with different backends
+- Set TTL values and watch countdown timers
+- Spawn "time bombs" (entries with short TTL)
+- Manual cache cleanup trigger
+- Cumulative eviction tracking by backend
+
+### Inspector Screen
+Storage browser:
+- View all Hive boxes and their contents
+- Browse SharedPreferences entries
+- Query SQLite tables
+- Check Secure Storage keys

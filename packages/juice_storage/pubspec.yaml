@@ -1,8 +1,11 @@
 name: juice_storage
 description: Local storage, caching, and secure storage for the Juice framework. Supports Hive, SharedPreferences, SQLite, and flutter_secure_storage.
-version: 0.1.0
-homepage: https://github.com/kehmka/juice
+version: 0.8.0
+
+homepage: https://kehmka.github.io/juice/
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_storage
+issue_tracker: https://github.com/kehmka/juice/issues
+topics: [storage, cache, hive, sqlite, bloc]
 
 environment:
   sdk: '>=3.5.4 <4.0.0'

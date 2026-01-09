@@ -6,6 +6,7 @@ homepage: https://kehmka.github.io/juice/
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_storage
 issue_tracker: https://github.com/kehmka/juice/issues
 topics: [storage, cache, hive, sqlite, bloc]
+funding: [https://github.com/sponsors/kehmka]
 
 environment:
   sdk: '>=3.5.4 <4.0.0'

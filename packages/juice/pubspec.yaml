@@ -7,7 +7,7 @@ issue_tracker: https://github.com/kehmka/juice/issues
 homepage: https://kehmka.github.io/juice/
 documentation: https://kehmka.github.io/juice/
 topics: [bloc, reactive, clean-architecture, state-management]
-# funding: [https://github.com/sponsors/kehmka]
+funding: [https://github.com/sponsors/kehmka]
 
 environment:
   sdk: ^3.5.4

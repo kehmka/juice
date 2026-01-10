@@ -164,7 +164,8 @@ class SqliteDeleteUseCase extends BlocUseCase<StorageBloc, SqliteDeleteEvent> {
           if (current != null) {
             tables[event.table] = TableInfo(
               name: current.name,
-              rowCount: (current.rowCount - rowsDeleted).clamp(0, current.rowCount),
+              rowCount:
+                  (current.rowCount - rowsDeleted).clamp(0, current.rowCount),
             );
           }
           return bloc.state.copyWith(sqliteTables: tables);

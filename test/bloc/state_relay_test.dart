@@ -145,7 +145,8 @@ void main() {
 
     test('StateRelay transforms and forwards state changes', () async {
       final relay = StateRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (state) => UpdateMessageEvent(message: 'count: ${state.counter}'),
+        toEvent: (state) =>
+            UpdateMessageEvent(message: 'count: ${state.counter}'),
         resolver: resolver,
       );
 
@@ -166,7 +167,8 @@ void main() {
 
     test('StateRelay filters with when predicate', () async {
       final relay = StateRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (state) => UpdateMessageEvent(message: 'active: ${state.counter}'),
+        toEvent: (state) =>
+            UpdateMessageEvent(message: 'active: ${state.counter}'),
         when: (state) => state.isActive,
         resolver: resolver,
       );
@@ -221,7 +223,8 @@ void main() {
 
     test('StateRelay stops relaying after close', () async {
       final relay = StateRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (state) => UpdateMessageEvent(message: 'count: ${state.counter}'),
+        toEvent: (state) =>
+            UpdateMessageEvent(message: 'count: ${state.counter}'),
         resolver: resolver,
       );
 
@@ -309,7 +312,8 @@ void main() {
       final relay = StatusRelay<SourceBloc, DestBloc, SourceState>(
         toEvent: (status) {
           if (status is UpdatingStatus<SourceState>) {
-            return UpdateMessageEvent(message: 'updating: ${status.state.counter}');
+            return UpdateMessageEvent(
+                message: 'updating: ${status.state.counter}');
           }
           return UpdateMessageEvent(message: 'other status');
         },
@@ -328,7 +332,8 @@ void main() {
 
     test('StatusRelay filters with when predicate on status', () async {
       final relay = StatusRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (status) => UpdateMessageEvent(message: 'count: ${status.state.counter}'),
+        toEvent: (status) =>
+            UpdateMessageEvent(message: 'count: ${status.state.counter}'),
         when: (status) => status is UpdatingStatus<SourceState>,
         resolver: resolver,
       );
@@ -360,7 +365,8 @@ void main() {
 
     test('StatusRelay stops relaying after close', () async {
       final relay = StatusRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (status) => UpdateMessageEvent(message: 'count: ${status.state.counter}'),
+        toEvent: (status) =>
+            UpdateMessageEvent(message: 'count: ${status.state.counter}'),
         resolver: resolver,
       );
 
@@ -420,12 +426,14 @@ void main() {
       });
 
       final relay1 = StateRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (state) => UpdateMessageEvent(message: 'relay1: ${state.counter}'),
+        toEvent: (state) =>
+            UpdateMessageEvent(message: 'relay1: ${state.counter}'),
         resolver: resolver1,
       );
 
       final relay2 = StateRelay<SourceBloc, DestBloc, SourceState>(
-        toEvent: (state) => UpdateMessageEvent(message: 'relay2: ${state.counter}'),
+        toEvent: (state) =>
+            UpdateMessageEvent(message: 'relay2: ${state.counter}'),
         resolver: resolver2,
       );
 

@@ -74,7 +74,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
       // Initialize
       () => UseCaseBuilder(
             typeOfEvent: InitializeStorageEvent,
-            useCaseGenerator: () => InitializeUseCase(config: config, cacheIndex: cacheIndex),
+            useCaseGenerator: () =>
+                InitializeUseCase(config: config, cacheIndex: cacheIndex),
           ),
 
       // Hive
@@ -228,7 +229,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
   ///
   /// Returns null if the key doesn't exist or has expired (TTL).
   Future<T?> hiveRead<T>(String box, String key) async {
-    final value = await sendForResult<Object?>(HiveReadEvent(box: box, key: key));
+    final value =
+        await sendForResult<Object?>(HiveReadEvent(box: box, key: key));
     return value as T?;
   }
 
@@ -278,7 +280,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
 
   /// Write a value to SharedPreferences with optional TTL.
   Future<void> prefsWrite<T>(String key, T value, {Duration? ttl}) async {
-    await sendForResult<void>(PrefsWriteEvent(key: key, value: value, ttl: ttl));
+    await sendForResult<void>(
+        PrefsWriteEvent(key: key, value: value, ttl: ttl));
   }
 
   /// Delete a value from SharedPreferences.
@@ -392,7 +395,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
   }
 
   /// Clear all storage (logout scenario).
-  Future<void> clearAll([ClearAllOptions options = const ClearAllOptions()]) async {
+  Future<void> clearAll(
+      [ClearAllOptions options = const ClearAllOptions()]) async {
     await sendForResult<void>(ClearAllEvent(options: options));
   }
 

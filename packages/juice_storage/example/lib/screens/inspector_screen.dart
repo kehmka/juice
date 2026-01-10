@@ -32,9 +32,7 @@ class InspectorScreen extends StatelessJuiceWidget<StorageBloc> {
         actions: [
           IconButton(
             tooltip: 'Clear all storage',
-            onPressed: s.isInitialized
-                ? () => _confirmClearAll(context)
-                : null,
+            onPressed: s.isInitialized ? () => _confirmClearAll(context) : null,
             icon: const Icon(Icons.delete_forever),
           ),
         ],
@@ -48,8 +46,8 @@ class InspectorScreen extends StatelessJuiceWidget<StorageBloc> {
             icon: Icons.storage,
             children: [
               _InfoRow('isInitialized', s.isInitialized.toString()),
-              _InfoRow(
-                  'secureStorageAvailable', s.secureStorageAvailable.toString()),
+              _InfoRow('secureStorageAvailable',
+                  s.secureStorageAvailable.toString()),
               _InfoRow(
                 'Hive boxes',
                 s.hiveBoxes.isEmpty
@@ -88,7 +86,8 @@ class InspectorScreen extends StatelessJuiceWidget<StorageBloc> {
             title: 'Cache Stats',
             icon: Icons.timer,
             children: [
-              _InfoRow('Metadata entries', s.cacheStats.metadataCount.toString()),
+              _InfoRow(
+                  'Metadata entries', s.cacheStats.metadataCount.toString()),
               _InfoRow('Expired entries', s.cacheStats.expiredCount.toString()),
               _InfoRow(
                 'Last cleanup',

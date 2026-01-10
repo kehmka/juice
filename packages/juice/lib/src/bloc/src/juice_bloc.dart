@@ -333,7 +333,8 @@ class JuiceBloc<TState extends BlocState>
               skipIfSame: skipIfSame),
       emitWaiting: (newState, groups) =>
           _statusEmitter.emitWaiting(event, newState, groups),
-      emitFailure: (newState, groups, {Object? error, StackTrace? errorStackTrace}) =>
+      emitFailure: (newState, groups,
+              {Object? error, StackTrace? errorStackTrace}) =>
           _statusEmitter.emitFailure(event, newState, groups,
               error: error, errorStackTrace: errorStackTrace),
       emitCancel: (newState, groups) =>

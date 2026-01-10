@@ -134,8 +134,10 @@ class JuiceSelector<TBloc extends JuiceBloc<TState>, TState extends BlocState,
       _JuiceSelectorState<TBloc, TState, T>();
 }
 
-class _JuiceSelectorState<TBloc extends JuiceBloc<TState>,
-    TState extends BlocState, T> extends State<JuiceSelector<TBloc, TState, T>> {
+class _JuiceSelectorState<
+    TBloc extends JuiceBloc<TState>,
+    TState extends BlocState,
+    T> extends State<JuiceSelector<TBloc, TState, T>> {
   late TBloc _bloc;
   late T _selectedValue;
   late Stream<T> _selectedStream;
@@ -218,9 +220,10 @@ class JuiceSelectorWith<TBloc extends JuiceBloc<TState>,
       _JuiceSelectorWithState<TBloc, TState, T>();
 }
 
-class _JuiceSelectorWithState<TBloc extends JuiceBloc<TState>,
-        TState extends BlocState, T>
-    extends State<JuiceSelectorWith<TBloc, TState, T>> {
+class _JuiceSelectorWithState<
+    TBloc extends JuiceBloc<TState>,
+    TState extends BlocState,
+    T> extends State<JuiceSelectorWith<TBloc, TState, T>> {
   late TBloc _bloc;
   late T _selectedValue;
   late Stream<T> _selectedStream;

@@ -8,7 +8,7 @@ void main() {
     group('Basic Bloc Tests', () {
       simple_bloc_test.main();
     });
-    
+
     group('StreamStatus Tests', () {
       stream_status_test.main();
     });

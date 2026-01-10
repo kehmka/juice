@@ -11,25 +11,37 @@ void main() {
       bloc = TestBloc(initialState: TestState(value: 0));
       useCase = TestUseCase();
       useCase.bloc = bloc;
-      
+
       // Set up emitter functions that the test use case needs
-      useCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
+      useCase.emitUpdate = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          bool skipIfSame = false}) {
         bloc.emit(StreamStatus.updating(
           newState as TestState? ?? bloc.state,
           bloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
-      useCase.emitWaiting = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+
+      useCase.emitWaiting =
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
         bloc.emit(StreamStatus.waiting(
           newState as TestState? ?? bloc.state,
           bloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
-      useCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
+
+      useCase.emitFailure = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          Object? error,
+          StackTrace? errorStackTrace}) {
         bloc.emit(StreamStatus.failure(
           newState as TestState? ?? bloc.state,
           bloc.state,
@@ -38,15 +50,16 @@ void main() {
           errorStackTrace: errorStackTrace,
         ));
       };
-      
-      useCase.emitCancel = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+
+      useCase.emitCancel =
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
         bloc.emit(StreamStatus.canceling(
           newState as TestState? ?? bloc.state,
           bloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
+
       useCase.emitEvent = ({EventBase? event}) {
         if (event != null) {
           bloc.send(event);
@@ -85,8 +98,12 @@ void main() {
     test('emitWaiting emits correct status', () async {
       // Replace emitUpdate with mock function to track calls
       bool updateCalled = false;
-      useCase.emitUpdate =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
+      useCase.emitUpdate = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          bool skipIfSame = false}) {
         updateCalled = true;
       };
 
@@ -97,9 +114,9 @@ void main() {
       // Create custom use case with waiting
       final waitingUseCase = CustomWaitingUseCase();
       waitingUseCase.bloc = bloc;
-      
+
       // Set up all emitter functions
-      waitingUseCase.emitWaiting = 
+      waitingUseCase.emitWaiting =
           ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
         bloc.emit(StreamStatus.waiting(
           newState as TestState? ?? bloc.state,
@@ -127,8 +144,12 @@ void main() {
     test('emitFailure emits correct status', () async {
       // Replace emitUpdate with mock function to track calls
       bool updateCalled = false;
-      useCase.emitUpdate =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
+      useCase.emitUpdate = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          bool skipIfSame = false}) {
         updateCalled = true;
       };
 
@@ -139,10 +160,15 @@ void main() {
       // Create custom use case with failure
       final failureUseCase = CustomFailureUseCase();
       failureUseCase.bloc = bloc;
-      
+
       // Set up all emitter functions
-      failureUseCase.emitFailure =
-          ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
+      failureUseCase.emitFailure = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          Object? error,
+          StackTrace? errorStackTrace}) {
         bloc.emit(StreamStatus.failure(
           newState as TestState? ?? bloc.state,
           bloc.state,
@@ -182,25 +208,37 @@ void main() {
       relayUseCase = RelayTestUseCase();
       relayUseCase.bloc = sourceBloc;
       relayUseCase.targetBloc = targetBloc;
-      
+
       // Set up emitter functions
-      relayUseCase.emitUpdate = ({newState, aviatorName, aviatorArgs, groupsToRebuild, bool skipIfSame = false}) {
+      relayUseCase.emitUpdate = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          bool skipIfSame = false}) {
         sourceBloc.emit(StreamStatus.updating(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
-      relayUseCase.emitWaiting = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+
+      relayUseCase.emitWaiting =
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
         sourceBloc.emit(StreamStatus.waiting(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
-      relayUseCase.emitFailure = ({newState, aviatorName, aviatorArgs, groupsToRebuild, Object? error, StackTrace? errorStackTrace}) {
+
+      relayUseCase.emitFailure = (
+          {newState,
+          aviatorName,
+          aviatorArgs,
+          groupsToRebuild,
+          Object? error,
+          StackTrace? errorStackTrace}) {
         sourceBloc.emit(StreamStatus.failure(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
@@ -209,15 +247,16 @@ void main() {
           errorStackTrace: errorStackTrace,
         ));
       };
-      
-      relayUseCase.emitCancel = ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
+
+      relayUseCase.emitCancel =
+          ({newState, aviatorName, aviatorArgs, groupsToRebuild}) {
         sourceBloc.emit(StreamStatus.canceling(
           newState as TestState? ?? sourceBloc.state,
           sourceBloc.state,
           TestEvent(groups: groupsToRebuild),
         ));
       };
-      
+
       relayUseCase.emitEvent = ({EventBase? event}) {
         if (event != null) {
           sourceBloc.send(event);

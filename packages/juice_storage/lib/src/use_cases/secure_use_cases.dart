@@ -121,7 +121,8 @@ class SecureDeleteUseCase extends BlocUseCase<StorageBloc, SecureDeleteEvent> {
 }
 
 /// Use case for deleting all secure storage.
-class SecureDeleteAllUseCase extends BlocUseCase<StorageBloc, SecureDeleteAllEvent> {
+class SecureDeleteAllUseCase
+    extends BlocUseCase<StorageBloc, SecureDeleteAllEvent> {
   @override
   Future<void> execute(SecureDeleteAllEvent event) async {
     try {

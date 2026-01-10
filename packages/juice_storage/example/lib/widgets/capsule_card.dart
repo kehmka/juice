@@ -59,7 +59,8 @@ class CapsuleCard extends StatelessWidget {
               children: [
                 // Backend badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
                     color: _backendColor(entry.backend).withValues(alpha: 0.2),

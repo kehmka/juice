@@ -109,7 +109,8 @@ class ClearAllUseCase extends BlocUseCase<StorageBloc, ClearAllEvent> {
               // Tables exist but are empty
               final tables = <String, TableInfo>{};
               for (final entry in bloc.state.sqliteTables.entries) {
-                tables[entry.key] = TableInfo(name: entry.value.name, rowCount: 0);
+                tables[entry.key] =
+                    TableInfo(name: entry.value.name, rowCount: 0);
               }
               newState = newState.copyWith(sqliteTables: tables);
             }

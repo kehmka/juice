@@ -10,7 +10,7 @@ abstract class ResultEvent<TResult> extends EventBase {
   ResultEvent({
     String? requestId,
     super.groupsToRebuild,
-  })  : requestId = requestId ?? _newRequestId();
+  }) : requestId = requestId ?? _newRequestId();
 
   /// Correlation id for logs / debugging / operation tracing.
   final String requestId;

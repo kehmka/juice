@@ -136,7 +136,8 @@ void main() {
 
     test('EventSubscription transforms and forwards events', () async {
       // Create subscription with explicit resolver
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'value: ${e.delta}'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
@@ -166,7 +167,8 @@ void main() {
     });
 
     test('EventSubscription closes cleanly', () async {
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'test'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
@@ -186,7 +188,8 @@ void main() {
     test('EventSubscription respects when predicate', () async {
       int eventCount = 0;
 
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'delta: ${e.delta}'),
         useCaseGenerator: () => DestUseCase(),
         when: (e) => e.delta > 3, // Only forward events with delta > 3
@@ -215,7 +218,8 @@ void main() {
     });
 
     test('EventSubscription handles source bloc close gracefully', () async {
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'test'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
@@ -236,7 +240,8 @@ void main() {
     });
 
     test('EventSubscription does not initialize when already closed', () async {
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'test'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
@@ -255,7 +260,8 @@ void main() {
     test('EventSubscription handles transformer errors gracefully', () async {
       int eventCount = 0;
 
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) {
           if (e.delta < 0) {
             throw Exception('Negative delta not allowed');
@@ -299,7 +305,8 @@ void main() {
       final sourceBloc = SourceBloc();
       final resolver = TestEventResolver({SourceBloc: sourceBloc});
 
-      final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+      final subscription =
+          EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'test'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
@@ -323,7 +330,8 @@ void main() {
       final resolver = TestEventResolver({SourceBloc: sourceBloc});
 
       for (int i = 0; i < 5; i++) {
-        final subscription = EventSubscription<SourceBloc, SourceEvent, DestEvent>(
+        final subscription =
+            EventSubscription<SourceBloc, SourceEvent, DestEvent>(
           toEvent: (e) => DestEvent(message: 'test'),
           useCaseGenerator: () => DestUseCase(),
           resolver: resolver,

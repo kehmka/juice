@@ -9,8 +9,8 @@ class CounterState extends BlocState {
 
   CounterState({this.count = 0, this.message});
 
-  CounterState copyWith({int? count, String? message}) =>
-      CounterState(count: count ?? this.count, message: message ?? this.message);
+  CounterState copyWith({int? count, String? message}) => CounterState(
+      count: count ?? this.count, message: message ?? this.message);
 
   @override
   String toString() => 'CounterState(count: $count, message: $message)';

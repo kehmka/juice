@@ -119,8 +119,7 @@ class LinearBackoff implements BackoffStrategy {
 
   @override
   Duration delay(int attempt) {
-    var delayMs =
-        initial.inMilliseconds + (increment.inMilliseconds * attempt);
+    var delayMs = initial.inMilliseconds + (increment.inMilliseconds * attempt);
 
     if (maxDelay != null) {
       delayMs = min(delayMs, maxDelay!.inMilliseconds);

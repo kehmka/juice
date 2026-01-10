@@ -252,7 +252,8 @@ void main() {
       await writeEvent.result;
 
       // Manually expire the entry by manipulating the clock
-      final storageKey = cacheIndex.canonicalKey('hive', 'expiredKey', 'testBox');
+      final storageKey =
+          cacheIndex.canonicalKey('hive', 'expiredKey', 'testBox');
       final pastTime = DateTime.now().subtract(const Duration(hours: 2));
       cacheIndex.clock = () => pastTime;
 
@@ -346,7 +347,8 @@ void main() {
       await writeEvent.result;
 
       // Verify TTL was set
-      final storageKey = cacheIndex.canonicalKey('hive', 'ttlDeleteKey', 'testBox');
+      final storageKey =
+          cacheIndex.canonicalKey('hive', 'ttlDeleteKey', 'testBox');
       expect(cacheIndex.getMetadata(storageKey), isNotNull);
 
       // Delete value

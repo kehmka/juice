@@ -46,7 +46,8 @@ void main() {
       });
 
       test('returns value from lazy box', () async {
-        when(() => mockLazyBox.get('key')).thenAnswer((_) async => 'lazy_value');
+        when(() => mockLazyBox.get('key'))
+            .thenAnswer((_) async => 'lazy_value');
 
         final result = await lazyAdapter.read('key');
 

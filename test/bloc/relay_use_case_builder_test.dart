@@ -7,7 +7,8 @@ class RelaySourceState extends BlocState {
   final int counter;
   final bool isLoading;
   RelaySourceState({required this.counter, this.isLoading = false});
-  RelaySourceState copyWith({int? counter, bool? isLoading}) => RelaySourceState(
+  RelaySourceState copyWith({int? counter, bool? isLoading}) =>
+      RelaySourceState(
         counter: counter ?? this.counter,
         isLoading: isLoading ?? this.isLoading,
       );
@@ -127,8 +128,8 @@ void main() {
     });
 
     test('RelayUseCaseBuilder transforms and forwards state changes', () async {
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
         statusToEventTransformer: (status) {
           final state = status.state;
@@ -154,11 +155,10 @@ void main() {
     });
 
     test('RelayUseCaseBuilder closes cleanly', () async {
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
-        statusToEventTransformer: (status) =>
-            UpdateDestEvent(value: 'test'),
+        statusToEventTransformer: (status) => UpdateDestEvent(value: 'test'),
         useCaseGenerator: () => UpdateDestUseCase(),
         resolver: resolver,
       );
@@ -173,8 +173,8 @@ void main() {
     });
 
     test('RelayUseCaseBuilder stops relaying after close', () async {
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
         statusToEventTransformer: (status) =>
             UpdateDestEvent(value: 'counter: ${status.state.counter}'),
@@ -225,11 +225,10 @@ void main() {
     });
 
     test('Relay closes when source bloc closes', () async {
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
-        statusToEventTransformer: (status) =>
-            UpdateDestEvent(value: 'test'),
+        statusToEventTransformer: (status) => UpdateDestEvent(value: 'test'),
         useCaseGenerator: () => UpdateDestUseCase(),
         resolver: resolver,
       );
@@ -249,8 +248,8 @@ void main() {
     test('Relay handles transformer error gracefully', () async {
       int relayCount = 0;
 
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
         statusToEventTransformer: (status) {
           relayCount++;
@@ -285,11 +284,10 @@ void main() {
     });
 
     test('Relay handles dest bloc close gracefully', () async {
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
-        statusToEventTransformer: (status) =>
-            UpdateDestEvent(value: 'test'),
+        statusToEventTransformer: (status) => UpdateDestEvent(value: 'test'),
         useCaseGenerator: () => UpdateDestUseCase(),
         resolver: resolver,
       );
@@ -319,11 +317,10 @@ void main() {
         RelayDestBloc: destBloc,
       });
 
-      final relay = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
-        statusToEventTransformer: (status) =>
-            UpdateDestEvent(value: 'test'),
+        statusToEventTransformer: (status) => UpdateDestEvent(value: 'test'),
         useCaseGenerator: () => UpdateDestUseCase(),
         resolver: resolver,
       );
@@ -352,8 +349,8 @@ void main() {
         RelayDestBloc: destBloc2,
       });
 
-      final relay1 = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay1 =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
         statusToEventTransformer: (status) =>
             UpdateDestEvent(value: 'relay1: ${status.state.counter}'),
@@ -361,8 +358,8 @@ void main() {
         resolver: resolver1,
       );
 
-      final relay2 = RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc,
-          RelaySourceState>(
+      final relay2 =
+          RelayUseCaseBuilder<RelaySourceBloc, RelayDestBloc, RelaySourceState>(
         typeOfEvent: UpdateDestEvent,
         statusToEventTransformer: (status) =>
             UpdateDestEvent(value: 'relay2: ${status.state.counter}'),

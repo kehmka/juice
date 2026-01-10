@@ -15,8 +15,7 @@ import '../widgets/capsule_card.dart';
 /// - [StatelessJuiceWidget2] observes both [StorageBloc] and [ArcadeDemoBloc]
 /// - Cross-bloc communication via BlocScope
 /// - Targeted rebuild groups for performance
-class ArcadeScreen
-    extends StatelessJuiceWidget2<StorageBloc, ArcadeDemoBloc> {
+class ArcadeScreen extends StatelessJuiceWidget2<StorageBloc, ArcadeDemoBloc> {
   ArcadeScreen({super.key})
       : super(
           groups: const {
@@ -52,12 +51,14 @@ class ArcadeScreen
         actions: [
           IconButton(
             tooltip: 'Spawn 3 time bombs',
-            onPressed: isReady ? () => arcadeBloc.send(SpawnBombsEvent()) : null,
+            onPressed:
+                isReady ? () => arcadeBloc.send(SpawnBombsEvent()) : null,
             icon: const Icon(Icons.casino),
           ),
           IconButton(
             tooltip: 'Run cache cleanup now',
-            onPressed: isReady ? () => arcadeBloc.send(CleanupCacheEvent()) : null,
+            onPressed:
+                isReady ? () => arcadeBloc.send(CleanupCacheEvent()) : null,
             icon: const Icon(Icons.cleaning_services),
           ),
         ],
@@ -160,7 +161,11 @@ class _Banner extends StatelessJuiceWidget<ArcadeDemoBloc> {
 
 /// Entry list with countdown display.
 class _EntryList extends StatelessJuiceWidget<ArcadeDemoBloc> {
-  _EntryList() : super(groups: const {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupTime});
+  _EntryList()
+      : super(groups: const {
+          ArcadeDemoBloc.groupEntries,
+          ArcadeDemoBloc.groupTime
+        });
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
@@ -236,7 +241,8 @@ class _Composer extends StatelessJuiceWidget<ArcadeDemoBloc> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    controller: TextEditingController(text: currentState.keyText),
+                    controller:
+                        TextEditingController(text: currentState.keyText),
                     decoration: const InputDecoration(
                       labelText: 'Key',
                       isDense: true,
@@ -268,7 +274,8 @@ class _Composer extends StatelessJuiceWidget<ArcadeDemoBloc> {
                 Text(
                   'TTL',
                   style: TextStyle(
-                    color: ttlSupported ? null : Theme.of(context).disabledColor,
+                    color:
+                        ttlSupported ? null : Theme.of(context).disabledColor,
                   ),
                 ),
                 Expanded(
@@ -280,8 +287,9 @@ class _Composer extends StatelessJuiceWidget<ArcadeDemoBloc> {
                     label: currentState.ttlSeconds.round() == 0
                         ? 'None'
                         : '${currentState.ttlSeconds.round()}s',
-                    onChanged:
-                        ttlSupported ? (v) => bloc.send(UpdateTtlEvent(v)) : null,
+                    onChanged: ttlSupported
+                        ? (v) => bloc.send(UpdateTtlEvent(v))
+                        : null,
                   ),
                 ),
                 SizedBox(

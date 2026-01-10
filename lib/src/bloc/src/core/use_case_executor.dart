@@ -38,8 +38,8 @@ class UseCaseContext<TBloc, TState extends BlocState> {
   /// Emits an updating status.
   ///
   /// [skipIfSame] - If true, skips emission when newState equals current state.
-  final void Function(TState? newState, Set<String>? groups,
-      {bool skipIfSame}) emitUpdate;
+  final void Function(TState? newState, Set<String>? groups, {bool skipIfSame})
+      emitUpdate;
 
   /// Emits a waiting status.
   final void Function(TState? newState, Set<String>? groups) emitWaiting;

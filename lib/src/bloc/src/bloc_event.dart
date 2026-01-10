@@ -100,7 +100,8 @@ abstract class EventBase extends Object {
 /// ```
 class UpdateEvent<TState extends BlocState> extends EventBase {
   UpdateEvent({
-    @Deprecated('Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
+    @Deprecated(
+        'Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
     this.newState,
     this.aviatorName,
     this.aviatorArgs,
@@ -112,7 +113,8 @@ class UpdateEvent<TState extends BlocState> extends EventBase {
   ///
   /// **Deprecated**: State changes should go through dedicated use cases.
   /// This parameter bypasses the use case pattern and will be removed in v2.0.0.
-  @Deprecated('Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
+  @Deprecated(
+      'Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
   final TState? newState;
 
   /// Optional aviator name to trigger navigation.

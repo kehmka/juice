@@ -359,9 +359,7 @@ class FailureStatus<TState extends BlocState> extends StreamStatus<TState> {
 
   @override
   bool operator ==(Object other) =>
-      other is FailureStatus<TState> &&
-      super == other &&
-      error == other.error;
+      other is FailureStatus<TState> && super == other && error == other.error;
 
   @override
   int get hashCode => Object.hash(super.hashCode, error);

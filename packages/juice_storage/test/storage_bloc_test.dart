@@ -220,7 +220,8 @@ void main() {
 
         await bloc.hiveOpenBox('cache');
         await bloc.hiveWrite('cache', 'data', {'name': 'Test'});
-        final result = await bloc.hiveRead<Map<dynamic, dynamic>>('cache', 'data');
+        final result =
+            await bloc.hiveRead<Map<dynamic, dynamic>>('cache', 'data');
 
         expect(result, {'name': 'Test'});
 

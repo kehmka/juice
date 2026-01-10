@@ -429,7 +429,8 @@ void main() {
       _CancellableAlwaysFailingUseCase.reset();
 
       final bloc = TestBloc(
-        () => RetryableUseCaseBuilder<TestBloc, TestState, CancellableFetchEvent>(
+        () =>
+            RetryableUseCaseBuilder<TestBloc, TestState, CancellableFetchEvent>(
           typeOfEvent: CancellableFetchEvent,
           useCaseGenerator: () => _CancellableAlwaysFailingUseCase(),
           maxRetries: 10,

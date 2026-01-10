@@ -170,7 +170,8 @@ void main() {
         final pastTime = DateTime.now().subtract(const Duration(hours: 2));
         cacheIndex.clock = () => pastTime;
         await cacheIndex.setExpiry('prefs:expired1', const Duration(hours: 1));
-        await cacheIndex.setExpiry('prefs:expired2', const Duration(minutes: 30));
+        await cacheIndex.setExpiry(
+            'prefs:expired2', const Duration(minutes: 30));
 
         // Create valid entry
         cacheIndex.clock = () => DateTime.now();

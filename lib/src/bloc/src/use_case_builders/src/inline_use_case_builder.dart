@@ -20,7 +20,8 @@ class InlineEmitter<TState extends BlocState> {
     required void Function(TState? newState, Set<String>? groups) emitWaiting,
     required void Function(TState? newState, Set<String>? groups) emitFailure,
     required void Function(TState? newState, Set<String>? groups) emitCancel,
-    required void Function(String? aviator, Map<String, dynamic>? args) navigate,
+    required void Function(String? aviator, Map<String, dynamic>? args)
+        navigate,
   })  : _emitUpdate = emitUpdate,
         _emitWaiting = emitWaiting,
         _emitFailure = emitFailure,
@@ -179,9 +180,10 @@ typedef InlineHandler<TBloc extends JuiceBloc<TState>, TState extends BlocState,
 /// - Parsing or complex transformations
 /// - Multi-step flows
 /// - Calling more than one service
-class InlineUseCaseBuilder<TBloc extends JuiceBloc<TState>,
-        TState extends BlocState, TEvent extends EventBase>
-    implements UseCaseBuilderBase {
+class InlineUseCaseBuilder<
+    TBloc extends JuiceBloc<TState>,
+    TState extends BlocState,
+    TEvent extends EventBase> implements UseCaseBuilderBase {
   /// Creates an inline use case builder.
   ///
   /// [typeOfEvent] - The event type this handler responds to

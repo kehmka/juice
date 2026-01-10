@@ -59,9 +59,8 @@ class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
     EventBase event, {
     Duration timeout = const Duration(seconds: 5),
   }) async {
-    final future = bloc.stream
-        .firstWhere((s) => s is! WaitingStatus)
-        .timeout(timeout);
+    final future =
+        bloc.stream.firstWhere((s) => s is! WaitingStatus).timeout(timeout);
     await bloc.send(event);
     return await future;
   }
@@ -101,7 +100,8 @@ class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
   /// tester.expectStatusSequence([WaitingStatus, UpdatingStatus]);
   /// ```
   void expectStatusSequence(List<Type> expectedTypes, {int? skip}) {
-    final emissions = skip != null ? _emissions.skip(skip).toList() : _emissions;
+    final emissions =
+        skip != null ? _emissions.skip(skip).toList() : _emissions;
 
     expect(
       emissions.length,

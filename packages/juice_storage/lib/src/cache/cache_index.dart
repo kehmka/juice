@@ -102,9 +102,7 @@ class CacheIndex {
   List<CacheMetadata> getExpiredEntries() {
     _ensureInitialized();
     final now = clock();
-    return _metadataBox.values
-        .where((m) => now.isAfter(m.expiresAt))
-        .toList();
+    return _metadataBox.values.where((m) => now.isAfter(m.expiresAt)).toList();
   }
 
   /// Get count of all metadata entries.

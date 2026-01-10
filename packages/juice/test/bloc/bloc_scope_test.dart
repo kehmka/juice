@@ -204,7 +204,8 @@ void main() {
         expect(bloc.isClosed, true);
       });
 
-      test('Multiple blocs in same feature scope are disposed together', () async {
+      test('Multiple blocs in same feature scope are disposed together',
+          () async {
         final scope = FeatureScope('checkout');
 
         BlocScope.register<TestBloc>(

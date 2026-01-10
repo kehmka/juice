@@ -11,7 +11,8 @@ import '../storage_exceptions.dart';
 import '../storage_state.dart';
 
 /// Use case for initializing all storage backends.
-class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent> {
+class InitializeUseCase
+    extends BlocUseCase<StorageBloc, InitializeStorageEvent> {
   final StorageConfig config;
   final CacheIndex cacheIndex;
 
@@ -59,7 +60,8 @@ class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent>
 
         status = status.copyWith(hive: BackendState.ready);
         emitUpdate(
-          newState: bloc.state.copyWith(backendStatus: status, hiveBoxes: hiveBoxes),
+          newState:
+              bloc.state.copyWith(backendStatus: status, hiveBoxes: hiveBoxes),
           groupsToRebuild: {StorageBloc.groupInit},
         );
       } catch (e) {
@@ -136,7 +138,8 @@ class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent>
 
         status = status.copyWith(sqlite: BackendState.ready);
         emitUpdate(
-          newState: bloc.state.copyWith(backendStatus: status, sqliteTables: sqliteTables),
+          newState: bloc.state
+              .copyWith(backendStatus: status, sqliteTables: sqliteTables),
           groupsToRebuild: {StorageBloc.groupInit},
         );
       } catch (e) {
@@ -198,7 +201,8 @@ class InitializeUseCase extends BlocUseCase<StorageBloc, InitializeStorageEvent>
 
       // Mark as initialized
       emitUpdate(
-        newState: bloc.state.copyWith(isInitialized: true, clearLastError: true),
+        newState:
+            bloc.state.copyWith(isInitialized: true, clearLastError: true),
         groupsToRebuild: {StorageBloc.groupInit},
       );
 

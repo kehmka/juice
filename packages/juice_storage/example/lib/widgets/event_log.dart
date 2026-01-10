@@ -140,8 +140,7 @@ class _LogLine {
     this.isError = false,
   });
 
-  String get timeStr =>
-      '${time.hour.toString().padLeft(2, '0')}:'
+  String get timeStr => '${time.hour.toString().padLeft(2, '0')}:'
       '${time.minute.toString().padLeft(2, '0')}:'
       '${time.second.toString().padLeft(2, '0')}';
 }

@@ -33,7 +33,8 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
   static List<UseCaseBuilderGenerator> _buildUseCases() {
     return [
       // Simple state updates - using InlineUseCaseBuilder
-      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateKeyEvent>(
+      () =>
+          InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateKeyEvent>(
             typeOfEvent: UpdateKeyEvent,
             handler: (ctx, event) async {
               ctx.emit.update(
@@ -42,7 +43,8 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
               );
             },
           ),
-      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateValueEvent>(
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState,
+              UpdateValueEvent>(
             typeOfEvent: UpdateValueEvent,
             handler: (ctx, event) async {
               ctx.emit.update(
@@ -51,7 +53,8 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
               );
             },
           ),
-      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, SelectBackendEvent>(
+      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState,
+              SelectBackendEvent>(
             typeOfEvent: SelectBackendEvent,
             handler: (ctx, event) async {
               ctx.emit.update(
@@ -60,7 +63,8 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
               );
             },
           ),
-      () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateTtlEvent>(
+      () =>
+          InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateTtlEvent>(
             typeOfEvent: UpdateTtlEvent,
             handler: (ctx, event) async {
               ctx.emit.update(
@@ -133,7 +137,8 @@ class _TickUseCase extends BlocUseCase<ArcadeDemoBloc, TickEvent> {
     // Accumulate evictions by backend type
     Map<DemoBackend, int>? updatedEvictions;
     if (expiredEntries.isNotEmpty) {
-      updatedEvictions = Map<DemoBackend, int>.from(bloc.state.evictionsByBackend);
+      updatedEvictions =
+          Map<DemoBackend, int>.from(bloc.state.evictionsByBackend);
       for (final entry in expiredEntries) {
         updatedEvictions[entry.backend] =
             (updatedEvictions[entry.backend] ?? 0) + 1;
@@ -232,7 +237,10 @@ class _SaveEntryUseCase extends BlocUseCase<ArcadeDemoBloc, SaveEntryEvent> {
           banner: 'SAVED ${backend.name}:$key$ttlMsg',
           isOperationInProgress: false,
         ),
-        groupsToRebuild: {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupBanner},
+        groupsToRebuild: {
+          ArcadeDemoBloc.groupEntries,
+          ArcadeDemoBloc.groupBanner
+        },
       );
     } catch (e) {
       emitUpdate(
@@ -308,7 +316,10 @@ class _ReadEntryUseCase extends BlocUseCase<ArcadeDemoBloc, ReadEntryEvent> {
           banner: banner,
           isOperationInProgress: false,
         ),
-        groupsToRebuild: {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupBanner},
+        groupsToRebuild: {
+          ArcadeDemoBloc.groupEntries,
+          ArcadeDemoBloc.groupBanner
+        },
       );
     } catch (e) {
       emitUpdate(
@@ -322,7 +333,8 @@ class _ReadEntryUseCase extends BlocUseCase<ArcadeDemoBloc, ReadEntryEvent> {
   }
 }
 
-class _DeleteEntryUseCase extends BlocUseCase<ArcadeDemoBloc, DeleteEntryEvent> {
+class _DeleteEntryUseCase
+    extends BlocUseCase<ArcadeDemoBloc, DeleteEntryEvent> {
   @override
   Future<void> execute(DeleteEntryEvent event) async {
     final entries = bloc.state.entries;
@@ -361,7 +373,10 @@ class _DeleteEntryUseCase extends BlocUseCase<ArcadeDemoBloc, DeleteEntryEvent> 
           banner: 'DELETED ${entry.backend.name}:${entry.key}',
           isOperationInProgress: false,
         ),
-        groupsToRebuild: {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupBanner},
+        groupsToRebuild: {
+          ArcadeDemoBloc.groupEntries,
+          ArcadeDemoBloc.groupBanner
+        },
       );
     } catch (e) {
       emitUpdate(
@@ -400,7 +415,8 @@ class _SpawnBombsUseCase extends BlocUseCase<ArcadeDemoBloc, SpawnBombsEvent> {
       try {
         switch (backend) {
           case DemoBackend.prefs:
-            await storage.prefsWrite(key, value, ttl: Duration(seconds: ttlSecs));
+            await storage.prefsWrite(key, value,
+                ttl: Duration(seconds: ttlSecs));
             break;
           case DemoBackend.hive:
             await storage.hiveWrite('arcade_box', key, value,
@@ -422,7 +438,10 @@ class _SpawnBombsUseCase extends BlocUseCase<ArcadeDemoBloc, SpawnBombsEvent> {
         entries: allEntries,
         banner: 'Spawned ${newEntries.length} time bombs!',
       ),
-      groupsToRebuild: {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupBanner},
+      groupsToRebuild: {
+        ArcadeDemoBloc.groupEntries,
+        ArcadeDemoBloc.groupBanner
+      },
     );
   }
 }
@@ -451,7 +470,10 @@ class _CleanupCacheUseCase
           banner: 'CLEANUP: $cleaned entries removed',
           isOperationInProgress: false,
         ),
-        groupsToRebuild: {ArcadeDemoBloc.groupEntries, ArcadeDemoBloc.groupBanner},
+        groupsToRebuild: {
+          ArcadeDemoBloc.groupEntries,
+          ArcadeDemoBloc.groupBanner
+        },
       );
     } catch (e) {
       emitUpdate(

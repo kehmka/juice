@@ -57,8 +57,10 @@ typedef OnRetryCallback = void Function(
 ///
 /// If the event is [CancellableEvent] and gets cancelled during a retry
 /// backoff, the operation aborts and emits [CancelingStatus].
-class RetryableUseCaseBuilder<TBloc extends JuiceBloc<TState>,
-    TState extends BlocState, TEvent extends EventBase> implements UseCaseBuilderBase {
+class RetryableUseCaseBuilder<
+    TBloc extends JuiceBloc<TState>,
+    TState extends BlocState,
+    TEvent extends EventBase> implements UseCaseBuilderBase {
   /// Creates a retryable use case builder.
   ///
   /// [typeOfEvent] - The event type this use case handles.
@@ -76,7 +78,8 @@ class RetryableUseCaseBuilder<TBloc extends JuiceBloc<TState>,
     this.retryWhen,
     this.onRetry,
     UseCaseEventBuilder? initialEventBuilder,
-  })  : backoff = backoff ?? ExponentialBackoff(initial: const Duration(seconds: 1)),
+  })  : backoff =
+            backoff ?? ExponentialBackoff(initial: const Duration(seconds: 1)),
         _initialEventBuilder = initialEventBuilder;
 
   /// The event type this use case handles.
@@ -113,13 +116,14 @@ class RetryableUseCaseBuilder<TBloc extends JuiceBloc<TState>,
   UseCaseEventBuilder? get initialEventBuilder => _initialEventBuilder;
 
   @override
-  UseCaseGenerator get generator => () => _RetryableUseCase<TBloc, TState, TEvent>(
-        useCaseGenerator: useCaseGenerator,
-        maxRetries: maxRetries,
-        backoff: backoff,
-        retryWhen: retryWhen,
-        onRetry: onRetry,
-      );
+  UseCaseGenerator get generator =>
+      () => _RetryableUseCase<TBloc, TState, TEvent>(
+            useCaseGenerator: useCaseGenerator,
+            maxRetries: maxRetries,
+            backoff: backoff,
+            retryWhen: retryWhen,
+            onRetry: onRetry,
+          );
 
   @override
   Future<void> close() async {
@@ -128,8 +132,10 @@ class RetryableUseCaseBuilder<TBloc extends JuiceBloc<TState>,
 }
 
 /// Internal use case that wraps another use case with retry logic.
-class _RetryableUseCase<TBloc extends JuiceBloc<TState>,
-    TState extends BlocState, TEvent extends EventBase> extends UseCase<TBloc, TEvent> {
+class _RetryableUseCase<
+    TBloc extends JuiceBloc<TState>,
+    TState extends BlocState,
+    TEvent extends EventBase> extends UseCase<TBloc, TEvent> {
   final UseCaseGenerator useCaseGenerator;
   final int maxRetries;
   final BackoffStrategy backoff;

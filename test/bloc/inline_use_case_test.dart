@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 
@@ -272,11 +271,12 @@ void main() {
       bool blocAccessed = false;
 
       final bloc = _ContextTestBloc(onExecute: (ctx) {
-        blocAccessed = ctx.bloc is JuiceBloc;
+        // Verify bloc is accessible and not null
+        blocAccessed = ctx.bloc != null;
       });
 
-      await bloc.send(IncrementEvent());
-      await Future.delayed(Duration(milliseconds: 10));
+      await bloc.send(const IncrementEvent());
+      await Future.delayed(const Duration(milliseconds: 10));
 
       expect(blocAccessed, isTrue);
 

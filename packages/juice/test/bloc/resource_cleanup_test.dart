@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 import '../test_helpers.dart';
@@ -113,7 +112,8 @@ void main() {
         lifecycle: BlocLifecycle.permanent,
       );
 
-      final parent = BlocScope.get<TestBloc>();
+      // Get parent to verify it's registered, then close it
+      BlocScope.get<TestBloc>();
       final child = BlocScope.get<SecondTestBloc>();
 
       // Close parent

@@ -3,7 +3,6 @@ import 'juice_bloc.dart';
 import 'bloc_state.dart';
 import 'juice_logger.dart';
 import 'lifecycle/lifecycle.dart';
-import 'lifecycle/leak_detector.dart';
 
 /// Manages bloc registration, resolution, and lifecycle.
 ///
@@ -477,6 +476,7 @@ class BlocScope {
     await endAll();
     _entries.clear();
     FeatureScope.resetTracking();
+    // ignore: invalid_use_of_visible_for_testing_member
     LeakDetector.reset();
   }
 }

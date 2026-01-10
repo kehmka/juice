@@ -1,6 +1,4 @@
 import '../../../bloc.dart';
-import '../../bloc_scope.dart';
-import '../../lifecycle/lifecycle.dart';
 
 /// @Deprecated('Use StateRelay or StatusRelay instead. RelayUseCaseBuilder will be removed in v2.0.0')
 ///

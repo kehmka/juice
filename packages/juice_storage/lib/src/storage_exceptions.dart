@@ -82,33 +82,20 @@ class KeyNotFoundException extends StorageException {
 
 /// Exception thrown when a type error occurs during read/write.
 class StorageTypeException extends StorageException {
-  StorageTypeException(String message, {String? storageKey})
-      : super(
-          message,
-          type: StorageErrorType.typeError,
-          storageKey: storageKey,
-        );
+  StorageTypeException(super.message, {super.storageKey})
+      : super(type: StorageErrorType.typeError);
 }
 
 /// Exception thrown when serialization fails.
 class SerializationException extends StorageException {
-  SerializationException(String message, {Object? cause, String? storageKey})
-      : super(
-          message,
-          type: StorageErrorType.serializationError,
-          storageKey: storageKey,
-          cause: cause,
-        );
+  SerializationException(super.message, {super.cause, super.storageKey})
+      : super(type: StorageErrorType.serializationError);
 }
 
 /// Exception thrown when encryption/decryption fails.
 class EncryptionException extends StorageException {
-  EncryptionException(String message, {Object? cause})
-      : super(
-          message,
-          type: StorageErrorType.encryptionError,
-          cause: cause,
-        );
+  EncryptionException(super.message, {super.cause})
+      : super(type: StorageErrorType.encryptionError);
 }
 
 /// Exception thrown when a platform feature is not supported.
@@ -122,13 +109,8 @@ class PlatformNotSupportedException extends StorageException {
 
 /// Exception thrown for SQLite errors.
 class SqliteException extends StorageException {
-  SqliteException(String message, {Object? cause, bool isRetryable = false})
-      : super(
-          message,
-          type: StorageErrorType.sqliteError,
-          cause: cause,
-          isRetryable: isRetryable,
-        );
+  SqliteException(super.message, {super.cause, bool isRetryable = false})
+      : super(type: StorageErrorType.sqliteError, isRetryable: isRetryable);
 }
 
 /// Exception thrown when permission is denied.

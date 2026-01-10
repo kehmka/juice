@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import '../../../bloc.dart';
 
 /// Subscribes to specific events from another bloc and executes a local use case.

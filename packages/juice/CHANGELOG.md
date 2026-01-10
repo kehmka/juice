@@ -3,6 +3,7 @@
 ## [1.1.3] - 2025-01-10
 
 ### Fixes
+- Events sent to a closed bloc are now gracefully ignored with a log message instead of throwing an error
 - Resolved pub.dev analyzer warnings:
   - Removed unnecessary imports in `bloc_scope.dart`, `event_subscription.dart`, `relay_use_case_builder.dart`, `bloc_tester.dart`
   - Updated constructors in `StatelessJuiceWidget` to use Dart 3 super parameters

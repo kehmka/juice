@@ -127,11 +127,31 @@ class JuiceBloc<TState extends BlocState>
   bool get isClosed => _stateManager.isClosed;
 
   /// Sends an event to be processed by its registered use case.
-  Future<void> send(EventBase event) => _dispatcher.dispatch(event);
+  ///
+  /// If the bloc is closed, the event is ignored and a warning is logged.
+  Future<void> send(EventBase event) async {
+    if (isClosed) {
+      _logger.log(
+        'Event ignored: bloc is closed',
+        context: {
+          'type': 'bloc_lifecycle',
+          'action': 'event_ignored',
+          'bloc': runtimeType.toString(),
+          'event': event.runtimeType.toString(),
+        },
+      );
+      return;
+    }
+    return _dispatcher.dispatch(event);
+  }
 
   /// Sends a cancellable event and returns it for cancellation control.
+  ///
+  /// If the bloc is closed, the event is not dispatched.
   T sendCancellable<T extends CancellableEvent>(T event) {
-    send(event);
+    if (!isClosed) {
+      send(event);
+    }
     return event;
   }
 

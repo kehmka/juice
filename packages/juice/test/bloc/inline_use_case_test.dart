@@ -271,12 +271,12 @@ void main() {
       bool blocAccessed = false;
 
       final bloc = _ContextTestBloc(onExecute: (ctx) {
-        // Verify bloc is accessible and not null
-        blocAccessed = ctx.bloc != null;
+        // Verify bloc is accessible via context
+        blocAccessed = ctx.bloc.state.count >= 0;
       });
 
-      await bloc.send(const IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 10));
+      await bloc.send(IncrementEvent());
+      await Future.delayed(Duration(milliseconds: 10));
 
       expect(blocAccessed, isTrue);
 

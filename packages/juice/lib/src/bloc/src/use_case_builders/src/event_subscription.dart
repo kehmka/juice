@@ -1,6 +1,4 @@
 import '../../../bloc.dart';
-import '../../bloc_scope.dart';
-import '../../lifecycle/lifecycle.dart';
 
 /// Subscribes to specific events from another bloc and executes a local use case.
 ///

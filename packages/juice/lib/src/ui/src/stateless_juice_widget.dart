@@ -34,12 +34,11 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   /// [scope] - Optional scope key for resolving scoped bloc instances
   StatelessJuiceWidget({
-    Key? key,
+    super.key,
     BlocDependencyResolver? resolver,
     this.groups = const {"*"},
     this.scope,
-  })  : _customResolver = resolver,
-        super(key: key);
+  }) : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
@@ -146,13 +145,12 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// [scope1] - Optional scope key for first bloc.
   /// [scope2] - Optional scope key for second bloc.
   StatelessJuiceWidget2({
-    Key? key,
+    super.key,
     BlocDependencyResolver? resolver,
     this.groups = const {"*"},
     this.scope1,
     this.scope2,
-  })  : _customResolver = resolver,
-        super(key: key);
+  }) : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
@@ -273,14 +271,13 @@ abstract class StatelessJuiceWidget3<
   /// [scope2] - Optional scope key for second bloc.
   /// [scope3] - Optional scope key for third bloc.
   StatelessJuiceWidget3({
-    Key? key,
+    super.key,
     BlocDependencyResolver? resolver,
     this.groups = const {"*"},
     this.scope1,
     this.scope2,
     this.scope3,
-  })  : _customResolver = resolver,
-        super(key: key);
+  }) : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.

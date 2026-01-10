@@ -8,7 +8,6 @@ import 'package:juice_storage/src/cache/cache_metadata.dart';
 import 'package:juice_storage/src/storage_bloc.dart';
 import 'package:juice_storage/src/storage_config.dart';
 import 'package:juice_storage/src/storage_events.dart';
-import 'package:juice_storage/src/storage_state.dart';
 
 /// Helper to ensure CacheMetadata adapter is registered.
 void _ensureAdapterRegistered() {

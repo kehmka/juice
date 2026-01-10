@@ -109,8 +109,8 @@ class PlatformNotSupportedException extends StorageException {
 
 /// Exception thrown for SQLite errors.
 class SqliteException extends StorageException {
-  SqliteException(super.message, {super.cause, bool isRetryable = false})
-      : super(type: StorageErrorType.sqliteError, isRetryable: isRetryable);
+  SqliteException(super.message, {super.cause, super.isRetryable = false})
+      : super(type: StorageErrorType.sqliteError);
 }
 
 /// Exception thrown when permission is denied.

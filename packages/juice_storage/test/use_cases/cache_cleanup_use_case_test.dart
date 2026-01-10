@@ -134,8 +134,7 @@ void main() {
       bloc.send(cleanupEvent);
       await cleanupEvent.result;
 
-      expect(bloc.state.cacheStats, isNotNull);
-      expect(bloc.state.cacheStats!.lastCleanupAt, isNotNull);
+      expect(bloc.state.cacheStats.lastCleanupAt, isNotNull);
 
       await bloc.close();
     });

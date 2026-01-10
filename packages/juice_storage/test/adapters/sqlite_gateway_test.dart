@@ -7,11 +7,7 @@ class MockDatabase extends Mock implements Database {}
 
 void main() {
   group('SqliteGatewayImpl', () {
-    late MockDatabase mockDb;
-    late SqliteGatewayImpl gateway;
-
     setUp(() {
-      mockDb = MockDatabase();
       // Use reflection or create a test helper to instantiate
       // For now, we test through the factory pattern
     });

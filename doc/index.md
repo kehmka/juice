@@ -291,7 +291,7 @@ Add Juice to your pubspec.yaml:
 
 ```yaml
 dependencies:
-  juice: ^1.1.2
+  juice: ^1.1.3
 ```
 
 Or run:

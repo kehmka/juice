@@ -8,7 +8,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  juice: ^1.1.2
+  juice: ^1.1.3
   juice_storage: ^0.8.0
 ```
 

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] - 2025-01-09
+## [0.8.0] - 2025-01-10
 
 ### Added
 
@@ -28,3 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Helper Methods** - Convenient async methods on StorageBloc
 - **Rebuild Groups** - Targeted widget rebuilds per backend/entity
 - **Event-Driven Architecture** - Full Juice framework integration
+- **Cumulative Eviction Tracking** - Track evictions by backend type
+
+### Documentation
+- Comprehensive README with badges and examples
+- Complete documentation in `doc/` folder:
+  - Getting Started guide
+  - Storage Backends reference
+  - Events Reference
+  - Caching and TTL guide
+  - Testing guide
+
+### Package Publishing
+- Added LICENSE (MIT)
+- Added pub.dev metadata (topics, funding, issue tracker)
+- Added GitHub Sponsors funding link

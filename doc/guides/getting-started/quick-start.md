@@ -8,7 +8,7 @@ This guide will walk you through creating your first Juice application. By the e
 
 ```yaml
 dependencies:
-  juice: ^1.1.2
+  juice: ^1.1.3
 ```
 
 2. Or run:

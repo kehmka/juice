@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.3] - 2025-01-10
+
+### Fixes
+- Resolved pub.dev analyzer warnings:
+  - Removed unnecessary imports in `bloc_scope.dart`, `event_subscription.dart`, `relay_use_case_builder.dart`, `bloc_tester.dart`
+  - Updated constructors in `StatelessJuiceWidget` to use Dart 3 super parameters
+- Fixed CI workflow: Updated Flutter to 3.27.1 for Dart SDK 3.5.4 compatibility
+
+### Maintenance
+- Added GitHub Sponsors funding link
+- Code formatting pass across all packages
+
+### Known Issues
+- 9 analyzer hints remain for `State` type parameter naming (shadows Flutter's `State` class)
+  - Will be renamed to `TState` in v2.0.0 as a breaking change
+
+---
+
 ## [1.1.2] - 2025-01-04
 
 ### New Features

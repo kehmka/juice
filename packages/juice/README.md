@@ -129,7 +129,7 @@ Alternatively, add it manually:
 
 ```yaml
 dependencies:
-  juice: ^1.1.2
+  juice: ^1.1.3
 ```
 
 Then, run:
@@ -686,7 +686,7 @@ final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
 
 ## Project Status
 
-Juice is currently at version 1.1.2 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
+Juice is currently at version 1.1.3 and is under active development. While the core features are stable and production-ready, work effort is focused next on:
 
 - Comprehensive documentation and guides
 - Additional examples and use cases

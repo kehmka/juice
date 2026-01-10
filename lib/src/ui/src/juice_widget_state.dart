@@ -35,21 +35,40 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
     extends State<TWidget> {
   /// Creates a JuiceWidgetState with optional dependency resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver, defaults to global resolver
+  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   JuiceWidgetState(
       {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : resolver = resolver ?? GlobalBlocResolver().resolver;
+      : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
   final Set<String> groups;
 
-  /// Resolver used to obtain bloc instances
-  final BlocDependencyResolver resolver;
+  /// Custom resolver for legacy compatibility.
+  final BlocDependencyResolver? _customResolver;
 
-  /// The bloc instance this widget observes
-  TBloc get bloc => resolver.resolve<TBloc>();
+  /// Cached bloc instance
+  TBloc? _bloc;
+
+  /// Lease for lifecycle management when using BlocScope
+  BlocLease<TBloc>? _lease;
+
+  /// The bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc get bloc {
+    if (_bloc != null) return _bloc!;
+
+    if (_customResolver != null) {
+      // Legacy path: use custom resolver directly
+      _bloc = _customResolver.resolve<TBloc>();
+    } else {
+      // New path: use BlocScope with lease for proper lifecycle management
+      _lease = BlocScope.lease<TBloc>();
+      _bloc = _lease!.bloc;
+    }
+    return _bloc!;
+  }
 
   @override
   @protected
@@ -126,6 +145,15 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
   Widget close(BuildContext context) {
     return const SizedBox.shrink();
   }
+
+  @override
+  void dispose() {
+    // Release the lease if we acquired one
+    _lease?.dispose();
+    _lease = null;
+    _bloc = null;
+    super.dispose();
+  }
 }
 
 /// Base class for creating stateful widgets that respond to two Juice blocs.
@@ -136,24 +164,54 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState2 with optional resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver, defaults to global resolver
+  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   JuiceWidgetState2(
       {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : resolver = resolver ?? GlobalBlocResolver().resolver;
+      : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
   final Set<String> groups;
 
-  /// Resolver used to obtain bloc instances
-  final BlocDependencyResolver resolver;
+  /// Custom resolver for legacy compatibility.
+  final BlocDependencyResolver? _customResolver;
 
-  /// The first bloc instance this widget observes
-  TBloc1 get bloc1 => resolver.resolve<TBloc1>();
+  /// Cached bloc instances
+  TBloc1? _bloc1;
+  TBloc2? _bloc2;
 
-  /// The second bloc instance this widget observes
-  TBloc2 get bloc2 => resolver.resolve<TBloc2>();
+  /// Leases for lifecycle management when using BlocScope
+  BlocLease<TBloc1>? _lease1;
+  BlocLease<TBloc2>? _lease2;
+
+  /// The first bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc1 get bloc1 {
+    if (_bloc1 != null) return _bloc1!;
+
+    if (_customResolver != null) {
+      _bloc1 = _customResolver.resolve<TBloc1>();
+    } else {
+      _lease1 = BlocScope.lease<TBloc1>();
+      _bloc1 = _lease1!.bloc;
+    }
+    return _bloc1!;
+  }
+
+  /// The second bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc2 get bloc2 {
+    if (_bloc2 != null) return _bloc2!;
+
+    if (_customResolver != null) {
+      _bloc2 = _customResolver.resolve<TBloc2>();
+    } else {
+      _lease2 = BlocScope.lease<TBloc2>();
+      _bloc2 = _lease2!.bloc;
+    }
+    return _bloc2!;
+  }
 
   @override
   @protected
@@ -228,6 +286,18 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
   Widget close(BuildContext context) {
     return const SizedBox.shrink();
   }
+
+  @override
+  void dispose() {
+    // Release the leases if we acquired them
+    _lease1?.dispose();
+    _lease2?.dispose();
+    _lease1 = null;
+    _lease2 = null;
+    _bloc1 = null;
+    _bloc2 = null;
+    super.dispose();
+  }
 }
 
 /// Base class for creating stateful widgets that respond to three Juice blocs.
@@ -241,27 +311,70 @@ class JuiceWidgetState3<
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState3 with optional resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver, defaults to global resolver
+  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   JuiceWidgetState3(
       {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : resolver = resolver ?? GlobalBlocResolver().resolver;
+      : _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
   final Set<String> groups;
 
-  /// Resolver used to obtain bloc instances
-  final BlocDependencyResolver resolver;
+  /// Custom resolver for legacy compatibility.
+  final BlocDependencyResolver? _customResolver;
 
-  /// The first bloc instance this widget observes
-  TBloc1 get bloc1 => resolver.resolve<TBloc1>();
+  /// Cached bloc instances
+  TBloc1? _bloc1;
+  TBloc2? _bloc2;
+  TBloc3? _bloc3;
 
-  /// The second bloc instance this widget observes
-  TBloc2 get bloc2 => resolver.resolve<TBloc2>();
+  /// Leases for lifecycle management when using BlocScope
+  BlocLease<TBloc1>? _lease1;
+  BlocLease<TBloc2>? _lease2;
+  BlocLease<TBloc3>? _lease3;
 
-  /// The third bloc instance this widget observes
-  TBloc3 get bloc3 => resolver.resolve<TBloc3>();
+  /// The first bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc1 get bloc1 {
+    if (_bloc1 != null) return _bloc1!;
+
+    if (_customResolver != null) {
+      _bloc1 = _customResolver.resolve<TBloc1>();
+    } else {
+      _lease1 = BlocScope.lease<TBloc1>();
+      _bloc1 = _lease1!.bloc;
+    }
+    return _bloc1!;
+  }
+
+  /// The second bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc2 get bloc2 {
+    if (_bloc2 != null) return _bloc2!;
+
+    if (_customResolver != null) {
+      _bloc2 = _customResolver.resolve<TBloc2>();
+    } else {
+      _lease2 = BlocScope.lease<TBloc2>();
+      _bloc2 = _lease2!.bloc;
+    }
+    return _bloc2!;
+  }
+
+  /// The third bloc instance this widget observes.
+  /// Resolved via BlocScope or custom resolver.
+  TBloc3 get bloc3 {
+    if (_bloc3 != null) return _bloc3!;
+
+    if (_customResolver != null) {
+      _bloc3 = _customResolver.resolve<TBloc3>();
+    } else {
+      _lease3 = BlocScope.lease<TBloc3>();
+      _bloc3 = _lease3!.bloc;
+    }
+    return _bloc3!;
+  }
 
   @override
   @protected
@@ -336,5 +449,20 @@ class JuiceWidgetState3<
   @protected
   Widget close(BuildContext context) {
     return const SizedBox.shrink();
+  }
+
+  @override
+  void dispose() {
+    // Release the leases if we acquired them
+    _lease1?.dispose();
+    _lease2?.dispose();
+    _lease3?.dispose();
+    _lease1 = null;
+    _lease2 = null;
+    _lease3 = null;
+    _bloc1 = null;
+    _bloc2 = null;
+    _bloc3 = null;
+    super.dispose();
   }
 }

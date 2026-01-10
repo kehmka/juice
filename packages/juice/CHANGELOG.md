@@ -4,6 +4,9 @@
 
 ### Fixes
 - Events sent to a closed bloc are now gracefully ignored with a log message instead of throwing an error
+- Fixed `JuiceWidgetState`, `JuiceWidgetState2`, `JuiceWidgetState3` to use `BlocScope` when `GlobalBlocResolver` is not configured
+  - Previously threw `LateInitializationError` when using `BlocScope.register` pattern
+  - Now properly acquires and releases bloc leases with lifecycle management
 - Resolved pub.dev analyzer warnings:
   - Removed unnecessary imports in `bloc_scope.dart`, `event_subscription.dart`, `relay_use_case_builder.dart`, `bloc_tester.dart`
   - Updated constructors in `StatelessJuiceWidget` to use Dart 3 super parameters

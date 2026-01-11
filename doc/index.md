@@ -257,6 +257,15 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 
 ---
 
+## Architecture & Design
+
+Deep dives into Juice's internal design patterns and architecture:
+
+- **[Bloc Lifecycle Management](design/bloc-lifecycle-management.md)** - FeatureScope, leases, and lifecycle-aware bloc resolution
+- **[CleanupBarrier](design/cleanup-barrier.md)** - Deterministic async cleanup pattern for scope transitions
+
+---
+
 ## Why Juice?
 
 Juice was created to solve common challenges in Flutter development:

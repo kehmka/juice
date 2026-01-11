@@ -11,3 +11,10 @@ export 'bloc_entry.dart';
 export 'bloc_diagnostics.dart';
 export 'feature_scope.dart';
 export 'leak_detector.dart';
+
+// LifecycleBloc - reactive lifecycle events for FeatureScope
+export 'cleanup_barrier.dart';
+export 'lifecycle_bloc.dart';
+export 'scope_state.dart';
+export 'scope_events.dart';
+export 'scope_use_cases.dart';

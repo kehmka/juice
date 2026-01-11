@@ -1,5 +1,6 @@
 export 'app/app.dart';
 export 'auth/auth.dart';
+export 'lifecycle_demo/lifecycle_demo.dart';
 export 'chat/chat.dart';
 export 'counter/counter.dart';
 export 'features_showcase/features_showcase.dart';

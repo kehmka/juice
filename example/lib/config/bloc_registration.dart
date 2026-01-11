@@ -4,6 +4,12 @@ import '../services/services.dart';
 
 class BlocRegistry {
   static void initialize(DeepLinkConfig deeplinkconfig) {
+    // LifecycleBloc - must be registered first for scope lifecycle management
+    BlocScope.register<LifecycleBloc>(
+      () => LifecycleBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+
     // App-level blocs - permanent lifecycle (live for entire app lifetime)
     BlocScope.register<AppBloc>(
       () => AppBloc(deeplinkconfig: deeplinkconfig),
@@ -65,6 +71,12 @@ class BlocRegistry {
     // Features showcase - demonstrates new Juice features
     BlocScope.register<FeaturesShowcaseBloc>(
       () => FeaturesShowcaseBloc(),
+      lifecycle: BlocLifecycle.permanent,
+    );
+
+    // Lifecycle demo - demonstrates LifecycleBloc cleanup
+    BlocScope.register<LifecycleDemoBloc>(
+      () => LifecycleDemoBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
 

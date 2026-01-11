@@ -7,7 +7,6 @@ import 'blocs/chat/ui/chat_page.dart';
 import 'blocs/counter/ui/counter_page.dart';
 import 'blocs/counter/ui/counter_builder_page.dart';
 import 'blocs/form/ui/form_page.dart';
-import 'blocs/relay_demo/ui/relay_demo_page.dart';
 import 'blocs/todo/ui/todo_page.dart';
 import 'blocs/weather/ui/weather_page.dart';
 import 'blocs/blocs.dart';
@@ -26,6 +25,7 @@ final exampleRoutes = {
   '/weather': (context) => const WeatherPage(),
   '/upload': (context) => const FileUploadPage(),
   '/onboard': (context) => OnboardingScreen(),
+  '/lifecycle-demo': (context) => const LifecycleDemoPage(),
 };
 
 void main() {
@@ -120,6 +120,11 @@ class MyHomePage extends StatelessWidget {
         'route': '/features-showcase',
         'subtitle': 'JuiceSelector, sendAndWait, JuiceException, LeakDetector'
       },
+      {
+        'title': 'Lifecycle Demo',
+        'route': '/lifecycle-demo',
+        'subtitle': 'LifecycleBloc cleanup with parallel tasks'
+      },
       {'title': 'Auth & EventSubscription', 'route': '/auth'},
       {'title': 'Counter Example', 'route': '/counter'},
       {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
@@ -171,6 +176,7 @@ class ExampleDeepLinkConfig {
       'weather': DeepLinkRoute(path: ['/weather']),
       'upload': DeepLinkRoute(path: ['/upload']),
       'onboard': DeepLinkRoute(path: ['/onboard']),
+      'lifecycle-demo': DeepLinkRoute(path: ['/lifecycle-demo']),
     },
   );
 }

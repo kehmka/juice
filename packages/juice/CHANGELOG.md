@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.2.0] - 2025-01-11
+
+### New Features
+
+#### LifecycleBloc - Reactive Scope Lifecycle Management
+- Added `LifecycleBloc` as a permanent bloc that tracks `FeatureScope` lifecycle events
+- Provides stream-based notifications for scope state changes:
+  - `ScopeStartedNotification` - Emitted when a scope starts
+  - `ScopeEndingNotification` - Emitted when scope cleanup begins (includes `CleanupBarrier`)
+  - `ScopeEndedNotification` - Emitted when cleanup completes (includes success/timeout status)
+- Enables reactive patterns for scope-aware features
+
+#### CleanupBarrier - Deterministic Async Cleanup
+- Added `CleanupBarrier` for coordinating async cleanup when scopes end
+- Ensures in-flight operations complete or cancel before scope fully closes
+- Features:
+  - `barrier.add(Future)` - Register cleanup tasks
+  - Configurable timeout (default: 30 seconds) prevents hung cleanup
+  - `cleanupCompleted` flag indicates success vs timeout
+
+```dart
+// Subscribe to lifecycle notifications
+lifecycleBloc.notifications.listen((notification) {
+  if (notification is ScopeEndingNotification) {
+    // Register cleanup work on the barrier
+    notification.barrier.add(_cancelPendingRequests());
+    notification.barrier.add(_saveUnsavedData());
+  }
+});
+```
+
+### Example App
+- Added "Lifecycle Demo" showcasing LifecycleBloc capabilities:
+  - Spawns parallel simulated async tasks with progress tracking
+  - Demonstrates CleanupBarrier canceling in-flight tasks on scope end
+  - Visual phase indicator (Idle → Active → Cleanup → Ended)
+  - Color-coded event log showing all lifecycle notifications
+  - Toggle for slow cleanup to test barrier timeout behavior
+
+---
+
 ## [1.1.3] - 2025-01-10
 
 ### Fixes

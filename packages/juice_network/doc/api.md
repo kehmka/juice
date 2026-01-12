@@ -1,7 +1,7 @@
 ---
 layout: default
 title: API Reference
-nav_order: 5
+nav_order: 7
 ---
 
 # API Reference
@@ -61,6 +61,17 @@ Initialize FetchBloc with configuration. Must be called before making requests.
 ```dart
 InitializeFetchEvent({
   required FetchConfig config,
+  List<FetchInterceptor>? interceptors,
+})
+```
+
+### ReconfigureInterceptorsEvent
+
+Change interceptors on an already-initialized FetchBloc.
+
+```dart
+ReconfigureInterceptorsEvent({
+  required List<FetchInterceptor> interceptors,
 })
 ```
 

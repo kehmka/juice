@@ -1,0 +1,27 @@
+name: juice_network_example
+description: Demo app for juice_network package
+publish_to: 'none'
+
+version: 1.0.0
+
+environment:
+  sdk: ^3.8.0
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../../juice
+  juice_storage:
+    path: ../../juice_storage
+  juice_network:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

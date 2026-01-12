@@ -1,0 +1,32 @@
+remote_theme: just-the-docs/just-the-docs
+title: juice_network
+description: Reactive HTTP client bloc for Juice with caching, coalescing, and retry
+baseurl: "/juice_network"
+url: "https://kehmka.github.io"
+
+search_enabled: true
+heading_anchors: true
+
+nav_external_links:
+  - title: pub.dev
+    url: https://pub.dev/packages/juice_network
+  - title: GitHub
+    url: https://github.com/kehmka/juice/tree/main/packages/juice_network
+
+footer_content: "juice_network is part of the <a href=\"https://pub.dev/packages/juice\">Juice Framework</a>"
+
+color_scheme: dark
+
+callouts:
+  tip:
+    title: Tip
+    color: green
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: Warning
+    color: yellow
+  important:
+    title: Important
+    color: red

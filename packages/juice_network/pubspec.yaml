@@ -1,0 +1,36 @@
+name: juice_network
+description: Unified network BLoC for Flutter - request coalescing, caching, retry, and interceptors built on the Juice framework.
+version: 0.1.0
+homepage: https://github.com/kevinehosford/juice
+repository: https://github.com/kevinehosford/juice
+issue_tracker: https://github.com/kevinehosford/juice/issues
+documentation: https://github.com/kevinehosford/juice/tree/main/packages/juice_network
+
+topics:
+  - bloc
+  - state-management
+  - network
+  - http
+  - caching
+
+funding:
+  - https://github.com/sponsors/kevinehosford
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice: ^1.2.0
+  juice_storage: ^1.0.0
+  dio: ^5.4.0
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.4
+  http_mock_adapter: ^0.6.1

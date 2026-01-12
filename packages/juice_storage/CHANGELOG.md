@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-01-12
+
+### Stable Release
+
+First stable release of juice_storage, ready for production use.
+
+### Added
+- **SQLite Use Case Tests** - Comprehensive test coverage for SQLite operations (27 new tests)
+- **Platform Support Documentation** - Added platform compatibility table to README
+
+### Changed
+- Updated dependency: `juice: ^1.2.0`
+
+### Breaking Changes
+- **Renamed `ResultEvent` to `StorageResultEvent`** - Resolves naming conflict with juice core's `ResultEvent`. If you subclassed `ResultEvent`, update to extend `StorageResultEvent` instead.
+- **Standardized Hive event parameters** - `HiveOpenBoxEvent` and `HiveCloseBoxEvent` now use `box` parameter instead of `boxName` for consistency with other Hive events.
+  - Before: `HiveOpenBoxEvent(boxName: 'cache')`
+  - After: `HiveOpenBoxEvent(box: 'cache')`
+- **Helper method parameter renamed** - `hiveOpenBox(String boxName)` is now `hiveOpenBox(String box)`
+
+### Documentation
+- Added platform support matrix showing backend availability per platform
+- Web limitations documented for SQLite and Secure Storage
+
+---
+
 ## [0.8.0] - 2025-01-10
 
 ### Added

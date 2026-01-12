@@ -127,7 +127,7 @@ void main() {
           cacheIndex: cacheIndex,
         );
 
-        final event = HiveOpenBoxEvent(boxName: 'testBox');
+        final event = HiveOpenBoxEvent(box: 'testBox');
         bloc.send(event);
         await event.result;
 
@@ -146,7 +146,7 @@ void main() {
         );
 
         // Open box
-        final openEvent = HiveOpenBoxEvent(boxName: 'testBox');
+        final openEvent = HiveOpenBoxEvent(box: 'testBox');
         bloc.send(openEvent);
         await openEvent.result;
 
@@ -179,7 +179,7 @@ void main() {
         );
 
         // Open box
-        final openEvent = HiveOpenBoxEvent(boxName: 'testBox');
+        final openEvent = HiveOpenBoxEvent(box: 'testBox');
         bloc.send(openEvent);
         await openEvent.result;
 

@@ -88,7 +88,7 @@ void main() {
       );
 
       // Open a box and write a value
-      final openEvent = HiveOpenBoxEvent(boxName: 'testBox');
+      final openEvent = HiveOpenBoxEvent(box: 'testBox');
       bloc.send(openEvent);
       await openEvent.result;
 

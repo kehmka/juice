@@ -257,13 +257,13 @@ class StorageBloc extends JuiceBloc<StorageState> {
   }
 
   /// Open a Hive box.
-  Future<void> hiveOpenBox(String boxName, {bool lazy = false}) async {
-    await sendForResult<void>(HiveOpenBoxEvent(boxName: boxName, lazy: lazy));
+  Future<void> hiveOpenBox(String box, {bool lazy = false}) async {
+    await sendForResult<void>(HiveOpenBoxEvent(box: box, lazy: lazy));
   }
 
   /// Close a Hive box.
-  Future<void> hiveCloseBox(String boxName) async {
-    await sendForResult<void>(HiveCloseBoxEvent(boxName: boxName));
+  Future<void> hiveCloseBox(String box) async {
+    await sendForResult<void>(HiveCloseBoxEvent(box: box));
   }
 
   // ===========================================================================

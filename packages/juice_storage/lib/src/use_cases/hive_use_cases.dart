@@ -13,21 +13,21 @@ class HiveOpenBoxUseCase extends BlocUseCase<StorageBloc, HiveOpenBoxEvent> {
   Future<void> execute(HiveOpenBoxEvent event) async {
     try {
       final adapter = await HiveAdapterFactory.open<dynamic>(
-        event.boxName,
+        event.box,
         lazy: event.lazy,
       );
 
       emitUpdate(
         newState: () {
           final boxes = Map<String, BoxInfo>.from(bloc.state.hiveBoxes);
-          boxes[event.boxName] = BoxInfo(
-            name: event.boxName,
+          boxes[event.box] = BoxInfo(
+            name: event.box,
             isLazy: event.lazy,
             entryCount: adapter.length,
           );
           return bloc.state.copyWith(hiveBoxes: boxes);
         }(),
-        groupsToRebuild: {StorageBloc.groupHive(event.boxName)},
+        groupsToRebuild: {StorageBloc.groupHive(event.box)},
       );
 
       event.succeed(null);
@@ -35,7 +35,7 @@ class HiveOpenBoxUseCase extends BlocUseCase<StorageBloc, HiveOpenBoxEvent> {
       emitFailure(error: e, errorStackTrace: st);
       event.fail(
         StorageException(
-          'Failed to open Hive box: ${event.boxName}',
+          'Failed to open Hive box: ${event.box}',
           type: StorageErrorType.backendNotAvailable,
           cause: e,
         ),
@@ -50,15 +50,15 @@ class HiveCloseBoxUseCase extends BlocUseCase<StorageBloc, HiveCloseBoxEvent> {
   @override
   Future<void> execute(HiveCloseBoxEvent event) async {
     try {
-      await HiveAdapterFactory.close(event.boxName);
+      await HiveAdapterFactory.close(event.box);
 
       emitUpdate(
         newState: () {
           final boxes = Map<String, BoxInfo>.from(bloc.state.hiveBoxes);
-          boxes.remove(event.boxName);
+          boxes.remove(event.box);
           return bloc.state.copyWith(hiveBoxes: boxes);
         }(),
-        groupsToRebuild: {StorageBloc.groupHive(event.boxName)},
+        groupsToRebuild: {StorageBloc.groupHive(event.box)},
       );
 
       event.succeed(null);
@@ -66,7 +66,7 @@ class HiveCloseBoxUseCase extends BlocUseCase<StorageBloc, HiveCloseBoxEvent> {
       emitFailure(error: e, errorStackTrace: st);
       event.fail(
         StorageException(
-          'Failed to close Hive box: ${event.boxName}',
+          'Failed to close Hive box: ${event.box}',
           type: StorageErrorType.backendNotAvailable,
           cause: e,
         ),

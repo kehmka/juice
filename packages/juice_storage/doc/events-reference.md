@@ -100,7 +100,7 @@ storage.send(PrefsDeleteEvent(key: 'theme'));
 Opens a Hive box (usually done automatically via config).
 
 ```dart
-storage.send(HiveOpenBoxEvent(boxName: 'cache', lazy: false));
+storage.send(HiveOpenBoxEvent(box: 'cache', lazy: false));
 ```
 
 **Rebuild Groups:** `storage:hive:{boxName}`
@@ -155,7 +155,7 @@ storage.send(HiveDeleteEvent(box: 'cache', key: 'user'));
 Closes a Hive box.
 
 ```dart
-storage.send(HiveCloseBoxEvent(boxName: 'cache'));
+storage.send(HiveCloseBoxEvent(box: 'cache'));
 ```
 
 ---

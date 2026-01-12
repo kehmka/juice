@@ -23,7 +23,7 @@ extension JuiceBlocResultOps<TState extends BlocState> on JuiceBloc<TState> {
   /// }
   /// ```
   Future<OperationResult<TResult, TState>> sendAndWaitResult<TResult>(
-    ResultEvent<TResult> event, {
+    StorageResultEvent<TResult> event, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     // Listen BEFORE sending to avoid missing fast emissions.
@@ -69,7 +69,7 @@ extension JuiceBlocResultOps<TState extends BlocState> on JuiceBloc<TState> {
   /// }
   /// ```
   Future<TResult> sendForResult<TResult>(
-    ResultEvent<TResult> event, {
+    StorageResultEvent<TResult> event, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     final op = await sendAndWaitResult<TResult>(event, timeout: timeout);

@@ -7,7 +7,7 @@ import 'core/result_event.dart';
 /// Initialize the storage system.
 ///
 /// Returns void on completion.
-class InitializeStorageEvent extends ResultEvent<void> {
+class InitializeStorageEvent extends StorageResultEvent<void> {
   InitializeStorageEvent({
     super.requestId,
     super.groupsToRebuild,
@@ -21,12 +21,12 @@ class InitializeStorageEvent extends ResultEvent<void> {
 /// Open a Hive box.
 ///
 /// Returns void on completion.
-class HiveOpenBoxEvent extends ResultEvent<void> {
-  final String boxName;
+class HiveOpenBoxEvent extends StorageResultEvent<void> {
+  final String box;
   final bool lazy;
 
   HiveOpenBoxEvent({
-    required this.boxName,
+    required this.box,
     this.lazy = false,
     super.requestId,
     super.groupsToRebuild,
@@ -37,7 +37,7 @@ class HiveOpenBoxEvent extends ResultEvent<void> {
 ///
 /// Returns Object? (the stored value, or null if not found/expired).
 /// NOTE: Events are non-generic. Helpers provide the generic cast.
-class HiveReadEvent extends ResultEvent<Object?> {
+class HiveReadEvent extends StorageResultEvent<Object?> {
   final String box;
   final String key;
 
@@ -52,7 +52,7 @@ class HiveReadEvent extends ResultEvent<Object?> {
 /// Write a value to Hive.
 ///
 /// Returns void on completion.
-class HiveWriteEvent extends ResultEvent<void> {
+class HiveWriteEvent extends StorageResultEvent<void> {
   final String box;
   final String key;
   final Object? value;
@@ -71,7 +71,7 @@ class HiveWriteEvent extends ResultEvent<void> {
 /// Delete a value from Hive.
 ///
 /// Returns void on completion.
-class HiveDeleteEvent extends ResultEvent<void> {
+class HiveDeleteEvent extends StorageResultEvent<void> {
   final String box;
   final String key;
 
@@ -86,11 +86,11 @@ class HiveDeleteEvent extends ResultEvent<void> {
 /// Close a Hive box.
 ///
 /// Returns void on completion.
-class HiveCloseBoxEvent extends ResultEvent<void> {
-  final String boxName;
+class HiveCloseBoxEvent extends StorageResultEvent<void> {
+  final String box;
 
   HiveCloseBoxEvent({
-    required this.boxName,
+    required this.box,
     super.requestId,
     super.groupsToRebuild,
   });
@@ -104,7 +104,7 @@ class HiveCloseBoxEvent extends ResultEvent<void> {
 ///
 /// Returns Object? (the stored value, or null if not found/expired).
 /// NOTE: Events are non-generic. Helpers provide the generic cast.
-class PrefsReadEvent extends ResultEvent<Object?> {
+class PrefsReadEvent extends StorageResultEvent<Object?> {
   final String key;
 
   PrefsReadEvent({
@@ -117,7 +117,7 @@ class PrefsReadEvent extends ResultEvent<Object?> {
 /// Write a value to SharedPreferences.
 ///
 /// Returns void on completion.
-class PrefsWriteEvent extends ResultEvent<void> {
+class PrefsWriteEvent extends StorageResultEvent<void> {
   final String key;
   final Object? value;
   final Duration? ttl;
@@ -134,7 +134,7 @@ class PrefsWriteEvent extends ResultEvent<void> {
 /// Delete a value from SharedPreferences.
 ///
 /// Returns void on completion.
-class PrefsDeleteEvent extends ResultEvent<void> {
+class PrefsDeleteEvent extends StorageResultEvent<void> {
   final String key;
 
   PrefsDeleteEvent({
@@ -151,7 +151,7 @@ class PrefsDeleteEvent extends ResultEvent<void> {
 /// Execute a SQLite query.
 ///
 /// Returns Object? (List<Map<String, dynamic>>).
-class SqliteQueryEvent extends ResultEvent<Object?> {
+class SqliteQueryEvent extends StorageResultEvent<Object?> {
   final String sql;
   final List<dynamic>? arguments;
 
@@ -166,7 +166,7 @@ class SqliteQueryEvent extends ResultEvent<Object?> {
 /// Insert a row into SQLite.
 ///
 /// Returns Object? (int row id).
-class SqliteInsertEvent extends ResultEvent<Object?> {
+class SqliteInsertEvent extends StorageResultEvent<Object?> {
   final String table;
   final Map<String, dynamic> values;
 
@@ -181,7 +181,7 @@ class SqliteInsertEvent extends ResultEvent<Object?> {
 /// Update rows in SQLite.
 ///
 /// Returns Object? (int rows affected).
-class SqliteUpdateEvent extends ResultEvent<Object?> {
+class SqliteUpdateEvent extends StorageResultEvent<Object?> {
   final String table;
   final Map<String, dynamic> values;
   final String? where;
@@ -200,7 +200,7 @@ class SqliteUpdateEvent extends ResultEvent<Object?> {
 /// Delete rows from SQLite.
 ///
 /// Returns Object? (int rows deleted).
-class SqliteDeleteEvent extends ResultEvent<Object?> {
+class SqliteDeleteEvent extends StorageResultEvent<Object?> {
   final String table;
   final String? where;
   final List<dynamic>? whereArgs;
@@ -217,7 +217,7 @@ class SqliteDeleteEvent extends ResultEvent<Object?> {
 /// Execute raw SQL.
 ///
 /// Returns void on completion.
-class SqliteRawEvent extends ResultEvent<void> {
+class SqliteRawEvent extends StorageResultEvent<void> {
   final String sql;
   final List<dynamic>? arguments;
 
@@ -236,7 +236,7 @@ class SqliteRawEvent extends ResultEvent<void> {
 /// Read a value from secure storage.
 ///
 /// Returns Object? (String value, or null if not found).
-class SecureReadEvent extends ResultEvent<Object?> {
+class SecureReadEvent extends StorageResultEvent<Object?> {
   final String key;
 
   SecureReadEvent({
@@ -250,7 +250,7 @@ class SecureReadEvent extends ResultEvent<Object?> {
 ///
 /// Note: TTL is not supported for secure storage. Secrets require explicit deletion.
 /// Returns void on completion.
-class SecureWriteEvent extends ResultEvent<void> {
+class SecureWriteEvent extends StorageResultEvent<void> {
   final String key;
   final String value;
 
@@ -265,7 +265,7 @@ class SecureWriteEvent extends ResultEvent<void> {
 /// Delete a value from secure storage.
 ///
 /// Returns void on completion.
-class SecureDeleteEvent extends ResultEvent<void> {
+class SecureDeleteEvent extends StorageResultEvent<void> {
   final String key;
 
   SecureDeleteEvent({
@@ -278,7 +278,7 @@ class SecureDeleteEvent extends ResultEvent<void> {
 /// Delete all secure storage.
 ///
 /// Returns void on completion.
-class SecureDeleteAllEvent extends ResultEvent<void> {
+class SecureDeleteAllEvent extends StorageResultEvent<void> {
   SecureDeleteAllEvent({
     super.requestId,
     super.groupsToRebuild,
@@ -292,7 +292,7 @@ class SecureDeleteAllEvent extends ResultEvent<void> {
 /// Clean up expired cache entries.
 ///
 /// Returns Object? (int entries cleaned).
-class CacheCleanupEvent extends ResultEvent<Object?> {
+class CacheCleanupEvent extends StorageResultEvent<Object?> {
   /// If true, run cleanup immediately.
   final bool runNow;
 
@@ -310,7 +310,7 @@ class CacheCleanupEvent extends ResultEvent<Object?> {
 /// Clear all storage (logout scenario).
 ///
 /// Returns void on completion.
-class ClearAllEvent extends ResultEvent<void> {
+class ClearAllEvent extends StorageResultEvent<void> {
   final ClearAllOptions options;
 
   ClearAllEvent({

@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_storage/src/core/result_event.dart';
 
-class TestResultEvent extends ResultEvent<String> {
+class TestResultEvent extends StorageResultEvent<String> {
   TestResultEvent({super.requestId, super.groupsToRebuild});
 }
 
-class VoidResultEvent extends ResultEvent<void> {
+class VoidResultEvent extends StorageResultEvent<void> {
   VoidResultEvent({super.requestId});
 }
 
 void main() {
-  group('ResultEvent', () {
+  group('StorageResultEvent', () {
     group('requestId', () {
       test('auto-generates requestId when not provided', () {
         final event1 = TestResultEvent();

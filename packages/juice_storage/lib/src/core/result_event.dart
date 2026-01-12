@@ -1,13 +1,13 @@
 import 'package:juice/juice.dart';
 
-/// Base class for events that return typed results.
+/// Base class for storage events that return typed results.
 ///
 /// Each event instance carries its own [Completer], ensuring concurrent
 /// operations never interfere with each other's results.
 ///
 /// Use cases must call [succeed] or [fail] to complete the result.
-abstract class ResultEvent<TResult> extends EventBase {
-  ResultEvent({
+abstract class StorageResultEvent<TResult> extends EventBase {
+  StorageResultEvent({
     String? requestId,
     super.groupsToRebuild,
   }) : requestId = requestId ?? _newRequestId();

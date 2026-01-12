@@ -14,12 +14,25 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 - **Event-Driven**: Full BLoC pattern integration with helper methods for convenience
 - **Lazy Loading**: Support for lazy Hive box initialization
 
+## Platform Support
+
+| Backend | iOS | Android | macOS | Windows | Linux | Web |
+|---------|-----|---------|-------|---------|-------|-----|
+| **Hive** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **SharedPreferences** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **SQLite** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Secure Storage** | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+
+**Notes:**
+- **SQLite**: Web is not supported by `sqflite`. For web, consider using Hive or SharedPreferences.
+- **Secure Storage**: Web support is limited and uses `sessionStorage`/`localStorage` which is not truly secure. For sensitive data on web, consider server-side storage.
+
 ## Installation
 
 ```yaml
 dependencies:
-  juice: ^1.1.3
-  juice_storage: ^0.8.0
+  juice: ^1.2.0
+  juice_storage: ^1.0.0
 ```
 
 ## Usage

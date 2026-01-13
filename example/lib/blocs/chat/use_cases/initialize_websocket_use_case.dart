@@ -38,7 +38,7 @@ class InitializeWebSocketUseCase
       emitWaiting(groupsToRebuild: {"messages"});
 
       // Connect with timeout
-      await _service.connect('wss://echo.websocket.events').timeout(
+      await _service.connect('wss://echo.websocket.org').timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw TimeoutException('Connection timeout'),
           );

@@ -15,17 +15,17 @@
 | Package | Dependency | Purpose |
 |---------|------------|---------|
 | `juice` | Required | Core bloc infrastructure |
-| `juice` | Required | `LifecycleBloc` for automatic scope-based cancellation |
+| `juice` | Required | `ScopeLifecycleBloc` for automatic scope-based cancellation |
 | `juice_storage` | Required | Cache persistence via `StorageBloc` |
 | `dio` | Required | HTTP transport |
 
-**Prerequisite:** `LifecycleBloc` must be registered before `FetchBloc`:
+**Prerequisite:** `ScopeLifecycleBloc` must be registered before `FetchBloc`:
 
 ```dart
 void main() {
-  // 1. Register LifecycleBloc first (core juice)
-  BlocScope.register<LifecycleBloc>(
-    () => LifecycleBloc(),
+  // 1. Register ScopeLifecycleBloc first (core juice)
+  BlocScope.register<ScopeLifecycleBloc>(
+    () => ScopeLifecycleBloc(),
     lifecycle: BlocLifecycle.permanent,
   );
 
@@ -161,9 +161,9 @@ for (var i = 0; i < 10; i++) {
 // Result: 1 network call, 10 widgets get the same response
 ```
 
-#### 2. Automatic Cancellation via LifecycleBloc
+#### 2. Automatic Cancellation via ScopeLifecycleBloc
 
-FetchBloc subscribes to `LifecycleBloc.notifications` for automatic request cancellation when feature scopes end.
+FetchBloc subscribes to `ScopeLifecycleBloc.notifications` for automatic request cancellation when feature scopes end.
 
 ```dart
 /// Feature flow with automatic request cancellation
@@ -179,7 +179,7 @@ class ProfileFlow {
   }
 
   Future<void> complete() async {
-    // 1. scope.end() → LifecycleBloc publishes ScopeEndingNotification
+    // 1. scope.end() → ScopeLifecycleBloc publishes ScopeEndingNotification
     // 2. FetchBloc (subscribed) receives event → cancels 'profile' requests
     // 3. Blocs disposed after cleanup completes
     await scope.end();
@@ -208,8 +208,8 @@ class ProfileBloc extends JuiceBloc<ProfileState> {
 User navigates away
   → ProfileFlow.complete()
     → scope.end()
-      → LifecycleBloc.send(EndScopeEvent)
-        → LifecycleBloc publishes ScopeEndingNotification('profile')
+      → ScopeLifecycleBloc.send(EndScopeEvent)
+        → ScopeLifecycleBloc publishes ScopeEndingNotification('profile')
           → FetchBloc receives notification, cancels requests with scope: 'profile'
             → Blocs disposed cleanly, no orphaned callbacks
 ```
@@ -2494,9 +2494,9 @@ extension FetchBlocExtensions on FetchBloc {
 
 ## Cross-Bloc Integration
 
-### With LifecycleBloc (core juice)
+### With ScopeLifecycleBloc (core juice)
 
-FetchBloc subscribes to `LifecycleBloc.notifications` for automatic request cancellation when feature scopes end. This is a **required** integration.
+FetchBloc subscribes to `ScopeLifecycleBloc.notifications` for automatic request cancellation when feature scopes end. This is a **required** integration.
 
 ```dart
 class FetchBloc extends JuiceBloc<FetchState> {
@@ -2504,7 +2504,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
 
   FetchBloc() : super(FetchState.initial()) {
     // Subscribe to scope lifecycle - auto-cancel requests when scopes end
-    _lifecycleSubscription = BlocScope.get<LifecycleBloc>()
+    _lifecycleSubscription = BlocScope.get<ScopeLifecycleBloc>()
         .notifications
         .whereType<ScopeEndingNotification>()
         .listen(_onScopeEnding);
@@ -2532,7 +2532,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
 
 **What this does:**
 1. When any `FeatureScope.end()` is called
-2. `LifecycleBloc` publishes `ScopeEndingNotification` with a `CleanupBarrier`
+2. `ScopeLifecycleBloc` publishes `ScopeEndingNotification` with a `CleanupBarrier`
 3. FetchBloc receives it via the notifications stream
 4. Sends `CancelScopeEvent(scope: scopeName)` to itself
 5. All inflight requests with matching scope are cancelled
@@ -3122,5 +3122,5 @@ Before marking spec as frozen for v0.1.0, verify all items:
 | 1.0 | - | Draft | Initial spec |
 | 1.1 | - | Pre-freeze | Added canonicalization rules, coalescing semantics, cache safety, retry correctness, freeze checklist |
 | 1.2 | - | Pre-freeze | Refined "Why Use FetchBloc?" with 5 problems / 6 solutions framing; positioning as remote-state contract |
-| 1.3 | - | Pre-freeze | Fixed Juice patterns (StatelessJuiceWidget, BlocUseCase, Set groups, EventBase); Added LifecycleBloc integration |
+| 1.3 | - | Pre-freeze | Fixed Juice patterns (StatelessJuiceWidget, BlocUseCase, Set groups, EventBase); Added ScopeLifecycleBloc integration |
 | 1.4 | - | **Frozen** | Ready for v0.1.0 implementation |

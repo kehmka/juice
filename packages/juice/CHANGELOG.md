@@ -4,8 +4,8 @@
 
 ### New Features
 
-#### LifecycleBloc - Reactive Scope Lifecycle Management
-- Added `LifecycleBloc` as a permanent bloc that tracks `FeatureScope` lifecycle events
+#### ScopeLifecycleBloc - Reactive Scope Lifecycle Management
+- Added `ScopeLifecycleBloc` as a permanent bloc that tracks `FeatureScope` lifecycle events
 - Provides stream-based notifications for scope state changes:
   - `ScopeStartedNotification` - Emitted when a scope starts
   - `ScopeEndingNotification` - Emitted when scope cleanup begins (includes `CleanupBarrier`)
@@ -32,7 +32,7 @@ lifecycleBloc.notifications.listen((notification) {
 ```
 
 ### Example App
-- Added "Lifecycle Demo" showcasing LifecycleBloc capabilities:
+- Added "Lifecycle Demo" showcasing ScopeLifecycleBloc capabilities:
   - Spawns parallel simulated async tasks with progress tracking
   - Demonstrates CleanupBarrier canceling in-flight tasks on scope end
   - Visual phase indicator (Idle → Active → Cleanup → Ended)

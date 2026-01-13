@@ -15,9 +15,9 @@ void main() {
     BlocScope.reset();
   });
 
-  group('LifecycleBloc', () {
+  group('ScopeLifecycleBloc', () {
     test('generateScopeId returns unique sequential IDs', () {
-      final bloc = LifecycleBloc();
+      final bloc = ScopeLifecycleBloc();
 
       final id1 = bloc.generateScopeId();
       final id2 = bloc.generateScopeId();
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('initial state has no scopes', () {
-      final bloc = LifecycleBloc();
+      final bloc = ScopeLifecycleBloc();
 
       expect(bloc.state.scopes, isEmpty);
 
@@ -39,7 +39,7 @@ void main() {
     });
 
     test('config has default values', () {
-      final bloc = LifecycleBloc();
+      final bloc = ScopeLifecycleBloc();
 
       expect(bloc.config.cleanupTimeout, const Duration(seconds: 2));
       expect(bloc.config.onCleanupTimeout, isNull);
@@ -48,8 +48,8 @@ void main() {
     });
 
     test('config can be customized', () {
-      final bloc = LifecycleBloc(
-        config: LifecycleBlocConfig(
+      final bloc = ScopeLifecycleBloc(
+        config: ScopeLifecycleConfig(
           cleanupTimeout: const Duration(seconds: 5),
           onCleanupTimeout: (id, name) {},
         ),
@@ -63,7 +63,7 @@ void main() {
 
     group('StartScopeEvent', () {
       test('adds scope to state', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         final event = StartScopeEvent(name: 'test', scope: scope);
@@ -79,7 +79,7 @@ void main() {
       });
 
       test('publishes ScopeStartedNotification', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         final notifications = <ScopeNotification>[];
@@ -103,7 +103,7 @@ void main() {
 
     group('EndScopeEvent', () {
       test('returns notFound for unknown scope', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
 
         final event = EndScopeEvent(scopeId: 'unknown');
         bloc.send(event);
@@ -116,7 +116,7 @@ void main() {
       });
 
       test('ends scope by scopeId', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -137,7 +137,7 @@ void main() {
       });
 
       test('ends scope by scopeName', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -157,7 +157,7 @@ void main() {
       });
 
       test('publishes ScopeEndingNotification with barrier', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -184,7 +184,7 @@ void main() {
       });
 
       test('publishes ScopeEndedNotification after cleanup', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -212,7 +212,7 @@ void main() {
       });
 
       test('awaits cleanup barrier tasks', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -244,8 +244,8 @@ void main() {
       test('handles cleanup timeout', () async {
         var timeoutId = '';
         var timeoutName = '';
-        final bloc = LifecycleBloc(
-          config: LifecycleBlocConfig(
+        final bloc = ScopeLifecycleBloc(
+          config: ScopeLifecycleConfig(
             cleanupTimeout: const Duration(milliseconds: 50),
             onCleanupTimeout: (id, name) {
               timeoutId = id;
@@ -280,7 +280,7 @@ void main() {
 
     group('idempotency', () {
       test('concurrent end calls return same future', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         // Start scope
@@ -313,7 +313,7 @@ void main() {
 
     group('notifications', () {
       test('stream is broadcast', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
 
         final listener1 = <ScopeNotification>[];
         final listener2 = <ScopeNotification>[];
@@ -335,7 +335,7 @@ void main() {
       });
 
       test('can filter by type', () async {
-        final bloc = LifecycleBloc();
+        final bloc = ScopeLifecycleBloc();
         final scope = FeatureScope('test');
 
         final started = <ScopeStartedNotification>[];

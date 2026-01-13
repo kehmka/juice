@@ -23,7 +23,7 @@
 /// - **Cache Policies**: networkFirst, cacheFirst, staleWhileRevalidate, etc.
 /// - **Typed Errors**: NetworkError, TimeoutError, HttpError, DecodeError
 /// - **Interceptors**: Auth, Retry, Logging, ETag
-/// - **Scope Cancellation**: Auto-cancel requests when LifecycleBloc scopes end
+/// - **Scope Cancellation**: Auto-cancel requests when ScopeLifecycleBloc scopes end
 library juice_network;
 
 // Core

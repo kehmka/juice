@@ -26,7 +26,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
   /// Request coalescer for deduplication.
   late final RequestCoalescer coalescer;
 
-  /// Subscription to LifecycleBloc notifications.
+  /// Subscription to ScopeLifecycleBloc notifications.
   StreamSubscription<ScopeNotification>? _lifecycleSubscription;
 
   FetchBloc({
@@ -155,9 +155,9 @@ class FetchBloc extends JuiceBloc<FetchState> {
   }
 
   void _subscribeToLifecycle() {
-    if (!BlocScope.isRegistered<LifecycleBloc>()) return;
+    if (!BlocScope.isRegistered<ScopeLifecycleBloc>()) return;
 
-    final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+    final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
     _lifecycleSubscription = lifecycleBloc.notifications
         .where((n) => n is ScopeEndingNotification)
         .cast<ScopeEndingNotification>()

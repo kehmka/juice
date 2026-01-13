@@ -6,9 +6,9 @@ import 'scope_state.dart';
 import 'scope_events.dart';
 import 'scope_use_cases.dart';
 
-/// Configuration for LifecycleBloc behavior.
+/// Configuration for ScopeLifecycleBloc behavior.
 @immutable
-class LifecycleBlocConfig {
+class ScopeLifecycleConfig {
   /// Default timeout for cleanup operations.
   /// Individual EndScopeEvent can override this.
   final Duration cleanupTimeout;
@@ -16,7 +16,7 @@ class LifecycleBlocConfig {
   /// Called when cleanup times out (for logging/metrics).
   final void Function(String scopeId, String scopeName)? onCleanupTimeout;
 
-  const LifecycleBlocConfig({
+  const ScopeLifecycleConfig({
     this.cleanupTimeout = const Duration(seconds: 2),
     this.onCleanupTimeout,
   });
@@ -24,7 +24,7 @@ class LifecycleBlocConfig {
 
 /// Permanent bloc that tracks active scopes and publishes lifecycle events.
 ///
-/// LifecycleBloc provides reactive lifecycle management for FeatureScopes:
+/// ScopeLifecycleBloc provides reactive lifecycle management for FeatureScopes:
 /// - Tracks active scopes by unique ID
 /// - Publishes notifications when scopes start, are ending, and have ended
 /// - Provides CleanupBarrier for deterministic async cleanup
@@ -35,8 +35,8 @@ class LifecycleBlocConfig {
 ///
 /// ```dart
 /// void main() {
-///   BlocScope.register<LifecycleBloc>(
-///     () => LifecycleBloc(),
+///   BlocScope.register<ScopeLifecycleBloc>(
+///     () => ScopeLifecycleBloc(),
 ///     lifecycle: BlocLifecycle.permanent,
 ///   );
 ///   runApp(MyApp());
@@ -52,8 +52,8 @@ class LifecycleBlocConfig {
 ///   StreamSubscription? _scopeSubscription;
 ///
 ///   FetchBloc() : super(FetchState.initial(), [...]) {
-///     if (BlocScope.isRegistered<LifecycleBloc>()) {
-///       final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+///     if (BlocScope.isRegistered<ScopeLifecycleBloc>()) {
+///       final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
 ///       _scopeSubscription = lifecycleBloc.notifications
 ///           .whereType<ScopeEndingNotification>()
 ///           .listen(_onScopeEnding);
@@ -72,9 +72,9 @@ class LifecycleBlocConfig {
 ///   }
 /// }
 /// ```
-class LifecycleBloc extends JuiceBloc<ScopeState> {
+class ScopeLifecycleBloc extends JuiceBloc<ScopeState> {
   /// Configuration for this bloc.
-  final LifecycleBlocConfig config;
+  final ScopeLifecycleConfig config;
 
   /// Monotonic counter for deterministic, collision-free scope IDs.
   int _nextScopeId = 0;
@@ -88,8 +88,8 @@ class LifecycleBloc extends JuiceBloc<ScopeState> {
   /// In-flight end operations (for idempotency).
   final Map<String, Future<EndScopeResult>> _endingFutures = {};
 
-  /// Creates a LifecycleBloc with optional configuration.
-  LifecycleBloc({this.config = const LifecycleBlocConfig()})
+  /// Creates a ScopeLifecycleBloc with optional configuration.
+  ScopeLifecycleBloc({this.config = const ScopeLifecycleConfig()})
       : super(
           const ScopeState(),
           [

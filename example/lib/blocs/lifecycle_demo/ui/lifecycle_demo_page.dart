@@ -4,7 +4,7 @@ import '../lifecycle_demo_state.dart';
 import '../lifecycle_demo_events.dart';
 import 'task_card.dart';
 
-/// Demo page showing LifecycleBloc's cleanup capabilities.
+/// Demo page showing ScopeLifecycleBloc's cleanup capabilities.
 class LifecycleDemoPage extends StatelessWidget {
   const LifecycleDemoPage({super.key});
 
@@ -12,7 +12,7 @@ class LifecycleDemoPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LifecycleBloc Demo'),
+        title: const Text('ScopeLifecycleBloc Demo'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Column(
@@ -64,7 +64,7 @@ class _ExplanationHeader extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'LifecycleBloc provides deterministic cleanup when a feature scope ends. '
+            'ScopeLifecycleBloc provides deterministic cleanup when a feature scope ends. '
             'When you press "End Scope", in-flight tasks are canceled via CleanupBarrier '
             'before the scope fully closes.',
             style: TextStyle(

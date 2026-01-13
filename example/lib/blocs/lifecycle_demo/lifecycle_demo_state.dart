@@ -44,7 +44,7 @@ class TaskInfo {
   bool get isActive => status == TaskStatus.pending || status == TaskStatus.running;
 }
 
-/// State for the LifecycleBloc demo.
+/// State for the ScopeLifecycleBloc demo.
 class LifecycleDemoState extends BlocState {
   final List<TaskInfo> tasks;
   final bool scopeActive;

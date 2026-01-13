@@ -3,10 +3,10 @@ import 'package:juice/juice.dart';
 import 'lifecycle_demo_state.dart';
 import 'lifecycle_demo_events.dart';
 
-/// Demo bloc showing LifecycleBloc's cleanup capabilities.
+/// Demo bloc showing ScopeLifecycleBloc's cleanup capabilities.
 ///
 /// This bloc simulates parallel async tasks and demonstrates how
-/// LifecycleBloc's CleanupBarrier ensures proper cleanup when a
+/// ScopeLifecycleBloc's CleanupBarrier ensures proper cleanup when a
 /// scope ends.
 class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
   final Random _random = Random();
@@ -17,7 +17,7 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
   /// The current demo scope.
   FeatureScope? _scope;
 
-  /// Subscription to LifecycleBloc notifications.
+  /// Subscription to ScopeLifecycleBloc notifications.
   StreamSubscription? _lifecycleSubscription;
 
   /// Completer for cleanup completion.
@@ -77,11 +77,11 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
     _subscribeToLifecycle();
   }
 
-  /// Subscribe to LifecycleBloc notifications.
+  /// Subscribe to ScopeLifecycleBloc notifications.
   void _subscribeToLifecycle() {
-    if (!BlocScope.isRegistered<LifecycleBloc>()) return;
+    if (!BlocScope.isRegistered<ScopeLifecycleBloc>()) return;
 
-    final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+    final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
     _lifecycleSubscription = lifecycleBloc.notifications.listen((notification) {
       if (notification is ScopeEndingNotification &&
           notification.scopeName == 'lifecycle-demo') {

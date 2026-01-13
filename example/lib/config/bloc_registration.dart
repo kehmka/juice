@@ -4,9 +4,9 @@ import '../services/services.dart';
 
 class BlocRegistry {
   static void initialize(DeepLinkConfig deeplinkconfig) {
-    // LifecycleBloc - must be registered first for scope lifecycle management
-    BlocScope.register<LifecycleBloc>(
-      () => LifecycleBloc(),
+    // ScopeLifecycleBloc - must be registered first for scope lifecycle management
+    BlocScope.register<ScopeLifecycleBloc>(
+      () => ScopeLifecycleBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
 
@@ -74,7 +74,7 @@ class BlocRegistry {
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // Lifecycle demo - demonstrates LifecycleBloc cleanup
+    // Lifecycle demo - demonstrates ScopeLifecycleBloc cleanup
     BlocScope.register<LifecycleDemoBloc>(
       () => LifecycleDemoBloc(),
       lifecycle: BlocLifecycle.permanent,

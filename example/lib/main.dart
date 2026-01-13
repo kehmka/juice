@@ -123,7 +123,7 @@ class MyHomePage extends StatelessWidget {
       {
         'title': 'Lifecycle Demo',
         'route': '/lifecycle-demo',
-        'subtitle': 'LifecycleBloc cleanup with parallel tasks'
+        'subtitle': 'ScopeLifecycleBloc cleanup with parallel tasks'
       },
       {'title': 'Auth & EventSubscription', 'route': '/auth'},
       {'title': 'Counter Example', 'route': '/counter'},

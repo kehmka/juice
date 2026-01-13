@@ -1,5 +1,5 @@
 name: juice
-description: "Juice is an opinionated, team-friendly, modular reactive state management framework for Flutter. It enforces clear boundaries and structured development, combining Clean Architecture-style use cases with a BLoC-inspired, stream-driven state model for predictable async workflows and scalable feature composition."
+description: "Opinionated reactive state management for Flutter. Combines Clean Architecture use cases with BLoC pattern for predictable async workflows and scalable, team-friendly development."
 version: 1.2.0
 
 repository: https://github.com/kehmka/juice

@@ -16,8 +16,8 @@ void main() {
   });
 
   group('FeatureScope integration', () {
-    group('without LifecycleBloc', () {
-      test('start() does nothing without LifecycleBloc', () async {
+    group('without ScopeLifecycleBloc', () {
+      test('start() does nothing without ScopeLifecycleBloc', () async {
         final scope = FeatureScope('test');
 
         await scope.start();
@@ -35,7 +35,7 @@ void main() {
         expect(result.cleanupTaskCount, 0);
       });
 
-      test('create() works without LifecycleBloc', () async {
+      test('create() works without ScopeLifecycleBloc', () async {
         final scope = await FeatureScope.create('test');
 
         expect(scope.name, 'test');
@@ -43,10 +43,10 @@ void main() {
       });
     });
 
-    group('with LifecycleBloc', () {
-      test('start() registers with LifecycleBloc', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+    group('with ScopeLifecycleBloc', () {
+      test('start() registers with ScopeLifecycleBloc', () async {
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
         final scope = FeatureScope('test');
@@ -55,15 +55,15 @@ void main() {
 
         expect(scope.scopeId, 'scope_0');
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         expect(lifecycleBloc.state.scopes.containsKey('scope_0'), isTrue);
 
         await scope.end();
       });
 
       test('start() is idempotent', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
         final scope = FeatureScope('test');
@@ -78,11 +78,11 @@ void main() {
       });
 
       test('end() triggers cleanup sequence', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
 
         var cleanupDone = false;
         lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
@@ -101,8 +101,8 @@ void main() {
       });
 
       test('end() is idempotent', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
@@ -118,8 +118,8 @@ void main() {
       });
 
       test('isEnding reflects end state', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
@@ -136,8 +136,8 @@ void main() {
       });
 
       test('create() factory returns started scope', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
@@ -146,7 +146,7 @@ void main() {
         expect(scope.name, 'checkout');
         expect(scope.scopeId, isNotNull);
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         expect(lifecycleBloc.state.isActive('checkout'), isTrue);
 
         await scope.end();
@@ -155,12 +155,12 @@ void main() {
 
     group('subscriber pattern', () {
       test('blocs can subscribe to scope lifecycle', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         final startedEvents = <ScopeStartedNotification>[];
         final endingEvents = <ScopeEndingNotification>[];
         final endedEvents = <ScopeEndedNotification>[];
@@ -191,12 +191,12 @@ void main() {
       });
 
       test('cleanup barrier collects work from multiple subscribers', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         var cleanup1Done = false;
         var cleanup2Done = false;
         var cleanup3Done = false;
@@ -232,12 +232,12 @@ void main() {
 
     group('error handling', () {
       test('cleanup task errors are caught and counted', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(),
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(),
           lifecycle: BlocLifecycle.permanent,
         );
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
           n.barrier.add(Future.error('cleanup error'));
         });
@@ -251,16 +251,16 @@ void main() {
       });
 
       test('disposal proceeds even after cleanup timeout', () async {
-        BlocScope.register<LifecycleBloc>(
-          () => LifecycleBloc(
-            config: const LifecycleBlocConfig(
+        BlocScope.register<ScopeLifecycleBloc>(
+          () => ScopeLifecycleBloc(
+            config: const ScopeLifecycleConfig(
               cleanupTimeout: Duration(milliseconds: 50),
             ),
           ),
           lifecycle: BlocLifecycle.permanent,
         );
 
-        final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+        final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
         lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
           n.barrier.add(Future.delayed(Duration(seconds: 5)));
         });

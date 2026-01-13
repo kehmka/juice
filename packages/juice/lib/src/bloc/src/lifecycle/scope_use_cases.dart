@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../bloc_use_case.dart';
 import '../bloc_scope.dart';
-import 'lifecycle_bloc.dart';
+import 'scope_lifecycle_bloc.dart';
 import 'scope_state.dart';
 import 'scope_events.dart';
 import 'cleanup_barrier.dart';
 import 'feature_scope.dart';
 
 /// Use case to start tracking a scope.
-class StartScopeUseCase extends BlocUseCase<LifecycleBloc, StartScopeEvent> {
+class StartScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, StartScopeEvent> {
   @override
   Future<void> execute(StartScopeEvent event) async {
     // Generate unique ID via monotonic counter
@@ -46,7 +46,7 @@ class StartScopeUseCase extends BlocUseCase<LifecycleBloc, StartScopeEvent> {
 }
 
 /// Use case to end a scope (triggers cleanup sequence).
-class EndScopeUseCase extends BlocUseCase<LifecycleBloc, EndScopeEvent> {
+class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
   @override
   Future<void> execute(EndScopeEvent event) async {
     // Resolve scope
@@ -68,7 +68,7 @@ class EndScopeUseCase extends BlocUseCase<LifecycleBloc, EndScopeEvent> {
       // Log and proceed safely - treat as already ended.
       assert(() {
         debugPrint(
-            'LifecycleBloc: phase==ending but no in-flight future for ${info.id}');
+            'ScopeLifecycleBloc: phase==ending but no in-flight future for ${info.id}');
         return true;
       }());
       event.succeed(EndScopeResult.notFound);

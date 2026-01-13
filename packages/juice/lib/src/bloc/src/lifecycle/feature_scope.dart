@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'bloc_id.dart';
 import '../bloc_scope.dart';
-import 'lifecycle_bloc.dart';
+import 'scope_lifecycle_bloc.dart';
 import 'scope_events.dart';
 
 /// Groups multiple feature-level blocs for collective lifecycle management.
@@ -27,27 +27,27 @@ import 'scope_events.dart';
 /// }
 /// ```
 ///
-/// ## Reactive Lifecycle with LifecycleBloc
+/// ## Reactive Lifecycle with ScopeLifecycleBloc
 ///
-/// When [LifecycleBloc] is registered, FeatureScope provides reactive lifecycle:
+/// When [ScopeLifecycleBloc] is registered, FeatureScope provides reactive lifecycle:
 ///
 /// ```dart
-/// // Register LifecycleBloc first
-/// BlocScope.register<LifecycleBloc>(() => LifecycleBloc(),
+/// // Register ScopeLifecycleBloc first
+/// BlocScope.register<ScopeLifecycleBloc>(() => ScopeLifecycleBloc(),
 ///     lifecycle: BlocLifecycle.permanent);
 ///
-/// // Create scope - automatically registers with LifecycleBloc
+/// // Create scope - automatically registers with ScopeLifecycleBloc
 /// final scope = await FeatureScope.create('checkout');
 ///
 /// // End triggers cleanup sequence:
-/// // 1. LifecycleBloc publishes ScopeEndingNotification
+/// // 1. ScopeLifecycleBloc publishes ScopeEndingNotification
 /// // 2. Subscribers register cleanup futures
 /// // 3. CleanupBarrier awaited with timeout
 /// // 4. Blocs disposed
 /// await scope.end();
 /// ```
 ///
-/// Without LifecycleBloc, FeatureScope works but without reactive cleanup.
+/// Without ScopeLifecycleBloc, FeatureScope works but without reactive cleanup.
 class FeatureScope {
   /// Creates a feature scope with an optional name for debugging.
   FeatureScope([this.name = 'unnamed']) : _id = _generateId() {
@@ -85,7 +85,7 @@ class FeatureScope {
   /// Whether end() has been called (but may not be complete).
   bool get isEnding => _endFuture != null;
 
-  /// The scope ID assigned by LifecycleBloc, if started with LifecycleBloc.
+  /// The scope ID assigned by ScopeLifecycleBloc, if started with ScopeLifecycleBloc.
   String? get scopeId => _scopeId;
 
   /// All bloc IDs managed by this scope.
@@ -108,9 +108,9 @@ class FeatureScope {
     _managedBlocs.add(BlocId(type, this));
   }
 
-  /// Explicitly start the scope and register with LifecycleBloc.
+  /// Explicitly start the scope and register with ScopeLifecycleBloc.
   ///
-  /// Safe to call if LifecycleBloc is not registered - scope still works
+  /// Safe to call if ScopeLifecycleBloc is not registered - scope still works
   /// but without reactive lifecycle notifications.
   ///
   /// This method is idempotent - calling multiple times is safe.
@@ -118,13 +118,13 @@ class FeatureScope {
     if (_started) return;
     _started = true;
 
-    // Graceful degradation: if LifecycleBloc not registered, scope still works
+    // Graceful degradation: if ScopeLifecycleBloc not registered, scope still works
     // but without reactive lifecycle
-    if (!BlocScope.isRegistered<LifecycleBloc>()) {
+    if (!BlocScope.isRegistered<ScopeLifecycleBloc>()) {
       return;
     }
 
-    final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+    final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
     final event = StartScopeEvent(name: name, scope: this);
     lifecycleBloc.send(event);
     _scopeId = await event.result;
@@ -135,12 +135,12 @@ class FeatureScope {
   /// **Idempotent:** Multiple calls return the same future/result.
   /// After calling, the scope cannot be reused.
   ///
-  /// When [LifecycleBloc] is registered and scope was started:
-  /// 1. LifecycleBloc publishes ScopeEndingNotification with CleanupBarrier
+  /// When [ScopeLifecycleBloc] is registered and scope was started:
+  /// 1. ScopeLifecycleBloc publishes ScopeEndingNotification with CleanupBarrier
   /// 2. Subscribers register cleanup futures on barrier
   /// 3. Barrier awaited with timeout
   /// 4. All managed blocs disposed
-  /// 5. LifecycleBloc publishes ScopeEndedNotification
+  /// 5. ScopeLifecycleBloc publishes ScopeEndedNotification
   Future<EndScopeResult> end() {
     // True idempotency: return cached future if already ending
     _endFuture ??= _doEnd();
@@ -158,9 +158,9 @@ class FeatureScope {
       return true;
     }());
 
-    // Graceful degradation: if LifecycleBloc not registered or not started,
+    // Graceful degradation: if ScopeLifecycleBloc not registered or not started,
     // just dispose blocs directly
-    if (!BlocScope.isRegistered<LifecycleBloc>() || _scopeId == null) {
+    if (!BlocScope.isRegistered<ScopeLifecycleBloc>() || _scopeId == null) {
       await BlocScope.endFeature(this);
       return const EndScopeResult(
         found: true,
@@ -171,8 +171,8 @@ class FeatureScope {
       );
     }
 
-    // Use LifecycleBloc for reactive cleanup
-    final lifecycleBloc = BlocScope.get<LifecycleBloc>();
+    // Use ScopeLifecycleBloc for reactive cleanup
+    final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
     final event = EndScopeEvent(scopeId: _scopeId, scopeName: name);
     lifecycleBloc.send(event);
     return event.result;

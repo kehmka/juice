@@ -48,16 +48,15 @@ class FetchBloc extends JuiceBloc<FetchState> {
                     ReconfigureInterceptorsEvent>(
                   typeOfEvent: ReconfigureInterceptorsEvent,
                   handler: (ctx, event) async {
-                    final bloc = ctx.bloc as FetchBloc;
                     // Clear existing interceptors
-                    bloc.dio.interceptors.clear();
+                    ctx.bloc.dio.interceptors.clear();
 
                     // Add new interceptors (sorted by priority)
                     final sorted = event.interceptors.toList()
                       ..sort((a, b) => a.priority.compareTo(b.priority));
 
                     for (final interceptor in sorted) {
-                      bloc.dio.interceptors
+                      ctx.bloc.dio.interceptors
                           .add(FetchInterceptorAdapter(interceptor));
                     }
                   },

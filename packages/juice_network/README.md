@@ -18,7 +18,7 @@ A reactive HTTP client bloc for [Juice](https://pub.dev/packages/juice) applicat
 
 ```yaml
 dependencies:
-  juice_network: ^0.1.0
+  juice_network: ^0.7.0
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ Future<void> main() async {
   // Register StorageBloc (required for caching)
   BlocScope.register<StorageBloc>(
     () => StorageBloc(config: const StorageConfig(
-      hiveBoxesToOpen: ['_fetch_cache'],
+      hiveBoxesToOpen: [CacheManager.cacheBoxName],
     )),
     lifecycle: BlocLifecycle.permanent,
   );

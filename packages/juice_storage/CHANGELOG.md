@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-01-12
+## [0.9.0] - 2025-01-12
 
-### Stable Release
+### Release Candidate
 
-First stable release of juice_storage, ready for production use.
+Feature-complete release with comprehensive test coverage. API is stabilizing; 1.0.0 will follow after production validation.
 
 ### Added
 - **SQLite Use Case Tests** - Comprehensive test coverage for SQLite operations (27 new tests)

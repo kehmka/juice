@@ -1,11 +1,11 @@
-// ignore_for_file: avoid_print
-import 'package:flutter/material.dart';
+// ignore_for_file: avoid_print, must_be_immutable
 import 'package:juice/juice.dart';
 
 // --- State ---
-class CounterState {
-  const CounterState({this.count = 0});
+class CounterState extends BlocState {
   final int count;
+
+  const CounterState({this.count = 0});
 
   CounterState copyWith({int? count}) =>
       CounterState(count: count ?? this.count);
@@ -17,17 +17,23 @@ class IncrementEvent extends EventBase {}
 class DecrementEvent extends EventBase {}
 
 // --- Use Cases ---
-class IncrementUseCase extends UseCase<CounterBloc, CounterState, IncrementEvent> {
+class IncrementUseCase extends BlocUseCase<CounterBloc, IncrementEvent> {
   @override
-  Future<void> execute(ctx, event) async {
-    ctx.emit(ctx.state.copyWith(count: ctx.state.count + 1));
+  Future<void> execute(IncrementEvent event) async {
+    emitUpdate(
+      newState: bloc.state.copyWith(count: bloc.state.count + 1),
+      groupsToRebuild: {'counter'},
+    );
   }
 }
 
-class DecrementUseCase extends UseCase<CounterBloc, CounterState, DecrementEvent> {
+class DecrementUseCase extends BlocUseCase<CounterBloc, DecrementEvent> {
   @override
-  Future<void> execute(ctx, event) async {
-    ctx.emit(ctx.state.copyWith(count: ctx.state.count - 1));
+  Future<void> execute(DecrementEvent event) async {
+    emitUpdate(
+      newState: bloc.state.copyWith(count: bloc.state.count - 1),
+      groupsToRebuild: {'counter'},
+    );
   }
 }
 
@@ -35,13 +41,13 @@ class DecrementUseCase extends UseCase<CounterBloc, CounterState, DecrementEvent
 class CounterBloc extends JuiceBloc<CounterState> {
   CounterBloc()
       : super(
-          initialState: const CounterState(),
-          useCaseBuilders: [
-            () => UseCaseBuilder<IncrementEvent>(
+          const CounterState(),
+          [
+            () => UseCaseBuilder(
                   typeOfEvent: IncrementEvent,
                   useCaseGenerator: () => IncrementUseCase(),
                 ),
-            () => UseCaseBuilder<DecrementEvent>(
+            () => UseCaseBuilder(
                   typeOfEvent: DecrementEvent,
                   useCaseGenerator: () => DecrementUseCase(),
                 ),
@@ -51,17 +57,15 @@ class CounterBloc extends JuiceBloc<CounterState> {
 
 // --- Widget ---
 class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
-  CounterWidget({super.key});
+  CounterWidget({super.key, super.groups = const {'counter'}});
 
   @override
-  CounterBloc createBloc() => CounterBloc();
-
-  @override
-  Widget onBuild(BuildContext context, StreamStatus<CounterState> status) {
+  Widget onBuild(BuildContext context, StreamStatus status) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Count: ${bloc.state.count}', style: const TextStyle(fontSize: 24)),
+        Text('Count: ${bloc.state.count}',
+            style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -84,10 +88,16 @@ class CounterWidget extends StatelessJuiceWidget<CounterBloc> {
 
 // --- App ---
 void main() {
+  // Register bloc with BlocScope
+  BlocScope.register<CounterBloc>(
+    () => CounterBloc(),
+    lifecycle: BlocLifecycle.permanent,
+  );
+
   runApp(
     MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: const Text('Juice Counter Example')),
+        appBar: AppBar(title: const Text('Juice Counter')),
         body: Center(child: CounterWidget()),
       ),
     ),

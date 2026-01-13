@@ -31,6 +31,21 @@ lifecycleBloc.notifications.listen((notification) {
 });
 ```
 
+### Improvements
+
+#### Aviator Async Support
+- `NavigateWhere` now supports `FutureOr<void>` for async navigation handlers
+- Added `navigateAsync` method to `AviatorManager` for awaitable navigation
+- Added `navigateAsync` to `UseCaseContext` for use cases that need to await navigation completion
+
+```dart
+// Sync navigation (fire-and-forget)
+emitUpdate(aviatorName: 'home', aviatorArgs: {'tab': 'profile'});
+
+// Async navigation in use case
+await context.navigateAsync('authCheck', {'returnTo': '/dashboard'});
+```
+
 ### Example App
 - Added "Lifecycle Demo" showcasing ScopeLifecycleBloc capabilities:
   - Spawns parallel simulated async tasks with progress tracking
@@ -38,6 +53,7 @@ lifecycleBloc.notifications.listen((notification) {
   - Visual phase indicator (Idle → Active → Cleanup → Ended)
   - Color-coded event log showing all lifecycle notifications
   - Toggle for slow cleanup to test barrier timeout behavior
+- Fixed chat example WebSocket connection (switched to maintained echo server)
 
 ---
 

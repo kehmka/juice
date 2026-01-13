@@ -350,6 +350,9 @@ class _ResetDemoUseCase
     extends BlocUseCase<LifecycleDemoBloc, ResetDemoEvent> {
   @override
   Future<void> execute(ResetDemoEvent event) async {
+    // Don't reset if a new demo already started
+    if (bloc.state.scopeActive) return;
+
     emitUpdate(
       groupsToRebuild: LifecycleDemoGroups.all,
       newState: bloc.state.copyWith(

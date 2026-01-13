@@ -13,7 +13,7 @@ class _InterceptorsScreenState extends State<InterceptorsScreen> {
   bool _loggingEnabled = true;
   bool _authEnabled = false;
   bool _timingEnabled = true;
-  String _fakeToken = 'demo-jwt-token-12345';
+  final String _fakeToken = 'demo-jwt-token-12345';
 
   void _addLog(String message, LogType type) {
     setState(() {
@@ -220,7 +220,7 @@ class _InterceptorsScreenState extends State<InterceptorsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${log.timestamp.toIso8601String().substring(11, 23)}',
+                                log.timestamp.toIso8601String().substring(11, 23),
                                 style: TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 10,

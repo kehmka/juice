@@ -14,7 +14,16 @@ class CacheManager {
   final StorageBloc storageBloc;
 
   /// Hive box name for cache entries.
-  static const String _cacheBox = '_fetch_cache';
+  ///
+  /// Users should include this in [StorageConfig.hiveBoxesToOpen] when
+  /// configuring StorageBloc for use with FetchBloc:
+  ///
+  /// ```dart
+  /// StorageConfig(
+  ///   hiveBoxesToOpen: [CacheManager.cacheBoxName, ...otherBoxes],
+  /// )
+  /// ```
+  static const String cacheBoxName = 'fetch_cache';
 
   /// Maximum cache size in bytes.
   final int maxCacheSize;
@@ -32,7 +41,7 @@ class CacheManager {
 
   /// Initialize the cache (open Hive box).
   Future<void> initialize() async {
-    await storageBloc.hiveOpenBox(_cacheBox);
+    await storageBloc.hiveOpenBox(cacheBoxName);
   }
 
   /// Get a cached response.
@@ -52,7 +61,7 @@ class CacheManager {
     }
 
     // Check disk cache
-    final bytes = await storageBloc.hiveRead<Uint8List>(_cacheBox, canonical);
+    final bytes = await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
     if (bytes == null) return null;
 
     try {
@@ -80,7 +89,7 @@ class CacheManager {
     if (memoryHit != null) return memoryHit;
 
     // Check disk cache
-    final bytes = await storageBloc.hiveRead<Uint8List>(_cacheBox, canonical);
+    final bytes = await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
     if (bytes == null) return null;
 
     try {
@@ -102,7 +111,7 @@ class CacheManager {
     final ttl = record.expiresAt?.difference(DateTime.now());
 
     await storageBloc.hiveWrite(
-      _cacheBox,
+      cacheBoxName,
       canonical,
       record.toBytes(),
       ttl: ttl,
@@ -116,7 +125,7 @@ class CacheManager {
   Future<void> delete(RequestKey key) async {
     final canonical = key.canonical;
     _memoryCache.remove(canonical);
-    await storageBloc.hiveDelete(_cacheBox, canonical);
+    await storageBloc.hiveDelete(cacheBoxName, canonical);
   }
 
   /// Delete entries matching a URL pattern.
@@ -130,7 +139,7 @@ class CacheManager {
 
     for (final key in toRemove) {
       _memoryCache.remove(key);
-      await storageBloc.hiveDelete(_cacheBox, key);
+      await storageBloc.hiveDelete(cacheBoxName, key);
     }
 
     return toRemove.length;
@@ -139,22 +148,21 @@ class CacheManager {
   /// Clear all cache entries.
   Future<void> clear() async {
     _memoryCache.clear();
-    // Clear all entries in the cache box
-    // Note: StorageBloc doesn't have a clearBox method, so we'd need
-    // to close and reopen, or iterate. For now, we'll use ClearAllEvent
-    // with specific box targeting.
-    await storageBloc.send(ClearAllEvent(
+    // Clear all entries in the cache box using sendForResult to await completion
+    await storageBloc.sendForResult<void>(ClearAllEvent(
       options: ClearAllOptions(
         clearHive: true,
         clearPrefs: false,
         clearSecure: false,
         clearSqlite: false,
-        hiveBoxesToClear: [_cacheBox],
+        hiveBoxesToClear: [cacheBoxName],
       ),
     ));
   }
 
   /// Clean up expired entries.
+  ///
+  /// Returns the total number of entries cleaned (memory + disk).
   Future<int> cleanupExpired() async {
     // Remove expired from memory cache
     final expiredMemory = _memoryCache.entries
@@ -166,10 +174,12 @@ class CacheManager {
       _memoryCache.remove(key);
     }
 
-    // StorageBloc handles TTL eviction automatically via CacheCleanupEvent
-    await storageBloc.send(CacheCleanupEvent(runNow: true));
+    // StorageBloc handles TTL eviction - await completion and get count
+    final diskCleanedRaw = await storageBloc
+        .sendForResult<Object?>(CacheCleanupEvent(runNow: true));
+    final diskCleaned = diskCleanedRaw as int? ?? 0;
 
-    return expiredMemory.length;
+    return expiredMemory.length + diskCleaned;
   }
 
   /// Evict entries if over size limit using LRU.

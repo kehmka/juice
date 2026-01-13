@@ -11,9 +11,9 @@ Future<void> main() async {
   if (!BlocScope.isRegistered<StorageBloc>()) {
     BlocScope.register<StorageBloc>(
       () => StorageBloc(
-        config: const StorageConfig(
+        config: StorageConfig(
           prefsKeyPrefix: 'fetch_arcade_',
-          hiveBoxesToOpen: ['_fetch_cache'],
+          hiveBoxesToOpen: [CacheManager.cacheBoxName],
         ),
       ),
       lifecycle: BlocLifecycle.permanent,

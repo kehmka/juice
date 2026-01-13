@@ -56,8 +56,18 @@ class UseCaseContext<TBloc, TState extends BlocState> {
   /// Emits the event without state change.
   final void Function(EventBase? event) emitEvent;
 
-  /// Triggers navigation.
+  /// Triggers navigation (fire-and-forget).
+  ///
+  /// If the aviator's navigation is async, this will not wait for completion.
+  /// Use [navigateAsync] if you need to await the navigation.
   final void Function(String? aviator, Map<String, dynamic>? args) navigate;
+
+  /// Triggers navigation and awaits completion.
+  ///
+  /// Use this when the aviator performs async operations (auth checks,
+  /// data loading) that must complete before proceeding.
+  final Future<void> Function(String? aviator, Map<String, dynamic>? args)
+      navigateAsync;
 
   const UseCaseContext({
     required this.bloc,
@@ -69,6 +79,7 @@ class UseCaseContext<TBloc, TState extends BlocState> {
     required this.emitCancel,
     required this.emitEvent,
     required this.navigate,
+    required this.navigateAsync,
   });
 }
 

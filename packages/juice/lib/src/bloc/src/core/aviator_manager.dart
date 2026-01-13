@@ -35,10 +35,30 @@ class AviatorManager {
   /// this method does nothing (no-op).
   ///
   /// [args] are passed to the aviator's navigate function.
+  ///
+  /// Note: If the aviator's navigation is async, this method will not wait
+  /// for it to complete. Use [navigateAsync] if you need to await completion.
   void navigate(String? aviatorName, Map<String, dynamic>? args) {
     if (aviatorName == null) return;
     final aviator = _aviators[aviatorName];
     aviator?.navigateWhere.call(args ?? {});
+  }
+
+  /// Navigates using the named aviator and awaits completion.
+  ///
+  /// If [aviatorName] is null or no aviator exists with that name,
+  /// this method completes immediately.
+  ///
+  /// [args] are passed to the aviator's navigate function.
+  ///
+  /// Use this when you need to wait for async navigation (e.g., auth checks,
+  /// data loading) to complete before proceeding.
+  Future<void> navigateAsync(String? aviatorName, Map<String, dynamic>? args) async {
+    if (aviatorName == null) return;
+    final aviator = _aviators[aviatorName];
+    if (aviator != null) {
+      await aviator.navigateWhere.call(args ?? {});
+    }
   }
 
   /// Checks if an aviator exists with the given name.

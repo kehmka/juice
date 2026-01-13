@@ -1,5 +1,8 @@
-/// Function type for navigation execution
-typedef NavigateWhere = void Function(Map<String, dynamic> args);
+import 'dart:async';
+
+/// Function type for navigation execution.
+/// Supports both sync and async navigation handlers.
+typedef NavigateWhere = FutureOr<void> Function(Map<String, dynamic> args);
 
 /// Function type for creating aviators
 typedef AviatorBuilder = AviatorBase Function();

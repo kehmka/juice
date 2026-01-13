@@ -12,8 +12,7 @@ class AppBloc extends JuiceBloc<AppState> {
             () => DeepLinkAviator(
                   name: 'deepLink',
                   navigate: (args) {
-                    final bloc =
-                        GlobalBlocResolver().resolver.resolve<AppBloc>();
+                    final bloc = BlocScope.get<AppBloc>();
                     final route = args['route'] as String;
                     JuiceLoggerConfig.logger.log("Navigating to route: $route");
                     bloc.navigatorKey.currentState?.pushNamed(route);

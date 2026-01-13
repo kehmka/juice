@@ -367,6 +367,7 @@ class JuiceBloc<TState extends BlocState>
         }
       },
       navigate: _aviatorManager.navigate,
+      navigateAsync: _aviatorManager.navigateAsync,
     );
   }
 

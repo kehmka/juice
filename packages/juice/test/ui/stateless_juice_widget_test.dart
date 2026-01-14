@@ -1,30 +1,28 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 import '../test_helpers.dart';
 
 void main() {
   group('StatelessJuiceWidget Tests', () {
-    late TestResolver resolver;
-
     setUp(() {
-      resolver = TestResolver();
+      BlocScope.reset();
     });
 
-    tearDown(() async {
-      // Clean up blocs between tests
-      await resolver.disposeAll();
+    tearDown(() {
+      BlocScope.reset();
     });
 
     testWidgets('StatelessJuiceWidget displays initial state', (tester) async {
-      // Create bloc with known initial state
-      final bloc = TestBloc(initialState: TestState(value: 42));
-      resolver = TestResolver(blocs: {TestBloc: bloc});
+      // Register bloc with known initial state
+      BlocScope.register<TestBloc>(
+        () => TestBloc(initialState: TestState(value: 42)),
+        lifecycle: BlocLifecycle.permanent,
+      );
 
-      // Build widget with explicit resolver
+      // Build widget using BlocScope
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: TestWidget(resolver: resolver),
+          body: TestWidget(),
         ),
       ));
 
@@ -34,14 +32,16 @@ void main() {
 
     testWidgets('StatelessJuiceWidget updates when state changes',
         (tester) async {
-      // Create bloc with initial state
-      final bloc = TestBloc(initialState: TestState(value: 0));
-      resolver = TestResolver(blocs: {TestBloc: bloc});
+      // Register bloc with initial state
+      BlocScope.register<TestBloc>(
+        () => TestBloc(initialState: TestState(value: 0)),
+        lifecycle: BlocLifecycle.permanent,
+      );
 
-      // Build widget with explicit resolver
+      // Build widget using BlocScope
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: TestWidget(resolver: resolver),
+          body: TestWidget(),
         ),
       ));
 
@@ -49,6 +49,7 @@ void main() {
       expect(find.text('Value: 0'), findsOneWidget);
 
       // Update state
+      final bloc = BlocScope.get<TestBloc>();
       await bloc.send(TestEvent());
       await tester.pump();
 
@@ -57,18 +58,19 @@ void main() {
     });
 
     testWidgets('Widget rebuilds only for specified groups', (tester) async {
-      // Create bloc with initial state
-      final bloc = TestBloc(initialState: TestState(value: 0));
-      resolver = TestResolver(blocs: {TestBloc: bloc});
+      // Register bloc with initial state
+      BlocScope.register<TestBloc>(
+        () => TestBloc(initialState: TestState(value: 0)),
+        lifecycle: BlocLifecycle.permanent,
+      );
 
       // Track build count
       int buildCount = 0;
 
-      // Build widget with specific group and explicit resolver
+      // Build widget with specific group
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: TestWidget(
-            resolver: resolver,
             groups: const {"specific-group"},
             doOnBuild: () => buildCount++,
           ),
@@ -79,6 +81,7 @@ void main() {
       expect(buildCount, 1);
 
       // Send event with non-matching group
+      final bloc = BlocScope.get<TestBloc>();
       await bloc.send(TestEvent(groups: {"other-group"}));
       await tester.pump();
 
@@ -95,9 +98,11 @@ void main() {
 
     testWidgets('Widget with "*" group rebuilds for all state changes',
         (tester) async {
-      // Create bloc with initial state
-      final bloc = TestBloc(initialState: TestState(value: 0));
-      resolver = TestResolver(blocs: {TestBloc: bloc});
+      // Register bloc with initial state
+      BlocScope.register<TestBloc>(
+        () => TestBloc(initialState: TestState(value: 0)),
+        lifecycle: BlocLifecycle.permanent,
+      );
 
       // Track build count
       int buildCount = 0;
@@ -105,7 +110,6 @@ void main() {
       var widget = MaterialApp(
         home: Scaffold(
           body: TestWidget(
-            resolver: resolver,
             groups: const {"my-group"},
             doOnBuild: () => buildCount++,
           ),
@@ -117,6 +121,7 @@ void main() {
       expect(buildCount, 1);
 
       // Send event with specific group
+      final bloc = BlocScope.get<TestBloc>();
       await bloc.send(TestEvent(groups: {"*"}));
       await tester.pump();
 

@@ -124,11 +124,10 @@ class TestResolver implements BlocDependencyResolver {
   }
 }
 
-// Test Widget
+// Test Widget using BlocScope (pure Juice pattern)
 class TestWidget extends StatelessJuiceWidget<TestBloc> {
   TestWidget({
     super.key,
-    super.resolver,
     super.groups = const {"test-group"},
     this.doOnBuild = _noop,
   });
@@ -139,7 +138,7 @@ class TestWidget extends StatelessJuiceWidget<TestBloc> {
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
-    debugPrint("Excuting onBuild");
+    debugPrint("Executing onBuild");
     doOnBuild();
     return Text('Value: ${bloc.state.value}');
   }

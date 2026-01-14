@@ -1,5 +1,3 @@
-// ignore_for_file: must_be_immutable
-
 import 'package:juice/juice.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -50,18 +48,15 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Internal storage for the bloc during build.
-  /// This is set by either the custom resolver or _BlocLeaseHolder.
-  TBloc? _bloc;
+  /// Expando storage for bloc instances, keyed by widget instance.
+  /// Using Expando keeps the widget immutable while allowing bloc storage.
+  /// Entries are automatically removed when widget is garbage collected.
+  static final Expando<Object> _blocExpando = Expando<Object>('bloc');
 
   /// The bloc instance this widget observes.
   /// Resolved via BlocScope.lease() or custom resolver.
   @protected
-  TBloc get bloc {
-    assert(_bloc != null,
-        'bloc accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc!;
-  }
+  TBloc get bloc => _blocExpando[this] as TBloc;
 
   @override
   @protected
@@ -69,7 +64,7 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   Widget build(BuildContext context) {
     if (_customResolver != null) {
       // Legacy path: use custom resolver directly (no lease management)
-      _bloc = _customResolver.resolve<TBloc>();
+      _blocExpando[this] = _customResolver.resolve<TBloc>();
       return _buildAsyncBuilder();
     }
 
@@ -77,7 +72,7 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
     return _BlocLeaseHolder<TBloc>(
       scope: scope,
       builder: (bloc) {
-        _bloc = bloc;
+        _blocExpando[this] = bloc;
         return _buildAsyncBuilder();
       },
     );
@@ -165,25 +160,16 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Internal storage for blocs during build.
-  TBloc1? _bloc1;
-  TBloc2? _bloc2;
+  /// Expando storage for bloc instances, keyed by widget instance.
+  static final Expando<List<Object>> _blocsExpando = Expando<List<Object>>('blocs2');
 
   /// First bloc instance observed by this widget.
   @protected
-  TBloc1 get bloc1 {
-    assert(_bloc1 != null,
-        'bloc1 accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc1!;
-  }
+  TBloc1 get bloc1 => _blocsExpando[this]![0] as TBloc1;
 
   /// Second bloc instance observed by this widget.
   @protected
-  TBloc2 get bloc2 {
-    assert(_bloc2 != null,
-        'bloc2 accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc2!;
-  }
+  TBloc2 get bloc2 => _blocsExpando[this]![1] as TBloc2;
 
   @override
   @protected
@@ -191,8 +177,10 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   Widget build(BuildContext context) {
     if (_customResolver != null) {
       // Legacy path: use custom resolver directly
-      _bloc1 = _customResolver.resolve<TBloc1>();
-      _bloc2 = _customResolver.resolve<TBloc2>();
+      _blocsExpando[this] = [
+        _customResolver.resolve<TBloc1>(),
+        _customResolver.resolve<TBloc2>(),
+      ];
       return _buildAsyncBuilder();
     }
 
@@ -201,8 +189,7 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
       scope1: scope1,
       scope2: scope2,
       builder: (b1, b2) {
-        _bloc1 = b1;
-        _bloc2 = b2;
+        _blocsExpando[this] = [b1, b2];
         return _buildAsyncBuilder();
       },
     );
@@ -291,34 +278,20 @@ abstract class StatelessJuiceWidget3<
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Internal storage for blocs during build.
-  TBloc1? _bloc1;
-  TBloc2? _bloc2;
-  TBloc3? _bloc3;
+  /// Expando storage for bloc instances, keyed by widget instance.
+  static final Expando<List<Object>> _blocsExpando = Expando<List<Object>>('blocs3');
 
   /// First bloc instance observed by this widget.
   @protected
-  TBloc1 get bloc1 {
-    assert(_bloc1 != null,
-        'bloc1 accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc1!;
-  }
+  TBloc1 get bloc1 => _blocsExpando[this]![0] as TBloc1;
 
   /// Second bloc instance observed by this widget.
   @protected
-  TBloc2 get bloc2 {
-    assert(_bloc2 != null,
-        'bloc2 accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc2!;
-  }
+  TBloc2 get bloc2 => _blocsExpando[this]![1] as TBloc2;
 
   /// Third bloc instance observed by this widget.
   @protected
-  TBloc3 get bloc3 {
-    assert(_bloc3 != null,
-        'bloc3 accessed before build. Ensure bloc is only accessed in onBuild or related methods.');
-    return _bloc3!;
-  }
+  TBloc3 get bloc3 => _blocsExpando[this]![2] as TBloc3;
 
   @override
   @protected
@@ -326,9 +299,11 @@ abstract class StatelessJuiceWidget3<
   Widget build(BuildContext context) {
     if (_customResolver != null) {
       // Legacy path: use custom resolver directly
-      _bloc1 = _customResolver.resolve<TBloc1>();
-      _bloc2 = _customResolver.resolve<TBloc2>();
-      _bloc3 = _customResolver.resolve<TBloc3>();
+      _blocsExpando[this] = [
+        _customResolver.resolve<TBloc1>(),
+        _customResolver.resolve<TBloc2>(),
+        _customResolver.resolve<TBloc3>(),
+      ];
       return _buildAsyncBuilder();
     }
 
@@ -338,9 +313,7 @@ abstract class StatelessJuiceWidget3<
       scope2: scope2,
       scope3: scope3,
       builder: (b1, b2, b3) {
-        _bloc1 = b1;
-        _bloc2 = b2;
-        _bloc3 = b3;
+        _blocsExpando[this] = [b1, b2, b3];
         return _buildAsyncBuilder();
       },
     );

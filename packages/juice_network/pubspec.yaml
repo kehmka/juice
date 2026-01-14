@@ -1,6 +1,6 @@
 name: juice_network
 description: Unified network BLoC for Flutter - request coalescing, caching, retry, and interceptors built on the Juice framework.
-version: 0.8.0
+version: 0.7.1
 homepage: https://kehmka.github.io/juice/
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_network
 issue_tracker: https://github.com/kehmka/juice/issues

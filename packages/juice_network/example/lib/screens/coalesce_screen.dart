@@ -1,105 +1,21 @@
 import 'package:juice/juice.dart';
-import 'package:juice_network/juice_network.dart';
 
-class CoalesceScreen extends StatefulWidget {
-  const CoalesceScreen({super.key});
+import '../blocs/blocs.dart';
 
-  @override
-  State<CoalesceScreen> createState() => _CoalesceScreenState();
-}
-
-class _CoalesceScreenState extends State<CoalesceScreen> {
-  int _tapCount = 0;
-  int _networkCalls = 0;
-  int _coalescedCount = 0;
-  final List<String> _logs = [];
-
-  void _log(String message) {
-    setState(() {
-      _logs.insert(0, '${DateTime.now().toIso8601String().substring(11, 23)} $message');
-      if (_logs.length > 50) _logs.removeLast();
-    });
-  }
-
-  void _fireRequest() {
-    setState(() => _tapCount++);
-    _log('Tap #$_tapCount - firing request');
-
-    final fetchBloc = BlocScope.get<FetchBloc>();
-    final coalescedBefore = fetchBloc.state.stats.coalescedCount;
-
-    // Fire without awaiting so multiple requests can be inflight
-    fetchBloc.send(GetEvent(
-      url: '/posts/1',
-      cachePolicy: CachePolicy.networkOnly,
-      decode: (raw) => raw,
-    )).then((_) {
-      final stats = fetchBloc.state.stats;
-      if (stats.coalescedCount > coalescedBefore) {
-        setState(() => _coalescedCount = stats.coalescedCount);
-        _log('Request was COALESCED (shared existing call)');
-      } else {
-        setState(() => _networkCalls++);
-        _log('Network call completed');
-      }
-    });
-  }
-
-  void _fireBurst() {
-    final count = 10;
-    _log('Firing BURST of $count simultaneous requests...');
-
-    final fetchBloc = BlocScope.get<FetchBloc>();
-    final coalescedBefore = fetchBloc.state.stats.coalescedCount;
-    final successBefore = fetchBloc.state.stats.successCount;
-
-    // Fire all requests simultaneously (no await between them)
-    final futures = <Future>[];
-    for (var i = 0; i < count; i++) {
-      setState(() => _tapCount++);
-      futures.add(fetchBloc.send(GetEvent(
-        url: '/posts/1',
-        cachePolicy: CachePolicy.networkOnly,
-        decode: (raw) => raw,
-      )));
-    }
-
-    // Wait for all to complete, then check stats
-    Future.wait(futures).then((_) {
-      final stats = fetchBloc.state.stats;
-      final newCoalesced = stats.coalescedCount - coalescedBefore;
-      final newSuccess = stats.successCount - successBefore;
-
-      setState(() {
-        _coalescedCount = stats.coalescedCount;
-        _networkCalls += newSuccess;
-      });
-
-      _log('Burst complete: $newSuccess network calls, $newCoalesced coalesced');
-    });
-  }
-
-  void _reset() {
-    final fetchBloc = BlocScope.get<FetchBloc>();
-    fetchBloc.send(ResetStatsEvent());
-    setState(() {
-      _tapCount = 0;
-      _networkCalls = 0;
-      _coalescedCount = 0;
-      _logs.clear();
-    });
-    _log('Stats reset');
-  }
+class CoalesceScreen extends StatelessJuiceWidget<CoalesceBloc> {
+  CoalesceScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Request Coalescing'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _reset,
+            onPressed: () => bloc.send(ResetCoalesceEvent()),
             tooltip: 'Reset',
           ),
         ],
@@ -128,7 +44,7 @@ class _CoalesceScreenState extends State<CoalesceScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         FilledButton.icon(
-                          onPressed: _fireRequest,
+                          onPressed: () => bloc.send(FireRequestEvent()),
                           icon: const Icon(Icons.bolt),
                           label: const Text('Fire Request'),
                           style: FilledButton.styleFrom(
@@ -137,7 +53,7 @@ class _CoalesceScreenState extends State<CoalesceScreen> {
                         ),
                         const SizedBox(width: 16),
                         FilledButton.icon(
-                          onPressed: _fireBurst,
+                          onPressed: () => bloc.send(FireBurstEvent()),
                           icon: const Icon(Icons.flash_on),
                           label: const Text('Fire Burst (10x)'),
                           style: FilledButton.styleFrom(
@@ -153,17 +69,17 @@ class _CoalesceScreenState extends State<CoalesceScreen> {
                       children: [
                         _StatChip(
                           label: 'Taps',
-                          value: _tapCount,
+                          value: state.tapCount,
                           color: Colors.blue,
                         ),
                         _StatChip(
                           label: 'Network Calls',
-                          value: _networkCalls,
+                          value: state.networkCalls,
                           color: Colors.green,
                         ),
                         _StatChip(
                           label: 'Coalesced',
-                          value: _coalescedCount,
+                          value: state.coalescedCount,
                           color: Colors.orange,
                         ),
                       ],
@@ -196,9 +112,9 @@ class _CoalesceScreenState extends State<CoalesceScreen> {
               ),
               child: ListView.builder(
                 padding: const EdgeInsets.all(12),
-                itemCount: _logs.length,
+                itemCount: state.logs.length,
                 itemBuilder: (context, index) {
-                  final log = _logs[index];
+                  final log = state.logs[index];
                   Color color = Colors.white70;
                   if (log.contains('COALESCED')) {
                     color = Colors.orange;

@@ -2,12 +2,13 @@ import 'package:juice/juice.dart';
 import 'package:juice_network/juice_network.dart';
 import 'package:juice_storage/juice_storage.dart';
 
+import 'blocs/blocs.dart';
 import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register StorageBloc as permanent
+  // Register StorageBloc as permanent (app-wide service)
   if (!BlocScope.isRegistered<StorageBloc>()) {
     BlocScope.register<StorageBloc>(
       () => StorageBloc(
@@ -24,7 +25,7 @@ Future<void> main() async {
   final storageBloc = BlocScope.get<StorageBloc>();
   await storageBloc.initialize();
 
-  // Register FetchBloc as permanent
+  // Register FetchBloc as permanent (app-wide service)
   if (!BlocScope.isRegistered<FetchBloc>()) {
     BlocScope.register<FetchBloc>(
       () => FetchBloc(storageBloc: storageBloc),
@@ -42,6 +43,31 @@ Future<void> main() async {
       defaultTtl: const Duration(minutes: 5),
     ),
   ));
+
+  // Register feature blocs
+  // PostsBloc uses leased (fetches fresh on each visit)
+  // CoalesceBloc and InterceptorsBloc use permanent (state persists across navigation)
+
+  if (!BlocScope.isRegistered<PostsBloc>()) {
+    BlocScope.register<PostsBloc>(
+      () => PostsBloc(fetchBloc: fetchBloc),
+      lifecycle: BlocLifecycle.leased,
+    );
+  }
+
+  if (!BlocScope.isRegistered<CoalesceBloc>()) {
+    BlocScope.register<CoalesceBloc>(
+      () => CoalesceBloc(fetchBloc: fetchBloc),
+      lifecycle: BlocLifecycle.permanent,
+    );
+  }
+
+  if (!BlocScope.isRegistered<InterceptorsBloc>()) {
+    BlocScope.register<InterceptorsBloc>(
+      () => InterceptorsBloc(fetchBloc: fetchBloc),
+      lifecycle: BlocLifecycle.permanent,
+    );
+  }
 
   runApp(const FetchArcadeApp());
 }

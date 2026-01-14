@@ -1,12 +1,14 @@
 import 'package:juice/juice.dart';
 import 'package:juice_network/juice_network.dart';
 
-class StatsScreen extends StatelessWidget {
-  const StatsScreen({super.key});
+class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
+  StatsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final fetchBloc = BlocScope.get<FetchBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
+    final stats = state.stats;
+    final cacheStats = state.cacheStats;
 
     return Scaffold(
       appBar: AppBar(
@@ -15,7 +17,7 @@ class StatsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             onPressed: () {
-              fetchBloc.send(ResetStatsEvent());
+              bloc.send(ResetStatsEvent());
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Stats reset')),
               );
@@ -25,7 +27,7 @@ class StatsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.cleaning_services),
             onPressed: () {
-              fetchBloc.send(ClearCacheEvent());
+              bloc.send(ClearCacheEvent());
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Cache cleared')),
               );
@@ -34,91 +36,81 @@ class StatsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: JuiceAsyncBuilder<StreamStatus<FetchState>>(
-        stream: fetchBloc.stream,
-        initial: StreamStatus.updating(fetchBloc.state, fetchBloc.state, null),
-        builder: (context, status) {
-          final state = status.state;
-          final stats = state.stats;
-          final cacheStats = state.cacheStats;
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SectionHeader(title: 'Request Statistics'),
+          _StatsCard(
             children: [
-              _SectionHeader(title: 'Request Statistics'),
-              _StatsCard(
-                children: [
-                  _StatRow('Total Requests', '${stats.totalRequests}'),
-                  _StatRow('Successful', '${stats.successCount}', color: Colors.green),
-                  _StatRow('Failed', '${stats.failureCount}', color: Colors.red),
-                  _StatRow('Success Rate', '${stats.successRate.toStringAsFixed(1)}%'),
-                  _StatRow('Retries', '${stats.retryCount}'),
-                  _StatRow('Coalesced', '${stats.coalescedCount}', color: Colors.orange),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SectionHeader(title: 'Cache Statistics'),
-              _StatsCard(
-                children: [
-                  _StatRow('Cache Hits', '${stats.cacheHits}', color: Colors.green),
-                  _StatRow('Cache Misses', '${stats.cacheMisses}', color: Colors.orange),
-                  _StatRow('Hit Rate', '${stats.hitRate.toStringAsFixed(1)}%'),
-                  _StatRow('Entries', '${cacheStats.entryCount}'),
-                  _StatRow('Size', _formatBytes(cacheStats.totalBytes)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SectionHeader(title: 'Performance'),
-              _StatsCard(
-                children: [
-                  _StatRow('Avg Response Time', '${stats.avgResponseTimeMs.toStringAsFixed(0)} ms'),
-                  _StatRow('Bytes Received', _formatBytes(stats.bytesReceived)),
-                  _StatRow('Bytes Sent', _formatBytes(stats.bytesSent)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SectionHeader(title: 'Current State'),
-              _StatsCard(
-                children: [
-                  _StatRow('Initialized', state.isInitialized ? 'Yes' : 'No'),
-                  _StatRow('Inflight Requests', '${state.inflightCount}'),
-                  _StatRow('Active Requests', '${state.activeRequests.length}'),
-                  _StatRow(
-                    'Last Error',
-                    state.lastError?.toString() ?? 'None',
-                    color: state.lastError != null ? Colors.red : null,
-                  ),
-                ],
-              ),
-              if (state.activeRequests.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _SectionHeader(title: 'Active Requests'),
-                ...state.activeRequests.entries.map((entry) {
-                  final reqStatus = entry.value;
-                  return Card(
-                    child: ListTile(
-                      leading: Icon(
-                        reqStatus.phase == RequestPhase.inflight
-                            ? Icons.sync
-                            : Icons.hourglass_empty,
-                        color: reqStatus.phase == RequestPhase.inflight
-                            ? Colors.blue
-                            : Colors.grey,
-                      ),
-                      title: Text(
-                        entry.key,
-                        style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-                      ),
-                      subtitle: Text(
-                        'Phase: ${reqStatus.phase.name} | Attempt: ${reqStatus.attempt}',
-                      ),
-                    ),
-                  );
-                }),
-              ],
+              _StatRow('Total Requests', '${stats.totalRequests}'),
+              _StatRow('Successful', '${stats.successCount}', color: Colors.green),
+              _StatRow('Failed', '${stats.failureCount}', color: Colors.red),
+              _StatRow('Success Rate', '${stats.successRate.toStringAsFixed(1)}%'),
+              _StatRow('Retries', '${stats.retryCount}'),
+              _StatRow('Coalesced', '${stats.coalescedCount}', color: Colors.orange),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 16),
+          _SectionHeader(title: 'Cache Statistics'),
+          _StatsCard(
+            children: [
+              _StatRow('Cache Hits', '${stats.cacheHits}', color: Colors.green),
+              _StatRow('Cache Misses', '${stats.cacheMisses}', color: Colors.orange),
+              _StatRow('Hit Rate', '${stats.hitRate.toStringAsFixed(1)}%'),
+              _StatRow('Entries', '${cacheStats.entryCount}'),
+              _StatRow('Size', _formatBytes(cacheStats.totalBytes)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SectionHeader(title: 'Performance'),
+          _StatsCard(
+            children: [
+              _StatRow('Avg Response Time', '${stats.avgResponseTimeMs.toStringAsFixed(0)} ms'),
+              _StatRow('Bytes Received', _formatBytes(stats.bytesReceived)),
+              _StatRow('Bytes Sent', _formatBytes(stats.bytesSent)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SectionHeader(title: 'Current State'),
+          _StatsCard(
+            children: [
+              _StatRow('Initialized', state.isInitialized ? 'Yes' : 'No'),
+              _StatRow('Inflight Requests', '${state.inflightCount}'),
+              _StatRow('Active Requests', '${state.activeRequests.length}'),
+              _StatRow(
+                'Last Error',
+                state.lastError?.toString() ?? 'None',
+                color: state.lastError != null ? Colors.red : null,
+              ),
+            ],
+          ),
+          if (state.activeRequests.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _SectionHeader(title: 'Active Requests'),
+            ...state.activeRequests.entries.map((entry) {
+              final reqStatus = entry.value;
+              return Card(
+                child: ListTile(
+                  leading: Icon(
+                    reqStatus.phase == RequestPhase.inflight
+                        ? Icons.sync
+                        : Icons.hourglass_empty,
+                    color: reqStatus.phase == RequestPhase.inflight
+                        ? Colors.blue
+                        : Colors.grey,
+                  ),
+                  title: Text(
+                    entry.key,
+                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                  ),
+                  subtitle: Text(
+                    'Phase: ${reqStatus.phase.name} | Attempt: ${reqStatus.attempt}',
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
       ),
     );
   }

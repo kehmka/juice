@@ -1,68 +1,17 @@
 import 'package:juice/juice.dart';
 import 'package:juice_network/juice_network.dart';
 
+import '../blocs/blocs.dart';
 import '../models/post.dart';
 import 'post_detail_screen.dart';
 
-class PostsScreen extends StatefulWidget {
-  const PostsScreen({super.key});
+class PostsScreen extends StatelessJuiceWidget<PostsBloc> {
+  PostsScreen({super.key});
 
   @override
-  State<PostsScreen> createState() => _PostsScreenState();
-}
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
 
-class _PostsScreenState extends State<PostsScreen> {
-  List<Post> _posts = [];
-  bool _isLoading = false;
-  String? _error;
-  CachePolicy _cachePolicy = CachePolicy.cacheFirst;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPosts();
-  }
-
-  Future<void> _loadPosts() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    final fetchBloc = BlocScope.get<FetchBloc>();
-
-    // Listen for completion
-    late StreamSubscription<StreamStatus<FetchState>> sub;
-    sub = fetchBloc.stream.listen((status) {
-      if (status is! WaitingStatus) {
-        sub.cancel();
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            if (status is FailureStatus) {
-              _error = fetchBloc.state.lastError?.toString() ?? 'Unknown error';
-            }
-          });
-        }
-      }
-    });
-
-    await fetchBloc.send(GetEvent(
-      url: '/posts',
-      cachePolicy: _cachePolicy,
-      ttl: const Duration(minutes: 5),
-      decode: (raw) {
-        final posts = Post.fromJsonList(raw as List);
-        if (mounted) {
-          setState(() => _posts = posts);
-        }
-        return posts;
-      },
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Posts'),
@@ -71,94 +20,62 @@ class _PostsScreenState extends State<PostsScreen> {
             icon: const Icon(Icons.cached),
             tooltip: 'Cache Policy',
             onSelected: (policy) {
-              setState(() => _cachePolicy = policy);
-              _loadPosts();
+              bloc.send(SetCachePolicyEvent(policy));
+              bloc.send(LoadPostsEvent());
             },
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: CachePolicy.cacheFirst,
-                child: Row(
-                  children: [
-                    if (_cachePolicy == CachePolicy.cacheFirst)
-                      const Icon(Icons.check, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Cache First'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: CachePolicy.networkFirst,
-                child: Row(
-                  children: [
-                    if (_cachePolicy == CachePolicy.networkFirst)
-                      const Icon(Icons.check, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Network First'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: CachePolicy.networkOnly,
-                child: Row(
-                  children: [
-                    if (_cachePolicy == CachePolicy.networkOnly)
-                      const Icon(Icons.check, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Network Only'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: CachePolicy.cacheOnly,
-                child: Row(
-                  children: [
-                    if (_cachePolicy == CachePolicy.cacheOnly)
-                      const Icon(Icons.check, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Cache Only'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: CachePolicy.staleWhileRevalidate,
-                child: Row(
-                  children: [
-                    if (_cachePolicy == CachePolicy.staleWhileRevalidate)
-                      const Icon(Icons.check, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Stale While Revalidate'),
-                  ],
-                ),
-              ),
+              _buildPolicyItem(CachePolicy.cacheFirst, 'Cache First', state),
+              _buildPolicyItem(CachePolicy.networkFirst, 'Network First', state),
+              _buildPolicyItem(CachePolicy.networkOnly, 'Network Only', state),
+              _buildPolicyItem(CachePolicy.cacheOnly, 'Cache Only', state),
+              _buildPolicyItem(CachePolicy.staleWhileRevalidate, 'Stale While Revalidate', state),
             ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadPosts,
+            onPressed: () => bloc.send(LoadPostsEvent()),
             tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _buildBody(),
+      body: _buildBody(context, state),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading && _posts.isEmpty) {
+  PopupMenuItem<CachePolicy> _buildPolicyItem(
+    CachePolicy policy,
+    String label,
+    PostsState state,
+  ) {
+    return PopupMenuItem(
+      value: policy,
+      child: Row(
+        children: [
+          if (state.cachePolicy == policy)
+            const Icon(Icons.check, size: 18),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, PostsState state) {
+    if (state.isListLoading && state.posts.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && _posts.isEmpty) {
+    if (state.listError != null && state.posts.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(state.listError!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _loadPosts,
+              onPressed: () => bloc.send(LoadPostsEvent()),
               child: const Text('Retry'),
             ),
           ],
@@ -167,36 +84,20 @@ class _PostsScreenState extends State<PostsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadPosts,
+      onRefresh: () async => bloc.send(LoadPostsEvent()),
       child: Stack(
         children: [
           ListView.builder(
-            itemCount: _posts.length,
+            itemCount: state.posts.length,
             itemBuilder: (context, index) {
-              final post = _posts[index];
-              return ListTile(
-                leading: CircleAvatar(child: Text('${post.id}')),
-                title: Text(
-                  post.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  post.body,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PostDetailScreen(postId: post.id),
-                    ),
-                  );
-                },
+              final post = state.posts[index];
+              return _PostListTile(
+                post: post,
+                onTap: () => _navigateToDetail(context, post.id),
               );
             },
           ),
-          if (_isLoading)
+          if (state.isListLoading)
             const Positioned(
               top: 0,
               left: 0,
@@ -205,6 +106,39 @@ class _PostsScreenState extends State<PostsScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  void _navigateToDetail(BuildContext context, int postId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PostDetailScreen(postId: postId),
+      ),
+    );
+  }
+}
+
+class _PostListTile extends StatelessWidget {
+  final Post post;
+  final VoidCallback onTap;
+
+  const _PostListTile({required this.post, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(child: Text('${post.id}')),
+      title: Text(
+        post.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        post.body,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: onTap,
     );
   }
 }

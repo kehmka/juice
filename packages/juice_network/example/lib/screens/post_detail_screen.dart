@@ -1,66 +1,49 @@
 import 'package:juice/juice.dart';
-import 'package:juice_network/juice_network.dart';
 
-import '../models/post.dart';
+import '../blocs/blocs.dart';
 
-class PostDetailScreen extends StatefulWidget {
+class PostDetailScreen extends StatelessJuiceWidget<PostsBloc> {
   final int postId;
 
-  const PostDetailScreen({super.key, required this.postId});
+  PostDetailScreen({super.key, required this.postId});
 
   @override
-  State<PostDetailScreen> createState() => _PostDetailScreenState();
-}
-
-class _PostDetailScreenState extends State<PostDetailScreen> {
-  Post? _post;
-  bool _isLoading = true;
-  String? _error;
+  void onInit() {
+    bloc.send(LoadPostDetailEvent(postId));
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _loadPost();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
+
+    // Handle deletion - navigate back
+    if (state.postDeleted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post deleted (simulated)')),
+          );
+          Navigator.pop(context);
+        }
+      });
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Post #$postId'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () => _confirmDelete(context),
+            tooltip: 'Delete',
+          ),
+        ],
+      ),
+      body: _buildBody(context, state),
+    );
   }
 
-  Future<void> _loadPost() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    final fetchBloc = BlocScope.get<FetchBloc>();
-
-    late StreamSubscription<StreamStatus<FetchState>> sub;
-    sub = fetchBloc.stream.listen((status) {
-      if (status is! WaitingStatus) {
-        sub.cancel();
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            if (status is FailureStatus) {
-              _error = fetchBloc.state.lastError?.toString() ?? 'Unknown error';
-            }
-          });
-        }
-      }
-    });
-
-    await fetchBloc.send(GetEvent(
-      url: '/posts/${widget.postId}',
-      cachePolicy: CachePolicy.cacheFirst,
-      ttl: const Duration(minutes: 5),
-      decode: (raw) {
-        final post = Post.fromJson(raw as Map<String, dynamic>);
-        if (mounted) {
-          setState(() => _post = post);
-        }
-        return post;
-      },
-    ));
-  }
-
-  Future<void> _deletePost() async {
+  Future<void> _confirmDelete(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -79,55 +62,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
 
-    if (confirm != true || !mounted) return;
-
-    final fetchBloc = BlocScope.get<FetchBloc>();
-
-    await fetchBloc.send(DeleteEvent(
-      url: '/posts/${widget.postId}',
-    ));
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post deleted (simulated)')),
-      );
-      Navigator.pop(context);
+    if (confirm == true) {
+      bloc.send(DeletePostEvent());
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Post #${widget.postId}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _deletePost,
-            tooltip: 'Delete',
-          ),
-        ],
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(BuildContext context, PostsState state) {
+    if (state.isDetailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (state.detailError != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(state.detailError!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _loadPost,
+              onPressed: () => bloc.send(LoadPostDetailEvent(postId)),
               child: const Text('Retry'),
             ),
           ],
@@ -135,7 +90,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
 
-    if (_post == null) {
+    final post = state.selectedPost;
+    if (post == null) {
       return const Center(child: Text('Post not found'));
     }
 
@@ -152,22 +108,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(child: Text('${_post!.userId}')),
+                      CircleAvatar(child: Text('${post.userId}')),
                       const SizedBox(width: 12),
                       Text(
-                        'User ${_post!.userId}',
+                        'User ${post.userId}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _post!.title,
+                    post.title,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _post!.body,
+                    post.body,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],

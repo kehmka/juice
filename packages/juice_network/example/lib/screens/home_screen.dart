@@ -15,17 +15,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final _screens = const [
-    PostsScreen(),
-    CoalesceScreen(),
-    InterceptorsScreen(),
-    StatsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: _buildScreen(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -55,5 +48,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildScreen() {
+    switch (_currentIndex) {
+      case 0:
+        return PostsScreen();
+      case 1:
+        return CoalesceScreen();
+      case 2:
+        return InterceptorsScreen();
+      case 3:
+        return StatsScreen();
+      default:
+        return PostsScreen();
+    }
   }
 }

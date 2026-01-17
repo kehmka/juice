@@ -31,50 +31,56 @@ import 'package:rxdart/rxdart.dart';
 ///   }
 /// }
 /// ```
-class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
-    extends State<TWidget> {
+abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
+    TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState with optional dependency resolver and rebuild groups.
   ///
   /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
-  /// [groups] - Set of rebuild group names that control when this widget rebuilds
-  JuiceWidgetState(
-      {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : _customResolver = resolver;
+  ///   Note: When using a custom resolver, the bloc lifecycle is not managed
+  ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
+  /// [groups] - Set of rebuild group names that control when this widget rebuilds.
+  /// [scope] - Optional scope key for resolving scoped bloc instances.
+  JuiceWidgetState({
+    BlocDependencyResolver? resolver,
+    Set<String> groups = const {"*"},
+    this.scope,
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
+
+  /// Optional scope key for resolving scoped bloc instances.
+  final Object? scope;
 
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Cached bloc instance
-  TBloc? _bloc;
+  /// Cached bloc instance, initialized in initState.
+  late final TBloc _bloc;
 
-  /// Lease for lifecycle management when using BlocScope
+  /// Lease for lifecycle management when using BlocScope.
   BlocLease<TBloc>? _lease;
 
-  /// The bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc get bloc {
-    if (_bloc != null) return _bloc!;
+  /// Tracks last status to only call prepareForUpdate on actual changes.
+  StreamStatus? _lastStatus;
 
-    if (_customResolver != null) {
-      // Legacy path: use custom resolver directly
-      _bloc = _customResolver.resolve<TBloc>();
-    } else {
-      // New path: use BlocScope with lease for proper lifecycle management
-      _lease = BlocScope.lease<TBloc>();
-      _bloc = _lease!.bloc;
-    }
-    return _bloc!;
-  }
+  /// The bloc instance this widget observes.
+  TBloc get bloc => _bloc;
 
   @override
   @protected
   @mustCallSuper
   void initState() {
     super.initState();
+    if (_customResolver != null) {
+      _bloc = _customResolver.resolve<TBloc>();
+    } else {
+      _lease = BlocScope.lease<TBloc>(scope: scope);
+      _bloc = _lease!.bloc;
+    }
   }
 
   @override
@@ -82,23 +88,28 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
   @mustCallSuper
   Widget build(BuildContext context) {
     return JuiceAsyncBuilder<StreamStatus>(
-      initial: bloc.currentStatus,
+      initial: _bloc.currentStatus,
       initiator: onInit,
-      stream: bloc.stream.where((status) {
+      stream: _bloc.stream.where((status) {
         if (denyRebuild(
             event: status.event, key: widget.key, rebuildGroups: groups)) {
           return false;
         }
-        if (!onStateChange(status)) return false;
-        prepareForUpdate(status);
-        if (mounted) setState(() {});
-        return true;
+        return onStateChange(status);
       }),
-      waiting: (context, status) => _build(context, status),
-      builder: (context, status) => _build(context, status),
-      error: (c, status, o, s) => _build(context, status),
+      waiting: (context, status) => _buildWithPrep(context, status),
+      builder: (context, status) => _buildWithPrep(context, status),
+      error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
+  }
+
+  Widget _buildWithPrep(BuildContext context, StreamStatus status) {
+    if (!identical(_lastStatus, status)) {
+      _lastStatus = status;
+      prepareForUpdate(status);
+    }
+    return _build(context, status);
   }
 
   Widget _build(BuildContext context, StreamStatus status) {
@@ -122,11 +133,10 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
   @protected
   bool onStateChange(StreamStatus status) => true;
 
-  /// Called before setState when a state change is accepted.
-  /// Override to prepare widget for upcoming state change.
+  /// Called when the stream emits a new status that passed [onStateChange].
+  /// Override to prepare widget for the upcoming rebuild.
   ///
-  /// This is called after [onStateChange] returns true and before the widget rebuilds.
-  /// Use this to perform any necessary preparations for the state update.
+  /// Only called when status actually changes (not on parent rebuilds).
   @protected
   void prepareForUpdate(StreamStatus status) {}
 
@@ -148,10 +158,7 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
 
   @override
   void dispose() {
-    // Release the lease if we acquired one
     _lease?.dispose();
-    _lease = null;
-    _bloc = null;
     super.dispose();
   }
 }
@@ -160,64 +167,68 @@ class JuiceWidgetState<TBloc extends JuiceBloc, TWidget extends StatefulWidget>
 ///
 /// Similar to JuiceWidgetState but handles state changes from two different blocs,
 /// merging their streams and providing access to both bloc instances.
-class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
-    TWidget extends StatefulWidget> extends State<TWidget> {
+abstract class JuiceWidgetState2<TBloc1 extends JuiceBloc<BlocState>,
+    TBloc2 extends JuiceBloc<BlocState>, TWidget extends StatefulWidget>
+    extends State<TWidget> {
   /// Creates a JuiceWidgetState2 with optional resolver and rebuild groups.
   ///
   /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
-  /// [groups] - Set of rebuild group names that control when this widget rebuilds
-  JuiceWidgetState2(
-      {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : _customResolver = resolver;
+  ///   Note: When using a custom resolver, the bloc lifecycle is not managed
+  ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
+  /// [groups] - Set of rebuild group names that control when this widget rebuilds.
+  /// [scope1] - Optional scope key for first bloc.
+  /// [scope2] - Optional scope key for second bloc.
+  JuiceWidgetState2({
+    BlocDependencyResolver? resolver,
+    Set<String> groups = const {"*"},
+    this.scope1,
+    this.scope2,
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
+
+  /// Optional scope keys for blocs.
+  final Object? scope1;
+  final Object? scope2;
 
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Cached bloc instances
-  TBloc1? _bloc1;
-  TBloc2? _bloc2;
+  /// Cached bloc instances, initialized in initState.
+  late final TBloc1 _bloc1;
+  late final TBloc2 _bloc2;
 
-  /// Leases for lifecycle management when using BlocScope
+  /// Leases for lifecycle management when using BlocScope.
   BlocLease<TBloc1>? _lease1;
   BlocLease<TBloc2>? _lease2;
 
-  /// The first bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc1 get bloc1 {
-    if (_bloc1 != null) return _bloc1!;
+  /// Tracks last status to only call prepareForUpdate on actual changes.
+  StreamStatus? _lastStatus;
 
-    if (_customResolver != null) {
-      _bloc1 = _customResolver.resolve<TBloc1>();
-    } else {
-      _lease1 = BlocScope.lease<TBloc1>();
-      _bloc1 = _lease1!.bloc;
-    }
-    return _bloc1!;
-  }
+  /// The first bloc instance this widget observes.
+  TBloc1 get bloc1 => _bloc1;
 
   /// The second bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc2 get bloc2 {
-    if (_bloc2 != null) return _bloc2!;
-
-    if (_customResolver != null) {
-      _bloc2 = _customResolver.resolve<TBloc2>();
-    } else {
-      _lease2 = BlocScope.lease<TBloc2>();
-      _bloc2 = _lease2!.bloc;
-    }
-    return _bloc2!;
-  }
+  TBloc2 get bloc2 => _bloc2;
 
   @override
   @protected
   @mustCallSuper
   void initState() {
     super.initState();
+    if (_customResolver != null) {
+      _bloc1 = _customResolver.resolve<TBloc1>();
+      _bloc2 = _customResolver.resolve<TBloc2>();
+    } else {
+      _lease1 = BlocScope.lease<TBloc1>(scope: scope1);
+      _lease2 = BlocScope.lease<TBloc2>(scope: scope2);
+      _bloc1 = _lease1!.bloc;
+      _bloc2 = _lease2!.bloc;
+    }
   }
 
   @override
@@ -225,24 +236,29 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
   @mustCallSuper
   Widget build(BuildContext context) {
     return JuiceAsyncBuilder<StreamStatus>(
-      initial: bloc1.currentStatus,
+      initial: _bloc1.currentStatus,
       initiator: onInit,
-      stream: MergeStream<StreamStatus>([bloc1.stream, bloc2.stream])
+      stream: MergeStream<StreamStatus>([_bloc1.stream, _bloc2.stream])
           .where((status) {
         if (denyRebuild(
             event: status.event, key: widget.key, rebuildGroups: groups)) {
           return false;
         }
-        if (!onStateChange(status)) return false;
-        prepareForUpdate(status);
-        if (mounted) setState(() {});
-        return true;
+        return onStateChange(status);
       }),
-      waiting: (context, status) => _build(context, status),
-      builder: (context, status) => _build(context, status),
-      error: (c, status, o, s) => _build(context, status),
+      waiting: (context, status) => _buildWithPrep(context, status),
+      builder: (context, status) => _buildWithPrep(context, status),
+      error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
+  }
+
+  Widget _buildWithPrep(BuildContext context, StreamStatus status) {
+    if (!identical(_lastStatus, status)) {
+      _lastStatus = status;
+      prepareForUpdate(status);
+    }
+    return _build(context, status);
   }
 
   Widget _build(BuildContext context, StreamStatus status) {
@@ -265,10 +281,10 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
   @protected
   bool onStateChange(StreamStatus status) => true;
 
-  /// Called before setState when a state change is accepted.
-  /// Override to prepare widget for upcoming state change.
+  /// Called when the merged stream emits a new status that passed [onStateChange].
+  /// Override to prepare widget for the upcoming rebuild.
   ///
-  /// This is called when either bloc emits a new state.
+  /// Only called when status actually changes (not on parent rebuilds).
   @protected
   void prepareForUpdate(StreamStatus status) {}
 
@@ -289,13 +305,8 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
 
   @override
   void dispose() {
-    // Release the leases if we acquired them
     _lease1?.dispose();
     _lease2?.dispose();
-    _lease1 = null;
-    _lease2 = null;
-    _bloc1 = null;
-    _bloc2 = null;
     super.dispose();
   }
 }
@@ -304,83 +315,81 @@ class JuiceWidgetState2<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc,
 ///
 /// Similar to JuiceWidgetState but handles state changes from three different blocs,
 /// merging their streams and providing access to all bloc instances.
-class JuiceWidgetState3<
-    TBloc1 extends JuiceBloc,
-    TBloc2 extends JuiceBloc,
-    TBloc3 extends JuiceBloc,
+abstract class JuiceWidgetState3<
+    TBloc1 extends JuiceBloc<BlocState>,
+    TBloc2 extends JuiceBloc<BlocState>,
+    TBloc3 extends JuiceBloc<BlocState>,
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState3 with optional resolver and rebuild groups.
   ///
   /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
-  /// [groups] - Set of rebuild group names that control when this widget rebuilds
-  JuiceWidgetState3(
-      {BlocDependencyResolver? resolver, this.groups = const {"*"}})
-      : _customResolver = resolver;
+  ///   Note: When using a custom resolver, the bloc lifecycle is not managed
+  ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
+  /// [groups] - Set of rebuild group names that control when this widget rebuilds.
+  /// [scope1] - Optional scope key for first bloc.
+  /// [scope2] - Optional scope key for second bloc.
+  /// [scope3] - Optional scope key for third bloc.
+  JuiceWidgetState3({
+    BlocDependencyResolver? resolver,
+    Set<String> groups = const {"*"},
+    this.scope1,
+    this.scope2,
+    this.scope3,
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
+
+  /// Optional scope keys for blocs.
+  final Object? scope1;
+  final Object? scope2;
+  final Object? scope3;
 
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Cached bloc instances
-  TBloc1? _bloc1;
-  TBloc2? _bloc2;
-  TBloc3? _bloc3;
+  /// Cached bloc instances, initialized in initState.
+  late final TBloc1 _bloc1;
+  late final TBloc2 _bloc2;
+  late final TBloc3 _bloc3;
 
-  /// Leases for lifecycle management when using BlocScope
+  /// Leases for lifecycle management when using BlocScope.
   BlocLease<TBloc1>? _lease1;
   BlocLease<TBloc2>? _lease2;
   BlocLease<TBloc3>? _lease3;
 
-  /// The first bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc1 get bloc1 {
-    if (_bloc1 != null) return _bloc1!;
+  /// Tracks last status to only call prepareForUpdate on actual changes.
+  StreamStatus? _lastStatus;
 
-    if (_customResolver != null) {
-      _bloc1 = _customResolver.resolve<TBloc1>();
-    } else {
-      _lease1 = BlocScope.lease<TBloc1>();
-      _bloc1 = _lease1!.bloc;
-    }
-    return _bloc1!;
-  }
+  /// The first bloc instance this widget observes.
+  TBloc1 get bloc1 => _bloc1;
 
   /// The second bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc2 get bloc2 {
-    if (_bloc2 != null) return _bloc2!;
-
-    if (_customResolver != null) {
-      _bloc2 = _customResolver.resolve<TBloc2>();
-    } else {
-      _lease2 = BlocScope.lease<TBloc2>();
-      _bloc2 = _lease2!.bloc;
-    }
-    return _bloc2!;
-  }
+  TBloc2 get bloc2 => _bloc2;
 
   /// The third bloc instance this widget observes.
-  /// Resolved via BlocScope or custom resolver.
-  TBloc3 get bloc3 {
-    if (_bloc3 != null) return _bloc3!;
-
-    if (_customResolver != null) {
-      _bloc3 = _customResolver.resolve<TBloc3>();
-    } else {
-      _lease3 = BlocScope.lease<TBloc3>();
-      _bloc3 = _lease3!.bloc;
-    }
-    return _bloc3!;
-  }
+  TBloc3 get bloc3 => _bloc3;
 
   @override
   @protected
   @mustCallSuper
   void initState() {
     super.initState();
+    if (_customResolver != null) {
+      _bloc1 = _customResolver.resolve<TBloc1>();
+      _bloc2 = _customResolver.resolve<TBloc2>();
+      _bloc3 = _customResolver.resolve<TBloc3>();
+    } else {
+      _lease1 = BlocScope.lease<TBloc1>(scope: scope1);
+      _lease2 = BlocScope.lease<TBloc2>(scope: scope2);
+      _lease3 = BlocScope.lease<TBloc3>(scope: scope3);
+      _bloc1 = _lease1!.bloc;
+      _bloc2 = _lease2!.bloc;
+      _bloc3 = _lease3!.bloc;
+    }
   }
 
   @override
@@ -388,25 +397,30 @@ class JuiceWidgetState3<
   @mustCallSuper
   Widget build(BuildContext context) {
     return JuiceAsyncBuilder<StreamStatus>(
-      initial: bloc1.currentStatus,
+      initial: _bloc1.currentStatus,
       initiator: onInit,
-      stream:
-          MergeStream<StreamStatus>([bloc1.stream, bloc2.stream, bloc3.stream])
-              .where((status) {
+      stream: MergeStream<StreamStatus>(
+              [_bloc1.stream, _bloc2.stream, _bloc3.stream])
+          .where((status) {
         if (denyRebuild(
             event: status.event, key: widget.key, rebuildGroups: groups)) {
           return false;
         }
-        if (!onStateChange(status)) return false;
-        prepareForUpdate(status);
-        if (mounted) setState(() {});
-        return true;
+        return onStateChange(status);
       }),
-      waiting: (context, status) => _build(context, status),
-      builder: (context, status) => _build(context, status),
-      error: (c, status, o, s) => _build(context, status),
+      waiting: (context, status) => _buildWithPrep(context, status),
+      builder: (context, status) => _buildWithPrep(context, status),
+      error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
+  }
+
+  Widget _buildWithPrep(BuildContext context, StreamStatus status) {
+    if (!identical(_lastStatus, status)) {
+      _lastStatus = status;
+      prepareForUpdate(status);
+    }
+    return _build(context, status);
   }
 
   Widget _build(BuildContext context, StreamStatus status) {
@@ -429,10 +443,10 @@ class JuiceWidgetState3<
   @protected
   bool onStateChange(StreamStatus status) => true;
 
-  /// Called before setState when a state change is accepted.
-  /// Override to prepare widget for upcoming state change.
+  /// Called when the merged stream emits a new status that passed [onStateChange].
+  /// Override to prepare widget for the upcoming rebuild.
   ///
-  /// This is called when any of the three blocs emits a new state.
+  /// Only called when status actually changes (not on parent rebuilds).
   @protected
   void prepareForUpdate(StreamStatus status) {}
 
@@ -453,16 +467,9 @@ class JuiceWidgetState3<
 
   @override
   void dispose() {
-    // Release the leases if we acquired them
     _lease1?.dispose();
     _lease2?.dispose();
     _lease3?.dispose();
-    _lease1 = null;
-    _lease2 = null;
-    _lease3 = null;
-    _bloc1 = null;
-    _bloc2 = null;
-    _bloc3 = null;
     super.dispose();
   }
 }

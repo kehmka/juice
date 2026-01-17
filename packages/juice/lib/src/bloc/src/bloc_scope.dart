@@ -252,6 +252,53 @@ class BlocScope {
     return lease<T>(scope: scope);
   }
 
+  /// Access an existing bloc instance without creating or taking ownership.
+  ///
+  /// **INTERNAL USE ONLY** - This is for framework internals (widgets/tests)
+  /// when ownership is already held elsewhere (e.g., by a lease holder).
+  /// Never use this in application code.
+  ///
+  /// Unlike [get], this doesn't throw for leased blocs.
+  /// Unlike [lease], this doesn't increment the lease count.
+  ///
+  /// Throws [StateError] if the bloc is not registered or has no instance.
+  @internal
+  static T peekExisting<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    final id = BlocId(T, scope ?? BlocId.globalScope);
+    final entry = _entries[id];
+
+    if (entry == null) {
+      throw StateError('Bloc $T (scope: $scope) not registered');
+    }
+
+    if (entry.instance == null) {
+      throw StateError(
+        'Bloc $T (scope: $scope) has no active instance. '
+        'peekExisting requires the bloc to already exist.',
+      );
+    }
+
+    return entry.instance as T;
+  }
+
+  /// Access an existing bloc instance, returning null if not present.
+  ///
+  /// **INTERNAL USE ONLY** - This is for framework internals when ownership
+  /// is already held elsewhere. Never use this in application code.
+  ///
+  /// Returns null if the bloc is not registered or has no instance.
+  @internal
+  static T? maybePeekExisting<T extends JuiceBloc<BlocState>>({Object? scope}) {
+    final id = BlocId(T, scope ?? BlocId.globalScope);
+    final entry = _entries[id];
+
+    if (entry == null || entry.instance == null) {
+      return null;
+    }
+
+    return entry.instance as T;
+  }
+
   static T _getOrCreate<T extends JuiceBloc<BlocState>>(
     BlocId id,
     BlocEntry<T> entry,

@@ -31,15 +31,20 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   /// [scope] - Optional scope key for resolving scoped bloc instances
+  ///
+  /// Note: Do not access [bloc] in the widget constructor or field initializers.
+  /// The bloc is only available after the lease holder has run in [build].
   StatelessJuiceWidget({
     super.key,
     BlocDependencyResolver? resolver,
-    this.groups = const {"*"},
+    Set<String> groups = const {"*"},
     this.scope,
-  }) : _customResolver = resolver;
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve widget immutability.
   final Set<String> groups;
 
   /// Optional scope key for resolving scoped bloc instances.
@@ -48,45 +53,46 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Expando storage for bloc instances, keyed by widget instance.
-  /// Using Expando keeps the widget immutable while allowing bloc storage.
-  /// Entries are automatically removed when widget is garbage collected.
-  static final Expando<Object> _blocExpando = Expando<Object>('bloc');
-
   /// The bloc instance this widget observes.
-  /// Resolved via BlocScope.lease() or custom resolver.
+  ///
+  /// For legacy resolver path: resolved directly from resolver.
+  /// For BlocScope path: accessed via peekExisting() after lease holder
+  /// has ensured the instance exists.
   @protected
-  TBloc get bloc => _blocExpando[this] as TBloc;
+  TBloc get bloc {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc>();
+    }
+    return BlocScope.peekExisting<TBloc>(scope: scope);
+  }
 
   @override
   @protected
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: use custom resolver directly (no lease management)
-      _blocExpando[this] = _customResolver.resolve<TBloc>();
-      return _buildAsyncBuilder();
+      // Legacy path: resolve once and pass to builder
+      final b = _customResolver.resolve<TBloc>();
+      return _buildAsyncBuilder(b);
     }
 
-    // New path: use BlocScope with lease holder for proper lifecycle management
+    // New path: use BlocScope with lease holder for proper lifecycle management.
+    // The lease holder ensures the bloc instance exists before building.
     return _BlocLeaseHolder<TBloc>(
       scope: scope,
-      builder: (bloc) {
-        _blocExpando[this] = bloc;
-        return _buildAsyncBuilder();
-      },
+      builder: (b) => _buildAsyncBuilder(b),
     );
   }
 
-  Widget _buildAsyncBuilder() {
+  Widget _buildAsyncBuilder(TBloc b) {
     return JuiceAsyncBuilder<StreamStatus>(
-      stream: bloc.stream.where((status) {
+      stream: b.stream.where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
           return false;
         }
         return onStateChange(status);
       }),
-      initial: bloc.currentStatus,
+      initial: b.currentStatus,
       initiator: onInit,
       waiting: (context, status) => _build(context, status),
       builder: (context, status) => _build(context, status),
@@ -139,16 +145,20 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
   /// [scope1] - Optional scope key for first bloc.
   /// [scope2] - Optional scope key for second bloc.
+  ///
+  /// Note: Do not access [bloc1] or [bloc2] in the widget constructor or field initializers.
   StatelessJuiceWidget2({
     super.key,
     BlocDependencyResolver? resolver,
-    this.groups = const {"*"},
+    Set<String> groups = const {"*"},
     this.scope1,
     this.scope2,
-  }) : _customResolver = resolver;
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve widget immutability.
   final Set<String> groups;
 
   /// Optional scope key for first bloc.
@@ -160,47 +170,48 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Expando storage for bloc instances, keyed by widget instance.
-  static final Expando<List<Object>> _blocsExpando = Expando<List<Object>>('blocs2');
-
   /// First bloc instance observed by this widget.
   @protected
-  TBloc1 get bloc1 => _blocsExpando[this]![0] as TBloc1;
+  TBloc1 get bloc1 {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc1>();
+    }
+    return BlocScope.peekExisting<TBloc1>(scope: scope1);
+  }
 
   /// Second bloc instance observed by this widget.
   @protected
-  TBloc2 get bloc2 => _blocsExpando[this]![1] as TBloc2;
+  TBloc2 get bloc2 {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc2>();
+    }
+    return BlocScope.peekExisting<TBloc2>(scope: scope2);
+  }
 
   @override
   @protected
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: use custom resolver directly
-      _blocsExpando[this] = [
-        _customResolver.resolve<TBloc1>(),
-        _customResolver.resolve<TBloc2>(),
-      ];
-      return _buildAsyncBuilder();
+      // Legacy path: resolve once and pass to builder
+      final b1 = _customResolver.resolve<TBloc1>();
+      final b2 = _customResolver.resolve<TBloc2>();
+      return _buildAsyncBuilder(b1, b2);
     }
 
     // New path: use BlocScope with lease holders
     return _BlocLeaseHolder2<TBloc1, TBloc2>(
       scope1: scope1,
       scope2: scope2,
-      builder: (b1, b2) {
-        _blocsExpando[this] = [b1, b2];
-        return _buildAsyncBuilder();
-      },
+      builder: (b1, b2) => _buildAsyncBuilder(b1, b2),
     );
   }
 
-  Widget _buildAsyncBuilder() {
+  Widget _buildAsyncBuilder(TBloc1 b1, TBloc2 b2) {
     return JuiceAsyncBuilder<StreamStatus>(
-      initial: bloc1.currentStatus,
+      initial: b1.currentStatus,
       initiator: onInit,
-      stream: MergeStream<StreamStatus>([bloc1.stream, bloc2.stream])
-          .where((status) {
+      stream: MergeStream<StreamStatus>([b1.stream, b2.stream]).where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
           return false;
         }
@@ -257,17 +268,21 @@ abstract class StatelessJuiceWidget3<
   /// [scope1] - Optional scope key for first bloc.
   /// [scope2] - Optional scope key for second bloc.
   /// [scope3] - Optional scope key for third bloc.
+  ///
+  /// Note: Do not access [bloc1], [bloc2], or [bloc3] in the widget constructor or field initializers.
   StatelessJuiceWidget3({
     super.key,
     BlocDependencyResolver? resolver,
-    this.groups = const {"*"},
+    Set<String> groups = const {"*"},
     this.scope1,
     this.scope2,
     this.scope3,
-  }) : _customResolver = resolver;
+  })  : groups = Set.unmodifiable(groups),
+        _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
   /// Default is {"*"} which means rebuild on all state changes.
+  /// This set is unmodifiable to preserve widget immutability.
   final Set<String> groups;
 
   /// Optional scope keys for blocs.
@@ -278,33 +293,43 @@ abstract class StatelessJuiceWidget3<
   /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
-  /// Expando storage for bloc instances, keyed by widget instance.
-  static final Expando<List<Object>> _blocsExpando = Expando<List<Object>>('blocs3');
-
   /// First bloc instance observed by this widget.
   @protected
-  TBloc1 get bloc1 => _blocsExpando[this]![0] as TBloc1;
+  TBloc1 get bloc1 {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc1>();
+    }
+    return BlocScope.peekExisting<TBloc1>(scope: scope1);
+  }
 
   /// Second bloc instance observed by this widget.
   @protected
-  TBloc2 get bloc2 => _blocsExpando[this]![1] as TBloc2;
+  TBloc2 get bloc2 {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc2>();
+    }
+    return BlocScope.peekExisting<TBloc2>(scope: scope2);
+  }
 
   /// Third bloc instance observed by this widget.
   @protected
-  TBloc3 get bloc3 => _blocsExpando[this]![2] as TBloc3;
+  TBloc3 get bloc3 {
+    if (_customResolver != null) {
+      return _customResolver.resolve<TBloc3>();
+    }
+    return BlocScope.peekExisting<TBloc3>(scope: scope3);
+  }
 
   @override
   @protected
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: use custom resolver directly
-      _blocsExpando[this] = [
-        _customResolver.resolve<TBloc1>(),
-        _customResolver.resolve<TBloc2>(),
-        _customResolver.resolve<TBloc3>(),
-      ];
-      return _buildAsyncBuilder();
+      // Legacy path: resolve once and pass to builder
+      final b1 = _customResolver.resolve<TBloc1>();
+      final b2 = _customResolver.resolve<TBloc2>();
+      final b3 = _customResolver.resolve<TBloc3>();
+      return _buildAsyncBuilder(b1, b2, b3);
     }
 
     // New path: use BlocScope with lease holders
@@ -312,20 +337,16 @@ abstract class StatelessJuiceWidget3<
       scope1: scope1,
       scope2: scope2,
       scope3: scope3,
-      builder: (b1, b2, b3) {
-        _blocsExpando[this] = [b1, b2, b3];
-        return _buildAsyncBuilder();
-      },
+      builder: (b1, b2, b3) => _buildAsyncBuilder(b1, b2, b3),
     );
   }
 
-  Widget _buildAsyncBuilder() {
+  Widget _buildAsyncBuilder(TBloc1 b1, TBloc2 b2, TBloc3 b3) {
     return JuiceAsyncBuilder<StreamStatus>(
-      initial: bloc1.currentStatus,
+      initial: b1.currentStatus,
       initiator: onInit,
-      stream:
-          MergeStream<StreamStatus>([bloc1.stream, bloc2.stream, bloc3.stream])
-              .where((status) {
+      stream: MergeStream<StreamStatus>([b1.stream, b2.stream, b3.stream])
+          .where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
           return false;
         }

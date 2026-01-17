@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.3.0] - 2025-01-17
+
+### Improvements
+
+#### Widget Immutability & Lifecycle Management
+- **StatelessJuiceWidget**: Removed internal bloc storage pattern for cleaner implementation
+- **JuiceWidgetState**: Made classes `abstract` (users must subclass, not instantiate directly)
+- **Unmodifiable groups**: Widget `groups` parameter is now wrapped with `Set.unmodifiable()` to preserve immutability
+- **Stricter generics**: `JuiceWidgetState` now requires `JuiceBloc<BlocState>` instead of raw `JuiceBloc` for better type safety
+
+#### JuiceWidgetState Lifecycle
+- Lease acquisition moved from lazy getter to `initState()` for deterministic lifecycle
+- Removed `setState()` call from stream filter (no side effects in predicates)
+- Added `_lastStatus` guard so `prepareForUpdate()` only runs on actual status changes, not parent rebuilds
+- Added `scope` parameter support (scope1/scope2/scope3 for multi-bloc variants) for feature parity with StatelessJuiceWidget
+
+#### Internal API
+- Added `BlocScope.peekExisting()` and `maybePeekExisting()` (internal, marked with `@internal`)
+  - Read-only access to existing bloc instances without creating or incrementing lease count
+  - Used by StatelessJuiceWidget for cleaner bloc access after lease holder ensures instance exists
+
+### Documentation
+- Updated `prepareForUpdate()` documentation to clarify it only runs on actual status changes
+- Added documentation noting legacy resolver users are responsible for bloc lifecycle management
+
+---
+
 ## [1.2.0] - 2025-01-11
 
 ### New Features

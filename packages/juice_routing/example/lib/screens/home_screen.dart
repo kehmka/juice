@@ -54,6 +54,15 @@ class HomeScreen extends StatelessWidget {
 
             // Navigation demos
             _NavigationCard(
+              title: 'Navigation Playground',
+              subtitle: 'Try push, pop, replace, reset and see the stack update live.',
+              icon: Icons.science_outlined,
+              color: Colors.teal,
+              onTap: () => routingBloc.navigate('/playground/1'),
+            ),
+            const SizedBox(height: 12),
+
+            _NavigationCard(
               title: 'Aviator Demo',
               subtitle: 'Shows loose coupling between use cases and navigation.',
               icon: Icons.flight_takeoff,
@@ -109,23 +118,26 @@ class _NavigationCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
+  final Color? color;
   final VoidCallback onTap;
 
   const _NavigationCard({
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: color?.withOpacity(0.05),
       child: ListTile(
-        leading: Icon(icon),
+        leading: Icon(icon, color: color),
         title: Text(title),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Icon(Icons.chevron_right, color: color),
         onTap: onTap,
       ),
     );

@@ -8,6 +8,8 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/not_found_screen.dart';
 import 'screens/aviator_demo_screen.dart';
+import 'screens/demo_screen.dart';
+import 'screens/playground_screen.dart';
 
 /// Auth guard that redirects to login if not authenticated
 class AuthGuard extends RouteGuard {
@@ -81,6 +83,22 @@ final appRoutes = RoutingConfig(
       path: '/aviator-demo',
       title: 'Aviator Demo',
       builder: (ctx) => const AviatorDemoScreen(),
+    ),
+
+    // Demo screen for navigation type testing
+    RouteConfig(
+      path: '/demo',
+      title: 'Demo',
+      builder: (ctx) => const DemoScreen(),
+    ),
+
+    // Navigation playground - parameterized depth
+    RouteConfig(
+      path: '/playground/:depth',
+      title: 'Playground',
+      builder: (ctx) => PlaygroundScreen(
+        depth: int.tryParse(ctx.params['depth'] ?? '1') ?? 1,
+      ),
     ),
 
     // Login - only for guests

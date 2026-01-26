@@ -1,6 +1,6 @@
 name: juice_routing
 description: "Declarative, state-driven navigation for Juice applications with Navigator 2.0 integration, route guards, and deep linking support."
-version: 0.1.0
+version: 0.7.0
 
 repository: https://github.com/kehmka/juice
 issue_tracker: https://github.com/kehmka/juice/issues

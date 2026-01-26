@@ -63,8 +63,8 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
 
     if (!state.isInitialized || state.stack.isEmpty) {
       // Show loading or empty state while initializing
-      return const Navigator(
-        pages: [
+      return Navigator(
+        pages: const [
           MaterialPage(
             key: ValueKey('loading'),
             child: Scaffold(
@@ -72,7 +72,7 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
             ),
           ),
         ],
-        onPopPage: _onPopPageDisabled,
+        onDidRemovePage: (_) {},  // No-op while loading
       );
     }
 
@@ -82,7 +82,7 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
     return Navigator(
       key: navigatorKey,
       pages: pages,
-      onPopPage: _onPopPage,
+      onDidRemovePage: _onDidRemovePage,
       observers: [_observer],
     );
   }
@@ -135,18 +135,9 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
     }
   }
 
-  bool _onPopPage(Route<dynamic> route, dynamic result) {
-    if (!route.didPop(result)) {
-      return false;
-    }
-
-    // Send pop event to bloc
-    routingBloc.send(PopEvent(result: result));
-    return true;
-  }
-
-  static bool _onPopPageDisabled(Route<dynamic> route, dynamic result) {
-    return false;
+  void _onDidRemovePage(Page<Object?> page) {
+    // Send pop event to bloc when a page is removed
+    routingBloc.send(PopEvent());
   }
 
   @override

@@ -1,5 +1,4 @@
 import 'package:hive/hive.dart';
-import 'package:juice/juice.dart' show visibleForTesting;
 import '../core/storage_keys.dart';
 import 'cache_metadata.dart';
 
@@ -13,8 +12,9 @@ class CacheIndex {
   late Box<CacheMetadata> _metadataBox;
   bool _initialized = false;
 
-  /// For testing: allows overriding the current time.
-  @visibleForTesting
+  /// Clock function used for TTL calculations.
+  ///
+  /// Defaults to [DateTime.now]. Overridden via [StorageBloc.clock] for testing.
   DateTime Function() clock = () => DateTime.now();
 
   /// Whether the cache index has been initialized.

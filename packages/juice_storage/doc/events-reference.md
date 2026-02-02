@@ -213,7 +213,7 @@ storage.send(SecureDeleteEvent(key: 'auth_token'));
 Deletes all secure storage values.
 
 ```dart
-await storage.secureDeleteAll();
+await storage.secureClearAll();
 ```
 
 **Rebuild Groups:** `storage:secure`

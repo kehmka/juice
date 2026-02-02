@@ -23,6 +23,7 @@ class CacheCleanupUseCase extends BlocUseCase<StorageBloc, CacheCleanupEvent> {
     try {
       if (!event.runNow) {
         // If not running now, just succeed (interval setup handled elsewhere)
+        emitUpdate();
         event.succeed(0);
         return;
       }
@@ -82,7 +83,7 @@ class CacheCleanupUseCase extends BlocUseCase<StorageBloc, CacheCleanupEvent> {
       final newStats = CacheStats(
         metadataCount: cacheIndex.metadataCount,
         expiredCount: cacheIndex.expiredCount,
-        lastCleanupAt: DateTime.now(),
+        lastCleanupAt: cacheIndex.clock(),
         lastCleanupCleanedCount: cleaned,
       );
 

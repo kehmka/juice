@@ -276,6 +276,46 @@ void main() {
       await bloc.close();
     });
 
+    test('bloc.clock controls TTL expiration', () async {
+      final bloc = StorageBloc(
+        config: const StorageConfig(),
+        cacheIndex: cacheIndex,
+      );
+
+      // Set clock to a known time
+      var testTime = DateTime(2025, 6, 1, 12, 0);
+      bloc.clock = () => testTime;
+
+      // Open box
+      final openEvent = HiveOpenBoxEvent(box: 'testBox');
+      bloc.send(openEvent);
+      await openEvent.result;
+
+      // Write value with 1 hour TTL (at testTime)
+      final writeEvent = HiveWriteEvent(
+        box: 'testBox',
+        key: 'clockKey',
+        value: 'clockValue',
+        ttl: const Duration(hours: 1),
+      );
+      bloc.send(writeEvent);
+      await writeEvent.result;
+
+      // Still within TTL: read should return value
+      testTime = DateTime(2025, 6, 1, 12, 30);
+      final readEvent1 = HiveReadEvent(box: 'testBox', key: 'clockKey');
+      bloc.send(readEvent1);
+      expect(await readEvent1.result, 'clockValue');
+
+      // Advance past TTL: read should return null
+      testTime = DateTime(2025, 6, 1, 14, 0);
+      final readEvent2 = HiveReadEvent(box: 'testBox', key: 'clockKey');
+      bloc.send(readEvent2);
+      expect(await readEvent2.result, isNull);
+
+      await bloc.close();
+    });
+
     test('fails for unopened box', () async {
       final bloc = StorageBloc(
         config: const StorageConfig(),

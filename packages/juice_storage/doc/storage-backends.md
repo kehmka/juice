@@ -145,7 +145,7 @@ final token = await storage.secureRead('auth_token');
 await storage.secureDelete('auth_token');
 
 // Delete all secure data
-await storage.secureDeleteAll();
+await storage.secureClearAll();
 ```
 
 ### Important Notes

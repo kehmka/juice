@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-02
+
+### Stable Release
+
+First stable release of juice_storage.
+
+### Fixed
+- **Clock wiring** - `StorageBloc.clock` now propagates to `CacheIndex`, so TTL expiration checks use the overridden clock in tests
+- **Background cleanup safety** - Timer callback now guards against concurrent runs and catches errors instead of leaving unhandled async exceptions
+- **CacheCleanupEvent hang** - `CacheCleanupEvent(runNow: false)` no longer hangs `sendForResult` due to missing state emission
+- **Init error preservation** - `StorageState.lastError` is no longer unconditionally cleared at end of initialization; backend errors are preserved
+- **CacheCleanupUseCase clock** - Uses `cacheIndex.clock()` instead of hardcoded `DateTime.now()` for `lastCleanupAt`
+
+### Changed
+- Updated dependency: `juice: ^1.3.0`
+
+### Documentation
+- Fixed `secureDeleteAll()` references → `secureClearAll()` (storage-backends, events-reference)
+- Fixed `StorageBackendStatus.allReady()` → explicit constructor (testing guide)
+- Updated dependency versions in getting-started guide
+
+---
+
 ## [0.9.0] - 2025-01-12
 
 ### Release Candidate

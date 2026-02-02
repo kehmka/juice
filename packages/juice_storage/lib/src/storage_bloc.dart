@@ -45,10 +45,15 @@ class StorageBloc extends JuiceBloc<StorageState> {
   final StorageConfig _config;
   final CacheIndex _cacheIndex;
   Timer? _cleanupTimer;
+  bool _cleanupRunning = false;
 
   /// For testing: allows overriding the current time.
+  ///
+  /// Setting this propagates to the underlying [CacheIndex], so TTL
+  /// expiration checks use the same clock.
   @visibleForTesting
-  DateTime Function() clock = () => DateTime.now();
+  DateTime Function() get clock => _cacheIndex.clock;
+  set clock(DateTime Function() value) => _cacheIndex.clock = value;
 
   /// Creates a StorageBloc with the given configuration.
   ///
@@ -217,7 +222,18 @@ class StorageBloc extends JuiceBloc<StorageState> {
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(
       _config.cacheCleanupInterval,
-      (_) => cleanupExpiredCache(),
+      (_) async {
+        if (_cleanupRunning) return;
+        _cleanupRunning = true;
+        try {
+          await cleanupExpiredCache();
+        } catch (_) {
+          // Background cleanup is best-effort; errors are surfaced
+          // through state.cacheStats / emitFailure inside the use case.
+        } finally {
+          _cleanupRunning = false;
+        }
+      },
     );
   }
 

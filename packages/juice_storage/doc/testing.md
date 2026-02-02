@@ -99,7 +99,12 @@ testWidgets('displays cached theme', (tester) async {
   // Stub the state
   when(() => mockStorage.state).thenReturn(StorageState(
     isInitialized: true,
-    backendStatus: StorageBackendStatus.allReady(),
+    backendStatus: StorageBackendStatus(
+      hive: BackendState.ready,
+      prefs: BackendState.ready,
+      sqlite: BackendState.ready,
+      secure: BackendState.ready,
+    ),
   ));
 
   when(() => mockStorage.prefsRead<String>('theme'))

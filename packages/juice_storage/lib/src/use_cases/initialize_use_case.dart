@@ -199,10 +199,9 @@ class InitializeUseCase
         );
       }
 
-      // Mark as initialized
+      // Mark as initialized (preserve lastError if a backend failed)
       emitUpdate(
-        newState:
-            bloc.state.copyWith(isInitialized: true, clearLastError: true),
+        newState: bloc.state.copyWith(isInitialized: true),
         groupsToRebuild: {StorageBloc.groupInit},
       );
 

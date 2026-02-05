@@ -80,6 +80,8 @@ No configuration needed - it just works.
 - [Getting Started](getting-started.html) - Installation and setup
 - [Request Coalescing](coalescing.html) - How deduplication works
 - [Cache Policies](caching.html) - Caching strategies explained
+- [Interceptors](interceptors.html) - Authentication, logging, retry, and custom interceptors
+- [Advanced Configuration](advanced-configuration.html) - Platform config, custom Dio, concurrency
 - [API Reference](api.html) - Events, state, and configuration
 
 ## Part of the Juice Framework

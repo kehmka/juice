@@ -158,6 +158,70 @@ fetchBloc.send(DeleteEvent(
 ));
 ```
 
+## Advanced Request Options
+
+### Request Scopes (for cancellation)
+
+Group related requests together so they can be cancelled as a unit:
+
+```dart
+// All requests for this screen share a scope
+fetchBloc.send(GetEvent(
+  url: '/posts',
+  scope: 'posts_screen',
+));
+
+fetchBloc.send(GetEvent(
+  url: '/comments',
+  scope: 'posts_screen',
+));
+
+// Cancel all requests for this screen (e.g., on navigation away)
+fetchBloc.send(CancelScopeEvent(scope: 'posts_screen'));
+```
+
+### Cache Variants
+
+Use variants to namespace cache entries (e.g., per user, per view mode):
+
+```dart
+// Cache different user's data separately
+fetchBloc.send(GetEvent(
+  url: '/dashboard',
+  variant: 'user_${userId}',
+  cachePolicy: CachePolicy.cacheFirst,
+));
+
+// Same URL but different variant = different cache entry
+fetchBloc.send(GetEvent(
+  url: '/dashboard',
+  variant: 'user_${otherUserId}',
+  cachePolicy: CachePolicy.cacheFirst,
+));
+```
+
+### Idempotency Keys (for safe POST retries)
+
+POST requests are not retried by default. Use an idempotency key for safe retries:
+
+```dart
+// Without idempotency key - no retry on failure
+fetchBloc.send(PostEvent(
+  url: '/orders',
+  body: orderData,
+));
+
+// With idempotency key - safe to retry
+fetchBloc.send(PostEvent(
+  url: '/orders',
+  body: orderData,
+  retryable: true,
+  idempotencyKey: 'order_${uuid}',  // Unique per operation
+));
+```
+
+The server should use the idempotency key to deduplicate requests, ensuring the operation only executes once even if retried.
+
 ## Handling Responses
 
 ### Using JuiceAsyncBuilder

@@ -158,12 +158,88 @@ FetchConfig(
 );
 ```
 
+## Cache Variants
+
+Use the `variant` parameter to namespace cache entries, useful for:
+- Multi-user scenarios (each user has their own cache)
+- Different view modes (grid vs list)
+- Feature flags or A/B tests
+
+```dart
+// Cache per user
+fetchBloc.send(GetEvent(
+  url: '/dashboard',
+  variant: 'user_${currentUserId}',
+  cachePolicy: CachePolicy.cacheFirst,
+));
+
+// Cache per view mode
+fetchBloc.send(GetEvent(
+  url: '/products',
+  variant: 'view_${isGridMode ? "grid" : "list"}',
+  cachePolicy: CachePolicy.cacheFirst,
+));
+```
+
+The variant is prepended to the cache key, so `GET:/dashboard` with variant `user_123` becomes `user_123:GET:/dashboard`.
+
+---
+
 ## Cache Management
 
 ### Clear All Cache
 
 ```dart
+// Clear entire cache
 fetchBloc.send(ClearCacheEvent());
+
+// Clear only a specific namespace (e.g., user's data on logout)
+fetchBloc.send(ClearCacheEvent(namespace: 'user_123'));
+```
+
+### Invalidate Specific Entries
+
+```dart
+// Invalidate a specific entry
+fetchBloc.send(InvalidateCacheEvent(
+  key: RequestKey(method: 'GET', url: '/posts/1'),
+));
+
+// Invalidate by URL pattern (regex)
+fetchBloc.send(InvalidateCacheEvent(
+  urlPattern: r'/posts/\d+',  // Matches /posts/1, /posts/2, etc.
+));
+
+// Invalidate by namespace prefix
+fetchBloc.send(InvalidateCacheEvent(
+  namespace: 'user_123',  // Invalidates all entries starting with user_123
+));
+
+// Only invalidate non-expired entries
+fetchBloc.send(InvalidateCacheEvent(
+  urlPattern: r'/posts',
+  includeExpired: false,
+));
+```
+
+### Cleanup Expired Entries
+
+```dart
+// Remove all expired entries
+fetchBloc.send(CleanupExpiredCacheEvent());
+
+// Remove expired entries for a specific namespace
+fetchBloc.send(CleanupExpiredCacheEvent(namespace: 'user_123'));
+```
+
+### Prune Cache by Size
+
+```dart
+// Prune to target size (removes oldest/expired first)
+fetchBloc.send(PruneCacheEvent(
+  targetBytes: 10 * 1024 * 1024,  // 10 MB
+  removeExpiredFirst: true,
+));
 ```
 
 ### Cache Statistics
@@ -176,6 +252,7 @@ print('Cache hits: ${stats.cacheHits}');
 print('Cache misses: ${stats.cacheMisses}');
 print('Hit rate: ${stats.hitRate}%');
 print('Entries: ${cacheStats.entryCount}');
+print('Expired: ${cacheStats.expiredCount}');
 print('Size: ${cacheStats.totalBytes} bytes');
 ```
 
@@ -221,3 +298,23 @@ Cache policies work alongside request coalescing:
 4. **networkFirst** - Network request may coalesce if duplicate
 
 For testing coalescing, use `networkOnly` to ensure requests hit the network.
+
+---
+
+## Authenticated Cache Isolation
+
+When using interceptors that add authentication headers (like `AuthInterceptor`), you must provide an `authIdentityProvider` to prevent cross-user cache contamination:
+
+```dart
+FetchBloc(
+  storageBloc: storageBloc,
+  authIdentityProvider: () => authBloc.state.userId,
+)
+```
+
+This ensures:
+- Cache keys include the user identity
+- One user's cached data is never served to another
+- Request coalescing respects user boundaries
+
+**Important:** If you use `AuthInterceptor` without providing `authIdentityProvider`, cached authenticated responses could leak between users.

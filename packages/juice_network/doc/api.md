@@ -511,7 +511,8 @@ abstract class InterceptorPriority {
 
 ### Built-in Interceptors
 
-- `AuthInterceptor` - Add authentication headers
+- `AuthInterceptor` - Add bearer token authentication headers
+- `ApiKeyInterceptor` - Add API key via header or query parameter
 - `RetryInterceptor` - Retry with exponential backoff
 - `LoggingInterceptor` - Log requests/responses
 - `ETagInterceptor` - Conditional requests with ETag

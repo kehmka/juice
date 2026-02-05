@@ -32,6 +32,7 @@ AuthInterceptor(
   tokenProvider: () async => await secureStorage.read('access_token'),
   headerName: 'Authorization',  // default
   prefix: 'Bearer ',            // default
+  skipAuth: (path) => path.startsWith('/public'),  // optional
 )
 ```
 
@@ -40,6 +41,7 @@ AuthInterceptor(
 | `tokenProvider` | `Future<String?> Function()` | required | Async function returning the token |
 | `headerName` | `String` | `'Authorization'` | Header name to set |
 | `prefix` | `String` | `'Bearer '` | Prefix before the token |
+| `skipAuth` | `bool Function(String)?` | null | Skip auth for certain paths |
 
 **Example with different auth schemes:**
 
@@ -64,6 +66,48 @@ AuthInterceptor(
   prefix: 'Basic ',
 )
 // Adds: Authorization: Basic <encoded>
+```
+
+---
+
+### ApiKeyInterceptor
+
+Adds an API key to requests via header or query parameter.
+
+```dart
+ApiKeyInterceptor(
+  apiKey: 'your-api-key',
+  headerName: 'X-API-Key',      // default
+  asQueryParam: false,          // default
+  queryParamName: 'api_key',    // default (used when asQueryParam is true)
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `apiKey` | `String` | required | The API key value |
+| `headerName` | `String` | `'X-API-Key'` | Header name for the API key |
+| `asQueryParam` | `bool` | `false` | Add as query parameter instead of header |
+| `queryParamName` | `String` | `'api_key'` | Query parameter name (when `asQueryParam` is true) |
+
+**Example with header (default):**
+
+```dart
+ApiKeyInterceptor(
+  apiKey: 'sk-1234567890',
+)
+// Adds header: X-API-Key: sk-1234567890
+```
+
+**Example with query parameter:**
+
+```dart
+ApiKeyInterceptor(
+  apiKey: 'sk-1234567890',
+  asQueryParam: true,
+  queryParamName: 'key',
+)
+// Adds query param: ?key=sk-1234567890
 ```
 
 ---

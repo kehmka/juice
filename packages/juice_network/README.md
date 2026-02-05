@@ -13,6 +13,9 @@ A reactive HTTP client bloc for [Juice](https://pub.dev/packages/juice) applicat
 - **Request Tracking** - Real-time visibility into inflight requests and their status
 - **Statistics** - Built-in metrics for cache hits, success rates, response times, and more
 - **Dio Integration** - Full access to Dio's powerful HTTP features
+- **Auth Isolation** - User-specific cache/coalescing isolation for multi-user scenarios
+- **Concurrency Limiting** - Queue-based request throttling to prevent server overload
+- **Request Scoping** - Group and cancel related requests together
 
 ## Installation
 
@@ -203,8 +206,17 @@ FetchConfig(
 | `PutEvent` | HTTP PUT request |
 | `PatchEvent` | HTTP PATCH request |
 | `DeleteEvent` | HTTP DELETE request |
-| `ClearCacheEvent` | Clear all cached responses |
+| `HeadEvent` | HTTP HEAD request |
+| `InvalidateCacheEvent` | Invalidate cache by key, pattern, or namespace |
+| `ClearCacheEvent` | Clear all cached responses (or by namespace) |
+| `CleanupExpiredCacheEvent` | Remove expired cache entries |
+| `PruneCacheEvent` | Prune cache to target size |
+| `CancelRequestEvent` | Cancel a specific request |
+| `CancelScopeEvent` | Cancel all requests in a scope |
+| `CancelAllEvent` | Cancel all inflight requests |
+| `ResetFetchEvent` | Reset FetchBloc to baseline state |
 | `ResetStatsEvent` | Reset statistics counters |
+| `ReconfigureInterceptorsEvent` | Change interceptors at runtime |
 
 ## Rebuild Groups
 

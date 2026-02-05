@@ -1,8 +1,11 @@
+import 'dart:collection';
+
 import 'package:dio/dio.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 
 import 'cache/cache_manager.dart';
+import 'fetch_config.dart';
 import 'fetch_events.dart';
 import 'fetch_state.dart';
 import 'interceptors/interceptor.dart';
@@ -20,11 +23,23 @@ class FetchBloc extends JuiceBloc<FetchState> {
   /// The StorageBloc for cache persistence.
   final StorageBloc storageBloc;
 
+  /// Provider for user-specific auth identity used in cache/coalescing keys.
+  ///
+  /// **IMPORTANT**: If you use an AuthInterceptor to inject authentication,
+  /// you MUST provide this to ensure cache/coalescing safety across users.
+  final AuthIdentityProvider? authIdentityProvider;
+
   /// Cache manager for HTTP responses.
   late final CacheManager cacheManager;
 
   /// Request coalescer for deduplication.
   late final RequestCoalescer coalescer;
+
+  /// Queue of pending requests waiting for concurrency slot.
+  final Queue<Completer<void>> _requestQueue = Queue();
+
+  /// Current number of executing requests (for concurrency limiting).
+  int _executingCount = 0;
 
   /// Subscription to ScopeLifecycleBloc notifications.
   StreamSubscription<ScopeNotification>? _lifecycleSubscription;
@@ -32,6 +47,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
   FetchBloc({
     required this.storageBloc,
     Dio? dio,
+    this.authIdentityProvider,
   }) : super(
           FetchState.initial(),
           [
@@ -154,6 +170,35 @@ class FetchBloc extends JuiceBloc<FetchState> {
     _subscribeToLifecycle();
   }
 
+  /// Acquire a concurrency slot, waiting if at the limit.
+  ///
+  /// Call [releaseConcurrencySlot] when the request completes (success or failure).
+  Future<void> acquireConcurrencySlot() async {
+    final maxConcurrent = state.config.maxConcurrentRequests;
+
+    if (_executingCount < maxConcurrent) {
+      _executingCount++;
+      return;
+    }
+
+    // At limit - queue this request
+    final completer = Completer<void>();
+    _requestQueue.add(completer);
+    await completer.future;
+    _executingCount++;
+  }
+
+  /// Release a concurrency slot, allowing queued requests to proceed.
+  void releaseConcurrencySlot() {
+    _executingCount = (_executingCount - 1).clamp(0, 999999);
+
+    // Wake up next queued request if any
+    if (_requestQueue.isNotEmpty) {
+      final next = _requestQueue.removeFirst();
+      next.complete();
+    }
+  }
+
   void _subscribeToLifecycle() {
     if (!BlocScope.isRegistered<ScopeLifecycleBloc>()) return;
 
@@ -186,6 +231,15 @@ class FetchBloc extends JuiceBloc<FetchState> {
   Future<void> close() async {
     await _lifecycleSubscription?.cancel();
     coalescer.cancelAll('Bloc closed');
+
+    // Cancel all queued requests
+    while (_requestQueue.isNotEmpty) {
+      final queued = _requestQueue.removeFirst();
+      if (!queued.isCompleted) {
+        queued.completeError(StateError('Bloc closed'));
+      }
+    }
+
     await super.close();
   }
 }

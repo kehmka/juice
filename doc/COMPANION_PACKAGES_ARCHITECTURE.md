@@ -133,7 +133,7 @@ Use `RetryableUseCaseBuilder` for all network calls.
 | juice_network | 📝 Outline |
 | juice_config | 📝 Outline |
 | juice_connectivity | 📝 Outline |
-| juice_auth | 📝 Outline |
+| juice_auth | ✅ Detailed |
 | juice_form | 📝 Outline |
 | juice_theme | 📝 Outline |
 | juice_animation | 📝 Outline |

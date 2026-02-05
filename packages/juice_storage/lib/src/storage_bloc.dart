@@ -104,6 +104,10 @@ class StorageBloc extends JuiceBloc<StorageState> {
             typeOfEvent: HiveDeleteEvent,
             useCaseGenerator: () => HiveDeleteUseCase(cacheIndex: cacheIndex),
           ),
+      () => UseCaseBuilder(
+            typeOfEvent: HiveKeysEvent,
+            useCaseGenerator: () => HiveKeysUseCase(),
+          ),
 
       // Prefs
       () => UseCaseBuilder(
@@ -280,6 +284,12 @@ class StorageBloc extends JuiceBloc<StorageState> {
   /// Close a Hive box.
   Future<void> hiveCloseBox(String box) async {
     await sendForResult<void>(HiveCloseBoxEvent(box: box));
+  }
+
+  /// Get all keys from a Hive box.
+  Future<List<String>> hiveKeys(String box) async {
+    final keys = await sendForResult<Object?>(HiveKeysEvent(box: box));
+    return keys as List<String>;
   }
 
   // ===========================================================================

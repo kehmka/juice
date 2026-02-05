@@ -17,10 +17,20 @@ class InvalidateCacheUseCase
       invalidatedCount = 1;
     }
 
-    // Invalidate by URL pattern
+    // Invalidate by URL pattern (with expiry filtering)
     if (event.urlPattern != null) {
-      invalidatedCount +=
-          await bloc.cacheManager.deletePattern(event.urlPattern!);
+      invalidatedCount += await bloc.cacheManager.deletePatternFiltered(
+        event.urlPattern!,
+        includeExpired: event.includeExpired,
+      );
+    }
+
+    // Invalidate by namespace (with expiry filtering)
+    if (event.namespace != null) {
+      invalidatedCount += await bloc.cacheManager.deleteNamespaceFiltered(
+        event.namespace!,
+        includeExpired: event.includeExpired,
+      );
     }
 
     // Update cache stats
@@ -41,12 +51,27 @@ class InvalidateCacheUseCase
 class ClearCacheUseCase extends BlocUseCase<FetchBloc, ClearCacheEvent> {
   @override
   Future<void> execute(ClearCacheEvent event) async {
-    await bloc.cacheManager.clear();
+    int clearedCount = 0;
+
+    if (event.namespace != null) {
+      // Clear only entries in the specified namespace
+      clearedCount = await bloc.cacheManager.deleteNamespace(event.namespace!);
+    } else {
+      // Clear all entries
+      await bloc.cacheManager.clear();
+      clearedCount = bloc.state.cacheStats.entryCount;
+    }
 
     emitUpdate(
       groupsToRebuild: {FetchGroups.cache},
       newState: bloc.state.copyWith(
-        cacheStats: const CacheStats(),
+        cacheStats: event.namespace != null
+            ? CacheStats(
+                entryCount: bloc.state.cacheStats.entryCount - clearedCount,
+                totalBytes: bloc.state.cacheStats.totalBytes,
+                expiredCount: bloc.state.cacheStats.expiredCount,
+              )
+            : const CacheStats(),
       ),
     );
   }
@@ -75,7 +100,8 @@ class CleanupExpiredCacheUseCase
     extends BlocUseCase<FetchBloc, CleanupExpiredCacheEvent> {
   @override
   Future<void> execute(CleanupExpiredCacheEvent event) async {
-    final removed = await bloc.cacheManager.cleanupExpired();
+    final removed =
+        await bloc.cacheManager.cleanupExpired(namespace: event.namespace);
 
     emitUpdate(
       groupsToRebuild: {FetchGroups.cache},
@@ -83,7 +109,7 @@ class CleanupExpiredCacheUseCase
         cacheStats: CacheStats(
           entryCount: bloc.state.cacheStats.entryCount - removed,
           totalBytes: bloc.state.cacheStats.totalBytes,
-          expiredCount: 0,
+          expiredCount: event.namespace == null ? 0 : bloc.state.cacheStats.expiredCount,
         ),
       ),
     );

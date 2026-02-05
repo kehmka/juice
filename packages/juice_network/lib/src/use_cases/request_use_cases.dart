@@ -9,6 +9,7 @@ import '../fetch_bloc.dart';
 import '../fetch_events.dart';
 import '../fetch_exceptions.dart';
 import '../fetch_state.dart';
+import '../request/request_coalescer.dart';
 import '../request/request_key.dart';
 import '../request/request_status.dart';
 
@@ -29,24 +30,46 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     return newUri.toString();
   }
 
-  /// Get auth scope from headers.
+  /// Get auth scope for cache/coalescing key.
+  ///
+  /// Priority:
+  /// 1. AuthIdentityProvider on FetchBloc (recommended for interceptor-injected auth)
+  /// 2. Explicit headers passed to the request (legacy/fallback)
+  ///
+  /// When using AuthInterceptor, the provider returns a user-specific identifier
+  /// ensuring cache isolation between users.
   String? getAuthScope(Map<String, String>? headers) {
+    // Prefer auth identity provider (safe for interceptor-injected auth)
+    final identity = bloc.authIdentityProvider?.call();
+    if (identity != null) {
+      return identity;
+    }
+
+    // Fallback: detect from explicit headers (only safe if auth is passed directly)
     final authHeader =
         headers?['Authorization'] ?? headers?['authorization'];
     if (authHeader == null) return null;
+
+    // Return generic type indicator - NOT user-specific
+    // This is only safe when headers are passed directly, not via interceptor
     if (authHeader.startsWith('Bearer ')) return 'bearer';
     if (authHeader.startsWith('Basic ')) return 'basic';
     return 'auth';
   }
 
   /// Execute HTTP request with caching and coalescing.
+  ///
+  /// Nullable [cachePolicy], [ttl], and [maxAttempts] are resolved from
+  /// [FetchConfig] defaults. For mutation methods (POST, PUT, PATCH, DELETE),
+  /// pass the appropriate method-specific default for [methodDefaultCachePolicy].
   Future<void> executeRequest({
     required String method,
     required String url,
     required Map<String, dynamic>? queryParams,
     required Map<String, String>? headers,
     required Object? body,
-    required CachePolicy cachePolicy,
+    required CachePolicy? cachePolicy,
+    required CachePolicy methodDefaultCachePolicy,
     required Duration? ttl,
     required bool cacheAuthResponses,
     required bool forceCache,
@@ -60,6 +83,12 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     required RequestKey? keyOverride,
     required Set<String>? groupsToRebuild,
   }) async {
+    // Resolve config defaults
+    final config = bloc.state.config;
+    final effectiveCachePolicy =
+        cachePolicy ?? methodDefaultCachePolicy;
+    final effectiveTtl = ttl ?? config.defaultTtl;
+    final effectiveMaxAttempts = maxAttempts ?? config.defaultMaxRetries;
     // Validate
     if (retryable &&
         (method == 'POST' || method == 'PATCH') &&
@@ -88,19 +117,19 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
 
     try {
       // Check cache
-      if (cachePolicy.shouldCheckCache) {
-        final cached = await _checkCache(key, cachePolicy, decode);
+      if (effectiveCachePolicy.shouldCheckCache) {
+        final cached = await _checkCache(key, effectiveCachePolicy, decode);
         if (cached != null) {
           _emitCacheHit(key, cached, groups);
 
-          if (cachePolicy == CachePolicy.staleWhileRevalidate) {
+          if (effectiveCachePolicy == CachePolicy.staleWhileRevalidate) {
             _refreshInBackground(
               method: method,
               key: key,
               headers: headers,
               body: body,
               decode: decode,
-              ttl: ttl,
+              ttl: effectiveTtl,
               cacheAuthResponses: cacheAuthResponses,
               forceCache: forceCache,
               groups: groups,
@@ -112,7 +141,7 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
       }
 
       // Cache-only with miss = error
-      if (cachePolicy == CachePolicy.cacheOnly) {
+      if (effectiveCachePolicy == CachePolicy.cacheOnly) {
         throw CancelledError(
           reason: 'Cache miss with cacheOnly policy',
           requestKey: key,
@@ -127,37 +156,61 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
         return;
       }
 
-      // Mark inflight
-      _markInflight(key, scope, groups);
+      // Acquire concurrency slot (waits if at limit)
+      await bloc.acquireConcurrencySlot();
 
-      // Execute with coalescing
-      final response = await bloc.coalescer.coalesce(
-        key,
-        () => _executeNetwork(method, url, queryParams, headers, body, key),
-      );
+      try {
+        // Mark inflight
+        _markInflight(key, scope, groups);
 
-      // Cache response
-      await _cacheResponse(
-        key,
-        response,
-        cachePolicy,
-        ttl,
-        cacheAuthResponses,
-        forceCache,
-        url,
-        headers,
-      );
+        // Execute with retry logic
+        final result = await _executeWithRetry(
+          method: method,
+          url: url,
+          queryParams: queryParams,
+          headers: headers,
+          body: body,
+          key: key,
+          retryable: retryable,
+          maxAttempts: effectiveMaxAttempts,
+          idempotencyKey: idempotencyKey,
+        );
 
-      // Handle success
-      _handleSuccess(key, response, decode, startTime, groups);
+        // Emit coalesced stat if this request joined an existing one
+        if (result.wasCoalesced) {
+          _emitCoalesced();
+        }
+
+        // Cache response
+        await _cacheResponse(
+          key,
+          result.response,
+          effectiveCachePolicy,
+          effectiveTtl,
+          cacheAuthResponses,
+          forceCache,
+          url,
+          headers,
+        );
+
+        // Handle success
+        _handleSuccess(key, result.response, decode, startTime, groups);
+      } finally {
+        // Always release concurrency slot
+        bloc.releaseConcurrencySlot();
+      }
     } catch (e, stackTrace) {
       // Try stale cache on error
-      if (allowStaleOnError && cachePolicy != CachePolicy.networkOnly) {
+      if (allowStaleOnError && effectiveCachePolicy != CachePolicy.networkOnly) {
         final stale = await bloc.cacheManager.getStale(key);
         if (stale != null) {
-          final decoded = _decodeFromCache(stale, decode);
-          _emitSuccess(key, decoded, groups);
-          return;
+          try {
+            final decoded = _decodeFromCache(stale, decode, key);
+            _emitSuccess(key, decoded, groups);
+            return;
+          } on DecodeError {
+            // Stale cache decode failed - fall through to error handling
+          }
         }
       }
 
@@ -174,20 +227,51 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     if (record == null) return null;
 
     if (policy == CachePolicy.staleWhileRevalidate) {
-      return _decodeFromCache(record, decode);
+      return _decodeFromCache(record, decode, key);
     }
 
     if (record.isExpired) return null;
-    return _decodeFromCache(record, decode);
+    return _decodeFromCache(record, decode, key);
   }
 
+  /// Decode cached response data.
+  ///
+  /// Returns the decoded data, or throws [DecodeError] on failure.
   dynamic _decodeFromCache(
     WireCacheRecord record,
     dynamic Function(dynamic)? decode,
+    RequestKey key,
   ) {
-    final jsonData = record.bodyJson;
-    if (decode != null) return decode(jsonData);
-    return jsonData;
+    // Get raw data based on content-type (JSON/text/bytes)
+    dynamic rawData;
+    try {
+      rawData = record.bodyData;
+    } on FormatException catch (e, st) {
+      throw DecodeError.jsonParseFailed(
+        actualValue: record.bodyString,
+        requestKey: key,
+        cause: e,
+        stackTrace: st,
+      );
+    }
+
+    // Apply user decoder if provided
+    if (decode != null) {
+      try {
+        return decode(rawData);
+      } catch (e, st) {
+        throw DecodeError(
+          expectedType: dynamic,
+          actualValue: rawData,
+          message: 'Decode function failed: $e',
+          requestKey: key,
+          cause: e,
+          stackTrace: st,
+        );
+      }
+    }
+
+    return rawData;
   }
 
   void _emitCacheHit(RequestKey key, dynamic data, Set<String> groups) {
@@ -217,6 +301,29 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     );
   }
 
+  void _emitBytesSent(int bytes) {
+    if (bytes <= 0) return;
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        stats: bloc.state.stats.withBytesSent(bytes),
+      ),
+      groupsToRebuild: {FetchGroups.statsGroup},
+    );
+  }
+
+  /// Estimate body size in bytes.
+  int _estimateBodySize(Object? body) {
+    if (body == null) return 0;
+    if (body is String) return body.length;
+    if (body is List<int>) return body.length;
+    // For maps/objects, estimate via JSON encoding
+    try {
+      return jsonEncode(body).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   void _markInflight(RequestKey key, String? scope, Set<String> groups) {
     final status = RequestStatus.inflight(
       key: key,
@@ -233,22 +340,178 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     );
   }
 
-  Future<Response<dynamic>> _executeNetwork(
-    String method,
-    String url,
-    Map<String, dynamic>? queryParams,
-    Map<String, String>? headers,
-    Object? body,
-    RequestKey key,
-  ) {
+  Future<Response<dynamic>> _executeNetwork({
+    required String method,
+    required String url,
+    required Map<String, dynamic>? queryParams,
+    required Map<String, String>? headers,
+    required Object? body,
+    required RequestKey key,
+    required bool retryable,
+    required int maxAttempts,
+    required String? idempotencyKey,
+  }) {
     final status = bloc.state.activeRequests[key.canonical];
+
+    // Track bytes sent (body size)
+    final bytesSent = _estimateBodySize(body);
+    if (bytesSent > 0) {
+      _emitBytesSent(bytesSent);
+    }
+
+    // Build extra map for RetryInterceptor
+    final extra = <String, dynamic>{
+      'retryable': retryable,
+      'maxAttempts': maxAttempts,
+      if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+    };
 
     return bloc.dio.request<dynamic>(
       url,
       data: body,
       queryParameters: queryParams,
-      options: Options(method: method, headers: headers),
+      options: Options(
+        method: method,
+        headers: headers,
+        extra: extra,
+      ),
       cancelToken: status?.cancelToken,
+    );
+  }
+
+  /// Execute network request with retry logic.
+  ///
+  /// Retries on:
+  /// - Network errors (connection, timeout)
+  /// - 5xx server errors
+  /// - 429 Too Many Requests
+  ///
+  /// Uses exponential backoff: 1s, 2s, 4s, etc.
+  ///
+  /// Returns a [CoalesceResult] indicating whether this request was coalesced.
+  Future<CoalesceResult> _executeWithRetry({
+    required String method,
+    required String url,
+    required Map<String, dynamic>? queryParams,
+    required Map<String, String>? headers,
+    required Object? body,
+    required RequestKey key,
+    required bool retryable,
+    required int maxAttempts,
+    required String? idempotencyKey,
+  }) async {
+    // Use coalescing for the retry loop
+    return bloc.coalescer.coalesce(key, () async {
+      int attempts = 0;
+      Object? lastError;
+      StackTrace? lastStackTrace;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+
+        try {
+          final response = await _executeNetwork(
+            method: method,
+            url: url,
+            queryParams: queryParams,
+            headers: headers,
+            body: body,
+            key: key,
+            retryable: retryable,
+            maxAttempts: maxAttempts,
+            idempotencyKey: idempotencyKey,
+          );
+
+          // Check for retryable status codes
+          if (retryable && _isRetryableStatusCode(response.statusCode)) {
+            lastError = DioException(
+              requestOptions: response.requestOptions,
+              response: response,
+              type: DioExceptionType.badResponse,
+              message: 'Retryable status code: ${response.statusCode}',
+            );
+            lastStackTrace = StackTrace.current;
+
+            if (attempts < maxAttempts) {
+              _emitRetry();
+              await _backoff(attempts);
+              continue;
+            }
+          }
+
+          return response;
+        } on DioException catch (e, st) {
+          lastError = e;
+          lastStackTrace = st;
+
+          // Check if error is retryable
+          if (!retryable || !_isRetryableError(e)) {
+            rethrow;
+          }
+
+          // Check if cancelled
+          if (e.type == DioExceptionType.cancel) {
+            rethrow;
+          }
+
+          // Retry if more attempts available
+          if (attempts < maxAttempts) {
+            _emitRetry();
+            await _backoff(attempts);
+            continue;
+          }
+
+          rethrow;
+        }
+      }
+
+      // Should not reach here, but throw last error if we do
+      Error.throwWithStackTrace(
+        lastError ?? StateError('Retry exhausted'),
+        lastStackTrace ?? StackTrace.current,
+      );
+    });
+  }
+
+  /// Check if HTTP status code is retryable.
+  bool _isRetryableStatusCode(int? statusCode) {
+    if (statusCode == null) return false;
+    // Retry on 5xx server errors and 429 rate limit
+    return statusCode >= 500 || statusCode == 429;
+  }
+
+  /// Check if Dio exception is retryable.
+  bool _isRetryableError(DioException e) {
+    return switch (e.type) {
+      // Network errors are retryable
+      DioExceptionType.connectionTimeout => true,
+      DioExceptionType.sendTimeout => true,
+      DioExceptionType.receiveTimeout => true,
+      DioExceptionType.connectionError => true,
+      // Bad response - check status code
+      DioExceptionType.badResponse =>
+        _isRetryableStatusCode(e.response?.statusCode),
+      // These are not retryable
+      DioExceptionType.cancel => false,
+      DioExceptionType.badCertificate => false,
+      DioExceptionType.unknown => false,
+    };
+  }
+
+  /// Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+  Future<void> _backoff(int attempt) async {
+    final delay = Duration(
+      milliseconds: (1000 * (1 << (attempt - 1))).clamp(1000, 30000),
+    );
+    await Future<void>.delayed(delay);
+  }
+
+  void _emitRetry() {
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        stats: bloc.state.stats.withRetry(),
+      ),
+      groupsToRebuild: {FetchGroups.statsGroup},
     );
   }
 
@@ -295,26 +558,64 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     DateTime startTime,
     Set<String> groups,
   ) {
-    final decoded = _decodeResponse(response, decode);
+    final decoded = _decodeResponse(response, decode, key);
     final elapsed = DateTime.now().difference(startTime);
     final bytesReceived = response.data?.toString().length ?? 0;
 
     _emitSuccess(key, decoded, groups, elapsed, bytesReceived);
   }
 
+  /// Decode response data based on content-type.
+  ///
+  /// - JSON content-type → parse as JSON
+  /// - Other → pass raw data to decoder
+  ///
+  /// Throws [DecodeError] on JSON parse failure or decoder exception.
   dynamic _decodeResponse(
     Response<dynamic> response,
     dynamic Function(dynamic)? decode,
+    RequestKey key,
   ) {
-    dynamic jsonData;
-    if (response.data is String) {
-      jsonData = jsonDecode(response.data as String);
+    final contentType =
+        response.headers.value('content-type')?.toLowerCase() ?? '';
+    final isJson = contentType.contains('application/json') ||
+        contentType.contains('+json');
+
+    dynamic rawData;
+    if (response.data is String && isJson) {
+      // JSON content-type with String response → parse JSON
+      try {
+        rawData = jsonDecode(response.data as String);
+      } on FormatException catch (e, st) {
+        throw DecodeError.jsonParseFailed(
+          actualValue: response.data,
+          requestKey: key,
+          cause: e,
+          stackTrace: st,
+        );
+      }
     } else {
-      jsonData = response.data;
+      // Non-JSON or already-parsed data → use as-is
+      rawData = response.data;
     }
 
-    if (decode != null) return decode(jsonData);
-    return jsonData;
+    // Apply user decoder if provided
+    if (decode != null) {
+      try {
+        return decode(rawData);
+      } catch (e, st) {
+        throw DecodeError(
+          expectedType: dynamic,
+          actualValue: rawData,
+          message: 'Decode function failed: $e',
+          requestKey: key,
+          cause: e,
+          stackTrace: st,
+        );
+      }
+    }
+
+    return rawData;
   }
 
   void _emitSuccess(
@@ -477,9 +778,9 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
             options: Options(method: method, headers: headers),
           ),
         )
-        .then((response) async {
+        .then((result) async {
           final record =
-              WireCacheRecord.fromResponse(response, key.canonical, ttl: ttl);
+              WireCacheRecord.fromResponse(result.response, key.canonical, ttl: ttl);
           await bloc.cacheManager.put(key, record);
 
           emitUpdate(
@@ -504,6 +805,7 @@ class GetUseCase extends BlocUseCase<FetchBloc, GetEvent>
         headers: event.headers,
         body: null,
         cachePolicy: event.cachePolicy,
+        methodDefaultCachePolicy: bloc.state.config.defaultCachePolicy,
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -530,6 +832,7 @@ class PostUseCase extends BlocUseCase<FetchBloc, PostEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
+        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -556,6 +859,7 @@ class PutUseCase extends BlocUseCase<FetchBloc, PutEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
+        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -582,6 +886,7 @@ class PatchUseCase extends BlocUseCase<FetchBloc, PatchEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
+        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -608,6 +913,7 @@ class DeleteUseCase extends BlocUseCase<FetchBloc, DeleteEvent>
         headers: event.headers,
         body: null,
         cachePolicy: event.cachePolicy,
+        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
         ttl: null,
         cacheAuthResponses: false,
         forceCache: false,
@@ -634,6 +940,7 @@ class HeadUseCase extends BlocUseCase<FetchBloc, HeadEvent>
         headers: event.headers,
         body: null,
         cachePolicy: CachePolicy.networkOnly,
+        methodDefaultCachePolicy: CachePolicy.networkOnly, // HEAD doesn't cache
         ttl: null,
         cacheAuthResponses: false,
         forceCache: false,

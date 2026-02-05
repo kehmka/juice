@@ -153,7 +153,52 @@ class WireCacheRecord {
   String get bodyString => utf8.decode(bodyBytes);
 
   /// Decode the body as JSON.
+  ///
+  /// Throws [FormatException] if body is not valid JSON.
   dynamic get bodyJson => jsonDecode(bodyString);
+
+  /// Check if content-type indicates JSON.
+  bool get isJsonContent {
+    final contentType = headers['content-type']?.toLowerCase() ?? '';
+    return contentType.contains('application/json') ||
+        contentType.contains('+json');
+  }
+
+  /// Check if content-type indicates plain text.
+  bool get isTextContent {
+    final contentType = headers['content-type']?.toLowerCase() ?? '';
+    return contentType.contains('text/') ||
+        contentType.contains('application/xml') ||
+        contentType.contains('+xml');
+  }
+
+  /// Get body data in appropriate format based on content-type.
+  ///
+  /// - JSON content-type → parsed JSON (Map/List)
+  /// - Text content-type → String
+  /// - Other/binary → Uint8List bytes
+  ///
+  /// Throws [FormatException] if JSON parsing fails.
+  dynamic get bodyData {
+    if (isJsonContent) {
+      return bodyJson;
+    } else if (isTextContent) {
+      return bodyString;
+    } else {
+      return bodyBytes;
+    }
+  }
+
+  /// Try to get body as JSON, returning null on parse failure.
+  ///
+  /// Use this when you want to attempt JSON parsing without throwing.
+  dynamic get bodyJsonOrNull {
+    try {
+      return bodyJson;
+    } on FormatException {
+      return null;
+    }
+  }
 
   /// Serialize to bytes for storage.
   Uint8List toBytes() {

@@ -3,6 +3,26 @@ import 'package:flutter/foundation.dart';
 
 import 'cache/cache_policy.dart';
 
+/// Provides a user-specific identity for cache and coalescing keys.
+///
+/// **IMPORTANT**: If you use an AuthInterceptor to inject authentication headers,
+/// you MUST provide an [AuthIdentityProvider] to ensure cache/coalescing safety.
+/// Without this, responses may be incorrectly shared between different users.
+///
+/// The returned string should be:
+/// - Unique per user (e.g., user ID, hashed email, session ID)
+/// - Stable for the duration of the user's session
+/// - null when no user is authenticated (requests will use unauthenticated cache)
+///
+/// Example:
+/// ```dart
+/// FetchBloc(
+///   storageBloc: storageBloc,
+///   authIdentityProvider: () => authBloc.state.userId,
+/// )
+/// ```
+typedef AuthIdentityProvider = String? Function();
+
 /// Platform-neutral configuration for FetchBloc.
 ///
 /// These values work identically across all platforms (mobile, desktop, web).

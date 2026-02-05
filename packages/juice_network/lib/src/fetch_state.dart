@@ -8,7 +8,7 @@ import 'request/request_status.dart';
 /// Network statistics.
 @immutable
 class NetworkStats {
-  /// Total requests made.
+  /// Total requests made (success + failure).
   final int totalRequests;
 
   /// Successful requests.
@@ -29,8 +29,9 @@ class NetworkStats {
   /// Total bytes sent.
   final int bytesSent;
 
-  /// Average response time in milliseconds.
-  final double avgResponseTimeMs;
+  /// Total response time in milliseconds (for averaging).
+  /// This is the sum of all successful response times.
+  final double _totalResponseTimeMs;
 
   /// Number of retries performed.
   final int retryCount;
@@ -46,10 +47,16 @@ class NetworkStats {
     this.cacheMisses = 0,
     this.bytesReceived = 0,
     this.bytesSent = 0,
-    this.avgResponseTimeMs = 0,
+    double totalResponseTimeMs = 0,
     this.retryCount = 0,
     this.coalescedCount = 0,
-  });
+  }) : _totalResponseTimeMs = totalResponseTimeMs;
+
+  /// Average response time in milliseconds (successful requests only).
+  double get avgResponseTimeMs {
+    if (successCount == 0) return 0;
+    return _totalResponseTimeMs / successCount;
+  }
 
   /// Hit rate as a percentage.
   double get hitRate {
@@ -66,20 +73,15 @@ class NetworkStats {
 
   /// Record a successful request.
   NetworkStats withSuccess(int bytesReceived, Duration responseTime) {
-    final newTotal = totalRequests + 1;
-    final newAvg = ((avgResponseTimeMs * totalRequests) +
-            responseTime.inMilliseconds) /
-        newTotal;
-
     return NetworkStats(
-      totalRequests: newTotal,
+      totalRequests: totalRequests + 1,
       successCount: successCount + 1,
       failureCount: failureCount,
       cacheHits: cacheHits,
       cacheMisses: cacheMisses,
       bytesReceived: this.bytesReceived + bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: newAvg,
+      totalResponseTimeMs: _totalResponseTimeMs + responseTime.inMilliseconds,
       retryCount: retryCount,
       coalescedCount: coalescedCount,
     );
@@ -95,7 +97,23 @@ class NetworkStats {
       cacheMisses: cacheMisses,
       bytesReceived: bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: avgResponseTimeMs,
+      totalResponseTimeMs: _totalResponseTimeMs,
+      retryCount: retryCount,
+      coalescedCount: coalescedCount,
+    );
+  }
+
+  /// Record bytes sent.
+  NetworkStats withBytesSent(int bytes) {
+    return NetworkStats(
+      totalRequests: totalRequests,
+      successCount: successCount,
+      failureCount: failureCount,
+      cacheHits: cacheHits,
+      cacheMisses: cacheMisses,
+      bytesReceived: bytesReceived,
+      bytesSent: bytesSent + bytes,
+      totalResponseTimeMs: _totalResponseTimeMs,
       retryCount: retryCount,
       coalescedCount: coalescedCount,
     );
@@ -111,7 +129,7 @@ class NetworkStats {
       cacheMisses: cacheMisses,
       bytesReceived: bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: avgResponseTimeMs,
+      totalResponseTimeMs: _totalResponseTimeMs,
       retryCount: retryCount,
       coalescedCount: coalescedCount,
     );
@@ -127,7 +145,7 @@ class NetworkStats {
       cacheMisses: cacheMisses + 1,
       bytesReceived: bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: avgResponseTimeMs,
+      totalResponseTimeMs: _totalResponseTimeMs,
       retryCount: retryCount,
       coalescedCount: coalescedCount,
     );
@@ -143,7 +161,7 @@ class NetworkStats {
       cacheMisses: cacheMisses,
       bytesReceived: bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: avgResponseTimeMs,
+      totalResponseTimeMs: _totalResponseTimeMs,
       retryCount: retryCount + 1,
       coalescedCount: coalescedCount,
     );
@@ -159,7 +177,7 @@ class NetworkStats {
       cacheMisses: cacheMisses,
       bytesReceived: bytesReceived,
       bytesSent: bytesSent,
-      avgResponseTimeMs: avgResponseTimeMs,
+      totalResponseTimeMs: _totalResponseTimeMs,
       retryCount: retryCount,
       coalescedCount: coalescedCount + 1,
     );

@@ -51,12 +51,18 @@ class GetEvent extends EventBase {
   final String url;
   final Map<String, dynamic>? queryParams;
   final Map<String, String>? headers;
-  final CachePolicy cachePolicy;
+
+  /// Cache policy. If null, uses [FetchConfig.defaultCachePolicy].
+  final CachePolicy? cachePolicy;
+
+  /// TTL for cached response. If null, uses [FetchConfig.defaultTtl].
   final Duration? ttl;
   final bool cacheAuthResponses;
   final bool forceCache;
   final bool allowStaleOnError;
   final bool retryable;
+
+  /// Max retry attempts. If null, uses [FetchConfig.defaultMaxRetries].
   final int? maxAttempts;
   final dynamic Function(dynamic raw)? decode;
   final String? scope;
@@ -67,13 +73,13 @@ class GetEvent extends EventBase {
     required this.url,
     this.queryParams,
     this.headers,
-    this.cachePolicy = CachePolicy.networkFirst,
-    this.ttl,
+    this.cachePolicy, // null = use config default
+    this.ttl, // null = use config default
     this.cacheAuthResponses = false,
     this.forceCache = false,
     this.allowStaleOnError = true,
     this.retryable = true,
-    this.maxAttempts,
+    this.maxAttempts, // null = use config default
     this.decode,
     this.scope,
     this.variant,
@@ -88,12 +94,18 @@ class PostEvent extends EventBase {
   final Object? body;
   final Map<String, dynamic>? queryParams;
   final Map<String, String>? headers;
-  final CachePolicy cachePolicy;
+
+  /// Cache policy. If null, uses [CachePolicy.networkOnly] for POST.
+  final CachePolicy? cachePolicy;
+
+  /// TTL for cached response. If null, uses [FetchConfig.defaultTtl].
   final Duration? ttl;
   final bool cacheAuthResponses;
   final bool forceCache;
   final bool allowStaleOnError;
   final bool retryable;
+
+  /// Max retry attempts. If null, uses [FetchConfig.defaultMaxRetries].
   final int? maxAttempts;
   final String? idempotencyKey;
   final dynamic Function(dynamic raw)? decode;
@@ -106,7 +118,7 @@ class PostEvent extends EventBase {
     this.body,
     this.queryParams,
     this.headers,
-    this.cachePolicy = CachePolicy.networkOnly,
+    this.cachePolicy, // null = networkOnly for POST (mutations shouldn't cache by default)
     this.ttl,
     this.cacheAuthResponses = false,
     this.forceCache = false,
@@ -128,12 +140,16 @@ class PutEvent extends EventBase {
   final Object? body;
   final Map<String, dynamic>? queryParams;
   final Map<String, String>? headers;
-  final CachePolicy cachePolicy;
+
+  /// Cache policy. If null, uses [CachePolicy.networkOnly] for PUT.
+  final CachePolicy? cachePolicy;
   final Duration? ttl;
   final bool cacheAuthResponses;
   final bool forceCache;
   final bool allowStaleOnError;
   final bool retryable;
+
+  /// Max retry attempts. If null, uses [FetchConfig.defaultMaxRetries].
   final int? maxAttempts;
   final String? idempotencyKey;
   final dynamic Function(dynamic raw)? decode;
@@ -146,7 +162,7 @@ class PutEvent extends EventBase {
     this.body,
     this.queryParams,
     this.headers,
-    this.cachePolicy = CachePolicy.networkOnly,
+    this.cachePolicy, // null = networkOnly for PUT
     this.ttl,
     this.cacheAuthResponses = false,
     this.forceCache = false,
@@ -168,12 +184,16 @@ class PatchEvent extends EventBase {
   final Object? body;
   final Map<String, dynamic>? queryParams;
   final Map<String, String>? headers;
-  final CachePolicy cachePolicy;
+
+  /// Cache policy. If null, uses [CachePolicy.networkOnly] for PATCH.
+  final CachePolicy? cachePolicy;
   final Duration? ttl;
   final bool cacheAuthResponses;
   final bool forceCache;
   final bool allowStaleOnError;
   final bool retryable;
+
+  /// Max retry attempts. If null, uses [FetchConfig.defaultMaxRetries].
   final int? maxAttempts;
   final String? idempotencyKey;
   final dynamic Function(dynamic raw)? decode;
@@ -186,7 +206,7 @@ class PatchEvent extends EventBase {
     this.body,
     this.queryParams,
     this.headers,
-    this.cachePolicy = CachePolicy.networkOnly,
+    this.cachePolicy, // null = networkOnly for PATCH
     this.ttl,
     this.cacheAuthResponses = false,
     this.forceCache = false,
@@ -207,8 +227,12 @@ class DeleteEvent extends EventBase {
   final String url;
   final Map<String, dynamic>? queryParams;
   final Map<String, String>? headers;
-  final CachePolicy cachePolicy;
+
+  /// Cache policy. If null, uses [CachePolicy.networkOnly] for DELETE.
+  final CachePolicy? cachePolicy;
   final bool retryable;
+
+  /// Max retry attempts. If null, uses [FetchConfig.defaultMaxRetries].
   final int? maxAttempts;
   final dynamic Function(dynamic raw)? decode;
   final String? scope;
@@ -219,7 +243,7 @@ class DeleteEvent extends EventBase {
     required this.url,
     this.queryParams,
     this.headers,
-    this.cachePolicy = CachePolicy.networkOnly,
+    this.cachePolicy, // null = networkOnly for DELETE
     this.retryable = true,
     this.maxAttempts,
     this.decode,

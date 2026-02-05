@@ -96,6 +96,19 @@ class HiveCloseBoxEvent extends StorageResultEvent<void> {
   });
 }
 
+/// Get all keys from a Hive box.
+///
+/// Returns Iterable<String> of all keys in the box.
+class HiveKeysEvent extends StorageResultEvent<List<String>> {
+  final String box;
+
+  HiveKeysEvent({
+    required this.box,
+    super.requestId,
+    super.groupsToRebuild,
+  });
+}
+
 // =============================================================================
 // SharedPreferences Events
 // =============================================================================

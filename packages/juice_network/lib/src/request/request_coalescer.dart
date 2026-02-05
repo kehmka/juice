@@ -4,6 +4,17 @@ import 'package:dio/dio.dart';
 
 import 'request_key.dart';
 
+/// Result of a coalesce operation.
+class CoalesceResult {
+  /// The response (either from coalescing or from the executed request).
+  final Response<dynamic> response;
+
+  /// Whether this request was coalesced with an existing inflight request.
+  final bool wasCoalesced;
+
+  CoalesceResult(this.response, {required this.wasCoalesced});
+}
+
 /// Entry for an inflight request.
 class _InflightEntry {
   /// The future that will complete with the response.
@@ -30,17 +41,33 @@ class RequestCoalescer {
   /// Inflight requests by canonical key.
   final Map<String, _InflightEntry> _inflight = {};
 
+  /// Counter for coalesced requests (for stats tracking).
+  int _coalescedCounter = 0;
+
   /// Callback when inflight status changes (for state sync).
   final void Function(String canonical, bool isInflight)? onInflightChanged;
 
-  RequestCoalescer({this.onInflightChanged});
+  /// Callback when a request coalesces with an existing inflight request.
+  final void Function(String canonical)? onCoalesced;
+
+  RequestCoalescer({this.onInflightChanged, this.onCoalesced});
+
+  /// Get and reset the coalesced counter.
+  /// Used for stats tracking - call before and after a request to detect coalescing.
+  int takeCoalescedCount() {
+    final count = _coalescedCounter;
+    _coalescedCounter = 0;
+    return count;
+  }
 
   /// Execute a request, coalescing with any existing inflight request.
   ///
   /// If a request with the same [key] is already inflight, returns its future.
   /// Otherwise, executes [execute] and shares the result with any subsequent
   /// requests for the same key.
-  Future<Response<dynamic>> coalesce(
+  ///
+  /// Returns a [CoalesceResult] that includes whether coalescing occurred.
+  Future<CoalesceResult> coalesce(
     RequestKey key,
     Future<Response<dynamic>> Function() execute,
   ) async {
@@ -48,7 +75,10 @@ class RequestCoalescer {
 
     // Already inflight? Join existing request
     if (_inflight.containsKey(canonical)) {
-      return _inflight[canonical]!.future;
+      _coalescedCounter++;
+      onCoalesced?.call(canonical);
+      final response = await _inflight[canonical]!.future;
+      return CoalesceResult(response, wasCoalesced: true);
     }
 
     // First caller - execute and share
@@ -59,7 +89,7 @@ class RequestCoalescer {
     try {
       final response = await execute();
       completer.complete(response);
-      return response;
+      return CoalesceResult(response, wasCoalesced: false);
     } catch (e, stackTrace) {
       completer.completeError(e, stackTrace);
       rethrow;

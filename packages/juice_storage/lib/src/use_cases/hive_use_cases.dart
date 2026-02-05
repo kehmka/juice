@@ -265,3 +265,37 @@ class HiveDeleteUseCase extends BlocUseCase<StorageBloc, HiveDeleteEvent> {
     }
   }
 }
+
+/// Use case for getting all keys from a Hive box.
+class HiveKeysUseCase extends BlocUseCase<StorageBloc, HiveKeysEvent> {
+  @override
+  Future<void> execute(HiveKeysEvent event) async {
+    try {
+      final adapter = HiveAdapterFactory.get<dynamic>(event.box);
+      if (adapter == null) {
+        throw StorageException(
+          'Hive box not open: ${event.box}',
+          type: StorageErrorType.boxNotOpen,
+        );
+      }
+
+      final keys = await adapter.keys();
+      emitUpdate();
+      event.succeed(keys.toList());
+    } catch (e, st) {
+      emitFailure(error: e, errorStackTrace: st);
+      if (e is StorageException) {
+        event.fail(e, st);
+      } else {
+        event.fail(
+          StorageException(
+            'Failed to get keys from Hive: ${event.box}',
+            type: StorageErrorType.backendNotAvailable,
+            cause: e,
+          ),
+          st,
+        );
+      }
+    }
+  }
+}

@@ -26,7 +26,7 @@ juice_network automatically deduplicates concurrent identical requests, reducing
 
 ```yaml
 dependencies:
-  juice_network: ^0.7.1
+  juice_network: ^0.9.0
 ```
 
 ## Quick Example

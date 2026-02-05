@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-02-05
+
+### Added
+- **AuthIdentityProvider** - User-specific cache/coalescing isolation for interceptor-injected auth
+- **maxConcurrentRequests** - Queue-based request concurrency limiting
+- **Content-type aware decoding** - Automatic JSON/text/bytes detection with proper error handling
+- **Namespace filtering** - Cache operations can now filter by namespace prefix
+- **includeExpired parameter** - Control whether expired entries are included in cache operations
+- **bytesSent tracking** - NetworkStats now tracks outgoing request body sizes
+- **hiveKeys support** - CacheManager can now scan all disk cache keys
+
+### Fixed
+- `deletePattern` now scans disk keys, not just memory cache
+- `avgResponseTimeMs` now only averages successful requests (not failures)
+- Retry knobs (`retryable`, `maxAttempts`, `idempotencyKey`) now properly passed to RetryInterceptor
+- `DecodeError` now properly emitted on JSON parse and decoder failures
+
+### Changed
+- Example app switched from jsonplaceholder.typicode.com to dummyjson.com (Cloudflare compatibility)
+
 ## [0.7.1] - 2025-01-14
 
 ### Changed

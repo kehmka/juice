@@ -255,6 +255,24 @@ CancelScopeEvent({
 CancelAllEvent({String? reason})
 ```
 
+### ResetFetchEvent
+
+Reset FetchBloc to baseline state.
+
+```dart
+ResetFetchEvent({
+  bool clearCache = false,
+  bool cancelInflight = true,
+  bool resetStats = false,
+})
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `clearCache` | `bool` | false | Clear all cached responses |
+| `cancelInflight` | `bool` | true | Cancel all inflight requests |
+| `resetStats` | `bool` | false | Reset NetworkStats to zero |
+
 ### Observability Events
 
 ```dart

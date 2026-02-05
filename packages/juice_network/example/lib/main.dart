@@ -33,11 +33,12 @@ Future<void> main() async {
     );
   }
 
-  // Initialize FetchBloc with JSONPlaceholder config
+  // Initialize FetchBloc with DummyJSON config
+  // Note: jsonplaceholder.typicode.com is blocked by Cloudflare for Dart clients
   final fetchBloc = BlocScope.get<FetchBloc>();
   await fetchBloc.send(InitializeFetchEvent(
     config: FetchConfig(
-      baseUrl: 'https://jsonplaceholder.typicode.com',
+      baseUrl: 'https://dummyjson.com',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       defaultTtl: const Duration(minutes: 5),

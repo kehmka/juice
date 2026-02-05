@@ -93,7 +93,9 @@ class LoadPostsUseCase extends BlocUseCase<PostsBloc, LoadPostsEvent> {
         cachePolicy: bloc.state.cachePolicy,
         ttl: const Duration(minutes: 5),
         decode: (raw) {
-          final posts = Post.fromJsonList(raw as List);
+          // dummyjson.com returns {posts: [...], total, skip, limit}
+          final postsData = raw is Map ? raw['posts'] as List : raw as List;
+          final posts = Post.fromJsonList(postsData);
           emitUpdate(newState: bloc.state.copyWith(posts: posts, isListLoading: false));
           return posts;
         },

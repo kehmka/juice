@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-13
+
+### Added
+- **`hiveKeys` helper method** - `StorageBloc.hiveKeys(box)` returns all keys from a Hive box
+- **`HiveKeysEvent` / `HiveKeysUseCase`** - Event-driven Hive key enumeration
+
+### Changed
+- `CacheIndex.clock` is no longer test-only (`@visibleForTesting` removed) — accessed by `StorageBloc` and `CacheCleanupUseCase` as part of clock wiring
+
+---
+
 ## [1.0.0] - 2026-02-02
 
 ### Stable Release

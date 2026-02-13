@@ -21,7 +21,7 @@ A reactive HTTP client bloc for [Juice](https://pub.dev/packages/juice) applicat
 
 ```yaml
 dependencies:
-  juice_network: ^0.9.1
+  juice_network: ^0.9.2
 ```
 
 ## Quick Start

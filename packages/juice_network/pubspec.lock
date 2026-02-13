@@ -221,7 +221,7 @@ packages:
       path: "../juice_storage"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "1.1.0"
   leak_tracker:
     dependency: transitive
     description:

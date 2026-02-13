@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.1] - 2026-02-13
+## [0.9.2] - 2026-02-13
 
 ### Fixed
-- Updated `juice_storage` dependency from `^0.9.0` to `^1.0.0` to resolve `hiveKeys` method not found error during static analysis
+- Updated `juice_storage` dependency to `^1.1.0` which includes the `hiveKeys` method required by CacheManager
+
+## [0.9.1] - 2026-02-13 [retracted]
+
+### Fixed
+- Updated `juice_storage` dependency from `^0.9.0` to `^1.0.0` (insufficient — `hiveKeys` was not in published 1.0.0)
 
 ## [0.9.0] - 2026-02-05
 

@@ -32,7 +32,7 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 ```yaml
 dependencies:
   juice: ^1.3.0
-  juice_storage: ^1.0.0
+  juice_storage: ^1.1.0
 ```
 
 ## Usage

@@ -37,7 +37,7 @@ class PopUntilUseCase extends BlocUseCase<RoutingBloc, PopUntilEvent> {
 
     // Collect popped entries for history
     final poppedEntries = state.stack.sublist(stopIndex + 1);
-    final newHistory = List<HistoryEntry>.from(state.history);
+    var newHistory = List<HistoryEntry>.from(state.history);
 
     for (final entry in poppedEntries.reversed) {
       final timeOnRoute = now.difference(entry.pushedAt);
@@ -51,6 +51,12 @@ class PopUntilUseCase extends BlocUseCase<RoutingBloc, PopUntilEvent> {
 
     // Update stack
     final newStack = state.stack.sublist(0, stopIndex + 1);
+
+    // Trim history if needed
+    final maxHistory = bloc.config.maxHistorySize;
+    if (newHistory.length > maxHistory) {
+      newHistory = newHistory.sublist(newHistory.length - maxHistory);
+    }
 
     emitUpdate(
       newState: state.copyWith(

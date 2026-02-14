@@ -18,7 +18,7 @@ Declarative, state-driven navigation for [Juice](https://pub.dev/packages/juice)
 
 ```yaml
 dependencies:
-  juice_routing: ^0.1.0
+  juice_routing: ^1.0.0
 ```
 
 ## Quick Start
@@ -65,22 +65,27 @@ final appRoutes = RoutingConfig(
 );
 ```
 
-### 2. Create a Route Guard
+### 2. Add Route Guards
+
+Use the built-in guards or create your own:
 
 ```dart
-class AuthGuard extends RouteGuard {
+// Built-in guards (callback-based, no auth dependency)
+AuthGuard(isAuthenticated: () => authBloc.state.isLoggedIn)
+GuestGuard(isAuthenticated: () => authBloc.state.isLoggedIn)
+RoleGuard(hasRole: () => userBloc.state.isAdmin, roleName: 'admin')
+
+// Or create custom guards
+class OnboardingGuard extends RouteGuard {
   @override
-  String get name => 'AuthGuard';
+  String get name => 'OnboardingGuard';
 
   @override
   Future<GuardResult> check(RouteContext context) async {
-    final authBloc = BlocScope.get<AuthBloc>();
-
-    if (authBloc.state.isLoggedIn) {
+    if (userBloc.state.hasCompletedOnboarding) {
       return const GuardResult.allow();
     }
-
-    return GuardResult.redirect('/login', returnTo: context.targetPath);
+    return const GuardResult.redirect('/onboarding');
   }
 }
 ```

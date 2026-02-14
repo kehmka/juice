@@ -242,5 +242,186 @@ void main() {
         expect(keys.length, bloc.state.stack.length);
       });
     });
+
+    group('maxHistorySize', () {
+      test('trims oldest history entries when limit exceeded', () async {
+        final smallHistoryConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(path: '/settings', builder: (_) => const SizedBox()),
+            RouteConfig(
+                path: '/profile/:userId', builder: (_) => const SizedBox()),
+          ],
+          initialPath: '/',
+          maxHistorySize: 3,
+        );
+        bloc = RoutingBloc.withConfig(smallHistoryConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // History: [/ (push)] — 1 entry
+        expect(bloc.state.history.length, 1);
+
+        bloc.navigate('/settings');
+        await Future.delayed(const Duration(milliseconds: 50));
+        // History: [/ (push), /settings (push)] — 2 entries
+        expect(bloc.state.history.length, 2);
+
+        bloc.navigate('/profile/1');
+        await Future.delayed(const Duration(milliseconds: 50));
+        // History: [/ (push), /settings (push), /profile/1 (push)] — 3 entries (at limit)
+        expect(bloc.state.history.length, 3);
+
+        bloc.navigate('/settings', replace: true);
+        await Future.delayed(const Duration(milliseconds: 50));
+        // Would be 4, trimmed to 3 — oldest entry (/) removed
+        expect(bloc.state.history.length, 3);
+        expect(bloc.state.history.first.path, '/settings');
+      });
+
+      test('trims history on pop operations', () async {
+        final smallHistoryConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(path: '/settings', builder: (_) => const SizedBox()),
+            RouteConfig(
+                path: '/profile/:userId', builder: (_) => const SizedBox()),
+          ],
+          initialPath: '/',
+          maxHistorySize: 4,
+        );
+        bloc = RoutingBloc.withConfig(smallHistoryConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.navigate('/settings');
+        await Future.delayed(const Duration(milliseconds: 50));
+        bloc.navigate('/profile/1');
+        await Future.delayed(const Duration(milliseconds: 50));
+        // 3 entries: / push, /settings push, /profile/1 push
+
+        bloc.pop();
+        await Future.delayed(const Duration(milliseconds: 50));
+        // 4 entries: / push, /settings push, /profile/1 push, /profile/1 pop — at limit
+        expect(bloc.state.history.length, 4);
+
+        bloc.pop();
+        await Future.delayed(const Duration(milliseconds: 50));
+        // Would be 5, trimmed to 4
+        expect(bloc.state.history.length, 4);
+        // Oldest (/ push) trimmed
+        expect(bloc.state.history.first.path, '/settings');
+      });
+    });
+
+    group('navigation queuing', () {
+      test('latest navigation wins when concurrent', () async {
+        final slowGuardConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/slow',
+              builder: (_) => const SizedBox(),
+              guards: [_SlowGuard()],
+            ),
+            RouteConfig(path: '/settings', builder: (_) => const SizedBox()),
+            RouteConfig(
+                path: '/profile/:userId', builder: (_) => const SizedBox()),
+          ],
+          initialPath: '/',
+        );
+        bloc = RoutingBloc.withConfig(slowGuardConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // Start a slow navigation — will be pending
+        bloc.navigate('/slow');
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(bloc.state.isNavigating, isTrue);
+
+        // Queue two more — only the latest should win
+        bloc.navigate('/settings');
+        bloc.navigate('/profile/42');
+
+        // Wait for slow guard + queued processing
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        expect(bloc.state.currentPath, '/profile/42');
+      });
+    });
+
+    group('resetStack with guards', () {
+      test('resetStack redirects when guard redirects', () async {
+        final guardConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(path: '/login', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/dashboard',
+              builder: (_) => const SizedBox(),
+              guards: [_RedirectToLoginGuard()],
+            ),
+          ],
+        );
+        bloc = RoutingBloc.withConfig(guardConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.resetStack('/dashboard');
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Guard redirected to /login, resetStack should follow the redirect
+        expect(bloc.state.currentPath, '/login');
+        expect(bloc.state.stack.length, 1);
+      });
+
+      test('resetStack blocks when guard blocks', () async {
+        final guardConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/admin',
+              builder: (_) => const SizedBox(),
+              guards: [_BlockGuard()],
+            ),
+          ],
+        );
+        bloc = RoutingBloc.withConfig(guardConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.resetStack('/admin');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.currentPath, '/'); // Still at root
+        expect(bloc.state.error, isA<GuardBlockedError>());
+      });
+    });
   });
+}
+
+class _SlowGuard extends RouteGuard {
+  @override
+  String get name => 'SlowGuard';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return const GuardResult.allow();
+  }
+}
+
+class _RedirectToLoginGuard extends RouteGuard {
+  @override
+  String get name => 'RedirectToLoginGuard';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    return const GuardResult.redirect('/login');
+  }
+}
+
+class _BlockGuard extends RouteGuard {
+  @override
+  String get name => 'BlockGuard';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    return const GuardResult.block(reason: 'Access denied');
+  }
 }

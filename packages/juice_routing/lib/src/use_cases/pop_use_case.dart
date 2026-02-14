@@ -43,10 +43,17 @@ class PopUseCase extends BlocUseCase<RoutingBloc, PopEvent> {
     // Update stack
     final newStack = state.stack.sublist(0, state.stack.length - 1);
 
+    // Trim history if needed
+    var newHistory = [...state.history, historyEntry];
+    final maxHistory = bloc.config.maxHistorySize;
+    if (newHistory.length > maxHistory) {
+      newHistory = newHistory.sublist(newHistory.length - maxHistory);
+    }
+
     emitUpdate(
       newState: state.copyWith(
         stack: newStack,
-        history: [...state.history, historyEntry],
+        history: newHistory,
         clearError: true,
       ),
       groupsToRebuild: {

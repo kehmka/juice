@@ -124,71 +124,79 @@ class PermissionGuard extends RouteGuard {
 
 Default priority is `0`.
 
-## Common Guard Patterns
+## Built-in Guards
 
-### Authentication Guard
+juice_routing ships with three callback-based guards that cover the most common patterns. They're decoupled from any auth implementation — you supply the logic via callbacks.
 
-```dart
-class AuthGuard extends RouteGuard {
-  @override
-  String get name => 'AuthGuard';
+### AuthGuard
 
-  @override
-  Future<GuardResult> check(RouteContext context) async {
-    final authBloc = BlocScope.get<AuthBloc>();
-
-    if (authBloc.state.isLoggedIn) {
-      return const GuardResult.allow();
-    }
-
-    return GuardResult.redirect(
-      '/login',
-      returnTo: context.targetPath,
-    );
-  }
-}
-```
-
-### Guest Guard (Redirect If Logged In)
+Redirects unauthenticated users to a login path. Includes `returnTo` so the login flow can navigate back.
 
 ```dart
-class GuestGuard extends RouteGuard {
-  @override
-  String get name => 'GuestGuard';
+import 'package:juice_routing/juice_routing.dart';
 
-  @override
-  Future<GuardResult> check(RouteContext context) async {
-    final authBloc = BlocScope.get<AuthBloc>();
-
-    if (!authBloc.state.isLoggedIn) {
-      return const GuardResult.allow();
-    }
-
-    // Already logged in, redirect to home
-    return const GuardResult.redirect('/');
-  }
-}
+RouteConfig(
+  path: '/dashboard',
+  builder: (ctx) => const DashboardScreen(),
+  guards: [
+    AuthGuard(
+      isAuthenticated: () => authBloc.state.isLoggedIn,
+      loginPath: '/login',  // default
+    ),
+  ],
+)
 ```
 
-### Permission Guard
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `isAuthenticated` | `bool Function()` | required | Returns `true` when user is authenticated |
+| `loginPath` | `String` | `'/login'` | Path to redirect unauthenticated users to |
+
+### RoleGuard
+
+Blocks users who lack a required role. Uses `GuardResult.block()` with a descriptive reason.
 
 ```dart
-class AdminGuard extends RouteGuard {
-  @override
-  String get name => 'AdminGuard';
-
-  @override
-  Future<GuardResult> check(RouteContext context) async {
-    final authBloc = BlocScope.get<AuthBloc>();
-
-    if (authBloc.state.isAdmin) {
-      return const GuardResult.allow();
-    }
-
-    return GuardResult.block('Admin access required');
-  }
-}
+RouteConfig(
+  path: '/admin',
+  builder: (ctx) => const AdminPanel(),
+  guards: [
+    RoleGuard(
+      hasRole: () => userBloc.state.roles.contains('admin'),
+      roleName: 'admin',
+    ),
+  ],
+)
 ```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `hasRole` | `bool Function()` | required | Returns `true` when user has the required role |
+| `roleName` | `String` | required | Human-readable role name (used in block reason) |
+
+### GuestGuard
+
+Redirects authenticated users away from guest-only pages (login, register).
+
+```dart
+RouteConfig(
+  path: '/login',
+  builder: (ctx) => const LoginScreen(),
+  guards: [
+    GuestGuard(
+      isAuthenticated: () => authBloc.state.isLoggedIn,
+      redirectPath: '/',  // default
+    ),
+  ],
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `isAuthenticated` | `bool Function()` | required | Returns `true` when user is authenticated |
+| `redirectPath` | `String` | `'/'` | Path to redirect authenticated users to |
+
+## Custom Guard Patterns
 
 ### Onboarding Guard
 

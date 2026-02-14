@@ -122,12 +122,18 @@ class RoutingConfig {
   /// Defaults to 5.
   final int maxRedirects;
 
+  /// Maximum number of history entries to retain.
+  /// Oldest entries are trimmed when this limit is exceeded.
+  /// Defaults to 100.
+  final int maxHistorySize;
+
   const RoutingConfig({
     required this.routes,
     this.globalGuards = const [],
     this.notFoundRoute,
     this.initialPath = '/',
     this.maxRedirects = 5,
+    this.maxHistorySize = 100,
   });
 
   @override

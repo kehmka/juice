@@ -1,13 +1,12 @@
 import 'package:juice/juice.dart';
 
 import '../path_resolver.dart';
-import '../route_context.dart';
-import '../route_guard.dart';
 import '../routing_bloc.dart';
 import '../routing_errors.dart';
 import '../routing_events.dart';
 import '../routing_state.dart';
 import '../routing_types.dart';
+import 'guard_pipeline.dart';
 
 /// Use case for navigating to a new path.
 ///
@@ -33,6 +32,7 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
       replace: event.replace,
       transition: event.transition,
       redirectCount: 0,
+      redirectChain: [event.path],
     );
   }
 
@@ -42,25 +42,10 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
     required bool replace,
     RouteTransition? transition,
     required int redirectCount,
+    required List<String> redirectChain,
   }) async {
     final config = bloc.config;
     final resolver = bloc.pathResolver;
-
-    // Check redirect limit
-    if (redirectCount >= config.maxRedirects) {
-      emitFailure(
-        newState: bloc.state.copyWith(
-          error: RedirectLoopError(
-            redirectChain: [], // Could track chain if needed
-            maxRedirects: config.maxRedirects,
-          ),
-          clearPending: true,
-        ),
-        groupsToRebuild: {RoutingGroups.error, RoutingGroups.pending},
-      );
-      _processQueue();
-      return;
-    }
 
     // Resolve path
     final resolved = resolver.resolve(path);
@@ -76,113 +61,83 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
       return;
     }
 
-    // Collect guards (global + route), sort by priority
-    final guards = <RouteGuard>[
-      ...config.globalGuards,
-      ...resolved.route.guards,
-    ];
-    guards.sort((a, b) => a.priority.compareTo(b.priority));
-
-    // Set pending navigation state
-    emitUpdate(
-      newState: bloc.state.copyWith(
-        pending: PendingNavigation(
-          targetPath: path,
-          guardsCompleted: 0,
-          totalGuards: guards.length,
-          redirectCount: redirectCount,
-        ),
-        clearError: true,
-      ),
-      groupsToRebuild: {RoutingGroups.pending},
-    );
-
-    // Run guards pipeline
-    final context = RouteContext(
-      targetPath: path,
-      params: resolved.params,
-      query: resolved.query,
+    // Run guard pipeline
+    final result = await runGuardPipeline(
+      path: path,
+      config: config,
       currentState: bloc.state,
       targetRoute: resolved.route,
+      params: resolved.params,
+      query: resolved.query,
+      redirectCount: redirectCount,
+      redirectChain: redirectChain,
+      emitUpdate: ({required newState, required groupsToRebuild}) {
+        emitUpdate(newState: newState, groupsToRebuild: groupsToRebuild);
+      },
+      log: log,
     );
 
-    for (var i = 0; i < guards.length; i++) {
-      final guard = guards[i];
+    switch (result) {
+      case GuardPipelineAllowed():
+        _commitNavigation(
+          resolved: resolved,
+          extra: extra,
+          replace: replace,
+          transition: transition,
+        );
 
-      // Update pending state with current guard
-      emitUpdate(
-        newState: bloc.state.copyWith(
-          pending: bloc.state.pending?.copyWith(
-            guardsCompleted: i,
-            currentGuardName: guard.name,
-          ),
-        ),
-        groupsToRebuild: {RoutingGroups.pending},
-      );
+      case GuardPipelineRedirected():
+        await _executeNavigation(
+          path: result.redirectPath,
+          extra: null,
+          replace: replace,
+          transition: transition,
+          redirectCount: redirectCount + 1,
+          redirectChain: result.redirectChain,
+        );
 
-      // Execute guard
-      GuardResult result;
-      try {
-        result = await guard.check(context);
-      } catch (e, stackTrace) {
+      case GuardPipelineBlocked():
         emitFailure(
           newState: bloc.state.copyWith(
-            error: GuardExceptionError(
-              path: path,
-              guardName: guard.name,
-              exception: e,
-              stackTrace: stackTrace,
+            error: GuardBlockedError(
+              path: result.path,
+              guardName: result.guardName,
+              reason: result.reason,
             ),
             clearPending: true,
           ),
           groupsToRebuild: {RoutingGroups.error, RoutingGroups.pending},
         );
         _processQueue();
-        return;
-      }
 
-      // Handle result
-      switch (result) {
-        case AllowResult():
-          // Continue to next guard
-          continue;
-
-        case RedirectResult():
-          log('Guard ${guard.name} redirecting to ${result.path}');
-          // Restart navigation with redirect path
-          await _executeNavigation(
-            path: result.path,
-            extra: null,
-            replace: replace,
-            transition: transition,
-            redirectCount: redirectCount + 1,
-          );
-          return;
-
-        case BlockResult():
-          emitFailure(
-            newState: bloc.state.copyWith(
-              error: GuardBlockedError(
-                path: path,
-                guardName: guard.name,
-                reason: result.reason,
-              ),
-              clearPending: true,
+      case GuardPipelineFailed():
+        emitFailure(
+          newState: bloc.state.copyWith(
+            error: GuardExceptionError(
+              path: result.path,
+              guardName: result.guardName,
+              exception: result.exception,
+              stackTrace: result.stackTrace,
             ),
-            groupsToRebuild: {RoutingGroups.error, RoutingGroups.pending},
-          );
-          _processQueue();
-          return;
-      }
-    }
+            clearPending: true,
+          ),
+          groupsToRebuild: {RoutingGroups.error, RoutingGroups.pending},
+        );
+        _processQueue();
 
-    // All guards passed - commit navigation
-    _commitNavigation(
-      resolved: resolved,
-      extra: extra,
-      replace: replace,
-      transition: transition,
-    );
+      case GuardPipelineLoopDetected():
+        emitFailure(
+          newState: bloc.state.copyWith(
+            error: RedirectLoopError(
+              redirectChain: result.redirectChain,
+              maxRedirects: result.maxRedirects,
+            ),
+            clearPending: true,
+          ),
+          groupsToRebuild: {RoutingGroups.error, RoutingGroups.pending},
+        );
+        _processQueue();
+    }
   }
 
   void _commitNavigation({
@@ -192,6 +147,7 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
     RouteTransition? transition,
   }) {
     final now = DateTime.now();
+    final config = bloc.config;
 
     // Create new stack entry
     final entry = StackEntry(
@@ -231,10 +187,16 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
       type: navType,
     );
 
+    // Trim history if needed
+    var newHistory = [...bloc.state.history, historyEntry];
+    if (newHistory.length > config.maxHistorySize) {
+      newHistory = newHistory.sublist(newHistory.length - config.maxHistorySize);
+    }
+
     emitUpdate(
       newState: bloc.state.copyWith(
         stack: newStack,
-        history: [...bloc.state.history, historyEntry],
+        history: newHistory,
         clearPending: true,
         clearError: true,
       ),

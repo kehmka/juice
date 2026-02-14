@@ -55,6 +55,9 @@ export 'src/routing_errors.dart';
 // Guards
 export 'src/route_guard.dart';
 export 'src/route_context.dart';
+export 'src/guards/auth_guard.dart';
+export 'src/guards/role_guard.dart';
+export 'src/guards/guest_guard.dart';
 
 // Configuration
 export 'src/routing_config.dart';

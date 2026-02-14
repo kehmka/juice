@@ -255,6 +255,40 @@ void main() {
 
         expect(bloc.state.error, isA<RedirectLoopError>());
       });
+
+      test('populates redirectChain with actual paths', () async {
+        final config = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/a',
+              builder: (_) => const SizedBox(),
+              guards: [RedirectGuard('/b')],
+            ),
+            RouteConfig(
+              path: '/b',
+              builder: (_) => const SizedBox(),
+              guards: [RedirectGuard('/c')],
+            ),
+            RouteConfig(
+              path: '/c',
+              builder: (_) => const SizedBox(),
+              guards: [RedirectGuard('/a')], // Creates loop back to /a
+            ),
+          ],
+          maxRedirects: 3,
+        );
+        bloc = RoutingBloc.withConfig(config);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.navigate('/a');
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        expect(bloc.state.error, isA<RedirectLoopError>());
+        final error = bloc.state.error as RedirectLoopError;
+        // Chain: started at /a, redirected to /b, /c, /a (loop detected at limit 3)
+        expect(error.redirectChain, ['/a', '/b', '/c', '/a']);
+      });
     });
 
     group('guard exceptions', () {

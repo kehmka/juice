@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
@@ -11,7 +10,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState
+    extends JuiceWidgetState2<RoutingBloc, AuthBloc, LoginScreen> {
   final _usernameController = TextEditingController(text: 'demo_user');
 
   @override
@@ -20,26 +20,22 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    final authBloc = BlocScope.get<AuthBloc>();
-    final routingBloc = BlocScope.get<RoutingBloc>();
-
+  void _login({bool asAdmin = false}) {
     final username = _usernameController.text.trim();
     if (username.isEmpty) return;
 
-    authBloc.login(username);
+    bloc2.login(username, asAdmin: asAdmin);
 
     // Navigate to home after login
     // In a real app, you might use the returnTo from the redirect
     Future.delayed(const Duration(milliseconds: 600), () {
-      routingBloc.navigate('/');
+      bloc1.navigate('/');
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-    final authBloc = BlocScope.get<AuthBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final isLoading = bloc2.currentStatus is WaitingStatus;
 
     return Scaffold(
       appBar: AppBar(
@@ -47,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => routingBloc.pop(),
+          onPressed: () => bloc1.pop(),
         ),
       ),
       body: Center(
@@ -84,25 +80,28 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            StreamBuilder(
-              stream: authBloc.stream,
-              builder: (context, snapshot) {
-                final isLoading = authBloc.currentStatus is WaitingStatus;
-
-                return FilledButton(
-                  onPressed: isLoading ? null : _login,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Sign In'),
-                  ),
-                );
-              },
+            FilledButton(
+              onPressed: isLoading ? null : _login,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Sign In'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: isLoading
+                  ? null
+                  : () => _login(asAdmin: true),
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('Sign In as Admin'),
+              ),
             ),
             const SizedBox(height: 24),
             Card(

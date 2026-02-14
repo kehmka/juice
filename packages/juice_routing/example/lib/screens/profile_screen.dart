@@ -1,29 +1,25 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
 import '../auth_bloc.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
   final String userId;
 
-  const ProfileScreen({
+  ProfileScreen({
     super.key,
     required this.userId,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-    final authBloc = BlocScope.get<AuthBloc>();
-
+  Widget onBuild(BuildContext context, StreamStatus status) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Profile: $userId'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => routingBloc.pop(),
+          onPressed: () => bloc1.pop(),
         ),
       ),
       body: Padding(
@@ -41,14 +37,9 @@ class ProfileScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            StreamBuilder(
-              stream: authBloc.stream,
-              builder: (context, snapshot) {
-                return Text(
-                  'Logged in as: ${authBloc.state.username ?? "unknown"}',
-                  style: const TextStyle(color: Colors.grey),
-                );
-              },
+            Text(
+              'Logged in as: ${bloc2.state.username ?? "unknown"}',
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
 
@@ -74,15 +65,15 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         ActionChip(
                           label: const Text('User 1'),
-                          onPressed: () => routingBloc.navigate('/profile/1'),
+                          onPressed: () => bloc1.navigate('/profile/1'),
                         ),
                         ActionChip(
                           label: const Text('User 42'),
-                          onPressed: () => routingBloc.navigate('/profile/42'),
+                          onPressed: () => bloc1.navigate('/profile/42'),
                         ),
                         ActionChip(
                           label: const Text('User ABC'),
-                          onPressed: () => routingBloc.navigate('/profile/ABC'),
+                          onPressed: () => bloc1.navigate('/profile/ABC'),
                         ),
                       ],
                     ),
@@ -114,12 +105,12 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         FilledButton(
                           onPressed: () =>
-                              routingBloc.navigate('/profile/999', replace: true),
+                              bloc1.navigate('/profile/999', replace: true),
                           child: const Text('Replace with 999'),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton(
-                          onPressed: () => routingBloc.navigate('/settings'),
+                          onPressed: () => bloc1.navigate('/settings'),
                           child: const Text('Push Settings'),
                         ),
                       ],
@@ -136,12 +127,12 @@ class ProfileScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton.icon(
-                  onPressed: () => routingBloc.popToRoot(),
+                  onPressed: () => bloc1.popToRoot(),
                   icon: const Icon(Icons.home),
                   label: const Text('Pop to Root'),
                 ),
                 TextButton.icon(
-                  onPressed: () => authBloc.logout(),
+                  onPressed: () => bloc2.logout(),
                   icon: const Icon(Icons.logout),
                   label: const Text('Logout'),
                 ),

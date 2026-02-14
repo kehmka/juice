@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
-class DemoScreen extends StatelessWidget {
-  const DemoScreen({super.key});
+class DemoScreen extends StatelessJuiceWidget<RoutingBloc> {
+  DemoScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
 
     return Scaffold(
       appBar: AppBar(
@@ -15,7 +14,7 @@ class DemoScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => routingBloc.pop(),
+          onPressed: () => bloc.pop(),
         ),
       ),
       body: Center(
@@ -38,28 +37,22 @@ class DemoScreen extends StatelessWidget {
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
-            StreamBuilder(
-              stream: routingBloc.stream,
-              builder: (context, snapshot) {
-                final state = routingBloc.state;
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text('Stack depth: ${state.stackDepth}'),
-                        Text('Current path: ${state.currentPath}'),
-                        Text('Can pop: ${state.canPop}'),
-                      ],
-                    ),
-                  ),
-                );
-              },
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('Stack depth: ${state.stackDepth}'),
+                    Text('Current path: ${state.currentPath}'),
+                    Text('Can pop: ${state.canPop}'),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => routingBloc.pop(),
+              onPressed: () => bloc.pop(),
               icon: const Icon(Icons.arrow_back),
               label: const Text('Go Back'),
             ),

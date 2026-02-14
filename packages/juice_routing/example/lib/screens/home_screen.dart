@@ -1,39 +1,30 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
 import '../auth_bloc.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
+  HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-    final authBloc = BlocScope.get<AuthBloc>();
-
+  Widget onBuild(BuildContext context, StreamStatus status) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          StreamBuilder(
-            stream: authBloc.stream,
-            builder: (context, snapshot) {
-              if (authBloc.state.isLoggedIn) {
-                return TextButton.icon(
-                  onPressed: () => authBloc.logout(),
-                  icon: const Icon(Icons.logout),
-                  label: Text(authBloc.state.username ?? 'Logout'),
-                );
-              }
-              return TextButton.icon(
-                onPressed: () => routingBloc.navigate('/login'),
-                icon: const Icon(Icons.login),
-                label: const Text('Login'),
-              );
-            },
-          ),
+          if (bloc2.state.isLoggedIn)
+            TextButton.icon(
+              onPressed: () => bloc2.logout(),
+              icon: const Icon(Icons.logout),
+              label: Text(bloc2.state.username ?? 'Logout'),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => bloc1.navigate('/login'),
+              icon: const Icon(Icons.login),
+              label: const Text('Login'),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -58,7 +49,7 @@ class HomeScreen extends StatelessWidget {
               subtitle: 'Try push, pop, replace, reset and see the stack update live.',
               icon: Icons.science_outlined,
               color: Colors.teal,
-              onTap: () => routingBloc.navigate('/playground/1'),
+              onTap: () => bloc1.navigate('/playground/1'),
             ),
             const SizedBox(height: 12),
 
@@ -66,7 +57,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Aviator Demo',
               subtitle: 'Shows loose coupling between use cases and navigation.',
               icon: Icons.flight_takeoff,
-              onTap: () => routingBloc.navigate('/aviator-demo'),
+              onTap: () => bloc1.navigate('/aviator-demo'),
             ),
             const SizedBox(height: 12),
 
@@ -74,7 +65,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Profile (Protected)',
               subtitle: 'Requires authentication. Try navigating without logging in.',
               icon: Icons.person,
-              onTap: () => routingBloc.navigate('/profile/123'),
+              onTap: () => bloc1.navigate('/profile/123'),
             ),
             const SizedBox(height: 12),
 
@@ -82,7 +73,16 @@ class HomeScreen extends StatelessWidget {
               title: 'Settings (Protected)',
               subtitle: 'Nested routes with /settings/account and /settings/privacy.',
               icon: Icons.settings,
-              onTap: () => routingBloc.navigate('/settings'),
+              onTap: () => bloc1.navigate('/settings'),
+            ),
+            const SizedBox(height: 12),
+
+            _NavigationCard(
+              title: 'Admin Panel (Role Protected)',
+              subtitle: 'Requires admin role. Try with and without admin login.',
+              icon: Icons.admin_panel_settings,
+              color: Colors.deepPurple,
+              onTap: () => bloc1.navigate('/admin'),
             ),
             const SizedBox(height: 12),
 
@@ -90,103 +90,66 @@ class HomeScreen extends StatelessWidget {
               title: 'Unknown Route',
               subtitle: 'Tests the 404 not found handler.',
               icon: Icons.error_outline,
-              onTap: () => routingBloc.navigate('/this-does-not-exist'),
+              onTap: () => bloc1.navigate('/this-does-not-exist'),
             ),
 
             const SizedBox(height: 24),
 
             // Current state display
-            const _CurrentStateCard(),
+            _buildCurrentStateCard(),
 
             const SizedBox(height: 16),
 
             // Navigation stack
-            const _NavigationStackCard(),
+            _buildNavigationStackCard(),
 
             const SizedBox(height: 16),
 
             // Full history widget
-            const _HistoryWidget(),
+            _buildHistoryWidget(),
           ],
         ),
       ),
     );
   }
-}
 
-class _NavigationCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _NavigationCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildCurrentStateCard() {
+    final state = bloc1.state;
     return Card(
-      color: color?.withOpacity(0.05),
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: Icon(Icons.chevron_right, color: color),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
-class _CurrentStateCard extends StatelessWidget {
-  const _CurrentStateCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-
-    return StreamBuilder(
-      stream: routingBloc.stream,
-      builder: (context, snapshot) {
-        final state = routingBloc.state;
-        return Card(
-          color: Colors.blue[50],
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      color: Colors.blue[50],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Current State',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Current State',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                _InfoRow('Current Path', state.currentPath ?? 'none'),
-                _InfoRow('Stack Depth', '${state.stackDepth}'),
-                _InfoRow('Can Pop', state.canPop ? 'Yes' : 'No'),
-                _InfoRow('Is Navigating', state.isNavigating ? 'Yes' : 'No'),
-                if (state.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red[100],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
+              ],
+            ),
+            const SizedBox(height: 8),
+            _InfoRow('Current Path', state.currentPath ?? 'none'),
+            _InfoRow('Stack Depth', '${state.stackDepth}'),
+            _InfoRow('Can Pop', state.canPop ? 'Yes' : 'No'),
+            _InfoRow('Is Navigating', state.isNavigating ? 'Yes' : 'No'),
+            if (state.error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
                           const Icon(Icons.error, color: Colors.red, size: 16),
                           const SizedBox(width: 8),
@@ -201,158 +164,357 @@ class _CurrentStateCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ),
+                      if (state.error is RedirectLoopError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 24),
+                          child: Text(
+                            (state.error as RedirectLoopError)
+                                .redirectChain
+                                .join(' \u2192 '),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
+                ),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
 
-class _NavigationStackCard extends StatelessWidget {
-  const _NavigationStackCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-
-    return StreamBuilder(
-      stream: routingBloc.stream,
-      builder: (context, snapshot) {
-        final stack = routingBloc.state.stack;
-        return Card(
-          color: Colors.purple[50],
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildNavigationStackCard() {
+    final stack = bloc1.state.stack;
+    return Card(
+      color: Colors.purple[50],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.layers, color: Colors.purple, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Navigation Stack',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Icon(Icons.layers, color: Colors.purple, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Navigation Stack',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                if (stack.isEmpty)
-                  const Text('Stack is empty', style: TextStyle(color: Colors.grey))
-                else
-                  ...stack.reversed.toList().asMap().entries.map((entry) {
-                    final index = stack.length - 1 - entry.key;
-                    final stackEntry = entry.value;
-                    final isTop = index == stack.length - 1;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isTop ? Colors.purple[100] : Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: isTop ? Colors.purple : Colors.grey[300]!,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 20,
-                            height: 20,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isTop ? Colors.purple : Colors.grey,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              stackEntry.path,
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                                fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                          if (isTop)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.purple,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'TOP',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  }),
               ],
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 8),
+            if (stack.isEmpty)
+              const Text('Stack is empty', style: TextStyle(color: Colors.grey))
+            else
+              ...stack.reversed.toList().asMap().entries.map((entry) {
+                final index = stack.length - 1 - entry.key;
+                final stackEntry = entry.value;
+                final isTop = index == stack.length - 1;
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isTop ? Colors.purple[100] : Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isTop ? Colors.purple : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isTop ? Colors.purple : Colors.grey,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          stackEntry.path,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      if (isTop)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.purple,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'TOP',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
     );
   }
-}
 
-class _HistoryWidget extends StatelessWidget {
-  const _HistoryWidget();
+  Widget _buildHistoryWidget() {
+    final history = bloc1.state.history;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.history, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Navigation History',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text(
+                  '${history.length} / 50 entries',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Tap any entry to navigate to that route',
+              style: TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            if (history.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    'No navigation history yet.\nTry navigating to different screens!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              // Show history in reverse order (most recent first)
+              ...history.reversed.toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final historyEntry = entry.value;
+                final typeColor = _getTypeColor(historyEntry.type);
+                final isLatest = index == 0;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: isLatest ? Colors.grey[100] : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        // Navigate to this path
+                        bloc1.navigate(historyEntry.path);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isLatest ? Colors.grey[400]! : Colors.grey[200]!,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Type indicator
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: typeColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _getTypeIcon(historyEntry.type),
+                                color: typeColor,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Path and details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          historyEntry.path,
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isLatest)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[700],
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Text(
+                                            'LATEST',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: typeColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          historyEntry.type.name.toUpperCase(),
+                                          style: TextStyle(
+                                            color: typeColor,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.access_time,
+                                        size: 12,
+                                        color: Colors.grey[500],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _formatTime(historyEntry.timestamp),
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      if (historyEntry.timeOnRoute != null) ...[
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.timer_outlined,
+                                          size: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _formatDuration(historyEntry.timeOnRoute),
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Navigate indicator
+                            Icon(
+                              Icons.open_in_new,
+                              size: 16,
+                              color: Colors.grey[400],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+
+            // Legend
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text(
+              'Legend',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                _LegendItem(
+                  icon: Icons.arrow_forward,
+                  color: Colors.green,
+                  label: 'Push',
+                ),
+                _LegendItem(
+                  icon: Icons.arrow_back,
+                  color: Colors.orange,
+                  label: 'Pop',
+                ),
+                _LegendItem(
+                  icon: Icons.swap_horiz,
+                  color: Colors.blue,
+                  label: 'Replace',
+                ),
+                _LegendItem(
+                  icon: Icons.refresh,
+                  color: Colors.red,
+                  label: 'Reset',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   IconData _getTypeIcon(NavigationType type) {
     switch (type) {
@@ -396,247 +558,68 @@ class _HistoryWidget extends StatelessWidget {
       return '${duration.inMinutes}m ${duration.inSeconds % 60}s';
     }
   }
+}
+
+class _NavigationCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const _NavigationCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
+    return Card(
+      color: color?.withValues(alpha: 0.05),
+      child: ListTile(
+        leading: Icon(icon, color: color),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: Icon(Icons.chevron_right, color: color),
+        onTap: onTap,
+      ),
+    );
+  }
+}
 
-    return StreamBuilder(
-      stream: routingBloc.stream,
-      builder: (context, snapshot) {
-        final history = routingBloc.state.history;
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.history, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Navigation History',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Text(
-                      '${history.length} entries',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Tap any entry to navigate to that route',
-                  style: TextStyle(color: Colors.grey, fontSize: 11),
-                ),
-                const SizedBox(height: 12),
-                if (history.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        'No navigation history yet.\nTry navigating to different screens!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  // Show history in reverse order (most recent first)
-                  ...history.reversed.toList().asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final historyEntry = entry.value;
-                    final typeColor = _getTypeColor(historyEntry.type);
-                    final isLatest = index == 0;
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Material(
-                        color: isLatest ? Colors.grey[100] : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () {
-                            // Navigate to this path
-                            routingBloc.navigate(historyEntry.path);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isLatest ? Colors.grey[400]! : Colors.grey[200]!,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                // Type indicator
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: typeColor.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    _getTypeIcon(historyEntry.type),
-                                    color: typeColor,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Path and details
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              historyEntry.path,
-                                              style: const TextStyle(
-                                                fontFamily: 'monospace',
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          if (isLatest)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey[700],
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: const Text(
-                                                'LATEST',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 1,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: typeColor.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              historyEntry.type.name.toUpperCase(),
-                                              style: TextStyle(
-                                                color: typeColor,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Icon(
-                                            Icons.access_time,
-                                            size: 12,
-                                            color: Colors.grey[500],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _formatTime(historyEntry.timestamp),
-                                            style: TextStyle(
-                                              color: Colors.grey[500],
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                          if (historyEntry.timeOnRoute != null) ...[
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.timer_outlined,
-                                              size: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              _formatDuration(historyEntry.timeOnRoute),
-                                              style: TextStyle(
-                                                color: Colors.grey[500],
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Navigate indicator
-                                Icon(
-                                  Icons.open_in_new,
-                                  size: 16,
-                                  color: Colors.grey[400],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
+  const _InfoRow(this.label, this.value);
 
-                // Legend
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Legend',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    _LegendItem(
-                      icon: Icons.arrow_forward,
-                      color: Colors.green,
-                      label: 'Push',
-                    ),
-                    _LegendItem(
-                      icon: Icons.arrow_back,
-                      color: Colors.orange,
-                      label: 'Pop',
-                    ),
-                    _LegendItem(
-                      icon: Icons.swap_horiz,
-                      color: Colors.blue,
-                      label: 'Replace',
-                    ),
-                    _LegendItem(
-                      icon: Icons.refresh,
-                      color: Colors.red,
-                      label: 'Reset',
-                    ),
-                  ],
-                ),
-              ],
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ),
-        );
-      },
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -661,7 +644,7 @@ class _LegendItem extends StatelessWidget {
           width: 20,
           height: 20,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 12),

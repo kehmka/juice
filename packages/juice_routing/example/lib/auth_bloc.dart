@@ -4,19 +4,23 @@ import 'package:juice/juice.dart';
 class AuthState extends BlocState {
   final bool isLoggedIn;
   final String? username;
+  final bool isAdmin;
 
   const AuthState({
     this.isLoggedIn = false,
     this.username,
+    this.isAdmin = false,
   });
 
   AuthState copyWith({
     bool? isLoggedIn,
     String? username,
+    bool? isAdmin,
   }) {
     return AuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
       username: username ?? this.username,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 }
@@ -24,7 +28,8 @@ class AuthState extends BlocState {
 // Auth events
 class LoginEvent extends EventBase {
   final String username;
-  LoginEvent(this.username);
+  final bool asAdmin;
+  LoginEvent(this.username, {this.asAdmin = false});
 }
 
 class LogoutEvent extends EventBase {}
@@ -41,6 +46,7 @@ class LoginUseCase extends BlocUseCase<AuthBloc, LoginEvent> {
       newState: bloc.state.copyWith(
         isLoggedIn: true,
         username: event.username,
+        isAdmin: event.asAdmin,
       ),
     );
   }
@@ -72,6 +78,7 @@ class AuthBloc extends JuiceBloc<AuthState> {
           ],
         );
 
-  void login(String username) => send(LoginEvent(username));
+  void login(String username, {bool asAdmin = false}) =>
+      send(LoginEvent(username, asAdmin: asAdmin));
   void logout() => send(LogoutEvent());
 }

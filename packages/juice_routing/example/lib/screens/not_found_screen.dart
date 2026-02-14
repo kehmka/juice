@@ -1,14 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
-class NotFoundScreen extends StatelessWidget {
-  const NotFoundScreen({super.key});
+class NotFoundScreen extends StatelessJuiceWidget<RoutingBloc> {
+  NotFoundScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-
+  Widget onBuild(BuildContext context, StreamStatus status) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Not Found'),
@@ -16,10 +13,10 @@ class NotFoundScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (routingBloc.state.canPop) {
-              routingBloc.pop();
+            if (bloc.state.canPop) {
+              bloc.pop();
             } else {
-              routingBloc.navigate('/');
+              bloc.navigate('/');
             }
           },
         ),
@@ -57,14 +54,14 @@ class NotFoundScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               FilledButton.icon(
-                onPressed: () => routingBloc.navigate('/'),
+                onPressed: () => bloc.navigate('/'),
                 icon: const Icon(Icons.home),
                 label: const Text('Go Home'),
               ),
               const SizedBox(height: 12),
-              if (routingBloc.state.canPop)
+              if (bloc.state.canPop)
                 OutlinedButton.icon(
-                  onPressed: () => routingBloc.pop(),
+                  onPressed: () => bloc.pop(),
                   icon: const Icon(Icons.arrow_back),
                   label: const Text('Go Back'),
                 ),

@@ -1,15 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
-class PlaygroundScreen extends StatelessWidget {
+class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
   final int depth;
 
-  const PlaygroundScreen({super.key, this.depth = 1});
+  PlaygroundScreen({super.key, this.depth = 1});
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final state = bloc.state;
 
     return Scaffold(
       appBar: AppBar(
@@ -18,30 +17,25 @@ class PlaygroundScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.home),
-          onPressed: () => routingBloc.resetStack('/'),
+          onPressed: () => bloc.resetStack('/'),
           tooltip: 'Reset to Home',
         ),
         actions: [
-          StreamBuilder(
-            stream: routingBloc.stream,
-            builder: (context, snapshot) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Stack: ${routingBloc.state.stackDepth}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              );
-            },
+                child: Text(
+                  'Stack: ${state.stackDepth}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -50,7 +44,7 @@ class PlaygroundScreen extends StatelessWidget {
           // Action buttons
           Container(
             padding: const EdgeInsets.all(16),
-            color: _getDepthColor(depth).withOpacity(0.1),
+            color: _getDepthColor(depth).withValues(alpha: 0.1),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -67,7 +61,7 @@ class PlaygroundScreen extends StatelessWidget {
                         subtitle: 'Add #${depth + 1}',
                         icon: Icons.add,
                         color: Colors.green,
-                        onTap: () => routingBloc.navigate('/playground/${depth + 1}'),
+                        onTap: () => bloc.navigate('/playground/${depth + 1}'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -77,7 +71,7 @@ class PlaygroundScreen extends StatelessWidget {
                         subtitle: 'Swap to #${depth + 10}',
                         icon: Icons.swap_horiz,
                         color: Colors.blue,
-                        onTap: () => routingBloc.navigate(
+                        onTap: () => bloc.navigate(
                           '/playground/${depth + 10}',
                           replace: true,
                         ),
@@ -89,34 +83,22 @@ class PlaygroundScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: StreamBuilder(
-                        stream: routingBloc.stream,
-                        builder: (context, snapshot) {
-                          final canPop = routingBloc.state.canPop;
-                          return _ActionButton(
-                            label: 'Pop',
-                            subtitle: canPop ? 'Go back' : 'At root',
-                            icon: Icons.remove,
-                            color: Colors.orange,
-                            onTap: canPop ? () => routingBloc.pop() : null,
-                          );
-                        },
+                      child: _ActionButton(
+                        label: 'Pop',
+                        subtitle: state.canPop ? 'Go back' : 'At root',
+                        icon: Icons.remove,
+                        color: Colors.orange,
+                        onTap: state.canPop ? () => bloc.pop() : null,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: StreamBuilder(
-                        stream: routingBloc.stream,
-                        builder: (context, snapshot) {
-                          final canPop = routingBloc.state.canPop;
-                          return _ActionButton(
-                            label: 'Pop to Root',
-                            subtitle: canPop ? 'Clear stack' : 'At root',
-                            icon: Icons.first_page,
-                            color: Colors.purple,
-                            onTap: canPop ? () => routingBloc.popToRoot() : null,
-                          );
-                        },
+                      child: _ActionButton(
+                        label: 'Pop to Root',
+                        subtitle: state.canPop ? 'Clear stack' : 'At root',
+                        icon: Icons.first_page,
+                        color: Colors.purple,
+                        onTap: state.canPop ? () => bloc.popToRoot() : null,
                       ),
                     ),
                   ],
@@ -127,7 +109,7 @@ class PlaygroundScreen extends StatelessWidget {
                   subtitle: 'Clear everything, go to /',
                   icon: Icons.refresh,
                   color: Colors.red,
-                  onTap: () => routingBloc.resetStack('/'),
+                  onTap: () => bloc.resetStack('/'),
                 ),
               ],
             ),
@@ -135,205 +117,199 @@ class PlaygroundScreen extends StatelessWidget {
 
           // Stack visualization
           Expanded(
-            child: StreamBuilder(
-              stream: routingBloc.stream,
-              builder: (context, snapshot) {
-                final state = routingBloc.state;
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    // Visual stack
-                    const Text(
-                      'Navigation Stack',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    ...state.stack.reversed.toList().asMap().entries.map((entry) {
-                      final index = state.stack.length - 1 - entry.key;
-                      final stackEntry = entry.value;
-                      final isTop = index == state.stack.length - 1;
-                      final isCurrent = stackEntry.path == '/playground/$depth';
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // Visual stack
+                const Text(
+                  'Navigation Stack',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                ...state.stack.reversed.toList().asMap().entries.map((entry) {
+                  final index = state.stack.length - 1 - entry.key;
+                  final stackEntry = entry.value;
+                  final isTop = index == state.stack.length - 1;
+                  final isCurrent = stackEntry.path == '/playground/$depth';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isCurrent
-                              ? _getDepthColor(depth).withOpacity(0.2)
-                              : (isTop ? Colors.grey[200] : Colors.grey[100]),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isCurrent
-                                ? _getDepthColor(depth)
-                                : (isTop ? Colors.grey[400]! : Colors.grey[300]!),
-                            width: isCurrent ? 2 : 1,
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? _getDepthColor(depth).withValues(alpha: 0.2)
+                          : (isTop ? Colors.grey[200] : Colors.grey[100]),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isCurrent
+                            ? _getDepthColor(depth)
+                            : (isTop ? Colors.grey[400]! : Colors.grey[300]!),
+                        width: isCurrent ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isTop ? Colors.grey[700] : Colors.grey[400],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isTop ? Colors.grey[700] : Colors.grey[400],
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            stackEntry.path,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                        if (isTop)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[700],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'TOP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                stackEntry.path,
-                                style: TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                ),
+                          ),
+                        if (isCurrent && !isTop) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getDepthColor(depth),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'YOU',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            if (isTop)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[700],
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'TOP',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            if (isCurrent && !isTop) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _getDepthColor(depth),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'YOU',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    }),
-
-                    const SizedBox(height: 20),
-
-                    // History
-                    Row(
-                      children: [
-                        const Text(
-                          'History',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${state.history.length} entries',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                        ),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    if (state.history.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'No history yet. Try the navigation actions above!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    else
-                      ...state.history.reversed.take(10).map((entry) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.grey[200]!),
+                  );
+                }),
+
+                const SizedBox(height: 20),
+
+                // History
+                Row(
+                  children: [
+                    const Text(
+                      'History',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${state.history.length} entries',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (state.history.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'No history yet. Try the navigation actions above!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                else
+                  ...state.history.reversed.take(10).map((entry) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _getTypeIcon(entry.type),
+                            size: 16,
+                            color: _getTypeColor(entry.type),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _getTypeIcon(entry.type),
-                                size: 16,
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: _getTypeColor(entry.type).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              entry.type.name.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
                                 color: _getTypeColor(entry.type),
                               ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: _getTypeColor(entry.type).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                                child: Text(
-                                  entry.type.name.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: _getTypeColor(entry.type),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  entry.path,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              if (entry.timeOnRoute != null)
-                                Text(
-                                  _formatDuration(entry.timeOnRoute!),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                            ],
+                            ),
                           ),
-                        );
-                      }),
-                    if (state.history.length > 10)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          '+ ${state.history.length - 10} more entries',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              entry.path,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          if (entry.timeOnRoute != null)
+                            Text(
+                              _formatDuration(entry.timeOnRoute!),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                );
-              },
+                    );
+                  }),
+                if (state.history.length > 10)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '+ ${state.history.length - 10} more entries',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -440,7 +416,7 @@ class _ActionButton extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 10,
                       ),
                     ),

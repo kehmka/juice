@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
+import 'product_bloc.dart';
 import 'routes.dart';
 import 'auth_bloc.dart';
 
@@ -28,6 +29,12 @@ class _MyAppState extends State<MyApp> {
     BlocScope.register<AuthBloc>(
       () => AuthBloc(),
       lifecycle: BlocLifecycle.permanent,
+    );
+
+    // Register ProductBloc - leased so it lives only while the aviator screen is active
+    BlocScope.register<ProductBloc>(
+      () => ProductBloc(),
+      lifecycle: BlocLifecycle.leased,
     );
 
     // Register RoutingBloc globally

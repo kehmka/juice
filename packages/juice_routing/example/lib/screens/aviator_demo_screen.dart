@@ -1,34 +1,16 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
 import '../product_bloc.dart';
 
-class AviatorDemoScreen extends StatefulWidget {
-  const AviatorDemoScreen({super.key});
+class AviatorDemoScreen
+    extends StatelessJuiceWidget2<RoutingBloc, ProductBloc> {
+  AviatorDemoScreen({super.key});
 
   @override
-  State<AviatorDemoScreen> createState() => _AviatorDemoScreenState();
-}
-
-class _AviatorDemoScreenState extends State<AviatorDemoScreen> {
-  late final ProductBloc _productBloc;
-
-  @override
-  void initState() {
-    super.initState();
-    _productBloc = ProductBloc();
-  }
-
-  @override
-  void dispose() {
-    _productBloc.close();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final productState = bloc2.state;
+    final productStatus = bloc2.currentStatus;
 
     return Scaffold(
       appBar: AppBar(
@@ -36,7 +18,7 @@ class _AviatorDemoScreenState extends State<AviatorDemoScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => routingBloc.pop(),
+          onPressed: () => bloc1.pop(),
         ),
       ),
       body: SingleChildScrollView(
@@ -154,83 +136,66 @@ Aviator(
             ),
             const SizedBox(height: 12),
 
-            StreamBuilder(
-              stream: _productBloc.stream,
-              builder: (context, snapshot) {
-                final state = _productBloc.state;
-                final status = _productBloc.currentStatus;
-
-                if (status is WaitingStatus) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: state.products.map((product) {
-                    final isSelected = state.selectedProduct?.id == product.id;
-                    return Card(
-                      color: isSelected ? Colors.deepPurple[50] : null,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.deepPurple,
-                          child: Text(
-                            product.id,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        title: Text(product.name),
-                        subtitle: Text('\$${product.price.toStringAsFixed(2)}'),
-                        trailing: isSelected
-                            ? const Icon(Icons.check, color: Colors.deepPurple)
-                            : const Icon(Icons.chevron_right),
-                        onTap: () => _productBloc.selectProduct(product),
+            if (productStatus is WaitingStatus)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else
+              ...productState.products.map((product) {
+                final isSelected =
+                    productState.selectedProduct?.id == product.id;
+                return Card(
+                  color: isSelected ? Colors.deepPurple[50] : null,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.deepPurple,
+                      child: Text(
+                        product.id,
+                        style: const TextStyle(color: Colors.white),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    title: Text(product.name),
+                    subtitle: Text('\$${product.price.toStringAsFixed(2)}'),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: Colors.deepPurple)
+                        : const Icon(Icons.chevron_right),
+                    onTap: () => bloc2.selectProduct(product),
+                  ),
                 );
-              },
-            ),
+              }),
 
             const SizedBox(height: 16),
 
             // Selected product info
-            StreamBuilder(
-              stream: _productBloc.stream,
-              builder: (context, snapshot) {
-                final selected = _productBloc.state.selectedProduct;
-                if (selected == null) return const SizedBox.shrink();
-
-                return Card(
-                  color: Colors.green[50],
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.green),
-                            SizedBox(width: 8),
-                            Text(
-                              'Aviator Triggered!',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Intent: viewProduct'),
-                        Text('Args: {productId: ${selected.id}}'),
-                        Text('Would navigate to: /product/${selected.id}'),
-                      ],
-                    ),
+            if (productState.selectedProduct != null)
+              Card(
+                color: Colors.green[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green),
+                          SizedBox(width: 8),
+                          Text(
+                            'Aviator Triggered!',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('Intent: viewProduct'),
+                      Text('Args: {productId: ${productState.selectedProduct!.id}}'),
+                      Text('Would navigate to: /product/${productState.selectedProduct!.id}'),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              ),
           ],
         ),
       ),

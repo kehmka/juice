@@ -1,21 +1,19 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 
 import '../auth_bloc.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
   final String? section;
 
-  const SettingsScreen({
+  SettingsScreen({
     super.key,
     this.section,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final routingBloc = BlocScope.get<RoutingBloc>();
-    final authBloc = BlocScope.get<AuthBloc>();
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final stack = bloc1.state.stack;
 
     return Scaffold(
       appBar: AppBar(
@@ -23,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => routingBloc.pop(),
+          onPressed: () => bloc1.pop(),
         ),
       ),
       body: SingleChildScrollView(
@@ -69,62 +67,56 @@ class SettingsScreen extends StatelessWidget {
               subtitle: '/settings/account',
               icon: Icons.person_outline,
               isSelected: section == 'account',
-              onTap: () => routingBloc.navigate('/settings/account'),
+              onTap: () => bloc1.navigate('/settings/account'),
             ),
             _SettingsTile(
               title: 'Privacy Settings',
               subtitle: '/settings/privacy',
               icon: Icons.lock_outline,
               isSelected: section == 'privacy',
-              onTap: () => routingBloc.navigate('/settings/privacy'),
+              onTap: () => bloc1.navigate('/settings/privacy'),
             ),
             _SettingsTile(
               title: 'Main Settings',
               subtitle: '/settings',
               icon: Icons.settings,
               isSelected: section == null,
-              onTap: () => routingBloc.navigate('/settings'),
+              onTap: () => bloc1.navigate('/settings'),
             ),
 
             const Divider(height: 32),
 
             // Stack info
-            StreamBuilder(
-              stream: routingBloc.stream,
-              builder: (context, snapshot) {
-                final stack = routingBloc.state.stack;
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Current Stack',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        ...stack.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final stackEntry = entry.value;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              '${index + 1}. ${stackEntry.path}',
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                color: index == stack.length - 1
-                                    ? Colors.deepPurple
-                                    : Colors.grey,
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Current Stack',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                );
-              },
+                    const SizedBox(height: 8),
+                    ...stack.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final stackEntry = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${index + 1}. ${stackEntry.path}',
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            color: index == stack.length - 1
+                                ? Colors.deepPurple
+                                : Colors.grey,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -134,14 +126,14 @@ class SettingsScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton.icon(
-                  onPressed: () => routingBloc.popToRoot(),
+                  onPressed: () => bloc1.popToRoot(),
                   icon: const Icon(Icons.home),
                   label: const Text('Pop to Root'),
                 ),
                 TextButton.icon(
                   onPressed: () {
-                    authBloc.logout();
-                    routingBloc.resetStack('/');
+                    bloc2.logout();
+                    bloc1.resetStack('/');
                   },
                   icon: const Icon(Icons.logout),
                   label: const Text('Logout & Reset'),

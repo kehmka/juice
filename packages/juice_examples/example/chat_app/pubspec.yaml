@@ -1,0 +1,29 @@
+name: chat_app
+description: Real-time chat app showcasing multi-bloc patterns with juice + juice_storage.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.4
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../../../juice
+  juice_storage:
+    path: ../../../juice_storage
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  juice:
+    path: ../../../juice
+  juice_storage:
+    path: ../../../juice_storage
+
+flutter:
+  uses-material-design: true

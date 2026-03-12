@@ -1,0 +1,37 @@
+name: dashboard
+description: Admin dashboard with RBAC showcasing juice + juice_routing + juice_auth.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.4
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../../../juice
+  juice_storage:
+    path: ../../../juice_storage
+  juice_routing:
+    path: ../../../juice_routing
+  juice_auth:
+    path: ../../../juice_auth
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  juice:
+    path: ../../../juice
+  juice_storage:
+    path: ../../../juice_storage
+  juice_routing:
+    path: ../../../juice_routing
+  juice_auth:
+    path: ../../../juice_auth
+
+flutter:
+  uses-material-design: true

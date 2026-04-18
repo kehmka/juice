@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0] - 2026-04-18
+
+### Changed
+
+- Repositioned Juice as a lifecycle-aware application framework rather than a generic state-management package
+- Treated `packages/juice` as the canonical implementation source in repository docs and release messaging
+- Tightened package hygiene for publishing, including moving `flutter_test` out of runtime dependencies
+
+### Documentation
+
+- Refreshed README and onboarding guidance to point users toward the strongest standalone examples
+- Clarified that the repository-root `example/` app is a showcase, not the primary architecture reference
+
 ## [1.3.0] - 2025-01-17
 
 ### Improvements

@@ -4,13 +4,13 @@ import '../services/services.dart';
 
 class BlocRegistry {
   static void initialize(DeepLinkConfig deeplinkconfig) {
-    // ScopeLifecycleBloc - must be registered first for scope lifecycle management
+    // ScopeLifecycleBloc powers feature-scope lifecycle demos and cleanup.
     BlocScope.register<ScopeLifecycleBloc>(
       () => ScopeLifecycleBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // App-level blocs - permanent lifecycle (live for entire app lifetime)
+    // App-level blocs - global services for the showcase shell.
     BlocScope.register<AppBloc>(
       () => AppBloc(deeplinkconfig: deeplinkconfig),
       lifecycle: BlocLifecycle.permanent,
@@ -24,41 +24,44 @@ class BlocRegistry {
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // Feature blocs - permanent for now, could be feature-scoped later
+    // Screen-owned examples use leased lifecycle so the showcase actually
+    // demonstrates Juice ownership semantics instead of defaulting everything
+    // to app-lifetime state.
     BlocScope.register<CounterBloc>(
       () => CounterBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<TodoBloc>(
       () => TodoBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<ChatBloc>(
       () => ChatBloc(WebSocketService()),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<FileUploadBloc>(
       () => FileUploadBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<FormBloc>(
       () => FormBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<OnboardingBloc>(
       () => OnboardingBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<UserProfileBloc>(
       () => UserProfileBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
     BlocScope.register<WeatherBloc>(
       () => WeatherBloc(),
-      lifecycle: BlocLifecycle.permanent,
+      lifecycle: BlocLifecycle.leased,
     );
 
-    // Relay demo blocs
+    // Relay demo blocs stay permanent because the page wires relays up once
+    // and expects both sides to be available for the duration of the session.
     BlocScope.register<SourceBloc>(
       () => SourceBloc(),
       lifecycle: BlocLifecycle.permanent,
@@ -68,19 +71,20 @@ class BlocRegistry {
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // Features showcase - demonstrates new Juice features
+    // Keep the advanced showcase permanent because the page mixes selectors,
+    // direct callbacks, and sendAndWait demonstrations.
     BlocScope.register<FeaturesShowcaseBloc>(
       () => FeaturesShowcaseBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // Lifecycle demo - demonstrates ScopeLifecycleBloc cleanup
+    // Lifecycle demo owns its own internal FeatureScope and notification wiring.
     BlocScope.register<LifecycleDemoBloc>(
       () => LifecycleDemoBloc(),
       lifecycle: BlocLifecycle.permanent,
     );
 
-    // Enable leak detection in debug mode (demonstrates LeakDetector feature)
+    // Enable leak detection so leased examples surface misuse during showcase work.
     BlocScope.enableLeakDetection();
   }
 }

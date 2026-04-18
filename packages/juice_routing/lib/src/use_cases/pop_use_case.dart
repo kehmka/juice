@@ -19,7 +19,7 @@ class PopUseCase extends BlocUseCase<RoutingBloc, PopEvent> {
     if (!state.canPop) {
       emitFailure(
         newState: state.copyWith(
-          error: CannotPopError(),
+          error: const CannotPopError(),
         ),
         groupsToRebuild: {RoutingGroups.error},
       );

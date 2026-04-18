@@ -46,7 +46,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
             // Navigation demos
             _NavigationCard(
               title: 'Navigation Playground',
-              subtitle: 'Try push, pop, replace, reset and see the stack update live.',
+              subtitle:
+                  'Try push, pop, replace, reset and see the stack update live.',
               icon: Icons.science_outlined,
               color: Colors.teal,
               onTap: () => bloc1.navigate('/playground/1'),
@@ -55,7 +56,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
 
             _NavigationCard(
               title: 'Aviator Demo',
-              subtitle: 'Shows loose coupling between use cases and navigation.',
+              subtitle:
+                  'Shows loose coupling between use cases and navigation.',
               icon: Icons.flight_takeoff,
               onTap: () => bloc1.navigate('/aviator-demo'),
             ),
@@ -63,7 +65,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
 
             _NavigationCard(
               title: 'Profile (Protected)',
-              subtitle: 'Requires authentication. Try navigating without logging in.',
+              subtitle:
+                  'Requires authentication. Try navigating without logging in.',
               icon: Icons.person,
               onTap: () => bloc1.navigate('/profile/123'),
             ),
@@ -71,7 +74,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
 
             _NavigationCard(
               title: 'Settings (Protected)',
-              subtitle: 'Nested routes with /settings/account and /settings/privacy.',
+              subtitle:
+                  'Nested routes with /settings/account and /settings/privacy.',
               icon: Icons.settings,
               onTap: () => bloc1.navigate('/settings'),
             ),
@@ -79,7 +83,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
 
             _NavigationCard(
               title: 'Admin Panel (Role Protected)',
-              subtitle: 'Requires admin role. Try with and without admin login.',
+              subtitle:
+                  'Requires admin role. Try with and without admin login.',
               icon: Icons.admin_panel_settings,
               color: Colors.deepPurple,
               onTap: () => bloc1.navigate('/admin'),
@@ -217,7 +222,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                 final isTop = index == stack.length - 1;
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isTop ? Colors.purple[100] : Colors.white,
                     borderRadius: BorderRadius.circular(4),
@@ -251,13 +257,15 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                           style: TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 12,
-                            fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                isTop ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ),
                       if (isTop)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.purple,
                             borderRadius: BorderRadius.circular(8),
@@ -346,7 +354,9 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: isLatest ? Colors.grey[400]! : Colors.grey[200]!,
+                            color: isLatest
+                                ? Colors.grey[400]!
+                                : Colors.grey[200]!,
                           ),
                         ),
                         child: Row(
@@ -390,7 +400,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.grey[700],
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: const Text(
                                             'LATEST',
@@ -412,8 +423,10 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                                           vertical: 1,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: typeColor.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color:
+                                              typeColor.withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           historyEntry.type.name.toUpperCase(),
@@ -447,7 +460,8 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          _formatDuration(historyEntry.timeOnRoute),
+                                          _formatDuration(
+                                              historyEntry.timeOnRoute),
                                           style: TextStyle(
                                             color: Colors.grey[500],
                                             fontSize: 11,
@@ -484,7 +498,7 @@ class HomeScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
               ),
             ),
             const SizedBox(height: 8),
-            Wrap(
+            const Wrap(
               spacing: 16,
               runSpacing: 8,
               children: [

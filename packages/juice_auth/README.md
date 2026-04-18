@@ -19,7 +19,7 @@ Authentication lifecycle management for [Juice](https://pub.dev/packages/juice) 
 
 ```yaml
 dependencies:
-  juice_auth: ^0.1.0
+  juice_auth: ^0.2.0
 ```
 
 ## Quick Start
@@ -87,10 +87,15 @@ void main() {
   );
 
   // 2. AuthBloc
+  final storageBloc = BlocScope.get<StorageBloc>();
+
   BlocScope.register<AuthBloc>(
-    () => AuthBloc(config: AuthConfig(
-      providers: {'email': MyApiAuthProvider()},
-    )),
+    () => AuthBloc.withConfig(
+      AuthConfig(
+        providers: {'email': MyApiAuthProvider()},
+      ),
+      storageBloc: storageBloc,
+    ),
     lifecycle: BlocLifecycle.permanent,
   );
 

@@ -84,8 +84,8 @@ void main() {
       final guard = AuthGuard(isAuthenticated: () => false);
       final context = RouteContext(
         targetPath: '/dashboard',
-        params: {},
-        query: {},
+        params: const {},
+        query: const {},
         currentState: RoutingState.initial,
         targetRoute: RouteConfig(
           path: '/dashboard',

@@ -4,6 +4,7 @@ import '../app.dart';
 
 class AppBloc extends JuiceBloc<AppState> {
   final navigatorKey = GlobalKey<NavigatorState>();
+
   AppBloc({required DeepLinkConfig deeplinkconfig})
       : super(
           AppState(),
@@ -12,10 +13,9 @@ class AppBloc extends JuiceBloc<AppState> {
             () => DeepLinkAviator(
                   name: 'deepLink',
                   navigate: (args) {
-                    final bloc = BlocScope.get<AppBloc>();
                     final route = args['route'] as String;
-                    JuiceLoggerConfig.logger.log("Navigating to route: $route");
-                    bloc.navigatorKey.currentState?.pushNamed(route);
+                    JuiceLoggerConfig.logger.log('Navigating to route: $route');
+                    navigatorKey.currentState?.pushNamed(route);
                   },
                   config: deeplinkconfig,
                 ),

@@ -68,7 +68,8 @@ class LoadProductsUseCase extends BlocUseCase<ProductBloc, LoadProductsEvent> {
 /// it uses `emitUpdate(aviatorName: 'viewProduct')` which triggers
 /// the registered aviator. The use case doesn't need to know about
 /// routes or the routing system at all.
-class SelectProductUseCase extends BlocUseCase<ProductBloc, SelectProductEvent> {
+class SelectProductUseCase
+    extends BlocUseCase<ProductBloc, SelectProductEvent> {
   @override
   Future<void> execute(SelectProductEvent event) async {
     emitUpdate(
@@ -106,7 +107,8 @@ class ProductBloc extends JuiceBloc<ProductState> {
                     if (productId != null) {
                       // This is where we connect to the routing system
                       // The use case doesn't need to know about this
-                      print('[Aviator] viewProduct -> /product/$productId');
+                      debugPrint(
+                          '[Aviator] viewProduct -> /product/$productId');
                     }
                   },
                 ),

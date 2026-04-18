@@ -20,8 +20,7 @@ final class RouteNotFoundError extends RoutingError {
   /// The path that could not be resolved
   final String path;
 
-  const RouteNotFoundError(this.path)
-      : super('No route found for path: $path');
+  const RouteNotFoundError(this.path) : super('No route found for path: $path');
 }
 
 /// Thrown when a guard blocks navigation without redirecting.
@@ -63,7 +62,8 @@ final class GuardExceptionError extends RoutingError {
     required this.guardName,
     required this.exception,
     this.stackTrace,
-  }) : super('Guard $guardName threw exception during navigation to $path: $exception');
+  }) : super(
+            'Guard $guardName threw exception during navigation to $path: $exception');
 }
 
 /// Thrown when redirect chain exceeds maximum allowed redirects.
@@ -97,5 +97,5 @@ final class InvalidPathError extends RoutingError {
 
 /// Thrown when attempting to pop with only one route on the stack.
 final class CannotPopError extends RoutingError {
-  CannotPopError() : super('Cannot pop: already at root route');
+  const CannotPopError() : super('Cannot pop: already at root route');
 }

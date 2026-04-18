@@ -1,6 +1,6 @@
 # juice_network
 
-A reactive HTTP client bloc for [Juice](https://pub.dev/packages/juice) applications with Dio integration, intelligent caching, request coalescing, and automatic retry.
+A lifecycle-aware HTTP workflow package for [Juice](https://pub.dev/packages/juice) applications with Dio integration, intelligent caching, request coalescing, and automatic retry.
 
 [![pub package](https://img.shields.io/pub/v/juice_network.svg)](https://pub.dev/packages/juice_network)
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
@@ -21,7 +21,7 @@ A reactive HTTP client bloc for [Juice](https://pub.dev/packages/juice) applicat
 
 ```yaml
 dependencies:
-  juice_network: ^0.9.2
+  juice_network: ^0.10.0
 ```
 
 ## Quick Start
@@ -67,6 +67,8 @@ Future<void> main() async {
   runApp(MyApp());
 }
 ```
+
+`FetchBloc` is most valuable when you need predictable ownership and cleanup for network activity, not just a thin wrapper around Dio.
 
 ### 2. Make Requests
 

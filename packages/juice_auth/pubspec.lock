@@ -203,19 +203,17 @@ packages:
   juice:
     dependency: "direct main"
     description:
-      name: juice
-      sha256: "2f83cfc021aeb226bbae5c68d566fb6c9d61485f2c94ef5bf02b1d541d48e044"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.0"
+      path: "../juice"
+      relative: true
+    source: path
+    version: "1.4.0"
   juice_storage:
     dependency: "direct main"
     description:
-      name: juice_storage
-      sha256: "6c309bc0ae8e45c0fa663fc096876c454f8e89466576a722e61381b640b0a0a0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
+      path: "../juice_storage"
+      relative: true
+    source: path
+    version: "1.2.0"
   leak_tracker:
     dependency: transitive
     description:

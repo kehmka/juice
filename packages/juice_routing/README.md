@@ -18,7 +18,7 @@ Declarative, state-driven navigation for [Juice](https://pub.dev/packages/juice)
 
 ```yaml
 dependencies:
-  juice_routing: ^1.0.0
+  juice_routing: ^1.1.0
 ```
 
 ## Quick Start

@@ -49,16 +49,17 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final AppBloc _appBloc;
+
   @override
   void initState() {
     super.initState();
+    _appBloc = BlocScope.get<AppBloc>();
 
     // Handle initial deep link after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialExample != null) {
-        // Use BlocScope.get for permanent blocs
-        final appBloc = BlocScope.get<AppBloc>();
-        appBloc.send(UpdateEvent(
+        _appBloc.send(UpdateEvent(
           aviatorName: 'deepLink',
           aviatorArgs: {'deepLink': widget.initialExample},
         ));
@@ -76,8 +77,8 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: BlocScope.get<AppBloc>().navigatorKey,
-      title: 'Juice Examples',
+      navigatorKey: _appBloc.navigatorKey,
+      title: 'Juice Showcase',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -87,7 +88,7 @@ class _MyAppState extends State<MyApp> {
       onGenerateRoute: (settings) {
         if (settings.name == '/') {
           return MaterialPageRoute(
-            builder: (context) => const MyHomePage(title: 'Juice Examples'),
+            builder: (context) => const MyHomePage(title: 'Juice Showcase'),
           );
         }
 
@@ -101,7 +102,7 @@ class _MyAppState extends State<MyApp> {
 
         // Handle unknown routes
         return MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: 'Juice Examples'),
+          builder: (context) => const MyHomePage(title: 'Juice Showcase'),
         );
       },
     );
@@ -116,25 +117,66 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final examples = [
       {
-        'title': 'New Features Showcase',
+        'title': 'Framework Features Showcase',
         'route': '/features-showcase',
-        'subtitle': 'JuiceSelector, sendAndWait, JuiceException, LeakDetector'
+        'subtitle': 'Selectors, sendAndWait, typed failures, rebuild tracking'
       },
       {
         'title': 'Lifecycle Demo',
         'route': '/lifecycle-demo',
-        'subtitle': 'ScopeLifecycleBloc cleanup with parallel tasks'
+        'subtitle':
+            'FeatureScope cleanup, barriers, notifications, leak detection'
       },
-      {'title': 'Auth & EventSubscription', 'route': '/auth'},
-      {'title': 'Counter Example', 'route': '/counter'},
-      {'title': 'Counter (Builder Pattern)', 'route': '/counter-builder'},
-      {'title': 'StateRelay & StatusRelay Demo', 'route': '/relay-demo'},
-      {'title': 'Todo Example', 'route': '/todo'},
-      {'title': 'Chat Example', 'route': '/chat'},
-      {'title': 'Form Example', 'route': '/form'},
-      {'title': 'Weather Example', 'route': '/weather'},
-      {'title': 'File Upload', 'route': '/upload'},
-      {'title': 'Onboard example', 'route': '/onboard'},
+      {
+        'title': 'Auth & EventSubscription',
+        'route': '/auth',
+        'subtitle': 'Leased profile bloc reacting to auth events'
+      },
+      {
+        'title': 'StateRelay & StatusRelay Demo',
+        'route': '/relay-demo',
+        'subtitle': 'Cross-bloc communication without widget glue'
+      },
+      {
+        'title': 'Counter Example',
+        'route': '/counter',
+        'subtitle': 'Leased screen-owned state with targeted rebuilds'
+      },
+      {
+        'title': 'Counter (Builder Pattern)',
+        'route': '/counter-builder',
+        'subtitle': 'Inline builder composition without widget inheritance'
+      },
+      {
+        'title': 'Todo Example',
+        'route': '/todo',
+        'subtitle': 'Leased list state for a screen-local workflow'
+      },
+      {
+        'title': 'Chat Example',
+        'route': '/chat',
+        'subtitle': 'Leased real-time screen using stateful widget ownership'
+      },
+      {
+        'title': 'Form Example',
+        'route': '/form',
+        'subtitle': 'Leased form workflow and async submission feedback'
+      },
+      {
+        'title': 'Weather Example',
+        'route': '/weather',
+        'subtitle': 'Leased feature state plus permanent settings state'
+      },
+      {
+        'title': 'File Upload',
+        'route': '/upload',
+        'subtitle': 'Leased upload state with progress-oriented UI'
+      },
+      {
+        'title': 'Onboarding Example',
+        'route': '/onboard',
+        'subtitle': 'Leased page-flow state owned by the screen'
+      },
     ];
 
     return Scaffold(
@@ -142,20 +184,39 @@ class MyHomePage extends StatelessWidget {
         title: Text(title),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: ListView.builder(
-        itemCount: examples.length,
-        itemBuilder: (context, index) {
-          final example = examples[index];
-          final subtitle = example['subtitle'] as String?;
-          return ListTile(
-            title: Text(example['title'] as String),
-            subtitle: subtitle != null ? Text(subtitle) : null,
-            trailing: const Icon(Icons.arrow_forward),
-            onTap: () {
-              Navigator.pushNamed(context, example['route'] as String);
-            },
-          );
-        },
+      body: ListView(
+        children: [
+          Card(
+            margin: const EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Showcase App',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'This app is the fast tour of Juice concepts. For the strongest production-style references, start with packages/juice_examples, especially notes_app, social_feed, dashboard, and ecommerce.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ...examples.map((example) {
+            final subtitle = example['subtitle'] as String?;
+            return ListTile(
+              title: Text(example['title'] as String),
+              subtitle: subtitle != null ? Text(subtitle) : null,
+              trailing: const Icon(Icons.arrow_forward),
+              onTap: () {
+                Navigator.pushNamed(context, example['route'] as String);
+              },
+            );
+          }),
+        ],
       ),
     );
   }

@@ -5,6 +5,8 @@
 
 Local storage, caching, and secure storage for the [Juice](https://pub.dev/packages/juice) framework.
 
+`juice_storage` is designed for lifecycle-aware app architectures where persistence, TTL cache cleanup, and secure token storage need to fit the same bloc ownership model as the rest of the app.
+
 ## Features
 
 - **Multiple Backends**: Unified API for Hive, SharedPreferences, SQLite, and flutter_secure_storage
@@ -31,8 +33,8 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 
 ```yaml
 dependencies:
-  juice: ^1.3.0
-  juice_storage: ^1.1.0
+  juice: ^1.4.0
+  juice_storage: ^1.2.0
 ```
 
 ## Usage

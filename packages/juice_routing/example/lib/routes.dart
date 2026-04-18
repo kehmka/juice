@@ -24,7 +24,7 @@ class LoggingGuard extends RouteGuard {
 
   @override
   Future<GuardResult> check(RouteContext context) async {
-    print('[Navigation] ${context.targetPath}');
+    debugPrint('[Navigation] ${context.targetPath}');
     return const GuardResult.allow();
   }
 }

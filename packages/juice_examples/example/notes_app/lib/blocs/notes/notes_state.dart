@@ -1,25 +1,25 @@
 import 'package:juice/juice.dart';
-import '../models/note.dart';
-
-enum NotesSortOrder { updatedDesc, updatedAsc, titleAsc, titleDesc }
+import '../../models/note.dart';
+import '../settings/settings_state.dart';
 
 class NotesState extends BlocState {
   final List<Note> notes;
-  final Note? activeNote;
   final String searchQuery;
-  final NotesSortOrder sortOrder;
-  final bool isLoading;
+  final SortOrder sortOrder;
+  final ViewMode viewMode;
 
   const NotesState({
     this.notes = const [],
-    this.activeNote,
     this.searchQuery = '',
-    this.sortOrder = NotesSortOrder.updatedDesc,
-    this.isLoading = false,
+    this.sortOrder = SortOrder.updatedDesc,
+    this.viewMode = ViewMode.list,
   });
 
+  /// Active (non-trashed) notes, filtered by search and sorted with
+  /// pinned notes first.
   List<Note> get filteredNotes {
-    var result = List<Note>.from(notes);
+    var result = notes.where((n) => !n.isTrashed).toList();
+
     if (searchQuery.isNotEmpty) {
       final query = searchQuery.toLowerCase();
       result = result
@@ -28,33 +28,40 @@ class NotesState extends BlocState {
               n.body.toLowerCase().contains(query))
           .toList();
     }
+
+    // Sort by current order
     switch (sortOrder) {
-      case NotesSortOrder.updatedDesc:
+      case SortOrder.updatedDesc:
         result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      case NotesSortOrder.updatedAsc:
+      case SortOrder.updatedAsc:
         result.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
-      case NotesSortOrder.titleAsc:
+      case SortOrder.titleAsc:
         result.sort((a, b) => a.title.compareTo(b.title));
-      case NotesSortOrder.titleDesc:
+      case SortOrder.titleDesc:
         result.sort((a, b) => b.title.compareTo(a.title));
     }
-    return result;
+
+    // Pinned notes bubble to top, preserving relative order within each group
+    final pinned = result.where((n) => n.isPinned).toList();
+    final unpinned = result.where((n) => !n.isPinned).toList();
+    return [...pinned, ...unpinned];
   }
+
+  /// Trashed notes only.
+  List<Note> get trashedNotes =>
+      notes.where((n) => n.isTrashed).toList();
 
   NotesState copyWith({
     List<Note>? notes,
-    Note? activeNote,
     String? searchQuery,
-    NotesSortOrder? sortOrder,
-    bool? isLoading,
-    bool clearActiveNote = false,
+    SortOrder? sortOrder,
+    ViewMode? viewMode,
   }) {
     return NotesState(
       notes: notes ?? this.notes,
-      activeNote: clearActiveNote ? null : (activeNote ?? this.activeNote),
       searchQuery: searchQuery ?? this.searchQuery,
       sortOrder: sortOrder ?? this.sortOrder,
-      isLoading: isLoading ?? this.isLoading,
+      viewMode: viewMode ?? this.viewMode,
     );
   }
 }

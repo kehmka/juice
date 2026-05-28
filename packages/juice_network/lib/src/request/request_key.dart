@@ -223,13 +223,20 @@ class RequestKey {
   static String? _hashIdentityHeaders(Map<String, String>? headers) {
     if (headers == null || headers.isEmpty) return null;
 
+    // HTTP header names are case-insensitive and callers commonly use the
+    // conventional capitalization ('Accept', 'Content-Type'). Lowercase all
+    // names first so identity matching is case-insensitive.
+    final lowerHeaders = <String, String>{};
+    for (final entry in headers.entries) {
+      lowerHeaders[entry.key.toLowerCase()] = entry.value;
+    }
+
     final normalized = <String>[];
 
     for (final name in _identityHeaders) {
-      // Check both original case and lowercase
-      final value = headers[name] ?? headers[name.toLowerCase()];
+      final value = lowerHeaders[name];
       if (value != null && value.isNotEmpty) {
-        normalized.add('${name.toLowerCase()}=${value.trim().toLowerCase()}');
+        normalized.add('$name=${value.trim().toLowerCase()}');
       }
     }
 

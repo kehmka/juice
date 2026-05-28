@@ -92,6 +92,11 @@ class RequestCoalescer {
       return CoalesceResult(response, wasCoalesced: false);
     } catch (e, stackTrace) {
       completer.completeError(e, stackTrace);
+      // If no caller coalesced onto this request, completer.future has no
+      // listeners; ignore() prevents its error from surfacing as an unhandled
+      // async error. The error is still rethrown to the originating caller, and
+      // any coalesced awaiters receive it via their own await.
+      completer.future.ignore();
       rethrow;
     } finally {
       _inflight.remove(canonical);

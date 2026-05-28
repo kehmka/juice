@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-05-28
+
+### Fixed
+- **RequestKey identity headers** are now matched case-insensitively. Previously
+  only lowercase header names were recognized, so conventionally-capitalized
+  identity headers (`Accept`, `Content-Type`, …) were silently dropped from the
+  cache/coalescing key — two requests differing only by such a header could
+  collide and serve the wrong response. (`request_key.dart`)
+- **RequestCoalescer no longer leaks an unhandled async error** when a
+  non-coalesced request fails. The internal completer's future is now ignored
+  if no caller coalesced onto it; the error is still rethrown to the originating
+  caller and delivered to any coalesced awaiters. (`request_coalescer.dart`)
+
+### Added
+- Comprehensive behavioral test coverage: `RequestKey` canonicalization, all
+  five cache policies, cache-safety rules (auth/sensitive-endpoint/`no-store`),
+  retry safety (idempotency + opt-in validation), interceptors (auth, API key,
+  ETag, refresh-token singleflight), and cancellation/coalescing semantics.
+
+### Changed
+- `doc/SPEC.md` reconciled with the shipping implementation; added an
+  Implementation Notes section documenting intentional divergences (code is the
+  source of truth).
+
 ## [0.10.0] - 2026-04-18
 
 ### Changed

@@ -1,6 +1,9 @@
 # juice_network Specification
 
-> **Status:** Draft v1.3 (pre-freeze)
+> **Status:** Implemented (shipping). This document is the original design
+> contract. Where the implementation and this spec differ, **the code is the
+> source of truth** — see [Implementation Notes](#implementation-notes) for the
+> known, intentional divergences.
 > **Package:** `juice_network`
 > **Primary Bloc:** `FetchBloc`
 
@@ -3115,6 +3118,54 @@ Before marking spec as frozen for v0.1.0, verify all items:
 
 ---
 
+## Implementation Notes
+
+These are the intentional divergences between this design contract and the
+shipping implementation. **The code is the source of truth**; this section
+documents where it deviates and why.
+
+### Request key is path-relative (host/scheme/port excluded)
+
+The canonical `RequestKey` is built from `method + path + query + body +
+identity-headers + authScope + variant`. Unlike the "Canonical Key Format"
+section above, the URL **scheme, host, and port are not part of the key**. A
+`FetchBloc` is scoped to a single `baseUrl`, so identity is intentionally
+path-relative. Consequence: two absolute URLs that differ only by host but
+share a path collapse to the same cache/coalescing key. If you point one
+`FetchBloc` at multiple hosts with overlapping paths, disambiguate with
+`variant`.
+
+### Path and query keys are lowercased
+
+Path segments and query-parameter **keys** are lowercased during
+canonicalization (query *values* are preserved). `/Users/1` and `/users/1`
+produce the same key, as do `?Q=x` and `?q=x`. This trades strict RFC
+case-sensitivity for fewer accidental cache misses. Query keys being lowercased
+also differs from the case-sensitive rule described above.
+
+### Identity headers are matched case-insensitively
+
+HTTP header names are case-insensitive, and the identity-header hash matches
+them accordingly — `Accept`, `accept`, and `ACCEPT` are equivalent. (Earlier
+revisions only matched lowercase header names, which silently dropped
+conventionally-capitalized headers like `Accept` / `Content-Type` from the key;
+this is fixed.)
+
+### Request events extend `EventBase`, not `ResultEvent`
+
+Request events (`GetEvent`, `PostEvent`, …) extend `EventBase`. There is no
+`event.result` future; observe outcomes through `FetchState` and the bloc's
+`StreamStatus` (rebuild groups), not by awaiting the event.
+
+### Deferred / not implemented
+
+The offline-queue events (`PauseRequestsEvent`, `ResumeRequestsEvent`,
+`EnqueueOutboxEvent`, `FlushOutboxEvent`) remain on the roadmap and are not
+implemented. Runtime interceptor mutation is available via
+`ReconfigureInterceptorsEvent`.
+
+---
+
 ## Spec Version
 
 | Version | Date | Status | Changes |
@@ -3123,4 +3174,5 @@ Before marking spec as frozen for v0.1.0, verify all items:
 | 1.1 | - | Pre-freeze | Added canonicalization rules, coalescing semantics, cache safety, retry correctness, freeze checklist |
 | 1.2 | - | Pre-freeze | Refined "Why Use FetchBloc?" with 5 problems / 6 solutions framing; positioning as remote-state contract |
 | 1.3 | - | Pre-freeze | Fixed Juice patterns (StatelessJuiceWidget, BlocUseCase, Set groups, EventBase); Added ScopeLifecycleBloc integration |
-| 1.4 | - | **Frozen** | Ready for v0.1.0 implementation |
+| 1.4 | - | Frozen | Original implementation contract |
+| 1.5 | - | Implemented | Reconciled with shipping code; added [Implementation Notes](#implementation-notes) (code is source of truth) |

@@ -1,0 +1,31 @@
+name: juice_auth_network_example
+description: Demo app for juice_auth_network — AuthBloc wired into FetchBloc.
+publish_to: 'none'
+
+version: 1.0.0
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../../juice
+  juice_auth:
+    path: ../../juice_auth
+  juice_network:
+    path: ../../juice_network
+  juice_storage:
+    path: ../../juice_storage
+  juice_auth_network:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

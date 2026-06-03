@@ -263,6 +263,14 @@ See the [example](example/) directory for a complete demo app showcasing:
 - Request coalescing demonstration
 - Real-time statistics dashboard
 
+## Authentication
+
+For token injection, 401 refresh, and per-user cache isolation driven by an
+`AuthBloc`, use [`juice_auth_network`](https://pub.dev/packages/juice_auth_network) —
+ready-made adapters that wire [`juice_auth`](https://pub.dev/packages/juice_auth)
+into `FetchBloc`'s `authIdentityProvider`, `AuthInterceptor`, and
+`RefreshTokenInterceptor`.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

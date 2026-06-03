@@ -1,6 +1,9 @@
 # juice_auth Specification
 
-> **Status:** Draft v0.1 (pre-freeze)
+> **Status:** Implemented (shipping). This document is the original design
+> contract. Where the implementation and this spec differ, **the code is the
+> source of truth** — see [Implementation Notes](#implementation-notes) for the
+> known, intentional divergences.
 > **Package:** `juice_auth`
 > **Primary Bloc:** `AuthBloc`
 
@@ -1539,8 +1542,40 @@ test('rate limiting after max login attempts', () async {
 
 ---
 
+## Implementation Notes
+
+These are the intentional divergences between this design contract and the
+shipping implementation. **The code is the source of truth**; this section
+documents where it deviates and why.
+
+### Events extend `EventBase`, not `ResultEvent`
+
+Auth events (`LoginEvent`, `LogoutEvent`, `RefreshTokenEvent`, …) extend the
+core Juice `EventBase`. There is no per-event `result` future to await — outcomes
+are observed via `AuthState` (`status`, `lastError`, `user`, `session`) and the
+bloc's `StreamStatus` rebuild groups.
+
+### Phase 3 features not implemented
+
+The roadmap items under [Implementation Phases → Phase 3](#phase-3-advanced)
+(e.g. `SwitchAccountEvent`, multi-account storage) are deferred and are not
+present in the shipping code. The current implementation corresponds to Phase 1
++ Phase 2 of the original plan.
+
+### Singleflight guard uses a public `refreshInFlight` field
+
+The `RefreshTokenUseCase`'s singleflight guard is implemented on
+`AuthBloc.refreshInFlight` (a public `Completer<String?>?` on the bloc) rather
+than encapsulated inside the use case. This is intentional: it lets future
+internal callers (e.g. the auto-refresh timer / `TokenExpiryUseCase`) share the
+same in-flight gate. The completer's future is `.ignore()`-ed so an orphan
+(no concurrent caller) does not surface as an unhandled async error.
+
+---
+
 ## Spec Version
 
 | Version | Date | Status | Changes |
 |---------|------|--------|---------|
 | 0.1 | - | Draft | Initial spec |
+| 0.2 | - | Implemented | Reconciled with shipping code; added [Implementation Notes](#implementation-notes) (code is source of truth) |

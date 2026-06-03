@@ -739,5 +739,107 @@ void main() {
         await oauthBloc.close();
       });
     });
+
+    // ============================================================
+    // Refresh scheduling: timer, past-window, and singleflight.
+    // These cover the README's "automatic token lifecycle" and
+    // "singleflight refresh" claims, which were untested.
+    // ============================================================
+    group('refresh scheduling', () {
+      setUp(() async {
+        // Authenticated bloc with a refresh-capable session.
+        bloc = AuthBloc.withConfig(
+          AuthConfig(
+            providers: {'email': emailProvider},
+            restoreSessionOnInit: false,
+            // Tight buffer so the auto-refresh test fires within ~50ms.
+            refreshBuffer: const Duration(milliseconds: 50),
+          ),
+          storageBloc: storageBloc,
+        );
+        await Future.delayed(_delay);
+
+        when(() => emailProvider.authenticate(any()))
+            .thenAnswer((_) async => _makeResult(
+                  refreshToken: 'refresh-token',
+                  // Far enough out that login's own scheduleRefresh
+                  // doesn't fire its timer during the test window.
+                  expiresAt: DateTime.now().add(const Duration(hours: 1)),
+                ));
+        bloc.loginWithEmail('test@example.com', 'password');
+        await Future.delayed(_delay);
+      });
+
+      test('past-window expiresAt triggers an immediate refresh', () async {
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async => _makeResult(
+                  accessToken: 'new-access',
+                  refreshToken: 'refresh-token',
+                  expiresAt: DateTime.now().add(const Duration(hours: 1)),
+                ));
+
+        // Anything before (now - refreshBuffer) makes timeUntilRefresh
+        // negative, hitting the immediate-fire branch in auth_bloc.dart.
+        bloc.scheduleRefresh(
+          DateTime.now().subtract(const Duration(minutes: 5)),
+        );
+        await Future.delayed(_delay);
+
+        verify(() => emailProvider.refreshToken('refresh-token')).called(1);
+        expect(bloc.state.session?.accessToken, 'new-access');
+      });
+
+      test('Timer fires near expiry and refresh executes', () async {
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async => _makeResult(
+                  accessToken: 'auto-refreshed',
+                  refreshToken: 'refresh-token',
+                  // Far-future to prevent the refreshed timer from
+                  // firing again before the test finishes.
+                  expiresAt: DateTime.now().add(const Duration(hours: 1)),
+                ));
+
+        // Schedule a refresh ~50ms out (100ms expiry - 50ms buffer).
+        bloc.scheduleRefresh(
+          DateTime.now().add(const Duration(milliseconds: 100)),
+        );
+
+        // Wait long enough for the Timer to fire AND the refresh chain
+        // (TokenExpiryEvent → RefreshTokenEvent → provider call) to settle.
+        await Future.delayed(const Duration(milliseconds: 250));
+
+        verify(() => emailProvider.refreshToken('refresh-token')).called(1);
+        expect(bloc.state.session?.accessToken, 'auto-refreshed');
+      });
+
+      test('concurrent RefreshTokenEvents collapse to a single provider call',
+          () async {
+        // Provider takes ~80ms so several events queue up before the
+        // first refresh completes — exercising the singleflight gate.
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          return _makeResult(
+            accessToken: 'singleflight-result',
+            refreshToken: 'refresh-token',
+            expiresAt: DateTime.now().add(const Duration(hours: 1)),
+          );
+        });
+
+        // Fire several refreshes back-to-back without awaiting.
+        bloc.refreshToken();
+        bloc.refreshToken();
+        bloc.refreshToken();
+        bloc.refreshToken();
+        bloc.refreshToken();
+
+        // Wait past the provider delay so the inflight completer resolves.
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        verify(() => emailProvider.refreshToken('refresh-token')).called(1);
+        expect(bloc.state.session?.accessToken, 'singleflight-result');
+        expect(bloc.refreshInFlight, isNull);
+      });
+    });
   });
 }

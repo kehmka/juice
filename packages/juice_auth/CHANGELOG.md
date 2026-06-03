@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-05-28
+
+### Added
+- Tests covering the README's previously-unverified refresh-scheduling claims:
+  the past-window immediate-fire branch of `scheduleRefresh`, the auto-refresh
+  `Timer` path (`scheduleRefresh` → `TokenExpiryEvent` → `RefreshTokenEvent`),
+  and singleflight collapse of concurrent `RefreshTokenEvent`s into a single
+  provider call.
+
+### Changed
+- `doc/SPEC.md` reconciled with the shipping implementation; added an
+  Implementation Notes section documenting intentional divergences (code is the
+  source of truth).
+
 ## [0.2.0] - 2026-04-18
 
 ### Changed

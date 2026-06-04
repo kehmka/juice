@@ -74,6 +74,8 @@ Use the built-in guards or create your own:
 AuthGuard(isAuthenticated: () => authBloc.state.isLoggedIn)
 GuestGuard(isAuthenticated: () => authBloc.state.isLoggedIn)
 RoleGuard(hasRole: () => userBloc.state.isAdmin, roleName: 'admin')
+// Using juice_auth? juice_auth_routing provides AuthBloc-wired guards
+// (AuthBlocAuthGuard, …) plus a reactive redirect-on-logout bridge.
 
 // Or create custom guards
 class OnboardingGuard extends RouteGuard {

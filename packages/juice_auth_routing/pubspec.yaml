@@ -1,0 +1,32 @@
+name: juice_auth_routing
+description: Integration glue between juice_auth and juice_routing — AuthBloc-driven route guards and reactive redirect on auth changes.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_auth_routing
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+documentation: https://kehmka.github.io/juice/
+topics: [authentication, routing, bloc, guards, integration]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice: ^1.4.0
+  juice_auth: ^0.2.1
+  juice_routing: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.4
+  juice_storage: ^1.2.0
+
+flutter:
+  uses-material-design: true

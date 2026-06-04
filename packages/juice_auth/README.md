@@ -159,7 +159,7 @@ RouteConfig(
 
 | Package | Integration |
 |---------|-------------|
-| `juice_routing` | Provide `isAuthenticated` callback to `AuthGuard`/`GuestGuard`/`RoleGuard` |
+| `juice_routing` | Provide `isAuthenticated` callback to `AuthGuard`/`GuestGuard`/`RoleGuard` — or use [`juice_auth_routing`](https://pub.dev/packages/juice_auth_routing) for ready-made guards + reactive redirect |
 | `juice_network` | Provide `accessToken` to `AuthInterceptor`, `refreshToken` to `RefreshTokenInterceptor` — or use [`juice_auth_network`](https://pub.dev/packages/juice_auth_network) for ready-made adapters |
 | `juice_storage` | Tokens stored in secure storage via `StorageBloc` |
 

@@ -48,13 +48,13 @@ Legend: ✅ shipped · 📋 planned
 ### Ambient signals (small blocs others consume)
 | Package | Owns | Does NOT own | Status |
 |---|---|---|---|
-| `juice_connectivity` | reachability / online-offline | making requests | 📋 |
-| `juice_lifecycle` | app foreground/background/resume | navigation, sessions | 📋 |
+| `juice_connectivity` | reachability / online-offline | making requests | ✅ |
+| `juice_lifecycle` | app foreground/background/resume | navigation, sessions | ✅ |
 
 ### Domain services
 | Package | Owns | Does NOT own | Status |
 |---|---|---|---|
-| `juice_permissions` | grant state machine (granted/denied/permanent) | the capability itself | 📋 |
+| `juice_permissions` | grant state machine (granted/denied/permanent) | the capability itself | ✅ |
 | `juice_notifications` | local + push delivery / inbox | the permission grant | 📋 |
 | `juice_location` | geolocation stream | the permission grant | 📋 |
 | `juice_media` | camera/picker/upload state | storage of bytes | 📋 |
@@ -63,8 +63,8 @@ Legend: ✅ shipped · 📋 planned
 ### Presentation services
 | Package | Owns | Does NOT own | Status |
 |---|---|---|---|
-| `juice_theme` | appearance / dark mode | persistence (uses storage) | 📋 |
-| `juice_i18n` | locale + translations | formatting policy | 📋 |
+| `juice_theme` | appearance / dark mode | persistence (uses storage) | ✅ |
+| `juice_i18n` | locale + translations | formatting policy | ✅ |
 | `juice_forms` | field state + validation | submission transport | 📋 |
 | `juice_flags` | resolved flags / remote config | the fetch + cache | 📋 |
 
@@ -72,7 +72,7 @@ Legend: ✅ shipped · 📋 planned
 | Package | Bridges | Status |
 |---|---|---|
 | `juice_auth_network` | auth → network (token, refresh, cache isolation) | ✅ |
-| `juice_auth_routing` | auth → routing guards | 📋 |
+| `juice_auth_routing` | auth → routing guards | ✅ |
 | `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | 📋 |
 | `juice_notifications_permissions` | permissions → notifications | 📋 |
 | `juice_location_permissions` | permissions → location | 📋 |
@@ -97,10 +97,10 @@ Legend: ✅ shipped · 📋 planned
 ## Build order
 
 **Phase 1 — signals + shared deps:** `juice_connectivity`, `juice_permissions`,
-`juice_lifecycle`. (Small, unlock the tiers above.)
+`juice_lifecycle`. ✅ **Complete.**
 
 **Phase 2 — breadth wins:** `juice_theme`, `juice_i18n`, `juice_auth_routing`
-(glue; both base blocs already exist). High adoption, low risk.
+(glue; both base blocs already exist). ✅ **Complete.**
 
 **Phase 3 — capability tier:** `juice_notifications` (+ permissions glue),
 `juice_location` (+ glue), `juice_media` (+ glue), `juice_forms`, `juice_flags`

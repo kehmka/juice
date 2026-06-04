@@ -1,0 +1,30 @@
+name: juice_notifications
+description: Local notification delivery and tap routing as a Juice bloc, behind a swappable service seam.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_notifications
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+documentation: https://kehmka.github.io/juice/
+topics: [notifications, local-notifications, bloc, state-management, scheduling]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice: ^1.4.0
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

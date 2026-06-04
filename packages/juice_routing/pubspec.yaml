@@ -2,11 +2,13 @@ name: juice_routing
 description: "Declarative, state-driven navigation for Juice applications with Navigator 2.0 integration, route guards, and deep linking support."
 version: 1.1.0
 
-repository: https://github.com/kehmka/juice
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_routing
 issue_tracker: https://github.com/kehmka/juice/issues
 homepage: https://kehmka.github.io/juice/
 documentation: https://kehmka.github.io/juice/
 topics: [navigation, routing, bloc, state-management, flutter]
+funding:
+  - https://github.com/sponsors/kehmka
 
 environment:
   sdk: ^3.5.4

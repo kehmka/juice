@@ -139,6 +139,10 @@ class StorageState extends BlocState {
     this.cacheStats = const CacheStats(),
   });
 
+  /// Initial state — matches the Juice family's `static const initial`
+  /// convention.
+  static const initial = StorageState();
+
   /// Creates a copy of this state with the given fields replaced.
   StorageState copyWith({
     bool? isInitialized,

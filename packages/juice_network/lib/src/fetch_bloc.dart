@@ -170,6 +170,25 @@ class FetchBloc extends JuiceBloc<FetchState> {
     _subscribeToLifecycle();
   }
 
+  /// Create and initialize in one step — matches the family's `withConfig`
+  /// convention (cf. `AuthBloc.withConfig`). Equivalent to constructing a
+  /// [FetchBloc] and sending [InitializeFetchEvent].
+  factory FetchBloc.withConfig(
+    FetchConfig config, {
+    required StorageBloc storageBloc,
+    Dio? dio,
+    AuthIdentityProvider? authIdentityProvider,
+    List<FetchInterceptor>? interceptors,
+  }) {
+    final bloc = FetchBloc(
+      storageBloc: storageBloc,
+      dio: dio,
+      authIdentityProvider: authIdentityProvider,
+    );
+    bloc.send(InitializeFetchEvent(config: config, interceptors: interceptors));
+    return bloc;
+  }
+
   /// Acquire a concurrency slot, waiting if at the limit.
   ///
   /// Call [releaseConcurrencySlot] when the request completes (success or failure).

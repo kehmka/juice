@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-05-28
+
+### Added
+- **`FetchBloc.withConfig(config, {required storageBloc, ...})`** — one-step
+  construct-and-initialize, matching the Juice family's `withConfig` convention
+  (cf. `AuthBloc.withConfig`). The existing constructor + `InitializeFetchEvent`
+  path is unchanged.
+
+### Changed
+- Family coherence: `FetchGroups` is now `abstract final`; minimum SDK aligned to
+  `^3.5.4`. Both additive — no API changes.
+
 ## [0.11.0] - 2026-05-28
 
 ### Fixed

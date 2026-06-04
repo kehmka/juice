@@ -287,7 +287,7 @@ class FetchState extends BlocState {
 }
 
 /// Rebuild groups for FetchBloc.
-abstract class FetchGroups {
+abstract final class FetchGroups {
   /// Configuration changes.
   static const config = 'fetch:config';
 

@@ -22,6 +22,7 @@
 library juice_permissions;
 
 export 'src/permission_provider.dart';
+export 'src/permission_binding.dart';
 export 'src/permissions_bloc.dart';
 export 'src/permissions_config.dart';
 export 'src/permissions_events.dart';

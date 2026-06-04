@@ -74,25 +74,33 @@ Legend: ✅ shipped · 📋 planned
 | `juice_auth_network` | auth → network (token, refresh, cache isolation) | ✅ |
 | `juice_auth_routing` | auth → routing guards | ✅ |
 | `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | 📋 |
-| `juice_notifications_permissions` | permissions → notifications | 📋 |
-| `juice_location_permissions` | permissions → location | 📋 |
-| `juice_media_permissions` | permissions → media | 📋 |
 | `juice_flags_network` | network → flags (remote config fetch) | 📋 |
 | `juice_sync` | network + storage + connectivity → offline outbox / mutation queue | 📋 |
+
+> Permission→capability wiring is **not** a glue package. It's uniform and
+> mechanical (watch one grant, set one flag), so it uses a generic
+> `PermissionBinding` helper exported from `juice_permissions`. Capability blocs
+> (notifications/location/media) expose a neutral `setPermissionStatus`; the user
+> wires `PermissionBinding(permissions, JuicePermission.x, onStatus: …)`.
 
 ## Locked architectural decisions (2026-05-28)
 
 1. **Permissions is a shared bloc.** `juice_permissions` owns grant state;
-   capability blocs (location/media/notifications) react to it via per-capability
-   glue packages — one grant state machine, not four.
+   capability blocs (location/media/notifications) react to it via a generic
+   `PermissionBinding` helper (exported from `juice_permissions`), **not**
+   per-capability glue packages — the wiring is uniform, so a callback helper
+   beats N near-identical packages. (Revised 2026-05-28.)
 2. **Sync is glue, not a base bloc.** `juice_sync` bridges
    network + storage + connectivity (dependency honesty over a standalone
    "outbox bloc"). This is the outbox `juice_network`'s SPEC deferred.
 3. **Ambient signals are their own packages.** `juice_connectivity` /
    `juice_lifecycle` stay separate (single responsibility; sync, realtime, and
    network-offline all consume connectivity) rather than folding into network.
-4. **Every cross-cutting pair is a glue package.** No sometimes-doc /
-   sometimes-package — auth↔routing is promoted to a glue package like the rest.
+4. **Every *bespoke* cross-cutting pair is a glue package.** Rich, one-off
+   integrations (auth↔network, auth↔routing) get a glue package. **Uniform,
+   mechanical** bindings (permission→capability) instead use a generic helper
+   (`PermissionBinding`) — minting near-identical packages is sprawl, not
+   coherence. (Refined 2026-05-28.)
 
 ## Build order
 
@@ -102,9 +110,9 @@ Legend: ✅ shipped · 📋 planned
 **Phase 2 — breadth wins:** `juice_theme`, `juice_i18n`, `juice_auth_routing`
 (glue; both base blocs already exist). ✅ **Complete.**
 
-**Phase 3 — capability tier:** `juice_notifications` (+ permissions glue),
-`juice_location` (+ glue), `juice_media` (+ glue), `juice_forms`, `juice_flags`
-(+ `juice_flags_network`).
+**Phase 3 — capability tier:** `juice_notifications`, `juice_location`,
+`juice_media` (each exposes `setPermissionStatus`, wired via `PermissionBinding`),
+`juice_forms`, `juice_flags` (+ `juice_flags_network`).
 
 **Phase 4 — hard / realtime:** `juice_network_connectivity`, `juice_realtime`,
 then `juice_sync` last (concurrency / conflict resolution; needs connectivity +

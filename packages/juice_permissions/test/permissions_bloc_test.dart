@@ -184,4 +184,59 @@ void main() {
       await bloc.close();
     });
   });
+
+  group('PermissionBinding', () {
+    test('emits initial status then forwards changes (deduped)', () async {
+      final p = FakePermissionProvider(
+        statuses: {camera: PermissionStatus.denied},
+        requestResults: {camera: PermissionStatus.granted},
+      );
+      final bloc = PermissionsBloc.withConfig(
+        PermissionsConfig(provider: p, precheck: {camera}),
+      );
+      await settle();
+
+      final seen = <PermissionStatus>[];
+      final binding = PermissionBinding(
+        bloc,
+        camera,
+        onStatus: seen.add,
+      )..start();
+
+      // Initial status delivered on start.
+      expect(seen, [PermissionStatus.denied]);
+
+      // A change is forwarded.
+      bloc.request(camera);
+      await settle();
+      expect(seen.last, PermissionStatus.granted);
+
+      // A no-op check of an unrelated permission doesn't re-fire camera.
+      final before = seen.length;
+      bloc.check(mic);
+      await settle();
+      expect(seen.length, before);
+
+      binding.dispose();
+      await bloc.close();
+    });
+
+    test('emitInitial:false skips the initial callback', () async {
+      final p = FakePermissionProvider(
+          statuses: {camera: PermissionStatus.granted});
+      final bloc = PermissionsBloc.withConfig(
+        PermissionsConfig(provider: p, precheck: {camera}),
+      );
+      await settle();
+
+      final seen = <PermissionStatus>[];
+      final binding = PermissionBinding(bloc, camera,
+          onStatus: seen.add, emitInitial: false)
+        ..start();
+
+      expect(seen, isEmpty);
+      binding.dispose();
+      await bloc.close();
+    });
+  });
 }

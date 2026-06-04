@@ -1,6 +1,6 @@
 name: juice_permissions
 description: Runtime permission grant-state as a Juice bloc — request, check, and react to permissions behind a swappable provider seam.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_permissions
 issue_tracker: https://github.com/kehmka/juice/issues

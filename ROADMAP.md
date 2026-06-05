@@ -55,9 +55,9 @@ Legend: ✅ shipped · 📋 planned
 | Package | Owns | Does NOT own | Status |
 |---|---|---|---|
 | `juice_permissions` | grant state machine (granted/denied/permanent) | the capability itself | ✅ |
-| `juice_notifications` | local + push delivery / inbox | the permission grant | 📋 |
-| `juice_location` | geolocation stream | the permission grant | 📋 |
-| `juice_media` | camera/picker/upload state | storage of bytes | 📋 |
+| `juice_notifications` | local + push delivery / inbox | the permission grant | ✅ |
+| `juice_location` | geolocation stream | the permission grant | ✅ |
+| `juice_media` | camera/picker/upload state | storage of bytes | ✅ |
 | `juice_realtime` | persistent WS/SSE streams | one-shot HTTP | 📋 |
 
 ### Presentation services

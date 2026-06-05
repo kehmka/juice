@@ -58,7 +58,7 @@ Legend: ✅ shipped · 📋 planned
 | `juice_notifications` | local + push delivery / inbox | the permission grant | ✅ |
 | `juice_location` | geolocation stream | the permission grant | ✅ |
 | `juice_media` | camera/picker/upload state | storage of bytes | ✅ |
-| `juice_realtime` | persistent WS/SSE streams | one-shot HTTP | 📋 |
+| `juice_realtime` | persistent WS/SSE streams | one-shot HTTP | ✅ |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |

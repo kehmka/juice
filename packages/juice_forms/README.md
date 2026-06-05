@@ -105,6 +105,40 @@ derived `valid`/`dirty`. Read a value with `bloc.value<String>('email')`.
 > A never-validated field reports `valid` (its error is null). Call
 > `validate()`/`submit()` for an authoritative full pass.
 
+## Grouped sections
+
+Rebuild matching is set intersection, so a section widget that binds several
+field groups rebuilds when **any of its members** change — and stays inert for
+everything else. No extra API:
+
+```dart
+// Rebuilds on street/city/zip — not on email or password.
+class AddressSection extends StatelessJuiceWidget<FormsBloc> {
+  AddressSection({super.key})
+      : super(groups: {
+          FormsGroups.field('street'),
+          FormsGroups.field('city'),
+          FormsGroups.field('zip'),
+        });
+
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) {
+    final f = bloc.state.fields;
+    final sectionValid =
+        ['street', 'city', 'zip'].every((k) => f[k]?.valid ?? true);
+    // ... render the three inputs + a section-level indicator
+  }
+}
+```
+
+Three tiers fall out of one model: one field (`{field('email')}`), a section
+(several field groups), the whole form (`{FormsGroups.any}`).
+
+> **Under consideration (post-0.1):** first-class named groups — a single
+> group rebuild key, group-level `isValid`/`isDirty`/reset, and an optional
+> nested submit shape (`values` as `{address: {...}}`). The flat model + section
+> composition above is the supported approach today.
+
 ## Dynamic fields
 
 ```dart

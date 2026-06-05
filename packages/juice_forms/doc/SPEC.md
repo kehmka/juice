@@ -36,6 +36,17 @@ fields don't rebuild.
 reached via `field(name)`. `valid` is emitted only on an actual flip, so a
 submit button bound to it doesn't churn on every keystroke.
 
+**Grouped sections.** Rebuild matching is set intersection, so a section widget
+that binds multiple field groups (`{field('street'), field('city'),
+field('zip')}`) rebuilds when any member changes and stays inert otherwise — no
+extra API. This yields three tiers: one field, a section, the whole form
+(`any`).
+
+**Under consideration (post-0.1):** first-class named groups — a single group
+rebuild key, group-level `isValid`/`isDirty`/reset, and an optional nested
+submit shape (`values` as `{address: {...}}`). Not built; the flat model +
+section composition is the supported approach today.
+
 ## State (data only)
 
 ```dart

@@ -114,6 +114,10 @@ Legend: ✅ shipped · 📋 planned
 `juice_media` (each exposes `setPermissionStatus`, wired via `PermissionBinding`),
 `juice_forms`, `juice_flags` (+ `juice_flags_network`).
 
+> `juice_forms` post-0.1 under consideration: first-class named field groups
+> (single group rebuild key, group-level validity/reset) and an optional nested
+> submit shape. v0.1 supports grouped sections by composing field rebuild groups.
+
 **Phase 4 — hard / realtime:** `juice_network_connectivity`, `juice_realtime`,
 then `juice_sync` last (concurrency / conflict resolution; needs connectivity +
 storage + network mature).

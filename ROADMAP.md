@@ -74,7 +74,7 @@ Legend: ✅ shipped · 📋 planned
 | `juice_auth_network` | auth → network (token, refresh, cache isolation) | ✅ |
 | `juice_auth_routing` | auth → routing guards | ✅ |
 | `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | ⏸ deferred |
-| `juice_sync` | network + storage + connectivity → offline outbox / mutation queue | 📋 |
+| `juice_sync` | storage (+ injected transport/online) → offline outbox / mutation queue | ✅ |
 
 > **Deferred: `juice_network_connectivity` — design with `juice_sync`.** It's a
 > valid glue (a true state→behavior bridge: ConnectivityBloc online/offline →
@@ -105,9 +105,15 @@ Legend: ✅ shipped · 📋 planned
    `PermissionBinding` helper (exported from `juice_permissions`), **not**
    per-capability glue packages — the wiring is uniform, so a callback helper
    beats N near-identical packages. (Revised 2026-05-28.)
-2. **Sync is glue, not a base bloc.** `juice_sync` bridges
-   network + storage + connectivity (dependency honesty over a standalone
-   "outbox bloc"). This is the outbox `juice_network`'s SPEC deferred.
+2. **Sync is a feature bloc on substrate + seams (revised 2026-05-28, at build).**
+   `juice_sync` owns real domain truth (the durable outbox + partitioned-FIFO
+   flush state machine), so it is **not** glue. It depends only on `juice` +
+   `juice_storage` (substrate) and takes the *transport* (`MutationExecutor`) and
+   *online trigger* (`onlineSignal: Stream<bool>`) as **injected seams** — never
+   depending on `juice_network`/`juice_connectivity` (features). The original
+   "sync = glue over network+storage+connectivity" framing was wrong: a feature
+   bloc can't be a feature-bloc dependency hub. This is the outbox
+   `juice_network`'s SPEC deferred.
 3. **Ambient signals are their own packages.** `juice_connectivity` /
    `juice_lifecycle` stay separate (single responsibility; sync, realtime, and
    network-offline all consume connectivity) rather than folding into network.

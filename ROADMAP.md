@@ -124,3 +124,34 @@ Each package follows the path `juice_auth_network` set: scope → SPEC → build
 adapters/use-cases with tests → juice-pure example (see the "demonstrate Juice
 in full" rule) → analyze + test + dry-run clean → commit → publish → tag
 `<package>-v<version>`.
+
+## Versioning & maturity
+
+This family is a **personal toolkit**, not a product seeking adopters. So
+`1.0.0` isn't a marketing milestone — it's a promise to *future-you* that the
+public API (bloc surface, events, state, seam) won't churn under an app you've
+built on it. That promise is earned by **use**, not by a date or a feature
+count. Versions graduate through gates, not a schedule:
+
+**`0.1.0` — Reviewed.** Ships here on day one.
+- Docs complete (README, CHANGELOG, SPEC, example), tests green, dry-run clean.
+- Coherence-audited against the design invariants above.
+
+**`0.2.x` — Maturing.** API still free to break.
+- Real friction found and fixed (e.g. an additive `withConfig`, a renamed
+  group) lands here while breaking is still cheap.
+
+**`0.9.0` — Dogfooded.**
+- Used in at least one real app screen.
+- The vendor seam actually swapped once (real impl + a fake/second impl) — proof
+  the seam isn't theoretical.
+- Any API friction from real use is resolved *before* committing to it.
+
+**`1.0.0` — Committed.**
+- One full app shipped on it with no API change needed across a dev cycle.
+- No known design debt; the `does-not-own` boundary held under real pressure.
+- You're willing to eat a `2.0.0` to ever break it again.
+
+The substrate three (`juice` 1.x, `juice_storage` 1.x, `juice_routing` 1.x)
+cleared these gates implicitly — they're used everywhere, which is *why* they're
+1.x. Everything else is honestly pre-1.0 until an app proves it.

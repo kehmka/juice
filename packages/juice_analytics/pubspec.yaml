@@ -1,0 +1,28 @@
+name: juice_analytics
+description: Event and screen tracking as a Juice bloc, with a consent gate and a fan-out sink seam.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_analytics
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+documentation: https://kehmka.github.io/juice/
+topics: [analytics, telemetry, tracking, bloc, state-management]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice: ^1.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,6 @@
+# melos_managed_dependency_overrides: juice,juice_paging
+dependency_overrides:
+  juice:
+    path: ../../juice
+  juice_paging:
+    path: ..

@@ -65,8 +65,8 @@ Legend: ✅ shipped · 📋 planned
 |---|---|---|---|
 | `juice_theme` | appearance / dark mode | persistence (uses storage) | ✅ |
 | `juice_i18n` | locale + translations | formatting policy | ✅ |
-| `juice_forms` | field state + validation | submission transport | 📋 |
-| `juice_flags` | resolved flags / remote config | the fetch + cache | 📋 |
+| `juice_forms` | field state + validation | submission transport | ✅ |
+| `juice_flags` | resolved flags | the remote fetch (behind a `FlagsSource` seam) | 📋 |
 
 ### Glue packages
 | Package | Bridges | Status |
@@ -74,8 +74,14 @@ Legend: ✅ shipped · 📋 planned
 | `juice_auth_network` | auth → network (token, refresh, cache isolation) | ✅ |
 | `juice_auth_routing` | auth → routing guards | ✅ |
 | `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | 📋 |
-| `juice_flags_network` | network → flags (remote config fetch) | 📋 |
 | `juice_sync` | network + storage + connectivity → offline outbox / mutation queue | 📋 |
+
+> **Dropped: `juice_flags_network`.** A remote flag source is a vendor concern
+> (LaunchDarkly / Firebase Remote Config / a plain endpoint) behind
+> `juice_flags`'s `FlagsSource` seam — a provider impl, not a bridge between two
+> bloc states. If flags ever need to ride `juice_network`'s `FetchBloc`
+> transport specifically, *that* would justify a glue package — build it then,
+> with a real consumer. Not speculatively.
 
 > Permission→capability wiring is **not** a glue package. It's uniform and
 > mechanical (watch one grant, set one flag), so it uses a generic
@@ -112,7 +118,7 @@ Legend: ✅ shipped · 📋 planned
 
 **Phase 3 — capability tier:** `juice_notifications`, `juice_location`,
 `juice_media` (each exposes `setPermissionStatus`, wired via `PermissionBinding`),
-`juice_forms`, `juice_flags` (+ `juice_flags_network`).
+`juice_forms`, `juice_flags` (`FlagsSource` seam + local default; no network glue).
 
 > `juice_forms` post-0.1 under consideration: first-class named field groups
 > (single group rebuild key, group-level validity/reset) and an optional nested

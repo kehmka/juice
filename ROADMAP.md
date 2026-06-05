@@ -73,8 +73,17 @@ Legend: ✅ shipped · 📋 planned
 |---|---|---|
 | `juice_auth_network` | auth → network (token, refresh, cache isolation) | ✅ |
 | `juice_auth_routing` | auth → routing guards | ✅ |
-| `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | 📋 |
+| `juice_network_connectivity` | connectivity → network (pause/resume on reachability) | ⏸ deferred |
 | `juice_sync` | network + storage + connectivity → offline outbox / mutation queue | 📋 |
+
+> **Deferred: `juice_network_connectivity` — design with `juice_sync`.** It's a
+> valid glue (a true state→behavior bridge: ConnectivityBloc online/offline →
+> FetchBloc pause/resume), unlike the dropped `flags_network`. But offline-aware
+> *reads* (this) and offline *writes* (`juice_sync`) are two halves of one
+> problem — building this first would carve the offline boundary before `sync`
+> is designed and likely re-cut it. Build it alongside `juice_sync`, or when a
+> real app needs offline-aware fetching. Until then, gate requests on
+> ConnectivityBloc state in-app.
 
 > **Dropped: `juice_flags_network`.** A remote flag source is a vendor concern
 > (LaunchDarkly / Firebase Remote Config / a plain endpoint) behind

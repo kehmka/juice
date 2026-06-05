@@ -122,6 +122,14 @@ Legend: ✅ shipped · 📋 planned
    mechanical** bindings (permission→capability) instead use a generic helper
    (`PermissionBinding`) — minting near-identical packages is sprawl, not
    coherence. (Refined 2026-05-28.)
+5. **Responsiveness is not a package — use Flutter built-ins.** Breakpoints /
+   size classes / adaptive layout are already covered reactively by `MediaQuery`
+   + `LayoutBuilder`. A `juice_layout` bloc would only add value for app-wide
+   canonical breakpoints, context-free size-class reads, and class-change (vs
+   per-pixel) rebuilds — not enough to justify shadowing the framework. It is
+   **not** theming (`juice_theme` owns appearance only), but it is intentionally
+   left to Flutter. Revisit only if a concrete need for non-widget-tree
+   size-class reads appears. (Decided 2026-05-28.)
 
 ## Build order
 

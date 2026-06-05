@@ -59,6 +59,9 @@ Legend: ✅ shipped · 📋 planned
 | `juice_location` | geolocation stream | the permission grant | ✅ |
 | `juice_media` | camera/picker/upload state | storage of bytes | ✅ |
 | `juice_realtime` | persistent WS/SSE streams | one-shot HTTP | ✅ |
+| `juice_analytics` | event/screen tracking + consent | the vendor SDK (a sink) | ✅ |
+| `juice_paging` | paged/infinite-scroll list state | the transport (a fetcher) | ✅ |
+| `juice_observability` | crash capture + breadcrumbs | the vendor SDK (a reporter) | ✅ |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |

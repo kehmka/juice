@@ -1,0 +1,28 @@
+name: juice_forms
+description: Form state — fields, sync/async validation, and per-field selective rebuilds — as a Juice bloc.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_forms
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+documentation: https://kehmka.github.io/juice/
+topics: [forms, validation, bloc, state-management, juice]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice: ^1.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

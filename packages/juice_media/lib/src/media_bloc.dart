@@ -7,6 +7,7 @@ import 'media_source.dart';
 import 'media_state.dart';
 import 'media_uploader.dart';
 import 'use_cases/acquire_media_use_case.dart';
+import 'use_cases/add_remote_items_use_case.dart';
 import 'use_cases/cancel_upload_use_case.dart';
 import 'use_cases/clear_items_use_case.dart';
 import 'use_cases/initialize_media_use_case.dart';
@@ -49,6 +50,9 @@ class MediaBloc extends JuiceBloc<MediaState> {
             () => UseCaseBuilder(
                 typeOfEvent: AcquireMediaEvent,
                 useCaseGenerator: () => AcquireMediaUseCase()),
+            () => UseCaseBuilder(
+                typeOfEvent: AddRemoteItemsEvent,
+                useCaseGenerator: () => AddRemoteItemsUseCase()),
             () => UseCaseBuilder(
                 typeOfEvent: RemoveItemEvent,
                 useCaseGenerator: () => RemoveItemUseCase()),
@@ -148,6 +152,10 @@ class MediaBloc extends JuiceBloc<MediaState> {
 
   void captureFromCamera({MediaKind kind = MediaKind.image}) => send(
       AcquireMediaEvent(MediaRequest(mode: MediaPickMode.camera, kind: kind)));
+
+  /// Add remote-origin items (already hosted) to the gallery.
+  void addRemoteItems(List<MediaItem> items) =>
+      send(AddRemoteItemsEvent(items));
 
   void removeItem(String id) => send(RemoveItemEvent(id));
   void clearItems() => send(ClearItemsEvent());

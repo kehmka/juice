@@ -10,7 +10,17 @@ void main() {
   // MediaConfig() (default ImagePickerMediaSource) and inject your uploader.
   BlocScope.register<MediaBloc>(
     () => MediaBloc.withConfig(
-      MediaConfig(source: DemoMediaSource(), uploader: DemoMediaUploader()),
+      MediaConfig(
+        source: DemoMediaSource(),
+        uploader: DemoMediaUploader(),
+        // Existing hosted images — a mixed local/remote gallery.
+        initialItems: const [
+          MediaItem.remote(
+              id: 'remote_1',
+              uri: 'https://picsum.photos/id/10/200',
+              name: 'existing_1.jpg'),
+        ],
+      ),
     ),
     lifecycle: BlocLifecycle.permanent,
   );
@@ -78,17 +88,30 @@ class ItemTile extends StatelessJuiceWidget<MediaBloc> {
 
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.image),
+        leading: SizedBox(
+          width: 40,
+          height: 40,
+          child: item.isRemote
+              ? Image.network(item.uri!, fit: BoxFit.cover)
+              : const Icon(Icons.image),
+        ),
         title: Text(item.name),
-        subtitle: up == null
-            ? Text('${(item.sizeBytes / 1024).round()} KB — not uploaded')
-            : LinearProgressIndicator(value: up.progress),
-        trailing: _trailing(up),
+        subtitle: item.isRemote
+            ? const Text('Hosted (remote)')
+            : up == null
+                ? Text('${(item.sizeBytes / 1024).round()} KB — not uploaded')
+                : LinearProgressIndicator(value: up.progress),
+        trailing: _trailing(item, up),
       ),
     );
   }
 
-  Widget _trailing(UploadState? up) {
+  Widget _trailing(MediaItem item, UploadState? up) {
+    if (item.isRemote) {
+      return IconButton(
+          icon: const Icon(Icons.delete_outline),
+          onPressed: () => bloc.removeItem(id));
+    }
     switch (up?.status) {
       case UploadStatus.uploading:
         return IconButton(

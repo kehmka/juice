@@ -25,7 +25,19 @@ seam. Exposes `setPermissionStatus` (shared-permissions pattern).
   `result` future (remote URL), `cancel()`. Mirrors Dio `onSendProgress` +
   `CancelToken`.
 
-`MediaItem` is vendor-agnostic: id, `path` and/or `bytes`, name, mime, size, kind.
+`MediaItem` is vendor-agnostic: id, `path` and/or `bytes`, name, mime, size,
+kind, and `uri` (set for remote-origin items).
+
+## Remote items (0.2)
+
+Items that arrive **already hosted** (existing backend images) are first-class,
+for mixed local/remote galleries. `MediaItem.remote(...)` sets `uri`
+(`isRemote == true`). Seed via `MediaConfig.initialItems` or `addRemoteItems(...)`
+at runtime. Each is seeded as a `completed` upload (`UploadState.remote`) so it
+renders, counts in `allUploaded`, and is skipped by `uploadAll` — uniformly with
+locally-uploaded items, no special-casing in the UI. `item.uri` ("came from the
+network") is distinct from a local item's `uploads[id].remoteUrl` ("uploaded this
+session").
 
 ## Selective refresh
 

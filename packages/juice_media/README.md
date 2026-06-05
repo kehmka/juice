@@ -81,6 +81,30 @@ abstract class MediaUpload {
 `upload` / `uploadAll` start uploads; `cancelUpload(id)` aborts one. Status flows
 `queued → uploading → completed / failed / cancelled`.
 
+## Remote items (mixed galleries)
+
+Real edit screens show **existing hosted images** alongside newly-picked local
+ones. Add remote-origin items and they slot into the same gallery — rendered,
+counted, and skipped by `uploadAll` automatically (they're seeded as
+`completed`):
+
+```dart
+// At init…
+MediaConfig(
+  uploader: MyUploader(),
+  initialItems: [
+    MediaItem.remote(id: 'a', uri: 'https://cdn/a.jpg', name: 'a.jpg'),
+  ],
+);
+
+// …or at runtime:
+media.addRemoteItems([MediaItem.remote(id: 'b', uri: 'https://cdn/b.jpg', name: 'b.jpg')]);
+```
+
+`item.isRemote` distinguishes them. Render remote items with
+`Image.network(item.uri!)`, local items from `path`/`bytes`. `uploadAll` uploads
+only the local, not-yet-uploaded ones.
+
 ## Fail-loud
 
 Calling upload with **no uploader configured** marks the item `failed` and sets

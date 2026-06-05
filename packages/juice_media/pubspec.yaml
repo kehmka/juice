@@ -1,6 +1,6 @@
 name: juice_media
 description: Media acquisition (camera/gallery) and per-item upload state as a Juice bloc, behind swappable seams.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_media
 issue_tracker: https://github.com/kehmka/juice/issues

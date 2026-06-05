@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-28
+
+### Added
+
+- **First-class remote items** — items that arrive already hosted (e.g. existing
+  images from your backend), for mixed local/remote galleries.
+  - `MediaItem.uri` + `MediaItem.remote(...)` constructor + `isRemote`.
+  - `MediaConfig.initialItems` to seed remote items at init.
+  - `addRemoteItems(...)` to add them at runtime.
+  - Remote items are seeded as a `completed` upload (`UploadState.remote`), so
+    they render, count in `allUploaded`, and are skipped by `uploadAll`
+    uniformly.
+
+This release is additive and backward-compatible with 0.1.0.
+
 ## [0.1.0] - 2026-05-28
 
 ### Added

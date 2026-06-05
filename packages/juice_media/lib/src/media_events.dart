@@ -21,6 +21,13 @@ class AcquireMediaEvent extends MediaEvent {
   AcquireMediaEvent(this.request);
 }
 
+/// Add remote-origin items (already hosted, e.g. from your backend). Each is
+/// seeded as a `completed` upload.
+class AddRemoteItemsEvent extends MediaEvent {
+  final List<MediaItem> items;
+  AddRemoteItemsEvent(this.items);
+}
+
 /// Remove one acquired item (and any upload state).
 class RemoveItemEvent extends MediaEvent {
   final String id;

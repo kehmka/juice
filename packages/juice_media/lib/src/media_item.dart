@@ -47,6 +47,13 @@ class MediaItem {
 
   final MediaKind kind;
 
+  /// Remote URL for a **remote-origin** item (one that arrived already hosted,
+  /// e.g. existing images from your backend). Null for locally-acquired items.
+  ///
+  /// Distinct from a local item's upload result (`uploads[id].remoteUrl`):
+  /// `uri` means "came from the network", that means "was uploaded this session".
+  final String? uri;
+
   const MediaItem({
     required this.id,
     this.path,
@@ -55,8 +62,27 @@ class MediaItem {
     this.mimeType = 'application/octet-stream',
     this.sizeBytes = 0,
     this.kind = MediaKind.image,
+    this.uri,
   });
 
+  /// A remote-origin item — already hosted at [uri], no local bytes.
+  const MediaItem.remote({
+    required this.id,
+    required String uri,
+    required this.name,
+    this.mimeType = 'image/jpeg',
+    this.sizeBytes = 0,
+    this.kind = MediaKind.image,
+  })  :
+        // ignore: prefer_initializing_formals — field is nullable, param is not
+        uri = uri,
+        path = null,
+        bytes = null;
+
+  /// Whether this item arrived already hosted (vs. locally acquired).
+  bool get isRemote => uri != null;
+
   @override
-  String toString() => 'MediaItem($id, $name, $kind, ${sizeBytes}B)';
+  String toString() =>
+      'MediaItem($id, $name, $kind, ${isRemote ? 'remote' : 'local'})';
 }

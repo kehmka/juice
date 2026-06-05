@@ -245,6 +245,81 @@ void main() {
     });
   });
 
+  group('Remote items', () {
+    test('addRemoteItems seeds completed uploads with the url', () async {
+      final bloc = MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));
+      await settle();
+
+      bloc.addRemoteItems([
+        const MediaItem.remote(id: 'r1', uri: 'https://cdn/r1.jpg', name: 'r1.jpg'),
+      ]);
+      await settle();
+
+      final item = bloc.state.items.single;
+      expect(item.isRemote, isTrue);
+      final up = bloc.state.uploads['r1']!;
+      expect(up.status, UploadStatus.completed);
+      expect(up.remoteUrl, 'https://cdn/r1.jpg');
+      expect(up.progress, 1);
+      await bloc.close();
+    });
+
+    test('config.initialItems seed remote items at init', () async {
+      final bloc = MediaBloc.withConfig(MediaConfig(
+        source: FakeMediaSource(),
+        initialItems: const [
+          MediaItem.remote(id: 'r1', uri: 'https://cdn/r1.jpg', name: 'r1.jpg'),
+          MediaItem.remote(id: 'r2', uri: 'https://cdn/r2.jpg', name: 'r2.jpg'),
+        ],
+      ));
+      await settle();
+
+      expect(bloc.state.items.length, 2);
+      expect(bloc.state.allUploaded, isTrue);
+      await bloc.close();
+    });
+
+    test('uploadAll uploads only local items, skipping remote', () async {
+      final src = FakeMediaSource([img('local')]);
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(
+        source: src,
+        uploader: up,
+        initialItems: const [
+          MediaItem.remote(id: 'remote', uri: 'https://cdn/x.jpg', name: 'x.jpg'),
+        ],
+      ));
+      await settle();
+      bloc.pickFromGallery();
+      await settle();
+
+      bloc.uploadAll();
+      await settle();
+
+      // The local item got an upload handle; the remote one did not.
+      expect(up.uploads.containsKey('local'), isTrue);
+      expect(up.uploads.containsKey('remote'), isFalse);
+      expect(bloc.state.uploads['remote']!.status, UploadStatus.completed);
+      await bloc.close();
+    });
+
+    test('remove drops a remote item', () async {
+      final bloc = MediaBloc.withConfig(MediaConfig(
+        source: FakeMediaSource(),
+        initialItems: const [
+          MediaItem.remote(id: 'r1', uri: 'https://cdn/r1.jpg', name: 'r1.jpg'),
+        ],
+      ));
+      await settle();
+
+      bloc.removeItem('r1');
+      await settle();
+      expect(bloc.state.items, isEmpty);
+      expect(bloc.state.uploads.containsKey('r1'), isFalse);
+      await bloc.close();
+    });
+  });
+
   group('Permission & lifecycle', () {
     test('setPermissionStatus updates (deduped)', () async {
       final bloc = MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));

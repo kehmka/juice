@@ -23,6 +23,13 @@ class UploadState {
     this.error,
   });
 
+  /// State for a remote-origin item — already hosted, so it starts `completed`.
+  const UploadState.remote(this.itemId, String? url)
+      : status = UploadStatus.completed,
+        progress = 1,
+        remoteUrl = url,
+        error = null;
+
   bool get isActive => status == UploadStatus.uploading;
   bool get isDone => status == UploadStatus.completed;
 

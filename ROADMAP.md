@@ -66,7 +66,7 @@ Legend: ✅ shipped · 📋 planned
 | `juice_theme` | appearance / dark mode | persistence (uses storage) | ✅ |
 | `juice_i18n` | locale + translations | formatting policy | ✅ |
 | `juice_forms` | field state + validation | submission transport | ✅ |
-| `juice_flags` | resolved flags | the remote fetch (behind a `FlagsSource` seam) | 📋 |
+| `juice_flags` | resolved flags | the remote fetch (behind a `FlagsSource` seam) | ✅ |
 
 ### Glue packages
 | Package | Bridges | Status |

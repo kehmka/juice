@@ -1,6 +1,6 @@
 name: juice_realtime
 description: Persistent realtime connections (WebSocket/SSE) with auto-reconnect as a Juice bloc, behind a swappable seam.
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_realtime
 issue_tracker: https://github.com/kehmka/juice/issues

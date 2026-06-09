@@ -1,6 +1,6 @@
 name: juice_notifications
 description: Local notification delivery and tap routing as a Juice bloc, behind a swappable service seam.
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_notifications
 issue_tracker: https://github.com/kehmka/juice/issues

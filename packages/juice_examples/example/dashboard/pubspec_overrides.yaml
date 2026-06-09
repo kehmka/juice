@@ -1,0 +1,10 @@
+# melos_managed_dependency_overrides: juice,juice_auth,juice_routing,juice_storage
+dependency_overrides:
+  juice:
+    path: ../../../juice
+  juice_auth:
+    path: ../../../juice_auth
+  juice_routing:
+    path: ../../../juice_routing
+  juice_storage:
+    path: ../../../juice_storage

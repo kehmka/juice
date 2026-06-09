@@ -81,7 +81,7 @@ packages:
       path: "../../juice"
       relative: true
     source: path
-    version: "1.4.0"
+    version: "1.5.0"
   juice_paging:
     dependency: "direct main"
     description:

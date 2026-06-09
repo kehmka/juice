@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/chat_bloc.dart';
 import '../blocs/contacts_bloc.dart';
@@ -203,8 +202,8 @@ class _MessageBubble extends StatelessWidget {
       child: Align(
         alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints:
-              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: isMine
@@ -213,12 +212,10 @@ class _MessageBubble extends StatelessWidget {
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),
-              bottomLeft: isMine
-                  ? const Radius.circular(16)
-                  : const Radius.circular(4),
-              bottomRight: isMine
-                  ? const Radius.circular(4)
-                  : const Radius.circular(16),
+              bottomLeft:
+                  isMine ? const Radius.circular(16) : const Radius.circular(4),
+              bottomRight:
+                  isMine ? const Radius.circular(4) : const Radius.circular(16),
             ),
           ),
           child: Column(

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/contacts_bloc.dart';
 import '../blocs/chat_bloc.dart';

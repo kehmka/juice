@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 import '../blocs/products_bloc.dart';
@@ -88,8 +87,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     if (index == 0) {
                       return FilterChip(
                         label: const Text('All'),
-                        selected:
-                            productsBloc.state.activeCategory == null,
+                        selected: productsBloc.state.activeCategory == null,
                         onSelected: (_) =>
                             productsBloc.send(LoadProductsEvent()),
                       );
@@ -97,8 +95,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     final cat = categories[index - 1];
                     return FilterChip(
                       label: Text(cat.name),
-                      selected:
-                          productsBloc.state.activeCategory == cat.slug,
+                      selected: productsBloc.state.activeCategory == cat.slug,
                       onSelected: (_) => productsBloc
                           .send(LoadProductsEvent(category: cat.slug)),
                     );
@@ -126,10 +123,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    productsBloc.send(LoadProductsEvent(
-                        category: state.activeCategory));
-                    await Future.delayed(
-                        const Duration(milliseconds: 500));
+                    productsBloc.send(
+                        LoadProductsEvent(category: state.activeCategory));
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
                   child: NotificationListener<ScrollNotification>(
                     onNotification: (notification) {
@@ -148,8 +144,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
                       ),
-                      itemCount: state.products.length +
-                          (state.isLoadingMore ? 1 : 0),
+                      itemCount:
+                          state.products.length + (state.isLoadingMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == state.products.length) {
                           return const Center(
@@ -160,8 +156,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           onTap: () {
                             productsBloc.send(LoadProductDetailEvent(
                                 productId: state.products[index].id));
-                            final routingBloc =
-                                BlocScope.get<RoutingBloc>();
+                            final routingBloc = BlocScope.get<RoutingBloc>();
                             routingBloc.navigate(
                                 '/products/${state.products[index].id}');
                           },
@@ -203,9 +198,8 @@ class _ProductCard extends StatelessWidget {
                     ? Image.network(
                         product.thumbnail,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.image_not_supported,
-                            size: 48),
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.image_not_supported, size: 48),
                       )
                     : const Icon(Icons.shopping_bag, size: 48),
               ),

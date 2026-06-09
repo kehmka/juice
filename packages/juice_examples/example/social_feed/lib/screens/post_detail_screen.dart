@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/feed_bloc.dart';
 import '../blocs/feed_events.dart';
@@ -93,8 +92,7 @@ class PostDetailScreen extends StatelessJuiceWidget<FeedBloc> {
                       const SizedBox(height: 6),
                       Text(
                         '${comment.likes} likes',
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ],

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 import 'package:juice_auth/juice_auth.dart';

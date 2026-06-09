@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/analytics_bloc.dart';
 import '../blocs/analytics_events.dart';
@@ -37,8 +36,7 @@ class AnalyticsScreen extends StatelessJuiceWidget<AnalyticsBloc> {
                 const SizedBox(height: 24),
 
                 // Revenue chart
-                Text('Revenue',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text('Revenue', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 _BarChart(data: state.revenueData, color: Colors.green),
                 const SizedBox(height: 32),
@@ -68,8 +66,7 @@ class _BarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data.isEmpty) return const SizedBox(height: 200);
 
-    final maxValue = data.map((d) => d.value).reduce(
-        (a, b) => a > b ? a : b);
+    final maxValue = data.map((d) => d.value).reduce((a, b) => a > b ? a : b);
 
     return SizedBox(
       height: 200,
@@ -93,8 +90,8 @@ class _BarChart extends StatelessWidget {
                     height: 150 * fraction,
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.7),
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4)),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(4)),
                     ),
                   ),
                   const SizedBox(height: 4),

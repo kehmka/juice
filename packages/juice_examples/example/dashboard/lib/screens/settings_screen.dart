@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_auth/juice_auth.dart';
 
@@ -19,7 +18,8 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const CircleAvatar(radius: 40, child: Icon(Icons.person, size: 40)),
+                const CircleAvatar(
+                    radius: 40, child: Icon(Icons.person, size: 40)),
                 const SizedBox(height: 12),
                 Text(
                   user?.displayName ?? 'Unknown',

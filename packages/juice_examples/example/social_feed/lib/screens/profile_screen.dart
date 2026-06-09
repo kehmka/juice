@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/profile_bloc.dart';
 import '../blocs/profile_events.dart';
@@ -86,10 +85,10 @@ class ProfileScreen extends StatelessJuiceWidget<ProfileBloc> {
           else
             ...state.userPosts.map(
               (post) => ListTile(
-                title: Text(post.title, maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                subtitle: Text(post.body, maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
+                title: Text(post.title,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(post.body,
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

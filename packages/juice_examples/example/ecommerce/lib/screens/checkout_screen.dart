@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 import '../blocs/cart_bloc.dart';
@@ -19,8 +18,7 @@ class CheckoutScreen extends StatelessJuiceWidget<CartBloc> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle,
-                    size: 80, color: Colors.green),
+                const Icon(Icons.check_circle, size: 80, color: Colors.green),
                 const SizedBox(height: 24),
                 Text(
                   'Order Placed!',
@@ -51,8 +49,7 @@ class CheckoutScreen extends StatelessJuiceWidget<CartBloc> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Order Summary',
-              style: Theme.of(context).textTheme.titleLarge),
+          Text('Order Summary', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           ...state.items.map(
             (item) => Padding(
@@ -113,9 +110,8 @@ class CheckoutScreen extends StatelessJuiceWidget<CartBloc> {
             width: double.infinity,
             height: 48,
             child: FilledButton(
-              onPressed: state.isCheckingOut
-                  ? null
-                  : () => bloc.send(CheckoutEvent()),
+              onPressed:
+                  state.isCheckingOut ? null : () => bloc.send(CheckoutEvent()),
               child: state.isCheckingOut
                   ? const SizedBox(
                       width: 20,

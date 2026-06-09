@@ -1,6 +1,7 @@
 name: juice_examples
 description: Production-quality example apps showcasing the Juice state management ecosystem.
 version: 0.2.0
+publish_to: none
 homepage: https://kehmka.github.io/juice/
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_examples
 issue_tracker: https://github.com/kehmka/juice/issues

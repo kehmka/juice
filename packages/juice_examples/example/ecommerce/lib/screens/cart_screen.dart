@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_routing/juice_routing.dart';
 import '../blocs/cart_bloc.dart';
@@ -101,7 +100,8 @@ class _CartItemTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: item.thumbnail.isNotEmpty
-                    ? Image.network(item.thumbnail, fit: BoxFit.cover,
+                    ? Image.network(item.thumbnail,
+                        fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>
                             const Icon(Icons.shopping_bag))
                     : const Icon(Icons.shopping_bag),
@@ -127,15 +127,13 @@ class _CartItemTile extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.remove_circle_outline, size: 20),
-                    onPressed: () =>
-                        onUpdateQuantity(item.quantity - 1),
+                    onPressed: () => onUpdateQuantity(item.quantity - 1),
                   ),
                   Text('${item.quantity}',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, size: 20),
-                    onPressed: () =>
-                        onUpdateQuantity(item.quantity + 1),
+                    onPressed: () => onUpdateQuantity(item.quantity + 1),
                   ),
                 ],
               ),

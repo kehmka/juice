@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/feed_bloc.dart';
 import '../blocs/feed_state.dart';
@@ -8,8 +7,7 @@ import 'post_detail_screen.dart';
 import 'profile_screen.dart';
 
 class FeedScreen extends StatelessJuiceWidget<FeedBloc> {
-  FeedScreen({super.key})
-      : super(groups: const {'feed:posts', 'feed:loading'});
+  FeedScreen({super.key}) : super(groups: const {'feed:posts', 'feed:loading'});
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
@@ -162,7 +160,8 @@ class _PostCard extends StatelessWidget {
                   spacing: 6,
                   children: post.tags
                       .map((tag) => Chip(
-                            label: Text(tag, style: const TextStyle(fontSize: 11)),
+                            label:
+                                Text(tag, style: const TextStyle(fontSize: 11)),
                             padding: EdgeInsets.zero,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:juice/juice.dart';
 import '../blocs/products_bloc.dart';
 import '../blocs/cart_bloc.dart';
@@ -39,8 +38,8 @@ class ProductDetailScreen extends StatelessWidget {
                           return Image.network(
                             product.images[index],
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const Center(child: Icon(Icons.image, size: 64)),
+                            errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(Icons.image, size: 64)),
                           );
                         },
                       )
@@ -57,9 +56,10 @@ class ProductDetailScreen extends StatelessWidget {
                   children: [
                     Text(
                       product.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 4),
                     if (product.brand.isNotEmpty)
@@ -116,12 +116,9 @@ class ProductDetailScreen extends StatelessWidget {
                         Text('${product.rating} rating'),
                         const SizedBox(width: 16),
                         Icon(
-                          product.stock > 0
-                              ? Icons.check_circle
-                              : Icons.cancel,
+                          product.stock > 0 ? Icons.check_circle : Icons.cancel,
                           size: 18,
-                          color:
-                              product.stock > 0 ? Colors.green : Colors.red,
+                          color: product.stock > 0 ? Colors.green : Colors.red,
                         ),
                         const SizedBox(width: 4),
                         Text(product.stock > 0
@@ -147,14 +144,12 @@ class ProductDetailScreen extends StatelessWidget {
                         onPressed: inCart
                             ? null
                             : () {
-                                cartBloc.send(
-                                    AddToCartEvent(product: product));
+                                cartBloc.send(AddToCartEvent(product: product));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(
-                                        '${product.title} added to cart'),
-                                    duration:
-                                        const Duration(seconds: 1),
+                                    content:
+                                        Text('${product.title} added to cart'),
+                                    duration: const Duration(seconds: 1),
                                   ),
                                 );
                               },

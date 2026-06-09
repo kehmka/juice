@@ -78,6 +78,7 @@ class RetryableUseCaseBuilder<
     this.retryWhen,
     this.onRetry,
     UseCaseEventBuilder? initialEventBuilder,
+    this.concurrency = EventConcurrency.concurrent,
   })  : backoff =
             backoff ?? ExponentialBackoff(initial: const Duration(seconds: 1)),
         _initialEventBuilder = initialEventBuilder;
@@ -108,6 +109,9 @@ class RetryableUseCaseBuilder<
   final OnRetryCallback? onRetry;
 
   final UseCaseEventBuilder? _initialEventBuilder;
+
+  @override
+  final EventConcurrency concurrency;
 
   @override
   Type get eventType => typeOfEvent;

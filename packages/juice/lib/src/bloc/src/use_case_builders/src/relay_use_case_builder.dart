@@ -104,6 +104,9 @@ class RelayUseCaseBuilder<
   Type get eventType => typeOfEvent;
 
   @override
+  EventConcurrency get concurrency => EventConcurrency.concurrent;
+
+  @override
   UseCaseGenerator get generator => useCaseGenerator;
 
   @override

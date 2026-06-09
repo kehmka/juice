@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.5.0] - 2026-05-28
+
+### New Features
+
+#### Per-event-type concurrency modes
+
+- Added `EventConcurrency { concurrent, sequential, droppable }`, set per event
+  via `UseCaseBuilder(..., concurrency: ...)` (and the other builders).
+- **`sequential`** — same-type events queue and run one at a time to completion
+  (including their awaits), in send order. Eliminates the "read state before an
+  await, write a stale value after" race for that event type.
+- **`droppable`** — a same-type event arriving while one is running is dropped.
+  Replaces hand-rolled "busy" guard flags.
+- **`concurrent`** (default) — unchanged behavior; fully backward-compatible.
+- Implemented as a thin wrapper at the `EventDispatcher` (per-type FIFO tail /
+  running flag); use cases, executor, status emitter, and state manager are
+  untouched. Queued sequential runs are skipped after `close()` (no
+  emit-after-close).
+
+`restartable` is planned for 1.6 (needs cooperative cancellation + emit
+suppression for superseded runs).
+
 ## [1.4.0] - 2026-04-18
 
 ### Changed

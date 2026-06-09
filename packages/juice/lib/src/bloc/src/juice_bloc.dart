@@ -314,6 +314,7 @@ class JuiceBloc<TState extends BlocState>
     _dispatcher.register<EventBase>(
       (event) => _useCaseExecutor.execute(builder, event),
       eventType: builder.eventType,
+      concurrency: builder.concurrency,
     );
   }
 

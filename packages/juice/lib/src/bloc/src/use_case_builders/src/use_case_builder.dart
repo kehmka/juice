@@ -46,6 +46,13 @@ abstract class UseCaseBuilderBase {
   /// Creates the use case instance that will handle events.
   UseCaseGenerator get generator;
 
+  /// How same-type events are processed relative to one another.
+  ///
+  /// Defaults to [EventConcurrency.concurrent] (events may interleave at awaits).
+  /// Use [EventConcurrency.sequential] for events that mutate shared state, or
+  /// [EventConcurrency.droppable] for exclusive flows.
+  EventConcurrency get concurrency => EventConcurrency.concurrent;
+
   /// Cleanup method called when the use case is disposed.
   ///
   /// Override to release any resources held by the builder.
@@ -83,6 +90,7 @@ class UseCaseBuilder implements UseCaseBuilderBase {
     required this.typeOfEvent,
     required this.useCaseGenerator,
     UseCaseEventBuilder? initialEventBuilder,
+    this.concurrency = EventConcurrency.concurrent,
   }) : _initialEventBuilder = initialEventBuilder;
 
   /// The type of event this use case handles.
@@ -93,6 +101,9 @@ class UseCaseBuilder implements UseCaseBuilderBase {
 
   /// Private storage for optional initial event builder.
   final UseCaseEventBuilder? _initialEventBuilder;
+
+  @override
+  final EventConcurrency concurrency;
 
   @override
   Type get eventType => typeOfEvent;

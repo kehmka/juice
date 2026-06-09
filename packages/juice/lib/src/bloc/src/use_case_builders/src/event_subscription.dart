@@ -114,6 +114,9 @@ class EventSubscription<
   Type get eventType => TLocalEvent;
 
   @override
+  EventConcurrency get concurrency => EventConcurrency.concurrent;
+
+  @override
   UseCaseGenerator get generator => useCaseGenerator;
 
   @override

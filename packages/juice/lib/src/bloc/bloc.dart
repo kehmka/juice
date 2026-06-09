@@ -10,6 +10,7 @@ export 'src/bloc_state.dart';
 export 'src/bloc_use_case.dart';
 export 'src/bloc.dart';
 export 'src/cancellable_event.dart';
+export 'src/core/event_concurrency.dart';
 export 'src/global_bloc_resolver.dart';
 export 'src/juice_bloc.dart';
 export 'src/juice_exception.dart';

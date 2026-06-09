@@ -193,6 +193,7 @@ class InlineUseCaseBuilder<
     required this.typeOfEvent,
     required this.handler,
     UseCaseEventBuilder? initialEventBuilder,
+    this.concurrency = EventConcurrency.concurrent,
   }) : _initialEventBuilder = initialEventBuilder;
 
   /// The event type this use case handles.
@@ -202,6 +203,9 @@ class InlineUseCaseBuilder<
   final InlineHandler<TBloc, TState, TEvent> handler;
 
   final UseCaseEventBuilder? _initialEventBuilder;
+
+  @override
+  final EventConcurrency concurrency;
 
   @override
   Type get eventType => typeOfEvent;

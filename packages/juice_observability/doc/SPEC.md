@@ -34,9 +34,11 @@ errors marked fatal).
 `enabled`, `errorCount`, `breadcrumbs` (bounded ring), `userId`, `lastError`.
 Group: `observability:status`.
 
-Juice does **not** serialize use cases, so the breadcrumb ring and error counter
-are held **on the bloc** (mutated synchronously, snapshotted into state) — a
-state read-modify-write across rapid fire-and-forget events would otherwise race.
+Juice runs same-type use cases concurrently by default, so the breadcrumb ring
+and error counter are held **on the bloc** (mutated synchronously, snapshotted
+into state) — a state read-modify-write across rapid fire-and-forget events would
+otherwise race. (Alternatively, juice ≥ 1.5.0's `EventConcurrency.sequential` on
+those events achieves the same safety; adopting it here is a possible follow-up.)
 
 ## Events & use cases (6)
 

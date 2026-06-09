@@ -22,6 +22,7 @@ The framework is most compelling when you lean into ownership and lifecycle, not
 ## Core Capabilities
 
 - **Use-case driven business logic**: blocs route events into dedicated use cases
+- **Per-event concurrency**: `EventConcurrency.sequential`/`droppable`/`concurrent` on a `UseCaseBuilder` controls how same-type events interleave (1.5.0)
 - **Lifecycle ownership**: `permanent`, `feature`, and `leased` lifecycles via `BlocScope`
 - **Targeted rebuilds**: rebuild groups let widgets subscribe narrowly
 - **Status-aware streams**: `StreamStatus` separates transient workflow state from persistent app state

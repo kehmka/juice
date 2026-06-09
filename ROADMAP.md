@@ -192,28 +192,31 @@ The substrate three (`juice` 1.x, `juice_storage` 1.x, `juice_routing` 1.x)
 cleared these gates implicitly — they're used everywhere, which is *why* they're
 1.x. Everything else is honestly pre-1.0 until an app proves it.
 
-## Concurrency semantics (the rule every use case follows)
+## Concurrency semantics
 
-Juice does **not** serialize use cases: when an `execute()` suspends at an
-`await`, another event's use case can run during the suspension. But
+Juice runs same-type use cases **`concurrent`**ly by default: when an `execute()`
+suspends at an `await`, another event of that type can run during the suspension.
 `emitUpdate` sets `bloc.state` **synchronously** (`StateManager.emit` →
-`_state = state`). So the rule is:
+`_state = state`), so a read-modify-write with no `await` between the read and
+the emit is atomic — but a read *before* an await, written after, races.
 
-- **Read `bloc.state` at emit time (after the await), never a snapshot captured
-  before the await.** A synchronous read-modify-write (`bloc.state.copyWith(... bloc.state.x ...)`
-  with no `await` between the read and the emit) is atomic across sequential
-  microtask resumption — safe.
-- **Accumulators hit by rapid fire-and-forget events** (counters, breadcrumb
-  rings) live **on the bloc**, mutated synchronously, snapshotted into state.
-  (The `juice_observability` breadcrumb ring + error counter; verified bug.)
-- **Long-running exclusive flows** (flush, connect, pick) use a **single-owner
-  guard flag** checked synchronously at entry (`_isFlushing`, `_connecting`,
-  `state.picking`).
+**Primary mechanism (juice ≥ 1.5.0): per-event `EventConcurrency` modes** on the
+`UseCaseBuilder`:
 
-A 2026-05-28 family-wide audit applied this rule; fixes landed in
-`juice_observability` (accumulators), `juice_media` (pick entry-guard + late-
-progress guard), `juice_realtime` (connect guard), `juice_notifications`
-(`lastTap` clear sentinel).
+- **`sequential`** — same-type events queue and run one-at-a-time to completion,
+  in order. Use for events that mutate shared state; the read-before-await race
+  is impossible.
+- **`droppable`** — a same-type event arriving while one runs is dropped.
+  Use for exclusive flows; replaces a hand-rolled guard flag.
+- **`concurrent`** (default) — for genuinely independent events; follow the
+  read-at-emit discipline above.
+
+Before 1.5.0 the same outcomes were hand-rolled. The 2026-05-28 family-wide audit
+applied the manual patterns — accumulators-on-the-bloc (`juice_observability`),
+entry/late-progress guards (`juice_media`), a connect guard (`juice_realtime`),
+and the `juice_notifications` `lastTap` sentinel. **Adopting the new modes to
+retire those hand-rolled guards is a tracked follow-up** (e.g. `juice_realtime`
+`ConnectEvent` → `droppable`); each is a small, separately-tested change.
 
 ### Known edge-case items (0.2.x — surface under dogfooding)
 

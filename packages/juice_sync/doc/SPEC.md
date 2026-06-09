@@ -54,9 +54,11 @@ class Mutation {
 ## Flush algorithm (partitioned FIFO)
 
 All triggers (enqueue-if-online, online edge, backoff/periodic timer,
-retryFailed, init) funnel through one `FlushRequestedEvent`. Juice's per-bloc
-event serialization + an `_isFlushing` flag + a `_pendingFlushRequest` trailing
-re-check make the drain single-owner (closes the missed-wakeup race).
+retryFailed, init) funnel through one `FlushRequestedEvent`. Same-type use cases
+run concurrently by default, so an `_isFlushing` flag + a `_pendingFlushRequest`
+trailing re-check make the drain single-owner (closes the missed-wakeup race).
+(juice ≥ 1.5.0's `EventConcurrency.droppable` could replace the flag; the
+re-check still matters for work enqueued mid-flush — a tracked follow-up.)
 
 `effectivePartition(m) = orderingKey ?? id`. Each pass iterates pending (seq
 order); per mutation: skip if its partition is in `skip` or under a backoff

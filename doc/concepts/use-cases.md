@@ -363,6 +363,37 @@ class CheckoutUseCase extends BlocUseCase<CheckoutBloc, CheckoutEvent> {
 }
 ```
 
+## Event Concurrency (juice ≥ 1.5.0)
+
+By default, use cases for the **same event type** run concurrently — if an
+`execute()` suspends at an `await`, another event of that type can start during
+the suspension. That's fine for independent events, but it makes a
+read-modify-write across an `await` unsafe (one run can clobber another).
+
+Declare a concurrency mode per event on its builder:
+
+```dart
+() => UseCaseBuilder(
+  typeOfEvent: SaveEvent,
+  useCaseGenerator: () => SaveUseCase(),
+  concurrency: EventConcurrency.sequential,   // or .droppable, or .concurrent
+),
+```
+
+| Mode | Behavior | Use for |
+|---|---|---|
+| `concurrent` (default) | same-type use cases may interleave at awaits | genuinely independent events |
+| `sequential` | same-type events queue and run one-at-a-time to completion, in order | events that **mutate shared state** (a list, map, counter) — eliminates the read-before-await race |
+| `droppable` | a same-type event arriving while one runs is **dropped** | exclusive flows (a flush, a connect, a pick) — replaces a manual "busy" guard |
+
+> When you stay on `concurrent`, follow the discipline: read `bloc.state` *at
+> emit time* (after any await), never a snapshot captured *before* an await
+> (`emitUpdate` sets `bloc.state` synchronously, so a read-modify-write with no
+> `await` between the read and the emit is atomic).
+
+`restartable` (cancel the in-flight run, start the new one) is planned for a
+future release.
+
 ## Best Practices
 
 1. **Single Responsibility**

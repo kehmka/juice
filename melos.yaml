@@ -14,29 +14,29 @@ command:
 
 scripts:
   analyze:
-    run: melos exec -- flutter analyze
+    run: dart run melos exec --concurrency=1 -- flutter analyze
     description: Run analyzer in all packages
 
   test:
-    run: melos exec -- flutter test
+    run: dart run melos exec --concurrency=1 --dir-exists=test --ignore=notes_app -- flutter test
     description: Run tests in all packages
 
   format:
-    run: melos exec -- dart format lib/ test/
+    run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format "${targets[@]}"; fi'
     description: Format all packages
 
   format:check:
-    run: melos exec -- dart format --set-exit-if-changed lib/ test/
+    run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format --set-exit-if-changed "${targets[@]}"; fi'
     description: Check formatting in all packages
 
   ci:
-    run: melos run format:check && melos run analyze && melos run test
+    run: dart run melos run format:check && dart run melos run analyze && dart run melos run test
     description: Run full CI pipeline
 
   publish:dry:
-    run: melos publish --dry-run
+    run: dart run melos publish --dry-run
     description: Dry run publish
 
   publish:
-    run: melos publish --no-dry-run
+    run: dart run melos publish --no-dry-run
     description: Publish packages

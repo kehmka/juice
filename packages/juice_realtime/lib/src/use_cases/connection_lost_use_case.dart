@@ -12,6 +12,7 @@ class ConnectionLostUseCase
     extends BlocUseCase<RealtimeBloc, ConnectionLostEvent> {
   @override
   Future<void> execute(ConnectionLostEvent event) async {
+    bloc.endConnecting();
     await bloc.teardownConnection();
     final error = event.error?.toString();
 

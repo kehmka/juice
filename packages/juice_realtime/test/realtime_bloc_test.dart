@@ -171,6 +171,21 @@ void main() {
       await bloc.close();
     });
 
+    test('concurrent connect calls open only one connection', () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+
+      bloc.connect();
+      bloc.connect(); // guarded — should be ignored while the first is in flight
+      bloc.connect();
+      await settle();
+
+      expect(conn.connections.length, 1);
+      expect(bloc.state.status, RealtimeStatus.connected);
+      await bloc.close();
+    });
+
     test('manual disconnect stops reconnection', () async {
       final conn = FakeRealtimeConnector();
       final bloc = RealtimeBloc.withConfig(cfg(conn));

@@ -36,6 +36,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   StreamSubscription<RealtimeMessage>? _messageSub;
   Timer? _reconnectTimer;
   bool _manualClose = false;
+  bool _connecting = false;
 
   final StreamController<RealtimeMessage> _messages =
       StreamController<RealtimeMessage>.broadcast();
@@ -89,6 +90,11 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   /// Whether the live connection can send.
   bool get hasConnection => _connection != null;
 
+  /// A connect attempt is in flight (guards against overlapping connects).
+  bool get isConnecting => _connecting;
+  void beginConnecting() => _connecting = true;
+  void endConnecting() => _connecting = false;
+
   // === Connection lifecycle (resources live here) ===
 
   /// Open a connection and wire its message stream to internal events.
@@ -130,6 +136,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   /// Mark a user-initiated disconnect and cancel any pending reconnect.
   void markManualClose() {
     _manualClose = true;
+    _connecting = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
   }

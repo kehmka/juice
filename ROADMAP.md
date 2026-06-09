@@ -191,3 +191,41 @@ count. Versions graduate through gates, not a schedule:
 The substrate three (`juice` 1.x, `juice_storage` 1.x, `juice_routing` 1.x)
 cleared these gates implicitly — they're used everywhere, which is *why* they're
 1.x. Everything else is honestly pre-1.0 until an app proves it.
+
+## Concurrency semantics (the rule every use case follows)
+
+Juice does **not** serialize use cases: when an `execute()` suspends at an
+`await`, another event's use case can run during the suspension. But
+`emitUpdate` sets `bloc.state` **synchronously** (`StateManager.emit` →
+`_state = state`). So the rule is:
+
+- **Read `bloc.state` at emit time (after the await), never a snapshot captured
+  before the await.** A synchronous read-modify-write (`bloc.state.copyWith(... bloc.state.x ...)`
+  with no `await` between the read and the emit) is atomic across sequential
+  microtask resumption — safe.
+- **Accumulators hit by rapid fire-and-forget events** (counters, breadcrumb
+  rings) live **on the bloc**, mutated synchronously, snapshotted into state.
+  (The `juice_observability` breadcrumb ring + error counter; verified bug.)
+- **Long-running exclusive flows** (flush, connect, pick) use a **single-owner
+  guard flag** checked synchronously at entry (`_isFlushing`, `_connecting`,
+  `state.picking`).
+
+A 2026-05-28 family-wide audit applied this rule; fixes landed in
+`juice_observability` (accumulators), `juice_media` (pick entry-guard + late-
+progress guard), `juice_realtime` (connect guard), `juice_notifications`
+(`lastTap` clear sentinel).
+
+### Known edge-case items (0.2.x — surface under dogfooding)
+
+Low-severity concurrency edges, deliberately deferred (not data-loss in normal
+flows; require fixing only if an app hits them):
+
+- **`juice_forms`** — `validate()`/`submit()` compute errors from a value
+  snapshot; editing a field *during* that async pass can stamp a stale error.
+  (Field *values* are read fresh, so no value loss.)
+- **`juice_flags`** — a manual `refresh` whose fetch overlaps a live `changes()`
+  stream push can apply the older fetch last (last-writer-wrong-order on the
+  `_fetched` layer).
+- **`juice_sync`** — `close()` during an in-flight flush disposes the store
+  between the executor await and the durable delete; add a post-await
+  `isClosing` guard when hardening.

@@ -10,6 +10,8 @@ class ReconnectUseCase extends BlocUseCase<RealtimeBloc, ReconnectEvent> {
   @override
   Future<void> execute(ReconnectEvent event) async {
     if (bloc.manualClose) return; // user disconnected meanwhile
+    if (bloc.isConnecting) return; // a connect is already in flight
+    bloc.beginConnecting();
 
     await bloc.teardownConnection();
 

@@ -22,10 +22,13 @@ class FakeMediaSource implements MediaSource {
   List<MediaItem> toReturn;
   Object? error;
   bool disposed = false;
+  int pickCalls = 0;
   FakeMediaSource([this.toReturn = const []]);
 
   @override
   Future<List<MediaItem>> pick(MediaRequest request) async {
+    pickCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
     if (error != null) throw error!;
     return toReturn;
   }
@@ -113,6 +116,19 @@ void main() {
 
       expect(bloc.state.lastError, contains('denied'));
       expect(bloc.state.picking, isFalse);
+      await bloc.close();
+    });
+
+    test('a second pick while one is in flight is ignored', () async {
+      final src = FakeMediaSource([img('a')]);
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src));
+      await settle();
+
+      bloc.pickFromGallery();
+      bloc.pickFromGallery(); // guarded — first is still picking
+      await settle();
+
+      expect(src.pickCalls, 1);
       await bloc.close();
     });
 

@@ -3,6 +3,7 @@ import 'package:juice/juice.dart';
 import '../media_bloc.dart';
 import '../media_events.dart';
 import '../media_state.dart';
+import '../upload_state.dart';
 
 /// Handles [UploadProgressEvent] — record progress for one item.
 ///
@@ -12,6 +13,8 @@ class UploadProgressUseCase extends BlocUseCase<MediaBloc, UploadProgressEvent> 
   Future<void> execute(UploadProgressEvent event) async {
     final upload = bloc.state.uploads[event.id];
     if (upload == null) return;
+    // A late progress event after cancel/complete must not revive the bar.
+    if (upload.status != UploadStatus.uploading) return;
 
     emitUpdate(
       newState: bloc.state.copyWith(

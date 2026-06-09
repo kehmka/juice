@@ -42,12 +42,12 @@ class NotificationsState extends BlocState {
 
   NotificationsState copyWith({
     List<JuiceNotification>? scheduled,
-    NotificationTap? lastTap,
+    Object? lastTap = _unset,
     bool? permissionGranted,
   }) {
     return NotificationsState(
       scheduled: scheduled ?? this.scheduled,
-      lastTap: lastTap ?? this.lastTap,
+      lastTap: identical(lastTap, _unset) ? this.lastTap : lastTap as NotificationTap?,
       permissionGranted: permissionGranted ?? this.permissionGranted,
     );
   }
@@ -56,3 +56,5 @@ class NotificationsState extends BlocState {
   String toString() =>
       'NotificationsState(${scheduled.length} scheduled, granted: $permissionGranted)';
 }
+
+const Object _unset = Object();

@@ -8,6 +8,8 @@ import '../realtime_state.dart';
 class ConnectUseCase extends BlocUseCase<RealtimeBloc, ConnectEvent> {
   @override
   Future<void> execute(ConnectEvent event) async {
+    if (bloc.isConnecting) return; // a connect is already in flight
+    bloc.beginConnecting();
     await bloc.teardownConnection();
 
     emitUpdate(

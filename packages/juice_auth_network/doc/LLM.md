@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_auth_network
-version: 0.1.0
+version: 0.1.1
 requires:
   juice: ">=1.4.0"
   juice_auth: ">=0.2.1"
-  juice_network: ">=0.11.0"
+  juice_network: ">=0.12.0"
 updated: 2026-06-09
 ---
 

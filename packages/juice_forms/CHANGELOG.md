@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-10
+
+From dogfooding (Glean DOGFOOD.md F3).
+
+### Added
+
+- **Awaitable validation/submit** — `Future<bool> validateNow()` and
+  `Future<bool> submitNow()`: the use case completes the future with the
+  outcome (`isValid` / handler-succeeded), so "validate, then save" flows no
+  longer need a settle-delay after the fire-and-forget `validate()`.
+  `ValidateFormEvent`/`SubmitFormEvent` gain an optional `completion` Completer.
+  Additive and backward-compatible.
+
 ## [0.1.0] - 2026-05-28
 
 ### Added

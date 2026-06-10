@@ -56,10 +56,21 @@ class RunAsyncValidationEvent extends FormsEvent {
 }
 
 /// Validate every field (sync + awaited async) and mark all touched.
-class ValidateFormEvent extends FormsEvent {}
+class ValidateFormEvent extends FormsEvent {
+  /// Completed by the use case with the post-validation `isValid` — lets a
+  /// caller `await` the pass (`FormsBloc.validateNow`).
+  final Completer<bool>? completion;
+  ValidateFormEvent({this.completion});
+}
 
 /// Validate all, then run the submit handler if the form is valid.
-class SubmitFormEvent extends FormsEvent {}
+class SubmitFormEvent extends FormsEvent {
+  /// Completed by the use case: `true` once the submit handler succeeded,
+  /// `false` when validation failed, no handler was configured, or the
+  /// handler threw (`FormsBloc.submitNow`).
+  final Completer<bool>? completion;
+  SubmitFormEvent({this.completion});
+}
 
 /// Reset every field to its initial value and clear submit status.
 class ResetFormEvent extends FormsEvent {}

@@ -35,6 +35,7 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
 
     if (errors.values.any((e) => e != null)) {
       emitUpdate(newState: validated, groupsToRebuild: fieldGroups);
+      event.completion?.complete(false);
       return;
     }
 
@@ -48,6 +49,7 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
         groupsToRebuild: {FormsGroups.status},
         error: StateError('FormsBloc.submit() called with no onSubmit handler'),
       );
+      event.completion?.complete(false);
       return;
     }
 
@@ -62,6 +64,7 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
         newState: bloc.state.copyWith(submitting: false, submitted: true),
         groupsToRebuild: {FormsGroups.status},
       );
+      event.completion?.complete(true);
     } catch (e) {
       emitFailure(
         newState: bloc.state
@@ -69,6 +72,7 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
         groupsToRebuild: {FormsGroups.status},
         error: e,
       );
+      event.completion?.complete(false);
     }
   }
 }

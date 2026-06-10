@@ -126,6 +126,15 @@ Headless (no widgets). Covered: sync first-error/clear, cross-field matches,
 async validating→resolve, **stale-async-dropped**, submit valid/invalid/
 no-handler/throw, submit-awaits-async, register/unregister, reset. 17 tests.
 
+
+## Awaitable validate/submit (0.2)
+
+Dogfood-driven (Glean F3): `validateNow()` / `submitNow()` return a
+`Future<bool>` completed by the use case (isValid / handler-succeeded), via an
+optional `completion` Completer on `ValidateFormEvent` / `SubmitFormEvent` —
+removes the settle-delay race in "validate, then save" flows. The completer is
+always completed (or completed with the error), never left hanging.
+
 ## Spec Version
 
 | Version | Date | Status |

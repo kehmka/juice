@@ -185,6 +185,24 @@ class FormsBloc extends JuiceBloc<FormsState> {
   void submit() => send(SubmitFormEvent());
   void reset() => send(ResetFormEvent());
 
+  /// Run a full (sync + awaited async) validation pass and complete with the
+  /// resulting `isValid` — the awaitable form of [validate] for flows like
+  /// "validate, then save".
+  Future<bool> validateNow() {
+    final completion = Completer<bool>();
+    send(ValidateFormEvent(completion: completion));
+    return completion.future;
+  }
+
+  /// Validate and, if valid, run the submit handler; completes `true` only
+  /// when the handler succeeded (`false` on invalid, no handler, or throw —
+  /// details surface in state as usual).
+  Future<bool> submitNow() {
+    final completion = Completer<bool>();
+    send(SubmitFormEvent(completion: completion));
+    return completion.future;
+  }
+
   /// Typed read of a field's current value.
   T? value<T>(String name) => state.fields[name]?.value as T?;
 

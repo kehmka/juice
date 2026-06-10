@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_forms
-version: 0.1.0
+version: 0.2.0
 requires:
   juice: ">=1.4.0"
-updated: 2026-06-09
+updated: 2026-06-10
 ---
 
 # juice_forms — AI card
@@ -32,7 +32,7 @@ field doesn't rebuild the others). It's a feature bloc with no platform SDK.
 
 ```yaml
 dependencies:
-  juice_forms: ^0.1.0
+  juice_forms: ^0.2.0
 ```
 
 ## Construct
@@ -61,9 +61,11 @@ form.submit();
 void register(FieldConfig config);   void unregister(String name);
 void change(String name, Object? value);
 void touch(String name);             void setEnabled(String name, bool enabled);
-void validate();   // full sync+async pass, mark all touched
-void submit();     // validate then run handler if valid
-void reset();      // restore initial values, clear status
+void validate();                     // full sync+async pass, mark all touched
+void submit();                       // validate then run handler if valid
+Future<bool> validateNow();          // awaitable validate → isValid (0.2.0)
+Future<bool> submitNow();            // awaitable submit → handler succeeded (0.2.0)
+void reset();                        // restore initial values, clear status
 T? value<T>(String name);            // typed read of a field's value
 ```
 

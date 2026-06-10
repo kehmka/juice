@@ -311,6 +311,75 @@ void main() {
     });
   });
 
+  group('Awaitable validate/submit (0.2.0)', () {
+    test('validateNow completes with isValid — no settle-delay needed',
+        () async {
+      final bloc = FormsBloc.withConfig(FormsConfig(fields: [
+        FieldConfig(name: 'email', validators: [Validators.required()]),
+      ]));
+      await settle();
+
+      expect(await bloc.validateNow(), isFalse); // empty required field
+      bloc.change('email', 'a@b.com');
+      await settle();
+      expect(await bloc.validateNow(), isTrue);
+      await bloc.close();
+    });
+
+    test('validateNow awaits async validators', () async {
+      final av = RecordingAsyncValidator(); // 'taken' → error after 40ms
+      final bloc = FormsBloc.withConfig(FormsConfig(fields: [
+        FieldConfig(name: 'user', asyncValidator: av.call),
+      ]));
+      await settle();
+      bloc.change('user', 'taken');
+      await settle();
+
+      expect(await bloc.validateNow(), isFalse); // async said 'Taken'
+      expect(bloc.state.fields['user']!.error, 'Taken');
+      await bloc.close();
+    });
+
+    test('submitNow: true on success; false on invalid / no handler / throw',
+        () async {
+      // Success
+      var called = false;
+      final ok = FormsBloc.withConfig(FormsConfig(
+        fields: [
+          FieldConfig(name: 'x', validators: [Validators.required()])
+        ],
+        onSubmit: (_) async => called = true,
+      ));
+      await settle();
+      ok.change('x', 'v');
+      await settle();
+      expect(await ok.submitNow(), isTrue);
+      expect(called, isTrue);
+      await ok.close();
+
+      // Invalid
+      final invalid = FormsBloc.withConfig(FormsConfig(
+        fields: [
+          FieldConfig(name: 'x', validators: [Validators.required()])
+        ],
+        onSubmit: (_) async {},
+      ));
+      await settle();
+      expect(await invalid.submitNow(), isFalse);
+      await invalid.close();
+
+      // Handler throws
+      final boom = FormsBloc.withConfig(FormsConfig(
+        fields: [const FieldConfig(name: 'x')],
+        onSubmit: (_) async => throw Exception('boom'),
+      ));
+      await settle();
+      expect(await boom.submitNow(), isFalse);
+      expect(boom.state.submitError, contains('boom'));
+      await boom.close();
+    });
+  });
+
   group('Dynamic fields', () {
     test('register / unregister at runtime', () async {
       final bloc = FormsBloc.withConfig(const FormsConfig());

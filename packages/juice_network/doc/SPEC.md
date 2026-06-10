@@ -1104,29 +1104,44 @@ Duration backoff(int attempt) {
 
 ## Events Contract
 
-This is the **stable, contractual event surface** for FetchBloc v0.1.0.
+This is the **stable, contractual event surface** for FetchBloc.
+
+> **Code is the source of truth (reconciled 2026-06-09).** Parts of this section
+> below were authored against an *aspirational* awaitable-result design
+> (`GetEvent<T>` with `await event.result`). The shipped code is **fire-and-forget**:
+> request events are **non-generic** (`GetEvent extends EventBase`), carry a
+> `decode` callback, are issued with `send()`, and deliver the decoded value +
+> status to **state**, observed via the `fetch:request:<canonical>` rebuild group
+> (see Implementation Notes → "Request events extend `EventBase`, not
+> `ResultEvent`"). Where the two disagree, the code wins. A full top-to-bottom
+> pass to scrub remaining `<T>` / `event.result` mentions is tracked separately.
 
 ### Event Input/Output Contract
 
-#### Request Events (return typed data)
+#### Request Events (results delivered to state)
 
-| Event | Key Inputs | Output | Errors |
-|-------|------------|--------|--------|
-| `GetEvent<T>` | `url`, `queryParams?`, `headers?`, `decode?` | `Future<T>` via `event.result` | `NetworkError`, `HttpError`, `DecodeError`, `CancelledError` |
-| `PostEvent<T>` | `url`, `body?`, `decode?` | `Future<T>` via `event.result` | Same |
-| `PutEvent<T>` | `url`, `body?`, `decode?` | `Future<T>` via `event.result` | Same |
-| `PatchEvent<T>` | `url`, `body?`, `decode?` | `Future<T>` via `event.result` | Same |
-| `DeleteEvent<T>` | `url`, `decode?` | `Future<T>` via `event.result` | Same |
+Non-generic; a `decode: dynamic Function(dynamic raw)?` transforms the raw body.
+There is **no `event.result`** — the decoded value and `RequestStatus` land in
+state under `fetch:request:<canonical>`.
+
+| Event | Key Inputs | Result delivery | Errors |
+|-------|------------|-----------------|--------|
+| `GetEvent` | `url`, `queryParams?`, `headers?`, `decode?`, `cachePolicy?`, `scope?` | state @ `fetch:request:<canonical>` | `NetworkError`, `HttpError`, `DecodeError`, `CancelledError` |
+| `PostEvent` | `url`, `body?`, `idempotencyKey?`, `decode?` | Same | Same |
+| `PutEvent` | `url`, `body?`, `decode?` | Same | Same |
+| `PatchEvent` | `url`, `body?`, `decode?` | Same | Same |
+| `DeleteEvent` | `url`, `decode?` | Same | Same |
 
 **Usage pattern:**
 ```dart
-final event = GetEvent<User>(
+fetchBloc.send(GetEvent(
   url: '/api/users/123',
   decode: User.fromJson,
   cachePolicy: CachePolicy.cacheFirst,
-);
-fetchBloc.send(event);
-final user = await event.result;  // User or throws FetchError
+  scope: 'profile',
+));
+// No await. A widget bound to the request's rebuild group reads the decoded
+// value + RequestStatus from FetchState (see "State Model" / "Rebuild Groups").
 ```
 
 #### Lifecycle Events (no return value)
@@ -3176,3 +3191,4 @@ implemented. Runtime interceptor mutation is available via
 | 1.3 | - | Pre-freeze | Fixed Juice patterns (StatelessJuiceWidget, BlocUseCase, Set groups, EventBase); Added ScopeLifecycleBloc integration |
 | 1.4 | - | Frozen | Original implementation contract |
 | 1.5 | - | Implemented | Reconciled with shipping code; added [Implementation Notes](#implementation-notes) (code is source of truth) |
+| 1.6 | 2026-06-09 | Implemented | Fixed the Events Contract "Request Events" subsection to match the shipped fire-and-forget API (non-generic events, `decode` callback, results to state @ `fetch:request:<canonical>`); removed the awaitable `event.result` usage example |

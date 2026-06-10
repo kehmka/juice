@@ -35,11 +35,6 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
   ErrorCallback? _prevPlatformOnError;
   bool _handlersInstalled = false;
 
-  // Accumulators live on the bloc: Juice does not serialize use cases, so a
-  // read-modify-write of state across rapid fire-and-forget events would race.
-  final List<Breadcrumb> _breadcrumbs = [];
-  int _errorCount = 0;
-
   ObservabilityBloc()
       : super(
           ObservabilityState.initial,
@@ -47,12 +42,17 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
             () => UseCaseBuilder(
                 typeOfEvent: InitializeObservabilityEvent,
                 useCaseGenerator: () => InitializeObservabilityUseCase()),
+            // sequential: the breadcrumb ring + error counter are
+            // read-modify-writes of state; serializing same-type events makes
+            // them race-free without bloc-side accumulators (juice ≥ 1.5.0).
             () => UseCaseBuilder(
                 typeOfEvent: RecordErrorEvent,
-                useCaseGenerator: () => RecordErrorUseCase()),
+                useCaseGenerator: () => RecordErrorUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: AddBreadcrumbEvent,
-                useCaseGenerator: () => AddBreadcrumbUseCase()),
+                useCaseGenerator: () => AddBreadcrumbUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetUserEvent,
                 useCaseGenerator: () => SetUserUseCase()),
@@ -75,19 +75,6 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
   void configure(ObservabilityConfig config) => _config = config;
   List<CrashReporter> get reporters => _config.reporters;
   int get maxBreadcrumbs => _config.maxBreadcrumbs;
-
-  /// A fresh snapshot of the breadcrumb ring (most recent last).
-  List<Breadcrumb> get breadcrumbs => List.of(_breadcrumbs);
-
-  /// Append a breadcrumb, trimming to [maxBreadcrumbs]. Race-safe (bloc-owned).
-  void addBreadcrumbToRing(Breadcrumb crumb) {
-    _breadcrumbs.add(crumb);
-    final over = _breadcrumbs.length - maxBreadcrumbs;
-    if (over > 0) _breadcrumbs.removeRange(0, over);
-  }
-
-  /// Increment and return the error count.
-  int bumpErrorCount() => ++_errorCount;
 
   /// Install global error handlers, chaining any that were already set.
   void installHandlers() {

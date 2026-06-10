@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_observability
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.5.0"
 updated: 2026-06-09
 ---
 
@@ -116,13 +116,12 @@ class ObservabilityState {    // BlocState
 
 ## Concurrency
 
-Use cases run with the default `concurrent` mode. Because Juice does not
-serialize same-type use cases, the **breadcrumb ring (`_breadcrumbs`) and error
-counter (`_errorCount`) live on the bloc**, mutated synchronously via
-`addBreadcrumbToRing` / `bumpErrorCount` and then snapshotted into state — a
-read-modify-write of state across rapid fire-and-forget events would otherwise
-race. (juice ≥ 1.5.0's `EventConcurrency.sequential` on those events would be an
-equivalent alternative; not adopted here.)
+`RecordErrorEvent` and `AddBreadcrumbEvent` are registered
+**`EventConcurrency.sequential`** (juice ≥ 1.5.0): same-type events queue and run
+one-at-a-time, so the breadcrumb-ring and error-counter read-modify-writes live
+naturally in state (`state.breadcrumbs` / `state.errorCount`) without any
+bloc-side accumulator. This is the framework mode that replaced the original
+hand-rolled workaround.
 
 ## Recipes
 

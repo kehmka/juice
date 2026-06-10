@@ -47,9 +47,12 @@ class MediaBloc extends JuiceBloc<MediaState> {
             () => UseCaseBuilder(
                 typeOfEvent: InitializeMediaEvent,
                 useCaseGenerator: () => InitializeMediaUseCase()),
+            // droppable: a pick fired while one is in flight is ignored
+            // (juice ≥ 1.5.0) — replaces a manual `state.picking` entry guard.
             () => UseCaseBuilder(
                 typeOfEvent: AcquireMediaEvent,
-                useCaseGenerator: () => AcquireMediaUseCase()),
+                useCaseGenerator: () => AcquireMediaUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: AddRemoteItemsEvent,
                 useCaseGenerator: () => AddRemoteItemsUseCase()),

@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_media
-version: 0.2.1
+version: 0.3.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.5.0"
   image_picker: ">=1.1.0"
 updated: 2026-06-09
 ---
@@ -132,8 +132,8 @@ never rebuilds the gallery.
 
 ## Concurrency
 
-- **`AcquireMediaEvent` entry-guard:** `AcquireMediaUseCase` returns early if
-  `state.picking` — a second pick while one is in flight is dropped.
+- **`AcquireMediaEvent` is `EventConcurrency.droppable`** (juice ≥ 1.5.0): a pick
+  fired while one is in flight is dropped at dispatch (no manual entry guard).
 - **Upload staleness guard:** `beginUpload` callbacks check `_active` membership
   before sending; `UploadProgressUseCase` ignores progress unless status is
   still `uploading`. A **cancel** cleans up *before* the handle errors, so a

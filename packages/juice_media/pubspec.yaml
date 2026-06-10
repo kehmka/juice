@@ -1,6 +1,6 @@
 name: juice_media
 description: Media acquisition (camera/gallery) and per-item upload state as a Juice bloc, behind swappable seams.
-version: 0.2.1
+version: 0.3.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_media
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -17,7 +17,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.4.0
+  juice: ^1.5.0
   image_picker: ^1.1.0
 
 dev_dependencies:

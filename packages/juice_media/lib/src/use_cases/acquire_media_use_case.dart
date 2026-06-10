@@ -8,8 +8,8 @@ import '../media_state.dart';
 class AcquireMediaUseCase extends BlocUseCase<MediaBloc, AcquireMediaEvent> {
   @override
   Future<void> execute(AcquireMediaEvent event) async {
-    if (bloc.state.picking) return; // a pick is already in flight
-
+    // No entry guard: the builder is `droppable`, so a pick fired while one is
+    // in flight never reaches this use case.
     emitUpdate(
       newState: bloc.state.copyWith(picking: true, lastError: null),
       groupsToRebuild: {MediaGroups.picking},

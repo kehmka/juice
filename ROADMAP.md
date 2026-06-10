@@ -211,12 +211,24 @@ the emit is atomic — but a read *before* an await, written after, races.
 - **`concurrent`** (default) — for genuinely independent events; follow the
   read-at-emit discipline above.
 
-Before 1.5.0 the same outcomes were hand-rolled. The 2026-05-28 family-wide audit
-applied the manual patterns — accumulators-on-the-bloc (`juice_observability`),
-entry/late-progress guards (`juice_media`), a connect guard (`juice_realtime`),
-and the `juice_notifications` `lastTap` sentinel. **Adopting the new modes to
-retire those hand-rolled guards is a tracked follow-up** (e.g. `juice_realtime`
-`ConnectEvent` → `droppable`); each is a small, separately-tested change.
+Before 1.5.0 the same outcomes were hand-rolled. **Adopted so far:**
+
+- `juice_observability` 0.2.0 — `RecordError`/`AddBreadcrumb` → `sequential`;
+  deleted the bloc-side `_breadcrumbs`/`_errorCount` accumulator workaround.
+- `juice_media` 0.3.0 — `AcquireMediaEvent` → `droppable`; dropped the
+  `state.picking` entry guard.
+
+**Deliberately NOT adopted** — the modes are *per-event-type*, but these guards
+are *cross-event* (or carry extra logic), so a mode would change behavior:
+
+- `juice_realtime` — `_connecting` is shared by `ConnectEvent` **and**
+  `ReconnectEvent`; per-type `droppable` wouldn't stop a connect/reconnect overlap.
+- `juice_paging` — `_loading` is shared by `LoadMore` **and** `Refresh`.
+- `juice_sync` — `droppable` would drop a flush trigger that must still *run* to
+  set the `_pendingFlushRequest` re-check (work enqueued mid-flush).
+
+Keep their hand-rolled guards. (The `juice_notifications` `lastTap` sentinel is a
+copyWith fix, unrelated to modes.)
 
 ### Known edge-case items (0.2.x — surface under dogfooding)
 

@@ -4,7 +4,7 @@ package: juice_storage
 version: 1.2.0
 requires:
   juice: ">=1.4.0"
-updated: 2026-06-09
+updated: 2026-06-10
 ---
 
 # juice_storage — AI card
@@ -48,7 +48,10 @@ dependencies:
 ```
 
 Pulls `hive`/`hive_flutter`, `shared_preferences`, `sqflite`,
-`flutter_secure_storage`. iOS secure storage needs Keychain entitlements.
+`flutter_secure_storage`. **macOS requires a `keychain-access-groups`
+entitlement in both `.entitlements` files** — without it the secure backend is
+`notInitialized` and every `secure*` call fails loudly (this also breaks
+`juice_auth` session restore). iOS works by default.
 
 ## Construct
 

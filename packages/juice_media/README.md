@@ -105,6 +105,34 @@ media.addRemoteItems([MediaItem.remote(id: 'b', uri: 'https://cdn/b.jpg', name: 
 `Image.network(item.uri!)`, local items from `path`/`bytes`. `uploadAll` uploads
 only the local, not-yet-uploaded ones.
 
+## Pick sessions (draft partitioning, 0.4)
+
+When several contexts share one bloc (e.g. a capture draft opened while a
+previous draft's photos are still uploading), tag each context's picks with a
+**session** and filter:
+
+```dart
+media.pickFromGallery(session: draftId);          // items stamped with the tag
+final draftItems = media.state.inSession(draftId); // only this draft's items
+```
+
+No more snapshot-and-diff of item ids.
+
+## Local items (re-upload after a restart, 0.4)
+
+Items normally enter via `pick()`. To upload a file you *persisted earlier*
+(e.g. media saved while signed out, re-synced after an app restart), rebuild the
+item from its path:
+
+```dart
+media.addLocalItems([
+  MediaItem.local(id: rowId, path: '/…/photo.jpg', name: 'photo.jpg'),
+]);
+media.upload(rowId);   // normal upload path, progress and all
+```
+
+Fails loud on a remote-origin item or one with no `path`/`bytes`.
+
 ## Fail-loud
 
 Calling upload with **no uploader configured** marks the item `failed` and sets

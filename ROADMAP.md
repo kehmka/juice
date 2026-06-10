@@ -192,6 +192,13 @@ The substrate three (`juice` 1.x, `juice_storage` 1.x, `juice_routing` 1.x)
 cleared these gates implicitly — they're used everywhere, which is *why* they're
 1.x. Everything else is honestly pre-1.0 until an app proves it.
 
+**The dogfood app exists: Glean** (github.com/kehmka/glean — an offline-first
+personal field journal using the full family). Findings flow through its
+`DOGFOOD.md` (find → fix in the package → publish → drop the workaround). First
+cycle landed: pick sessions + local items (`juice_media` 0.4.0), awaitable
+validate/submit (`juice_forms` 0.2.0), and the macOS keychain-entitlement docs
+gap (`juice_storage`).
+
 ## Concurrency semantics
 
 Juice runs same-type use cases **`concurrent`**ly by default: when an `execute()`

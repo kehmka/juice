@@ -37,6 +37,25 @@ dependencies:
   juice_storage: ^1.2.0
 ```
 
+### Platform setup — secure storage
+
+`flutter_secure_storage` backs the secure backend and needs platform
+configuration:
+
+- **macOS** — add a Keychain entitlement to *both*
+  `macos/Runner/DebugProfile.entitlements` and
+  `macos/Runner/Release.entitlements`, or the secure backend reports
+  `notInitialized` and every `secure*` call (including `juice_auth`'s session
+  restore) fails loudly:
+
+  ```xml
+  <key>keychain-access-groups</key>
+  <array/>
+  ```
+
+- **iOS** — works by default; Keychain Sharing is only needed to share items
+  across apps.
+
 ## Usage
 
 ### Basic Setup

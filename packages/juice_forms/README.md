@@ -85,6 +85,18 @@ form.submit();
 Built-in `Validators`: `required`, `minLength`, `maxLength`, `email`, `matches`,
 `all`.
 
+### Awaitable validate/submit (0.2)
+
+`validate()`/`submit()` are fire-and-forget events. For "validate, then act"
+flows, the awaitable forms complete with the outcome — no settle-delays:
+
+```dart
+if (!await form.validateNow()) return;   // full sync+async pass → isValid
+saveDraft(form.state.values);
+
+final ok = await form.submitNow();       // true only if the handler succeeded
+```
+
 ## State
 
 `FormsState` is **data-only** — validators live on the bloc's config, not in

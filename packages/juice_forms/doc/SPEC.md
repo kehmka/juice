@@ -137,6 +137,7 @@ always completed (or completed with the error), never left hanging.
 
 ## Spec Version
 
-| Version | Date | Status |
-|---|---|---|
-| 1.0 | 2026-05-28 | Implemented |
+| Version | Date | Status | Changes |
+|---|---|---|---|
+| 1.0 | 2026-05-28 | Implemented | Initial |
+| 1.1 | 2026-06-10 | Implemented | Awaitable validateNow/submitNow (0.2.0, dogfood F3) |

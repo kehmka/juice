@@ -117,6 +117,7 @@ Dogfood-driven (Glean F1/F2):
 
 ## Spec Version
 
-| Version | Date | Status |
-|---|---|---|
-| 1.0 | 2026-05-28 | Implemented |
+| Version | Date | Status | Changes |
+|---|---|---|---|
+| 1.0 | 2026-05-28 | Implemented | Initial |
+| 1.1 | 2026-06-10 | Implemented | Sessions + local items (0.4.0, dogfood F1/F2) |

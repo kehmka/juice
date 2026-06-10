@@ -16,7 +16,12 @@ class AcquireMediaUseCase extends BlocUseCase<MediaBloc, AcquireMediaEvent> {
     );
 
     try {
-      final picked = await bloc.source.pick(event.request);
+      var picked = await bloc.source.pick(event.request);
+      // Stamp the request's session tag so contexts can partition items.
+      final session = event.request.session;
+      if (session != null) {
+        picked = [for (final i in picked) i.withSession(session)];
+      }
       final items = [...bloc.state.items, ...picked];
       emitUpdate(
         newState: bloc.state.copyWith(items: items, picking: false),

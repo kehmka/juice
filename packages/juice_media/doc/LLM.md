@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_media
-version: 0.3.0
+version: 0.4.0
 requires:
   juice: ">=1.5.0"
   image_picker: ">=1.1.0"
-updated: 2026-06-09
+updated: 2026-06-10
 ---
 
 # juice_media — AI card
@@ -31,7 +31,7 @@ when you track a *gallery* of uploads.
 
 ```yaml
 dependencies:
-  juice_media: ^0.2.1
+  juice_media: ^0.4.0
 ```
 
 Default source uses `image_picker` — add its platform setup (iOS `Info.plist`
@@ -76,9 +76,10 @@ abstract class MediaUpload {
 ## API
 
 ```dart
-void pickFromGallery({MediaKind kind = MediaKind.image, bool multiple = false});
-void captureFromCamera({MediaKind kind = MediaKind.image});
+void pickFromGallery({MediaKind kind = MediaKind.image, bool multiple = false, String? session});
+void captureFromCamera({MediaKind kind = MediaKind.image, String? session});
 void addRemoteItems(List<MediaItem> items);   // already-hosted, seeded completed
+void addLocalItems(List<MediaItem> items);    // MediaItem.local(path: …) — re-upload after restart
 void removeItem(String id);
 void clearItems();
 void upload(String id);
@@ -94,6 +95,7 @@ void setPermissionStatus(bool granted);        // wire from juice_permissions
 | `InitializeMediaEvent(config)` | apply config; seed `initialItems` as completed |
 | `AcquireMediaEvent(request)` | pick/capture; append results (entry-guarded) |
 | `AddRemoteItemsEvent(items)` | append already-hosted items |
+| `AddLocalItemsEvent(items)` | append local-file items built from paths (fail-loud on remote/contentless) |
 | `RemoveItemEvent(id)` / `ClearItemsEvent` | drop one / all items + upload state |
 | `UploadItemEvent(id)` | start one upload; fail-loud if no uploader |
 | `UploadAllEvent` | start every not-completed/uploading item |
@@ -112,7 +114,9 @@ class MediaState extends BlocState {
   bool picking; bool permissionGranted; String? lastError;
   bool get isUploading; bool get allUploaded;   // allUploaded counts remote-origin items (seeded completed)
 }
-// MediaItem: id, path?/bytes?, name, mimeType, sizeBytes, kind, uri (remote-origin); isRemote
+// MediaItem: id, path?/bytes?, name, mimeType, sizeBytes, kind, uri (remote-origin),
+//            session? (draft partition tag — state.inSession(tag) filters); isRemote
+// Constructors: MediaItem(...), MediaItem.remote(uri: …), MediaItem.local(path: …)
 // UploadState: itemId, status, progress(0..1), remoteUrl?, error?; isActive, isDone
 // UploadStatus { queued, uploading, completed, failed, cancelled }
 ```

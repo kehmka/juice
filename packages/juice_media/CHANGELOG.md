@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-10
+
+Both features come straight from dogfooding (Glean DOGFOOD.md F1/F2).
+
+### Added
+
+- **Pick sessions (F1)** — `MediaRequest.session` / `pickFromGallery(session:)` /
+  `captureFromCamera(session:)` stamp acquired items with a session tag
+  (`MediaItem.session`); `MediaState.inSession(tag)` filters. Lets concurrent
+  contexts (e.g. capture drafts) partition one bloc's items — previously apps
+  had to snapshot-and-diff item ids.
+- **Local items (F2)** — `MediaItem.local(path: …)` + `addLocalItems()` /
+  `AddLocalItemsEvent`: inject items rebuilt from persisted paths (e.g. after an
+  app restart) so they can be uploaded normally. Fails loud on remote-origin or
+  contentless items. Mirror of 0.2's `addRemoteItems`.
+- `MediaItem.withSession(tag)` copy helper.
+
+Additive and backward-compatible.
+
 ## [0.3.0] - 2026-06-09
 
 ### Changed

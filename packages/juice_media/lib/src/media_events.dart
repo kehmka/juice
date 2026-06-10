@@ -28,6 +28,14 @@ class AddRemoteItemsEvent extends MediaEvent {
   AddRemoteItemsEvent(this.items);
 }
 
+/// Add **local-file** items created outside `pick()` (e.g. re-creating items
+/// from persisted paths after an app restart, to upload them). Items must be
+/// local (a `path`/`bytes`, no `uri`) — a remote-origin item here fails loud.
+class AddLocalItemsEvent extends MediaEvent {
+  final List<MediaItem> items;
+  AddLocalItemsEvent(this.items);
+}
+
 /// Remove one acquired item (and any upload state).
 class RemoveItemEvent extends MediaEvent {
   final String id;

@@ -104,6 +104,17 @@ fail-loud, uploadAll, permission dedup, close disposes both seams. 12 tests.
 0.1 covers image/video via `image_picker`. Arbitrary file picking (PDF, etc.)
 is a separate file-capable `MediaSource`, planned post-0.1.
 
+
+## Sessions & local items (0.4)
+
+Dogfood-driven (Glean F1/F2):
+- **Sessions** — `MediaRequest.session` stamps acquired items
+  (`MediaItem.session`); `state.inSession(tag)` filters. Concurrent contexts
+  (capture drafts) partition one bloc's items without snapshot-and-diff.
+- **Local items** — `MediaItem.local(path: …)` + `addLocalItems()` injects items
+  rebuilt from persisted paths (post-restart re-upload). Fails loud on
+  remote-origin or contentless items. Mirror of 0.2's remote items.
+
 ## Spec Version
 
 | Version | Date | Status |

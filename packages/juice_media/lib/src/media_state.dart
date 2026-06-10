@@ -55,6 +55,12 @@ class MediaState extends BlocState {
 
   static const initial = MediaState();
 
+  /// Items stamped with [session] (see `MediaRequest.session` /
+  /// `MediaItem.session`) — lets concurrent contexts (e.g. drafts) partition
+  /// one bloc's items.
+  List<MediaItem> inSession(String session) =>
+      items.where((i) => i.session == session).toList();
+
   /// Any upload currently in flight.
   bool get isUploading =>
       uploads.values.any((u) => u.status == UploadStatus.uploading);

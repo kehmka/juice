@@ -336,6 +336,61 @@ void main() {
     });
   });
 
+  group('Sessions (draft partitioning)', () {
+    test('pick stamps the request session; inSession filters', () async {
+      final src = FakeMediaSource([img('a'), img('b')]);
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src));
+      await settle();
+
+      bloc.pickFromGallery(multiple: true, session: 'draft-1');
+      await settle();
+      src.toReturn = [img('c')];
+      bloc.pickFromGallery(session: 'draft-2');
+      await settle();
+
+      expect(bloc.state.inSession('draft-1').map((i) => i.id), ['a', 'b']);
+      expect(bloc.state.inSession('draft-2').map((i) => i.id), ['c']);
+      await bloc.close();
+    });
+  });
+
+  group('Local items (post-restart re-upload)', () {
+    test('addLocalItems appends uploadable items', () async {
+      final src = FakeMediaSource();
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+
+      bloc.addLocalItems([
+        const MediaItem.local(id: 'l1', path: '/tmp/x.jpg', name: 'x.jpg'),
+      ]);
+      await settle();
+      expect(bloc.state.items.single.id, 'l1');
+      expect(bloc.state.items.single.isRemote, isFalse);
+
+      bloc.upload('l1');
+      await settle();
+      expect(up.uploads.containsKey('l1'), isTrue); // upload path works
+      await bloc.close();
+    });
+
+    test('addLocalItems rejects a remote-origin item loudly', () async {
+      final bloc =
+          MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));
+      await settle();
+
+      bloc.addLocalItems([
+        const MediaItem.remote(
+            id: 'r1', uri: 'https://cdn/x.jpg', name: 'x.jpg'),
+      ]);
+      await settle();
+      // Fails loud (use-case throw routes to the bloc error handler) and the
+      // item is NOT added.
+      expect(bloc.state.items, isEmpty);
+      await bloc.close();
+    });
+  });
+
   group('Permission & lifecycle', () {
     test('setPermissionStatus updates (deduped)', () async {
       final bloc = MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));

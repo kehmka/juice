@@ -35,8 +35,10 @@ package* — the only network touch is fetching model weights.
   - **The runtime** — llama.cpp / MediaPipe / a remote endpoint live behind
     `LlmProvider`.
   - **Weight hosting/licensing** — models are fetched from a configured source;
-    license acceptance UX is the app's (Gemma terms require it; weights are
-    never bundled into an app binary).
+    weights are never bundled into an app binary. The descriptor carries the
+    license: Gemma 4 (2026-03-31) is Apache 2.0 — no acceptance gate needed —
+    but earlier Gemma generations and other families have custom terms, so the
+    acceptance UX (app-side) keys off `LlmModel.license`.
 
 ## Dependencies
 
@@ -103,7 +105,7 @@ Default: `HttpModelSource` (dio, HTTP Range resume, sha256 streaming verify).
 
 ```dart
 class LlmModel {
-  final String id;                  // 'gemma-3-1b-it-q4_k_m'
+  final String id;                  // 'gemma-4-e2b-it-qat-q4'
   final Uri source;
   final String sha256;
   final int sizeBytes;              // for download UX + disk preflight
@@ -189,9 +191,15 @@ boundary stays visible in app code.
 Glean (the dogfood journal) drives the build, one independently-shippable
 phase per capability — stopping after A still ships the package story:
 
-- **A — the nightly gleaning note.** Gemma-class 1B (GGUF, quantized,
-  ~0.5–1 GB) via `LlamaCppProvider` on macOS. The Almanac writes a one-line
-  reflection synthesized from *today's own entries* — zero recall surface, pure
+Primary model candidate: **Gemma 4 E2B** (released 2026-03-31, Apache 2.0,
+natively multimodal, QAT variants cut the on-device footprint; ~4 GB RAM
+class). One model can carry phases A *and* D, which simplifies the arc —
+benchmark against a smaller text-only GGUF (e.g. a Gemma 3 1B-class) during A
+if E2B's footprint is heavy for the first cut.
+
+- **A — the nightly gleaning note.** Gemma 4 E2B QAT (GGUF) via
+  `LlamaCppProvider` on macOS/Metal. The Almanac writes a one-line reflection
+  synthesized from *today's own entries* — zero recall surface, pure
   synthesis. Proves: fetch UX, lifecycle, streaming groups, cancel.
 - **B — embeddings → semantic search.** EmbeddingGemma-class model; vectors
   stored app-side next to FTS; `EmbedEvent` is the only new surface.
@@ -199,8 +207,9 @@ phase per capability — stopping after A still ships the package story:
   capture (coarse, rounded coordinates; cached region bundles when online);
   the Almanac narrates retrieved facts tied to the user's day. Grounded and
   citable; the bloc only generates.
-- **D — multimodal.** Gemma 3n-class (vision) for "something interesting about
-  that picture," via the `vision` capability. Heaviest; last.
+- **D — multimodal.** "Something interesting about that picture" via the
+  `vision` capability — with Gemma 4 E2B this is the *same* loaded model as A,
+  so D becomes enabling a capability rather than shipping a second model.
 
 ## Risks (named up front)
 
@@ -208,8 +217,9 @@ phase per capability — stopping after A still ships the package story:
   engineering unknown; macOS-first keeps phase A tractable.
 - **Battery/thermal on mobile** — phase A is desktop; mobile defers to the
   MediaPipe provider with its own budget decisions.
-- **Weight licensing** — Gemma terms require acceptance flow; descriptor
-  carries `license`, app surfaces it before first fetch.
+- **Weight licensing** — descriptor carries `license`; the app surfaces an
+  acceptance flow before first fetch when the license demands one (Gemma 4 is
+  Apache 2.0 and doesn't; older generations / other families may).
 - **Disk pressure** — GB-scale files; `sizeBytes` preflight + explicit delete
   path are part of 0.1.0, not later polish.
 

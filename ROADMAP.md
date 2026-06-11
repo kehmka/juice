@@ -174,11 +174,12 @@ storage + network mature).
 
 **Phase 5 — intelligence:** `juice_llm` (SPEC drafted 2026-06-11), built in
 dogfood lockstep with Glean's Almanac phases: **A** text synthesis over the
-user's own entries (llama.cpp/GGUF on macOS, Gemma-class 1B — proves seam, bloc,
-streaming, model lifecycle), **B** embeddings → semantic search, **C** RAG'd
-place context (retrieval is app-side; the bloc only generates), **D** multimodal
-(Gemma 3n-class). Each phase is independently shippable; stopping after A still
-ships the package story.
+user's own entries (llama.cpp/GGUF on macOS — proves seam, bloc, streaming,
+model lifecycle), **B** embeddings → semantic search, **C** RAG'd place context
+(retrieval is app-side; the bloc only generates), **D** multimodal vision.
+Primary model: **Gemma 4 E2B** (2026-03-31, Apache 2.0, natively multimodal,
+QAT on-device variants) — one model carries A and D. Each phase is
+independently shippable; stopping after A still ships the package story.
 
 ## Per-package workflow
 

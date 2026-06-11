@@ -62,6 +62,7 @@ Legend: ✅ shipped · 📋 planned
 | `juice_analytics` | event/screen tracking + consent | the vendor SDK (a sink) | ✅ |
 | `juice_paging` | paged/infinite-scroll list state | the transport (a fetcher) | ✅ |
 | `juice_observability` | crash capture + breadcrumbs | the vendor SDK (a reporter) | ✅ |
+| `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | 📋 |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |
@@ -134,6 +135,23 @@ Legend: ✅ shipped · 📋 planned
    left to Flutter. Revisit only if a concrete need for non-widget-tree
    size-class reads appears. (Decided 2026-05-28.)
 
+6. **`juice_llm` is a feature bloc on substrate + injected seams (decided
+   2026-06-11).** On-device LLM inference is real domain truth — a model
+   lifecycle state machine (absent → downloading → loading → ready →
+   generating/streaming → cancelled/unloaded) plus generation/embedding session
+   state — exactly the shape a JuiceBloc owns. The *runtime* (llama.cpp,
+   MediaPipe LLM Inference, a remote OpenAI-compatible endpoint) sits behind an
+   **`LlmProvider` vendor seam** (the `AuthProvider` pattern); model
+   *acquisition* (GB-scale resumable download + checksum) is behind a
+   **`ModelSource` seam** — a provider concern like `FlagsSource`, **not** a
+   glue package onto `juice_network` (same reasoning that dropped
+   `juice_flags_network`; revisit only if a real consumer needs models riding
+   `FetchBloc` specifically). The bloc does **not** own prompts, RAG
+   composition, or retrieval — those are app-side (or future glue) so the
+   package never grows an opinion about what the model is *for*. Scope doc:
+   `packages/juice_llm/SPEC.md`. Reference app: Glean's "Almanac" (on-device,
+   private — the journal never leaves the device).
+
 ## Build order
 
 **Phase 1 — signals + shared deps:** `juice_connectivity`, `juice_permissions`,
@@ -153,6 +171,14 @@ Legend: ✅ shipped · 📋 planned
 **Phase 4 — hard / realtime:** `juice_network_connectivity`, `juice_realtime`,
 then `juice_sync` last (concurrency / conflict resolution; needs connectivity +
 storage + network mature).
+
+**Phase 5 — intelligence:** `juice_llm` (SPEC drafted 2026-06-11), built in
+dogfood lockstep with Glean's Almanac phases: **A** text synthesis over the
+user's own entries (llama.cpp/GGUF on macOS, Gemma-class 1B — proves seam, bloc,
+streaming, model lifecycle), **B** embeddings → semantic search, **C** RAG'd
+place context (retrieval is app-side; the bloc only generates), **D** multimodal
+(Gemma 3n-class). Each phase is independently shippable; stopping after A still
+ships the package story.
 
 ## Per-package workflow
 

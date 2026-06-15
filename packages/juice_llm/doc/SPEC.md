@@ -1,7 +1,10 @@
 # juice_llm Specification
 
-> **Status:** DRAFT — scoped 2026-06-11, not yet built. Build begins with
-> Glean Almanac Phase A (see §Reference app).
+> **Status:** 0.1.0 built 2026-06-11 (Reviewed gate) — bloc, seams, lifecycle,
+> throttled streaming, and the pure-Dart `EchoLlmProvider` complete and fully
+> tested headless; example proves the real-model path via Ollama. The embedded
+> llama.cpp FFI runtime + real Gemma 4 weights are the next step (Glean Almanac
+> Phase A). See §"0.1.0 as built" for what shipped vs. this design.
 > **Package:** `juice_llm`
 > **Primary Bloc:** `LlmBloc`
 
@@ -73,16 +76,21 @@ abstract class LlmProvider {
 }
 ```
 
-Planned implementations, in build order:
+Implementations (revised at build — see §"0.1.0 as built"):
 
-1. **`LlamaCppProvider`** — FFI over llama.cpp, GGUF weights, Metal on Apple
-   Silicon. First, because the dogfood platform is macOS and it also covers
-   iOS/Android later.
-2. **`OpenAiCompatProvider`** — any OpenAI-compatible HTTP endpoint (Ollama,
-   llama-server, a cloud model). Ships *with* 0.1.0: it is both the seam-swap
-   proof the 0.9.0 gate requires and the deterministic test double (a scripted
-   fake server).
-3. **`MediaPipeLlmProvider`** — Google's on-device LLM Inference API
+0. **`EchoLlmProvider`** *(shipped, in the package)* — pure-Dart, zero-dep
+   reference runtime: streams a reflective reply word-by-word, deterministic
+   embeddings. The `StaticFlagsSource` analog — the runnable default and the
+   seam-contract reference. Makes the example + tests work with no native code.
+1. **`OllamaLlmProvider`** *(shipped, in `example/`)* — OpenAI/Ollama-style
+   streaming over HTTP. The real-model path **today** with no FFI: `ollama
+   serve` + a pulled Gemma tag. The seam-swap reference; lives in the example so
+   the core package stays dependency-free (the `FlagsSource`-recipe convention).
+2. **`LlamaCppProvider`** *(next step — Glean Almanac Phase A)* — FFI over
+   llama.cpp, GGUF weights, Metal on Apple Silicon: an *embedded* runtime with
+   no server process, for app-store packaging. The genuinely hard part (native
+   build surface, a device); deliberately deferred from 0.1.0.
+3. **`MediaPipeLlmProvider`** *(future)* — Google's on-device LLM Inference API
    (Android/iOS), when mobile becomes the active dogfood target.
 
 ### `ModelSource` (acquisition seam)
@@ -226,13 +234,45 @@ if E2B's footprint is heavy for the first cut.
 ## Testing
 
 Deterministic by construction: a `FakeLlmProvider` streaming scripted chunks
-(with controllable timing) + `FileModelSource`. State-machine tests: queue
-order under `sequential`, cancel mid-stream (terminal `cancelled`, runtime
-stream cancelled), checksum-mismatch path, load-under-generate fail-loud,
-session eviction cap, throttled-emission coalescing. A real-model integration
-smoke (tiny GGUF) runs locally behind a flag, never in CI.
+(with controllable timing, honoring cancellation via `async*`'s `finally`).
+State-machine tests (17, all green headless): load → ready / unload → absent,
+loud load failure, queue order under `sequential`, cancel mid-stream (terminal
+`cancelled`, generator `finally` ran, partial text kept), generate-with-no-model
+fail-loud, generation error → failed, load-under-generate refusal, embed
+capability + no-model guards, session eviction cap, and throttled-emission
+coalescing (20 tokens → < 12 emissions). The embedded-runtime integration smoke
+(real GGUF) runs locally behind a flag, never in CI — it arrives with
+`LlamaCppProvider`.
+
+## 0.1.0 as built (reconciliation)
+
+What shipped differs from the original draft in three honest, surfaced ways:
+
+1. **Shipped runtime is `EchoLlmProvider` (pure Dart), not `OpenAiCompat`.**
+   The draft had OpenAiCompat shipping at 0.1.0 as test double + seam-swap.
+   Built reality: the package ships only the zero-dep `EchoLlmProvider` default
+   (the `StaticFlagsSource` convention — vendor impls live in app/example code),
+   tests use an in-file `FakeLlmProvider` (better determinism than an HTTP fake),
+   and the real-model seam-swap is `OllamaLlmProvider` in `example/`. The
+   embedded llama.cpp FFI runtime — the actual "on-device, no server" story — is
+   the **next step**, not 0.1.0. *This means 0.1.0 proves the architecture and a
+   real model via Ollama, but does not yet embed a model in-process.*
+2. **Sessions appear when a generation starts executing, not at enqueue.** The
+   draft said each queued request "gets a session immediately." Under
+   `sequential`, a not-yet-started request has no use-case context, so its
+   session is created when generation begins streaming. Consequence:
+   **cancelling a still-queued (not-yet-started) request is not supported in
+   0.1.0** — `cancel` targets the active stream; an unknown/finished id is a
+   no-op. A pre-enqueue session-stub is deferred until an app needs it.
+3. **Embeddings ride the event's own result-completer** (`EmbedEvent.result`),
+   mirroring the family's `ResultEvent` shape, rather than a core
+   `sendForResult` (which is `juice_storage`'s own facility, not a juice
+   primitive).
+
+Everything else matches the design: the seams, the lifecycle state machine, the
+throttled per-request streaming, the fail-loud rules, and the
+synthesis-not-recall boundary.
 
 ## Spec Version
 
-0.1 — drafted 2026-06-11 (scope step of the per-package workflow; SPEC precedes
-build per ROADMAP §Per-package workflow).
+0.2 — drafted 2026-06-11 (scope), reconciled to the 0.1.0 build same day.

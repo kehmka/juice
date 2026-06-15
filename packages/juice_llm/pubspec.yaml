@@ -1,0 +1,29 @@
+name: juice_llm
+description: On-device LLM inference as a Juice bloc — model lifecycle, streaming generation, and embeddings behind a swappable runtime seam.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_llm
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+documentation: https://kehmka.github.io/juice/
+topics: [llm, on-device, ai, bloc, state-management]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # EventConcurrency (sequential/droppable) requires juice >= 1.5.0.
+  juice: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

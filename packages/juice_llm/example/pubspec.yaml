@@ -1,0 +1,28 @@
+name: juice_llm_example
+description: Demo app for juice_llm — streaming generation with the Echo runtime, swappable to a real local model via Ollama.
+publish_to: 'none'
+
+version: 1.0.0
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../../juice
+  juice_llm:
+    path: ../
+  # Only the Ollama provider needs HTTP — an example dependency, not the
+  # package's (juice_llm core is dependency-free).
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

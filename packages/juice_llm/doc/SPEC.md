@@ -86,10 +86,13 @@ Implementations (revised at build — see §"0.1.0 as built"):
    streaming over HTTP. The real-model path **today** with no FFI: `ollama
    serve` + a pulled Gemma tag. The seam-swap reference; lives in the example so
    the core package stays dependency-free (the `FlagsSource`-recipe convention).
-2. **`LlamaCppProvider`** *(next step — Glean Almanac Phase A)* — FFI over
-   llama.cpp, GGUF weights, Metal on Apple Silicon: an *embedded* runtime with
-   no server process, for app-store packaging. The genuinely hard part (native
-   build surface, a device); deliberately deferred from 0.1.0.
+2. **`LlamaCppProvider`** *(next step — Glean Almanac Phase A; design in
+   `doc/FFI_APPROACH.md`)* — FFI over llama.cpp, GGUF weights, Metal on Apple
+   Silicon: an *embedded* runtime with no server process, for app-store
+   packaging. Recommended approach: wrap `llama_cpp_dart` in a companion
+   package `juice_llm_llamacpp` (isolate-owned; the provider is a thin facade).
+   The genuinely hard part (native build surface, a device); deferred from
+   0.1.0.
 3. **`MediaPipeLlmProvider`** *(future)* — Google's on-device LLM Inference API
    (Android/iOS), when mobile becomes the active dogfood target.
 

@@ -62,7 +62,7 @@ Legend: ✅ shipped · 📋 planned
 | `juice_analytics` | event/screen tracking + consent | the vendor SDK (a sink) | ✅ |
 | `juice_paging` | paged/infinite-scroll list state | the transport (a fetcher) | ✅ |
 | `juice_observability` | crash capture + breadcrumbs | the vendor SDK (a reporter) | ✅ |
-| `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | 📋 |
+| `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | ✅ 0.1.0 |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |

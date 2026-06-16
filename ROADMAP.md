@@ -64,6 +64,13 @@ Legend: ✅ shipped · 📋 planned
 | `juice_observability` | crash capture + breadcrumbs | the vendor SDK (a reporter) | ✅ |
 | `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | ✅ 0.1.0 |
 
+### LLM runtime providers (impls of `juice_llm`'s `LlmProvider` seam — never in core)
+| Package | Runtime(s) | Deps | Status |
+|---|---|---|---|
+| `juice_llm` ▸ `EchoLlmProvider` | pure-Dart reference (the zero-dep default) | none | ✅ in core |
+| `juice_llm_cloud` | OpenAI · Anthropic · Ollama (HTTP+SSE, **opt-in off-device**) — one shared `HttpSseLlmProvider` base | `http` | 📋 recipe now → promote |
+| `juice_llm_llamacpp` | embedded llama.cpp (on-device, GGUF/Metal, no server) | `llama_cpp_dart` + native | 📋 spike/recipe → promote |
+
 ### Presentation services
 | Package | Owns | Does NOT own | Status |
 |---|---|---|---|
@@ -151,6 +158,31 @@ Legend: ✅ shipped · 📋 planned
    package never grows an opinion about what the model is *for*. Scope doc:
    `packages/juice_llm/SPEC.md`. Reference app: Glean's "Almanac" (on-device,
    private — the journal never leaves the device).
+
+7. **LLM runtimes live outside core, packaged by *dependency weight* — locked
+   2026-06-11.** `juice_llm` core ships only the seam + the zero-dep
+   `EchoLlmProvider` (the `StaticFlagsSource` convention). Every real runtime is
+   an `LlmProvider` impl that lives outside core, split on one axis:
+   - **Pure-HTTP runtimes → one shared package `juice_llm_cloud`** (OpenAI,
+     Anthropic, Ollama, future Gemini/Mistral…), over a common
+     `HttpSseLlmProvider` base. *One* package, not per-vendor: they carry no
+     vendor SDKs (raw HTTP), are byte-identical across adopters, and a new API
+     is a new class not a new package. A vendor's breaking API change is
+     absorbed inside the package. (Kevin chose the single shared package over
+     per-vendor isolation.)
+   - **Native runtimes → their own package** (`juice_llm_llamacpp`) — forced by
+     native build assets; can't be a recipe or live in core. See
+     `packages/juice_llm/doc/FFI_APPROACH.md`.
+
+   **Cloud is opt-in and off-device** — providers that leave the device are a
+   deliberate choice, never a default (juice_llm's identity is private/on-
+   device). **Sequencing:** providers live as `example/` recipes until
+   dogfooded, then promote to the packages above (same path as the
+   FlagsSource recipes; don't mint published surface speculatively). **Before
+   1.0:** design **tool / function calling** — it extends `LlmRequest`
+   (tool defs) and `LlmChunk` (a tool-call variant), the one change most likely
+   to reshape the seam; committing 1.0 without it would force a 2.0. Integration
+   matrix + layout: `packages/juice_llm/doc/PROVIDERS.md`.
 
 ## Build order
 

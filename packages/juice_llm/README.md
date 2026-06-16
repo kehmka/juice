@@ -56,6 +56,9 @@ native code or downloads, so the example and your tests work out of the box,
 and it's the reference implementation of the seam contract (streaming,
 cancellation, capabilities).
 
+The full provider matrix and package layout (core / `juice_llm_cloud` /
+`juice_llm_llamacpp`) is in [`doc/PROVIDERS.md`](doc/PROVIDERS.md).
+
 For a **real model today**, the example ships `OllamaLlmProvider` (OpenAI-style
 streaming over HTTP):
 

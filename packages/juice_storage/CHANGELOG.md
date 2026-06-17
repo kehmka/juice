@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-06-16
+
+### Changed (BREAKING)
+- **Migrated from Hive to Hive CE (`hive_ce`/`hive_ce_flutter`)** — the original
+  `hive` is unmaintained; `hive_ce` is its maintained, drop-in community
+  continuation (same Hive v2 box/adapter API, on-disk format unchanged, so
+  existing boxes keep working). Internally a pure import swap (no codegen
+  change). **Breaking only at the type boundary:** `StorageConfig.hiveAdapters`
+  is `List<TypeAdapter>` and `TypeAdapter` now comes from `hive_ce`, so apps
+  registering custom adapters must import `package:hive_ce/hive.dart` instead of
+  `package:hive/hive.dart` (no logic changes). Apps that don't use
+  `hiveAdapters` (the common case) need only the dependency bump.
+
 ## [1.2.0] - 2026-04-18
 
 ### Changed

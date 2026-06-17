@@ -1,6 +1,6 @@
 name: juice_i18n
 description: Reactive locale selection and translation lookup as a Juice bloc, behind swappable source and persistence seams.
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_i18n
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -18,7 +18,7 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^1.4.0
-  juice_storage: ^1.2.0
+  juice_storage: '>=1.2.0 <3.0.0'
 
 dev_dependencies:
   flutter_test:

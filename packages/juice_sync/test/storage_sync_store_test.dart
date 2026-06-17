@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 // A VM test can't use StorageBloc.initialize() (it calls Hive.initFlutter,
 // which needs a platform channel), so we construct the bloc with a pre-init'd
 // CacheIndex and let the store open its boxes — the same pattern juice_storage's

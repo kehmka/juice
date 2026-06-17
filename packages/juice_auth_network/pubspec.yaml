@@ -1,6 +1,6 @@
 name: juice_auth_network
 description: Integration glue between juice_auth and juice_network — wires AuthBloc into FetchBloc for token injection, 401 refresh, and per-user cache isolation.
-version: 0.1.1
+version: 0.1.2
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_auth_network
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -27,7 +27,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   http_mock_adapter: ^0.6.1
   dio: ^5.4.0
-  juice_storage: ^1.2.0
+  juice_storage: '>=1.2.0 <3.0.0'
 
 flutter:
   uses-material-design: true

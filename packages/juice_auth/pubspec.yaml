@@ -1,6 +1,6 @@
 name: juice_auth
 description: Authentication lifecycle management for Juice applications. Provider-agnostic login, token refresh, session persistence, and reactive auth state.
-version: 0.2.1
+version: 0.2.2
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_auth
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -17,7 +17,7 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^1.4.0
-  juice_storage: ^1.2.0
+  juice_storage: '>=1.2.0 <3.0.0'
 
 dev_dependencies:
   flutter_test:

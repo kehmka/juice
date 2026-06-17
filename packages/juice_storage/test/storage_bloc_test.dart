@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:juice_storage/src/adapters/hive_adapter.dart';
 import 'package:juice_storage/src/adapters/prefs_adapter.dart';
 import 'package:juice_storage/src/cache/cache_index.dart';

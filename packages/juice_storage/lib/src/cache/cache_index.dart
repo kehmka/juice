@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import '../core/storage_keys.dart';
 import 'cache_metadata.dart';
 

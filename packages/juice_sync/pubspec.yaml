@@ -1,6 +1,6 @@
 name: juice_sync
 description: Offline outbox / mutation queue with durable persistence, ordering, retries and dead-lettering, as a Juice bloc.
-version: 0.1.1
+version: 0.1.2
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_sync
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -18,14 +18,14 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^1.4.0
-  juice_storage: ^1.2.0
+  juice_storage: '>=1.2.0 <3.0.0'
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  # For the StorageSyncStore-over-real-Hive regression test.
-  hive: ^2.2.3
+  # For the StorageSyncStore-over-real-Hive regression test (Hive CE).
+  hive_ce: ^2.19.3
   shared_preferences: ^2.2.0
 
 flutter:

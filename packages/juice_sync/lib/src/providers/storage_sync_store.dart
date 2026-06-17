@@ -24,9 +24,25 @@ class StorageSyncStore implements SyncStore {
   })  : _storage = storage,
         _metaBox = 'juice_sync_meta';
 
+  bool _opened = false;
+
+  /// Open the store's two boxes before first use. The store owns both names
+  /// (the meta box is private), so the app *can't* pre-declare them in
+  /// `StorageConfig.hiveBoxesToOpen` — the store must open them itself, or
+  /// `loadAll` fails with `boxNotOpen` at startup. `hiveOpenBox` is idempotent
+  /// (the adapter factory returns the already-open box), so this is cheap to
+  /// guard on every call and self-heals if a box was closed.
+  Future<void> _ensureOpen() async {
+    if (_opened) return;
+    await _storage.hiveOpenBox(box);
+    await _storage.hiveOpenBox(_metaBox);
+    _opened = true;
+  }
+
   @override
   Future<void> put(Mutation mutation) async {
     try {
+      await _ensureOpen();
       await _storage.hiveWrite(box, mutation.id, jsonEncode(mutation.toJson()));
     } catch (e) {
       throw StorageSyncError('put(${mutation.id}) failed', cause: e);
@@ -36,6 +52,7 @@ class StorageSyncStore implements SyncStore {
   @override
   Future<void> delete(String id) async {
     try {
+      await _ensureOpen();
       await _storage.hiveDelete(box, id);
     } catch (e) {
       throw StorageSyncError('delete($id) failed', cause: e);
@@ -45,6 +62,7 @@ class StorageSyncStore implements SyncStore {
   @override
   Future<List<Mutation>> loadAll() async {
     try {
+      await _ensureOpen();
       final keys = await _storage.hiveKeys(box);
       final out = <Mutation>[];
       for (final k in keys) {
@@ -63,6 +81,7 @@ class StorageSyncStore implements SyncStore {
   @override
   Future<int> nextSeq() async {
     try {
+      await _ensureOpen();
       final current = await _storage.hiveRead<int>(_metaBox, _seqKey) ?? 0;
       final next = current + 1;
       await _storage.hiveWrite(_metaBox, _seqKey, next);

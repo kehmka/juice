@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-16
+
+### Fixed
+
+- **`StorageSyncStore` now opens its own Hive boxes** (outbox + the private meta
+  box) before first use. Previously the app was expected to pre-open them via
+  `StorageConfig.hiveBoxesToOpen`, but it *can't* — the meta box name is
+  internal — so `loadAll` failed with `boxNotOpen` at startup, putting `SyncBloc`
+  into `SyncStatus.error`. Open is idempotent, so the store self-heals. Surfaced
+  by the Glean dogfood.
+
+### Changed
+
+- `StorageSyncError.toString()` now includes its `cause`, so a wrapped storage
+  failure is visible instead of opaque.
+
 ## [0.1.0] - 2026-05-28
 
 ### Added

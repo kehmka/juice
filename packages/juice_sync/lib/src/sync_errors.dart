@@ -19,5 +19,6 @@ class StorageSyncError implements Exception {
   const StorageSyncError(this.message, {this.cause});
 
   @override
-  String toString() => 'StorageSyncError: $message';
+  String toString() =>
+      'StorageSyncError: $message${cause == null ? '' : ' (cause: $cause)'}';
 }

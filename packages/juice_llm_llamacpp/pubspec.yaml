@@ -1,0 +1,30 @@
+name: juice_llm_llamacpp
+description: Embedded on-device LLM runtime for juice_llm — an LlamaCppProvider backed by llama.cpp (GGUF, Metal) via llama_cpp_dart.
+version: 0.1.0
+
+repository: https://github.com/kehmka/juice/tree/main/packages/juice_llm_llamacpp
+issue_tracker: https://github.com/kehmka/juice/issues
+homepage: https://kehmka.github.io/juice/
+topics: [llm, on-device, llama-cpp, ai, juice]
+funding:
+  - https://github.com/sponsors/kehmka
+
+environment:
+  sdk: ^3.5.4
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice_llm: ^0.1.0
+  # The runtime binding. Pinned to the 0.9.0-dev line (the Flutter-targeted
+  # rewrite); the published dev.9 has a soft-cancel limitation — see README.
+  llama_cpp_dart: ">=0.9.0-dev.9 <0.10.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

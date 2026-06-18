@@ -69,7 +69,7 @@ Legend: ✅ shipped · 📋 planned
 |---|---|---|---|
 | `juice_llm` ▸ `EchoLlmProvider` | pure-Dart reference (the zero-dep default) | none | ✅ in core |
 | `juice_llm_cloud` | OpenAI · Anthropic · Ollama (HTTP+SSE, **opt-in off-device**) — one shared `HttpSseLlmProvider` base | `http` | 📋 recipe now → promote |
-| `juice_llm_llamacpp` | embedded llama.cpp (on-device, GGUF/Metal, no server) | `llama_cpp_dart` + native | 📋 spike/recipe → promote |
+| `juice_llm_llamacpp` | embedded llama.cpp (on-device, GGUF/Metal, no server) | `llama_cpp_dart` | ✅ 0.1.0 (built; unpublished) |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |

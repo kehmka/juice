@@ -29,7 +29,12 @@ void main() {
       );
 
   LlmBloc build() => LlmBloc.withConfig(LlmConfig(
-        provider: LlamaCppProvider(libraryPath: libPath),
+        provider: LlamaCppProvider(
+          libraryPath: libPath,
+          // Gemma's embedded template is unparseable — build the prompt here.
+          chatFormat:
+              modelPath.toLowerCase().contains('gemma') ? gemmaChatFormat : null,
+        ),
         resolvePath: (_) => modelPath,
       ));
 

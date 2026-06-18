@@ -1,6 +1,6 @@
 name: juice_llm_llamacpp
 description: Embedded on-device LLM runtime for juice_llm — an LlamaCppProvider backed by llama.cpp (GGUF, Metal) via llama_cpp_dart.
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_llm_llamacpp
 issue_tracker: https://github.com/kehmka/juice/issues

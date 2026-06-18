@@ -79,6 +79,24 @@ LlmModel _model({Set<LlmCapability> caps = const {LlmCapability.text}}) =>
       capabilities: caps,
     );
 
+/// A ModelSource that "downloads" instantly, emitting an int-fraction progress
+/// then a terminal event — exercises the fetch lifecycle headlessly.
+class _FakeModelSource implements ModelSource {
+  @override
+  Stream<ModelFetchProgress> fetch(LlmModel model, String path) async* {
+    yield const ModelFetchProgress(
+        fraction: 0.5, receivedBytes: 5, totalBytes: 10);
+    yield const ModelFetchProgress(
+        fraction: 1, receivedBytes: 10, totalBytes: 10, done: true);
+  }
+
+  @override
+  Future<bool> isPresent(LlmModel model, String path) async => false;
+
+  @override
+  Future<void> delete(LlmModel model, String path) async {}
+}
+
 void main() {
   Future<void> settle([int ms = 30]) =>
       Future<void>.delayed(Duration(milliseconds: ms));
@@ -96,6 +114,34 @@ void main() {
       expect(s.modelStatus, LlmModelStatus.absent);
       expect(s.sessions, isEmpty);
       expect(s.isReady, isFalse);
+    });
+
+    test('copyWith accepts an int fetchProgress (regression)', () {
+      // FetchModelUseCase emits fetchProgress: 0 (int); copyWith must coerce.
+      const s = LlmState();
+      expect(s.copyWith(fetchProgress: 0).fetchProgress, 0.0);
+      expect(s.copyWith(fetchProgress: 0.5).fetchProgress, 0.5);
+    });
+  });
+
+  group('Model fetch lifecycle', () {
+    test('fetchModel runs absent → fetching → fetched (no int/double crash)',
+        () async {
+      final fake = FakeLlmProvider();
+      final bloc = LlmBloc.withConfig(LlmConfig(
+        provider: fake,
+        modelSource: _FakeModelSource(),
+        resolvePath: (m) => '/tmp/${m.id}.gguf',
+      ));
+      await settle();
+
+      bloc.fetchModel(_model());
+      await settle(60);
+
+      expect(bloc.state.modelStatus, LlmModelStatus.fetched);
+      expect(bloc.state.error, isNull);
+
+      await bloc.close();
     });
   });
 

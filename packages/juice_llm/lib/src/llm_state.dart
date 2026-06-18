@@ -129,7 +129,7 @@ class LlmState extends BlocState {
           : activeModelId as String?,
       fetchProgress: identical(fetchProgress, _unset)
           ? this.fetchProgress
-          : fetchProgress as double?,
+          : (fetchProgress as num?)?.toDouble(),
       sessions: sessions ?? this.sessions,
       error: identical(error, _unset) ? this.error : error as String?,
     );

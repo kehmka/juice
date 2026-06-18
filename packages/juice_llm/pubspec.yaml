@@ -1,6 +1,6 @@
 name: juice_llm
 description: On-device LLM inference as a Juice bloc — model lifecycle, streaming generation, and embeddings behind a swappable runtime seam.
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_llm
 issue_tracker: https://github.com/kehmka/juice/issues

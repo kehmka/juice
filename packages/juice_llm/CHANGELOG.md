@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1
+
+### Fixed
+
+- **`FetchModelEvent` crashed** with `type 'int' is not a subtype of 'double?'`.
+  `FetchModelUseCase` emitted `fetchProgress: 0` (int) and `LlmState.copyWith`
+  cast it `as double?`. Now emits `0.0` and `copyWith` coerces via `num?
+  .toDouble()`. The whole fetch lifecycle was untested (Echo/Fake providers skip
+  it); a fetch-lifecycle regression test now covers it. Surfaced by the Glean
+  dogfood (first real `ModelSource`).
+
 ## 0.1.0
 
 Initial release — Reviewed.

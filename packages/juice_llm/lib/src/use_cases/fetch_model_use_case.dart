@@ -31,7 +31,7 @@ class FetchModelUseCase extends BlocUseCase<LlmBloc, FetchModelEvent> {
       newState: bloc.state.copyWith(
         modelStatus: LlmModelStatus.fetching,
         activeModelId: event.model.id,
-        fetchProgress: 0,
+        fetchProgress: 0.0,
         error: null,
       ),
       groupsToRebuild: {LlmGroups.model, LlmGroups.fetch},

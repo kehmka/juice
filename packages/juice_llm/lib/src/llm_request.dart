@@ -5,14 +5,21 @@ class LlmMessage {
   final LlmRole role;
   final String content;
 
-  /// Optional image bytes for a vision-capable model. Ignored by text models.
+  /// Optional image bytes (encoded JPG/PNG/…) for a vision-capable model.
+  /// Ignored by text-only models.
   final List<Uint8List> images;
 
-  const LlmMessage(this.role, this.content, {this.images = const []});
+  /// Optional audio clip bytes (encoded WAV/MP3/FLAC) for an audio-capable
+  /// model. Ignored by models without `audio` capability.
+  final List<Uint8List> audio;
+
+  const LlmMessage(this.role, this.content,
+      {this.images = const [], this.audio = const []});
 
   const LlmMessage.system(String content) : this(LlmRole.system, content);
-  const LlmMessage.user(String content, {List<Uint8List> images = const []})
-      : this(LlmRole.user, content, images: images);
+  const LlmMessage.user(String content,
+      {List<Uint8List> images = const [], List<Uint8List> audio = const []})
+      : this(LlmRole.user, content, images: images, audio: audio);
   const LlmMessage.assistant(String content)
       : this(LlmRole.assistant, content);
 }

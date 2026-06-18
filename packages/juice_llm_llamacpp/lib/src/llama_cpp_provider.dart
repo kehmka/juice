@@ -6,11 +6,21 @@ import 'package:llama_cpp_dart/llama_cpp_dart.dart' as lcpp;
 /// is tool-use Jinja the runtime can't parse. When a [ChatFormat] is set on
 /// [LlamaCppProvider], generation renders the prompt here and uses the raw
 /// session path instead of the model's chat template.
+///
+/// **Multimodal:** a message's [LlmMessage.images] / [LlmMessage.audio] become
+/// one media marker (`<__media__>`) each, prepended to that turn's content in
+/// order (images, then audio). The marker order MUST match the order the
+/// provider hands the bytes to llama.cpp — both iterate the non-system
+/// messages in sequence — so mtmd splices the right embedding at each marker.
 typedef ChatFormat = String Function(List<LlmMessage> messages);
+
+/// The marker mtmd substitutes with one media item's embeddings, in order.
+const String kMediaMarker = '<__media__>';
 
 /// Gemma family format: `<start_of_turn>user … <end_of_turn>` /
 /// `<start_of_turn>model`. Gemma has no `system` role, so system text is folded
-/// into the first user turn. Verified end-to-end with Gemma 4 E2B.
+/// into the first user turn. Media markers are injected per turn (see
+/// [ChatFormat]). Verified end-to-end with Gemma 4 E2B (text + vision).
 String gemmaChatFormat(List<LlmMessage> messages) {
   final system = messages
       .where((m) => m.role == LlmRole.system)
@@ -25,6 +35,11 @@ String gemmaChatFormat(List<LlmMessage> messages) {
       content = '$system\n\n$content';
     }
     first = false;
+    final markerCount = m.images.length + m.audio.length;
+    if (markerCount > 0) {
+      final markers = List<String>.filled(markerCount, kMediaMarker).join('\n');
+      content = content.isEmpty ? markers : '$markers\n$content';
+    }
     buf.write('<start_of_turn>$role\n$content<end_of_turn>\n');
   }
   buf.write('<start_of_turn>model\n');
@@ -44,6 +59,14 @@ String gemmaChatFormat(List<LlmMessage> messages) {
 /// llama.cpp can't parse (Gemma 4), pass a [chatFormat] (e.g. [gemmaChatFormat])
 /// and the prompt is built here instead.
 ///
+/// **Multimodal:** pass [LlmLoadOptions.projectorPath] (an mmproj GGUF) to
+/// [load] and the engine loads the vision/audio encoder. Requests then carry
+/// images/audio in their messages ([LlmMessage.images] / [LlmMessage.audio]);
+/// the provider splices them at the media markers. When the projector loads,
+/// [capabilities] gains `vision` + `audio` (honest: it reflects what actually
+/// loaded, not what was hoped). A request with media but no projector loaded
+/// fails loud.
+///
 /// Each [generate] is a stateless one-shot (the session/chat is reset per
 /// request). Generation is one-at-a-time (the engine is single-active),
 /// matching `LlmBloc`'s `sequential` generate queue.
@@ -52,13 +75,23 @@ String gemmaChatFormat(List<LlmMessage> messages) {
 /// the published `llama_cpp_dart` 0.9.0-dev.9 this is *soft* (delivery stops,
 /// the worker finishes the current decode). True mid-decode interrupt arrives
 /// with netdur/llama_cpp_dart#106; no change needed here.
+///
+/// **Known caveat:** on Metal, llama.cpp currently raises a teardown assertion
+/// (`ggml-metal-device.m` `GGML_ASSERT([rsets->data count] == 0)`) during
+/// process finalization *after* a multimodal run completes — generation output
+/// is unaffected. Tracked upstream (ggml-org/llama.cpp#17869). Keep the engine
+/// loaded for the app's lifetime (we do) so dispose-at-exit is rare.
 class LlamaCppProvider implements LlmProvider {
   LlamaCppProvider({
     this.libraryPath,
     this.useProcessSymbols = false,
     this.chatFormat,
-    this.capabilities = const {LlmCapability.text, LlmCapability.embeddings},
-  }) : assert(libraryPath != null || useProcessSymbols,
+    Set<LlmCapability> capabilities = const {
+      LlmCapability.text,
+      LlmCapability.embeddings,
+    },
+  })  : _declaredCapabilities = capabilities,
+        assert(libraryPath != null || useProcessSymbols,
             'pass libraryPath (dev/CLI) or set useProcessSymbols (app xcframework)');
 
   /// Path to `libllama.dylib` (+ siblings). Required unless [useProcessSymbols].
@@ -72,8 +105,15 @@ class LlamaCppProvider implements LlmProvider {
   /// template. Required for models llama.cpp can't template (Gemma 4).
   final ChatFormat? chatFormat;
 
+  final Set<LlmCapability> _declaredCapabilities;
+
+  /// What the provider can do. Augmented with `vision` + `audio` once a
+  /// multimodal projector has actually loaded — capability reflects reality,
+  /// never an unbacked promise.
   @override
-  final Set<LlmCapability> capabilities;
+  Set<LlmCapability> get capabilities => _engine?.multimodalLoaded == true
+      ? {..._declaredCapabilities, LlmCapability.vision, LlmCapability.audio}
+      : _declaredCapabilities;
 
   lcpp.LlamaEngine? _engine;
   lcpp.EngineChat? _chat;
@@ -81,6 +121,8 @@ class LlamaCppProvider implements LlmProvider {
 
   @override
   String get name => 'llama_cpp';
+
+  bool get _multimodalLoaded => _engine?.multimodalLoaded == true;
 
   @override
   Future<void> load(String modelPath, LlmLoadOptions options) async {
@@ -90,22 +132,39 @@ class LlamaCppProvider implements LlmProvider {
           lcpp.ModelParams(path: modelPath, gpuLayers: options.gpuLayers);
       final contextParams =
           lcpp.ContextParams(nCtx: options.contextTokens, nSeqMax: 1);
+      final multimodal = options.projectorPath == null
+          ? null
+          : lcpp.MultimodalParams(
+              mmprojPath: options.projectorPath!,
+              useGpu: options.gpuLayers > 0,
+            );
       _engine = useProcessSymbols
           ? await lcpp.LlamaEngine.spawnFromProcess(
-              modelParams: modelParams, contextParams: contextParams)
+              modelParams: modelParams,
+              contextParams: contextParams,
+              multimodalParams: multimodal)
           : await lcpp.LlamaEngine.spawn(
               libraryPath: libraryPath!,
               modelParams: modelParams,
-              contextParams: contextParams);
+              contextParams: contextParams,
+              multimodalParams: multimodal);
+      // Fail loud: a requested projector that didn't load is a silent
+      // downgrade to text-only — never let it pass.
+      if (multimodal != null && !_engine!.multimodalLoaded) {
+        throw LlmProviderException(
+            'multimodal projector failed to load: ${options.projectorPath}');
+      }
       if (chatFormat != null) {
         _session = await _engine!.createSession();
       } else {
         _chat = await _engine!.createChat();
       }
     } catch (e) {
+      await _engine?.dispose();
       _engine = null;
       _chat = null;
       _session = null;
+      if (e is LlmProviderException) rethrow;
       throw LlmProviderException('llama.cpp load failed', cause: e);
     }
   }
@@ -124,6 +183,12 @@ class LlamaCppProvider implements LlmProvider {
     if (_engine == null) {
       throw const LlmProviderException('generate() with no model loaded');
     }
+    final media = _collectMedia(request.messages);
+    if (media.isNotEmpty && !_multimodalLoaded) {
+      throw const LlmProviderException(
+          'request carries media but no multimodal projector is loaded '
+          '(pass LlmLoadOptions.projectorPath)');
+    }
     final p = request.params;
     final sampler =
         lcpp.SamplerParams(temperature: p.temperature, topP: p.topP);
@@ -132,22 +197,26 @@ class LlamaCppProvider implements LlmProvider {
     final Stream<lcpp.GenerationEvent> stream;
     if (chatFormat != null) {
       // Manual prompt path (Gemma 4 etc.). Reset the session's KV each call.
+      // The prompt's markers (injected by chatFormat) align with [media] —
+      // both walk the non-system messages in order, images before audio.
       await _session!.clear();
       stream = _session!.generate(
         prompt: chatFormat!(request.messages),
         addSpecial: true,
+        media: media,
         sampler: sampler,
         maxTokens: maxTokens,
       );
     } else {
       // Embedded-template path. Reset history so each request is one-shot.
+      // addUser auto-prepends one marker per media item.
       _chat!.clearHistory();
       for (final m in request.messages) {
         switch (m.role) {
           case LlmRole.system:
             _chat!.addSystem(m.content);
           case LlmRole.user:
-            _chat!.addUser(m.content);
+            _chat!.addUser(m.content, media: _mediaOf(m));
           case LlmRole.assistant:
             _chat!.addAssistant(m.content);
         }
@@ -164,6 +233,19 @@ class LlamaCppProvider implements LlmProvider {
       }
     }
   }
+
+  /// Media from one message, images before audio (marker order).
+  static List<lcpp.LlamaMedia> _mediaOf(LlmMessage m) => [
+        for (final img in m.images) lcpp.LlamaMedia.imageBytes(img),
+        for (final aud in m.audio) lcpp.LlamaMedia.audioBytes(aud),
+      ];
+
+  /// All media across the non-system turns, in the order their markers appear
+  /// (matching [gemmaChatFormat]'s injection).
+  static List<lcpp.LlamaMedia> _collectMedia(List<LlmMessage> messages) => [
+        for (final m in messages.where((m) => m.role != LlmRole.system))
+          ..._mediaOf(m),
+      ];
 
   @override
   Future<List<double>> embed(String text) async {

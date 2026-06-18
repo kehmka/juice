@@ -10,6 +10,9 @@ enum LlmCapability {
 
   /// Image input alongside text (multimodal).
   vision,
+
+  /// Audio input alongside text (multimodal) — voice memos, clips.
+  audio,
 }
 
 /// An immutable descriptor of a model the app may acquire and load.

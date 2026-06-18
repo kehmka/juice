@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.0
+
+### Added — multimodal (image + audio) input
+
+- **Vision & audio through one model.** Pass `LlmLoadOptions.projectorPath` (an
+  `mmproj` GGUF) to `load` and the engine loads the vision/audio encoder via
+  llama.cpp's `mtmd`. Requests then carry `LlmMessage.images` / `.audio`; the
+  provider splices them at `<__media__>` markers. Verified end-to-end on
+  macOS/Metal: Gemma 4 E2B described a real photo accurately (color, spatial
+  position, mood) at ~73 tok/s, encode ~120 ms. Gemma 4 E2B's projector carries
+  **both** encoders (`has_vision_encoder` + `has_audio_encoder`).
+- **`gemmaChatFormat` is now media-aware** — injects one `<__media__>` marker
+  per image/audio item into its turn, in lock-step with the order the provider
+  hands bytes to llama.cpp, so embeddings land at the right marker.
+- **Honest capabilities** — `capabilities` gains `vision` + `audio` only once a
+  projector has actually loaded (`engine.multimodalLoaded`), never as an
+  unbacked promise. A request with media but no projector loaded fails loud.
+- Requires `juice_llm` ^0.2.0 (for `LlmLoadOptions.projectorPath`,
+  `LlmMessage.audio`, `LlmCapability.audio`).
+
+### Known caveat
+
+- On Metal, llama.cpp raises a teardown assertion
+  (`ggml-metal-device.m: GGML_ASSERT([rsets->data count] == 0)`) during process
+  finalization *after* a multimodal run — generation output is unaffected.
+  Tracked upstream (ggml-org/llama.cpp#17869); keep the engine loaded for the
+  app's lifetime so dispose-at-exit is rare.
+
 ## 0.1.1
 
 ### Added

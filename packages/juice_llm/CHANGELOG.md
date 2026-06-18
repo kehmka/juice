@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0
+
+### Added (multimodal input — non-breaking)
+
+- **`LlmCapability.audio`** — alongside the existing `vision`, for models that
+  take audio clips (voice memos) as input.
+- **`LlmMessage.audio`** — `List<Uint8List>` of encoded audio (WAV/MP3/FLAC),
+  mirroring the existing `images`. A multimodal provider feeds them to the model;
+  text-only models ignore them.
+- **`LlmLoadOptions.projectorPath`** — optional path to a multimodal projector
+  (mmproj GGUF). When set, a multimodal-capable provider loads it and enables
+  image/audio input. The projector pairs with the weights; the app acquires it
+  and passes the resolved path (app-orchestrated provisioning — the acquisition
+  seam stays single-artifact for now).
+
+All additive — existing text-only usage is unchanged.
+
 ## 0.1.1
 
 ### Fixed

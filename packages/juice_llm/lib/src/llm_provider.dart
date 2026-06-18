@@ -16,10 +16,17 @@ class LlmLoadOptions {
   /// Threads for CPU work; null = provider default.
   final int? threads;
 
+  /// Path to the multimodal projector (mmproj GGUF) on disk. When set, a
+  /// multimodal-capable provider loads it and enables image/audio input;
+  /// null = text-only. The projector is acquired by the app (it pairs with
+  /// the weights) and its resolved path passed here.
+  final String? projectorPath;
+
   const LlmLoadOptions({
     this.gpuLayers = 999,
     this.contextTokens = 4096,
     this.threads,
+    this.projectorPath,
   });
 }
 

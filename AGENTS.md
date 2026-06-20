@@ -128,6 +128,16 @@ final foo = BlocScope.get<FooBloc>();    // imperative access outside a widget
 // lifecycles: BlocLifecycle.permanent | feature | leased (use BlocScope.lease for leased)
 ```
 
+**Per-item async state.** `StreamStatus` is bloc-wide — it can't say "row 7 is
+loading while the rest are fine." For a *collection* whose items each have their
+own async life (a row uploading, deleting, retrying), do **not** reach for a
+hand-rolled `Set<busyId>` (no failure surface; leak-prone). Hold an
+`EntityStatuses<K>` in your state and drive it with `BlocUseCase.guardEntity`
+(sets waiting → idle, or failure on throw — cleanup guaranteed); read it with
+`state.field.statusOf(key).when(idle: …, waiting: …, failure: …)`. Guide:
+[packages/juice/doc/ENTITY_STATUS_GUIDE.md](packages/juice/doc/ENTITY_STATUS_GUIDE.md)
+· spec: [packages/juice/doc/ENTITY_STATUS_SPEC.md](packages/juice/doc/ENTITY_STATUS_SPEC.md).
+
 ---
 
 ## 4. Concurrency (critical)

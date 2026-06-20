@@ -64,6 +64,61 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
     );
   }
 
+  /// Runs [action] while tracking a single entity's async status in your state,
+  /// guaranteeing the entity is set to **waiting** before, **idle** after — or
+  /// **failure** if [action] throws (cleanup happens even on error, killing the
+  /// stuck-spinner footgun). The per-entity analogue of the
+  /// `emitWaiting → emitUpdate/emitFailure` lifecycle.
+  ///
+  /// [read] locates the [EntityStatuses] field in the current state and [write]
+  /// returns a new state with an updated map — so a bloc may track several
+  /// independent status maps, and [action]'s own emits compose (each step
+  /// re-reads the latest state):
+  ///
+  /// ```dart
+  /// Future<void> execute(RereadEvent e) => guardEntity<String, void>(
+  ///   e.id,
+  ///   read: (b) => b.state.mediaStatus,
+  ///   write: (s) => bloc.state.copyWith(mediaStatus: s),
+  ///   groupsToRebuild: {Groups.review},
+  ///   action: () async { /* the risky work; may emit + may throw */ },
+  /// );
+  /// ```
+  ///
+  /// Returns the action's result, or `null` if it threw (unless
+  /// [rethrowOnError]).
+  Future<T?> guardEntity<K, T>(
+    K key, {
+    required EntityStatuses<K> Function(TBloc bloc) read,
+    required BlocState Function(EntityStatuses<K> statuses) write,
+    required Future<T> Function() action,
+    Set<String>? groupsToRebuild,
+    bool rethrowOnError = false,
+  }) async {
+    emitUpdate(
+      newState: write(read(bloc).waiting(key)),
+      groupsToRebuild: groupsToRebuild,
+    );
+    try {
+      final result = await action();
+      emitUpdate(
+        newState: write(read(bloc).idle(key)),
+        groupsToRebuild: groupsToRebuild,
+      );
+      return result;
+    } catch (error, stackTrace) {
+      logError(error, stackTrace);
+      emitFailure(
+        newState: write(read(bloc).failure(key, error)),
+        groupsToRebuild: groupsToRebuild,
+        error: error,
+        errorStackTrace: stackTrace,
+      );
+      if (rethrowOnError) rethrow;
+      return null;
+    }
+  }
+
   /// Logs an error with stack trace and use case name as prefix.
   ///
   /// [error] - The error that occurred

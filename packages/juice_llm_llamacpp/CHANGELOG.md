@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+
+- **`gemmaChatFormat` no longer drops the system prompt after a leading
+  assistant turn.** Gemma has no `system` role, so system text is folded into a
+  user turn — but it was only folded when the *first* turn was a user turn. Any
+  conversation that opened with an assistant/model turn (e.g. an assistant that
+  greets first) silently lost its entire system message — instructions and
+  grounding included. The system text now folds into the first *user* turn
+  regardless of preceding assistant turns, and if there is no user turn it is
+  emitted as a leading user turn rather than dropped. Single-shot
+  `[system, user]` prompts are unaffected. Regression tests added.
+
 ## 0.2.0
 
 ### Added — multimodal (image + audio) input

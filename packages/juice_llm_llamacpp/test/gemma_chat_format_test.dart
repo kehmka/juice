@@ -55,5 +55,47 @@ void main() {
       ]);
       expect(p, contains('<start_of_turn>user\n$kMediaMarker<end_of_turn>'));
     });
+
+    test('system folds into the first USER turn even after a leading assistant '
+        'turn (regression: was silently dropped)', () {
+      final p = gemmaChatFormat(const [
+        LlmMessage.system('You are the Almanac.'),
+        LlmMessage.assistant('I have been reading your days.'),
+        LlmMessage.user('What did I photograph?'),
+      ]);
+      // The opener stays a model turn, untouched…
+      expect(
+          p,
+          contains('<start_of_turn>model\nI have been reading your '
+              'days.<end_of_turn>'));
+      // …and the system text lands on the first user turn, not lost.
+      expect(
+          p,
+          contains('<start_of_turn>user\nYou are the Almanac.\n\nWhat did I '
+              'photograph?<end_of_turn>'));
+    });
+
+    test('system with no user turn is emitted as a leading user turn, not lost',
+        () {
+      final p = gemmaChatFormat(const [
+        LlmMessage.system('You are the Almanac.'),
+        LlmMessage.assistant('A greeting.'),
+      ]);
+      expect(p, startsWith('<start_of_turn>user\nYou are the Almanac.<end_of_turn>'));
+      expect(p, contains('<start_of_turn>model\nA greeting.<end_of_turn>'));
+    });
+
+    test('multi-turn: system folds once, into the earliest user turn', () {
+      final p = gemmaChatFormat(const [
+        LlmMessage.system('SYS'),
+        LlmMessage.assistant('opener'),
+        LlmMessage.user('q1'),
+        LlmMessage.assistant('a1'),
+        LlmMessage.user('q2'),
+      ]);
+      expect('SYS'.allMatches(p).length, 1); // folded exactly once
+      expect(p, contains('<start_of_turn>user\nSYS\n\nq1<end_of_turn>'));
+      expect(p, contains('<start_of_turn>user\nq2<end_of_turn>'));
+    });
   });
 }

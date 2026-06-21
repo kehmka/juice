@@ -19,22 +19,37 @@ const String kMediaMarker = '<__media__>';
 
 /// Gemma family format: `<start_of_turn>user … <end_of_turn>` /
 /// `<start_of_turn>model`. Gemma has no `system` role, so system text is folded
-/// into the first user turn. Media markers are injected per turn (see
-/// [ChatFormat]). Verified end-to-end with Gemma 4 E2B (text + vision).
+/// into the first **user** turn — even when assistant turns precede it (a
+/// conversation that opens with an assistant/model turn must NOT lose its
+/// system prompt). If there is no user turn at all, the system text is emitted
+/// as a leading user turn rather than silently dropped. Media markers are
+/// injected per turn (see [ChatFormat]). Verified end-to-end with Gemma 4 E2B
+/// (text + vision).
 String gemmaChatFormat(List<LlmMessage> messages) {
   final system = messages
       .where((m) => m.role == LlmRole.system)
       .map((m) => m.content)
       .join('\n');
+  final turns = messages.where((m) => m.role != LlmRole.system).toList();
   final buf = StringBuffer();
-  var first = true;
-  for (final m in messages.where((m) => m.role != LlmRole.system)) {
+
+  // Fold the system text into the first user turn. If the dialogue opens with
+  // assistant turns (e.g. a mirror that greets first), it still lands on the
+  // first user turn — never the first turn blindly, which would drop it.
+  var systemPending = system.isNotEmpty;
+  if (systemPending && !turns.any((m) => m.role == LlmRole.user)) {
+    // No user turn to carry it — surface it as a leading user turn, not lost.
+    buf.write('<start_of_turn>user\n$system<end_of_turn>\n');
+    systemPending = false;
+  }
+
+  for (final m in turns) {
     final role = m.role == LlmRole.assistant ? 'model' : 'user';
     var content = m.content;
-    if (first && m.role == LlmRole.user && system.isNotEmpty) {
+    if (systemPending && m.role == LlmRole.user) {
       content = '$system\n\n$content';
+      systemPending = false;
     }
-    first = false;
     final markerCount = m.images.length + m.audio.length;
     if (markerCount > 0) {
       final markers = List<String>.filled(markerCount, kMediaMarker).join('\n');

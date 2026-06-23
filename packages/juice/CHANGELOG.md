@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.6.0] - 2026-06-23
+
+### New Features
+
+#### EntityStatus — per-item async state for collections
+
+`StreamStatus` is bloc-grained: it can say "the bloc is waiting/failing", not
+"row 7 of a list is in flight while the rest are fine". `EntityStatus` models
+per-item async lifecycle (a row uploading, deleting, re-reading, retrying) as
+persistent, queryable STATE.
+
+- **`EntityStatus`** (sealed: `EntityIdle` / `EntityWaiting` / `EntityFailure(error)`)
+  with `.when` / `.maybeWhen` — the `StreamStatus` vocabulary at the entity grain.
+- **`EntityStatuses<K>`**: an immutable key→status map for `BlocState` (idle ==
+  absent, so it tracks work, not collection size; value equality for clean diffing).
+- **`BlocUseCase.guardEntity<K, T>`**: brackets async work as waiting → idle, or
+  failure(error) on throw, with cleanup guaranteed — kills the stuck-spinner
+  footgun. `read`/`write` closures keep it decoupled from any state shape (a bloc
+  can hold several status maps).
+- Exported from `package:juice/juice.dart`. 10 tests; example-first GUIDE +
+  reference SPEC.
+
+Graduated from the `entity-status-prototype` branch after an app trial (the
+Glean review re-read flow). Additive and backward-compatible.
+
 ## [1.5.0] - 2026-05-28
 
 ### New Features

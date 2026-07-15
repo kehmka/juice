@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+
+- **`beginGeneration` is now serialized at the resource** — one runtime
+  context means one stream at a time, regardless of caller. Service-layer
+  callers that await the method directly (bypassing the `GenerateEvent`
+  queue) used to race straight into the provider; harmless while nothing
+  generated in the background, but constant collisions once a device
+  enriches its well continuously (LiteRT on iPhone, 2026-07-14 — the
+  colloquy's "I lost my place" every ask). A call made mid-generation now
+  waits its turn.
+
 ## 0.2.0
 
 ### Added (multimodal input — non-breaking)

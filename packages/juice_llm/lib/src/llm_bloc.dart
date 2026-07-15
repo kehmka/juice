@@ -128,7 +128,29 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// ([GenOutcomeKind.cancelled]). One finalize point ⇒ no double-finalize
   /// race, and the `sequential` queue is never wedged (cancelling a
   /// subscription does *not* fire `onDone`, so the cancel path completes it).
+  ///
+  /// SERIALIZED at the resource: one runtime context ⇒ one stream at a time,
+  /// no matter who calls. `GenerateEvent` already queues, but service-layer
+  /// callers await this method directly — two of those used to race straight
+  /// into the provider (fine while nothing generated in the background;
+  /// constant collisions once a phone enriches its well continuously,
+  /// 2026-07-14). A call made mid-generation now waits its turn.
   Future<GenerationOutcome> beginGeneration(
+    LlmRequest request, {
+    required void Function(LlmChunk) onChunk,
+  }) {
+    final next =
+        _genTail.then((_) => _startGeneration(request, onChunk: onChunk));
+    // The outcome future never throws (errors arrive as GenOutcomeKind.error),
+    // but keep the chain unbreakable regardless.
+    _genTail = next.then((_) {}, onError: (_) {});
+    return next;
+  }
+
+  /// The tail of the generation queue — each [beginGeneration] chains here.
+  Future<void> _genTail = Future<void>.value();
+
+  Future<GenerationOutcome> _startGeneration(
     LlmRequest request, {
     required void Function(LlmChunk) onChunk,
   }) {

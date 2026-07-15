@@ -64,6 +64,16 @@ class MediaItem {
   /// different contexts in one bloc. Null = untagged.
   final String? session;
 
+  /// The source library asset id (`PHAsset.localIdentifier` / `MediaStore` id)
+  /// when the item came from a source that exposes it — the *stable* identity of
+  /// the underlying photo, so the same library photo can be deduped across
+  /// re-picks and other ingestion paths. Null for sources that can't surface it
+  /// (notably the default `image_picker` source, which returns a copied file
+  /// with no asset identity), and for camera / remote items. A `MediaSource`
+  /// that has it (e.g. a photo_manager-backed gallery source) sets it; consumers
+  /// persist it to converge identity across paths.
+  final String? assetId;
+
   const MediaItem({
     required this.id,
     this.path,
@@ -74,6 +84,7 @@ class MediaItem {
     this.kind = MediaKind.image,
     this.uri,
     this.session,
+    this.assetId,
   });
 
   /// A remote-origin item — already hosted at [uri], no local bytes.
@@ -89,7 +100,8 @@ class MediaItem {
         // ignore: prefer_initializing_formals — field is nullable, param is not
         uri = uri,
         path = null,
-        bytes = null;
+        bytes = null,
+        assetId = null;
 
   /// A **local-file** item created from a path (not via `pick()`) — e.g. to
   /// re-upload media whose picker items were lost to an app restart.
@@ -106,7 +118,8 @@ class MediaItem {
         // ignore: prefer_initializing_formals — field is nullable, param is not
         path = path,
         bytes = null,
-        uri = null;
+        uri = null,
+        assetId = null;
 
   /// Whether this item arrived already hosted (vs. locally acquired).
   bool get isRemote => uri != null;
@@ -122,10 +135,12 @@ class MediaItem {
         kind: kind,
         uri: uri,
         session: session,
+        assetId: assetId,
       );
 
   @override
   String toString() =>
       'MediaItem($id, $name, $kind, ${isRemote ? 'remote' : 'local'}'
-      '${session == null ? '' : ', session:$session'})';
+      '${session == null ? '' : ', session:$session'}'
+      '${assetId == null ? '' : ', asset:$assetId'})';
 }

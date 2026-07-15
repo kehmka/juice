@@ -133,6 +133,21 @@ media.upload(rowId);   // normal upload path, progress and all
 
 Fails loud on a remote-origin item or one with no `path`/`bytes`.
 
+## Asset identity (dedupe across paths, 0.5)
+
+A `MediaItem` carries an optional **`assetId`** — the source library asset id
+(`PHAsset.localIdentifier` / `MediaStore` id), the *stable* identity of the
+underlying photo. The default `image_picker` source can't surface it (it hands
+back a copied file), so it stays null there; a `MediaSource` that *does* have it
+(e.g. a photo_manager-backed gallery source you inject via `MediaConfig(source:)`)
+sets it:
+
+```dart
+final media = MediaBloc.withConfig(MediaConfig(source: MyPhotoManagerSource()));
+// picked items now carry item.assetId — persist it to dedupe the same photo
+// across re-picks and other ingestion paths (e.g. a bulk library scan).
+```
+
 ## Fail-loud
 
 Calling upload with **no uploader configured** marks the item `failed` and sets

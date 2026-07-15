@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-24
+
+From dogfooding (Glean library ingest): the same library photo can arrive by
+more than one path — a manual pick and a bulk library scan. Deduping them needs
+the photo's *stable* identity, which a copied file path can't provide.
+
+### Added
+
+- **`MediaItem.assetId`** — the optional source library asset id
+  (`PHAsset.localIdentifier` / `MediaStore` id), the stable identity of the
+  underlying photo. A `MediaSource` that has it (e.g. a photo_manager-backed
+  gallery source) sets it; the default `image_picker` source leaves it null
+  (image_picker returns a copied file with no asset identity). Carried through
+  `withSession` and `toString`. Consumers persist it to converge identity across
+  ingestion paths.
+
+Additive and backward-compatible.
+
 ## [0.4.0] - 2026-06-10
 
 Both features come straight from dogfooding (Glean DOGFOOD.md F1/F2).

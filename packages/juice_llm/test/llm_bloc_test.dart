@@ -447,4 +447,63 @@ void main() {
       await bloc.close();
     });
   });
+
+
+  group('beginGeneration serialization (0.2.1)', () {
+    test('two direct awaiters take FIFO turns, never interleaved', () async {
+      final fake = FakeLlmProvider(perToken: const Duration(milliseconds: 8));
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await ready(bloc);
+
+      // Both begin immediately — the second must not reach the provider until
+      // the first's stream has fully finished.
+      final order = <String>[];
+      final a = bloc.beginGeneration(
+        LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
+        onChunk: (_) => order.add('a'),
+      );
+      final b = bloc.beginGeneration(
+        LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
+        onChunk: (_) => order.add('b'),
+      );
+      final outcomes = await Future.wait([a, b]);
+
+      expect(outcomes[0].kind, GenOutcomeKind.done);
+      expect(outcomes[1].kind, GenOutcomeKind.done);
+      expect(fake.generateCalls, 2);
+      // Every 'a' chunk precedes every 'b' chunk — no interleaving.
+      expect(order.join(), matches(RegExp(r'^a+b+$')));
+      await bloc.close();
+    });
+
+    test('stopGeneration preempts the active stream; the queued one still runs',
+        () async {
+      final fake = FakeLlmProvider(
+          scriptedWords: List.filled(50, 'w'),
+          perToken: const Duration(milliseconds: 10));
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await ready(bloc);
+
+      final a = bloc.beginGeneration(
+        LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
+        onChunk: (_) {},
+      );
+      await settle(25); // let the background stream get going
+      expect(bloc.activeRequestId, 'well-1');
+
+      // The interactive pattern: preempt the background lane, then generate.
+      final chatChunks = <String>[];
+      final stopped = await bloc.stopGeneration();
+      expect(stopped, 'well-1');
+      final b = bloc.beginGeneration(
+        LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
+        onChunk: (c) => chatChunks.add(c.textDelta),
+      );
+
+      expect((await a).kind, GenOutcomeKind.cancelled);
+      expect((await b).kind, GenOutcomeKind.done);
+      expect(chatChunks, isNotEmpty);
+      await bloc.close();
+    });
+  });
 }

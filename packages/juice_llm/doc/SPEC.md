@@ -177,6 +177,13 @@ so generate-vs-load overlap is prevented by an explicit state check
 (fail-loud), not by a mode — same family of reasoning as juice_realtime's
 connect/reconnect guard.
 
+**Resource-level serialization (0.2.1):** `beginGeneration` itself chains
+every call onto the generation tail, so the one-at-a-time invariant holds even
+for service-layer callers that bypass the event queue and await the method
+directly. Priority stays out of the API: an interactive caller preempts a
+background lane by checking `activeRequestId` and calling `stopGeneration()`
+(the pattern is demonstrated in README → Concurrency).
+
 ## Fail-loud rules
 
 - Generate with no loaded model → session fails immediately with an explicit

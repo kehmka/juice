@@ -115,6 +115,7 @@ class MediaState extends BlocState {
   bool get isUploading; bool get allUploaded;   // allUploaded counts remote-origin items (seeded completed)
 }
 // MediaItem: id, path?/bytes?, name, mimeType, sizeBytes, kind, uri (remote-origin),
+//            assetId? (0.5 — stable library identity, for dedupe across paths),
 //            session? (draft partition tag — state.inSession(tag) filters); isRemote
 // Constructors: MediaItem(...), MediaItem.remote(uri: …), MediaItem.local(path: …)
 // UploadState: itemId, status, progress(0..1), remoteUrl?, error?; isActive, isDone

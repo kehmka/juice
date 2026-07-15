@@ -26,7 +26,9 @@ seam. Exposes `setPermissionStatus` (shared-permissions pattern).
   `CancelToken`.
 
 `MediaItem` is vendor-agnostic: id, `path` and/or `bytes`, name, mime, size,
-kind, and `uri` (set for remote-origin items).
+kind, `uri` (set for remote-origin items), and `assetId` (0.5 — the source
+library's stable asset identity, set by sources that have one; the copied-file
+`image_picker` default leaves it null).
 
 ## Remote items (0.2)
 

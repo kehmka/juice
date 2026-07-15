@@ -13,6 +13,14 @@
   colloquy's "I lost my place" every ask). A call made mid-generation now
   waits its turn.
 
+### Documented
+
+- **The caller-side preemption pattern** (README → Concurrency; SPEC):
+  priority stays out of the API — an interactive caller names its lanes via
+  `requestId`, checks `activeRequestId`, and `stopGeneration()`s a background
+  stream rather than waiting it out. Covered by two new tests (FIFO turns for
+  direct awaiters; preempt-then-generate).
+
 ## 0.2.0
 
 ### Added (multimodal input — non-breaking)

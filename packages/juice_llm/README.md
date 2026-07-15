@@ -84,12 +84,48 @@ widget rebuilds. This is the package's core performance contract.
 
 ## Concurrency
 
-One generation runs at a time — `GenerateEvent` is `sequential`, so requests
-queue in order against the single runtime context. `CancelGenerationEvent` is
-`concurrent`, so it runs *during* a generation and stops the runtime
-out-of-band by cancelling the provider stream. However a stream ends — natural
-completion, error, or cancel — it funnels through one terminal emission, so a
-session always reaches a terminal status and the queue is never wedged.
+One generation runs at a time — and since 0.2.1 the guarantee lives in
+**`beginGeneration` itself**, which chains every call onto the generation
+tail. It therefore holds for ANY caller: events through the `sequential`
+`GenerateEvent` queue and service-layer code that awaits the method directly
+both take fair FIFO turns against the single runtime context. (Before 0.2.1
+only the event queue was ordered — two direct awaiters could race straight
+into the provider. Harmless while nothing generated in the background;
+a collision on every interactive call once an app enriches continuously.)
+
+`CancelGenerationEvent` is `concurrent`, so it runs *during* a generation and
+stops the runtime out-of-band by cancelling the provider stream. However a
+stream ends — natural completion, error, or cancel — it funnels through one
+terminal emission, so a session always reaches a terminal status and the
+queue is never wedged.
+
+### Priority is the caller's pattern, not a parameter
+
+FIFO is fair, but a user watching a spinner should not wait out a background
+job. The package keeps priority OUT of the API; callers compose it from three
+existing pieces — `requestId` (name your lanes), `activeRequestId` (see whose
+turn it is), and `stopGeneration()` (end it):
+
+```dart
+// Background pass — its lane is visible in the requestId.
+final outcome = await llm.beginGeneration(
+  LlmRequest(requestId: 'well-$n', messages: [...]),
+  onChunk: (c) => buf.write(c.textDelta),
+);
+if (outcome.kind == GenOutcomeKind.cancelled) {
+  // Preempted by interactive work: leave this item undone; retry it later.
+}
+
+// Interactive ask — preempt an in-flight BACKGROUND generation, never
+// another interactive one. The next beginGeneration takes the freed turn.
+if (llm.activeRequestId?.startsWith('well-') ?? false) {
+  await llm.stopGeneration();
+}
+final answer = await llm.beginGeneration(
+  LlmRequest(requestId: 'chat-$n', messages: [...]),
+  onChunk: (c) => out.write(c.textDelta),
+);
+```
 
 ## Fail-loud
 

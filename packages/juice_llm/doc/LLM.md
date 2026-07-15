@@ -76,6 +76,14 @@ void cancel(String requestId);    // concurrent; stops the runtime out-of-band
 void evictSession(String requestId);
 Future<List<double>> embed(String text); // awaits the provider
 bool get isGenerating; String? get activeRequestId;
+
+// The resource layer — for service code that awaits a completion directly
+// (no session/state emissions). SERIALIZED since 0.2.1: every call chains
+// onto the generation tail, so direct awaiters and the GenerateEvent queue
+// take fair FIFO turns on the one runtime context.
+Future<GenerationOutcome> beginGeneration(LlmRequest r,
+    {required void Function(LlmChunk) onChunk});
+Future<String?> stopGeneration(); // end the ACTIVE stream → outcome: cancelled
 ```
 
 ## Events

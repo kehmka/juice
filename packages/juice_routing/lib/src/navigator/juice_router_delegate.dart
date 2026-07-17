@@ -52,9 +52,13 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
 
   @override
   Future<void> setNewRoutePath(RoutePath configuration) async {
-    // Handle incoming deep links / URL changes
+    // Incoming deep links / URL changes. Marked fromPlatform so the
+    // NavigateUseCase can reconcile a report of the CURRENT location to a
+    // no-op — the OS reports the initial path on every cold start, right
+    // after InitializeRoutingEvent seeded the stack with the same path, and
+    // pushing it duplicated the root page.
     final fullPath = configuration.toUri();
-    routingBloc.navigate(fullPath);
+    routingBloc.send(NavigateEvent(path: fullPath, fromPlatform: true));
   }
 
   @override

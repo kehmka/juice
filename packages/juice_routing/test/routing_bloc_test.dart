@@ -55,6 +55,69 @@ void main() {
       });
     });
 
+    group('platform-reported navigation (fromPlatform)', () {
+      test('cold-start report of the seeded path does not double-push', () async {
+        bloc = RoutingBloc.withConfig(config);
+        // No pre-wait: the report races initialization exactly as the Router
+        // widget's setInitialRoutePath does on a real cold start. Event order
+        // (initialize first, then this) is what keeps the stack at 1.
+        bloc.send(NavigateEvent(path: '/', fromPlatform: true));
+
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/');
+      });
+
+      test('report of the current path with same query is a no-op', () async {
+        bloc = RoutingBloc.withConfig(config);
+        await Future.delayed(const Duration(milliseconds: 50));
+        bloc.navigate('/settings?tab=a');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.send(NavigateEvent(path: '/settings?tab=a', fromPlatform: true));
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.stack.length, 2);
+      });
+
+      test('report of a different path navigates (real deep link)', () async {
+        bloc = RoutingBloc.withConfig(config);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.send(NavigateEvent(path: '/settings', fromPlatform: true));
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.stack.length, 2);
+        expect(bloc.state.currentPath, '/settings');
+      });
+
+      test('report of current path with different query navigates', () async {
+        bloc = RoutingBloc.withConfig(config);
+        await Future.delayed(const Duration(milliseconds: 50));
+        bloc.navigate('/settings?tab=a');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.send(NavigateEvent(path: '/settings?tab=b', fromPlatform: true));
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.stack.length, 3);
+        expect(bloc.state.current!.query['tab'], 'b');
+      });
+
+      test('in-app navigate to the current path still pushes', () async {
+        bloc = RoutingBloc.withConfig(config);
+        await Future.delayed(const Duration(milliseconds: 50));
+        bloc.navigate('/settings');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.navigate('/settings');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.stack.length, 3);
+      });
+    });
+
     group('navigation', () {
       setUp(() async {
         bloc = RoutingBloc.withConfig(config);

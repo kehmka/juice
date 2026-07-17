@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-16
+
+### Fixed
+
+- **Cold-start double push of the initial route**: Flutter's `Router` reports
+  the platform's initial location (`setInitialRoutePath` → `setNewRoutePath`)
+  on every startup, and the delegate forwarded it as a navigation — pushing a
+  second copy of the path `InitializeRoutingEvent` had just seeded. Every app
+  launched with a stack of two identical root pages (and a phantom back
+  button). Platform reports of the *current* location now reconcile to a
+  no-op; a report of a *different* location (a real deep link) still
+  navigates.
+
+### Added
+
+- `NavigateEvent.fromPlatform` (default `false`): marks a navigation as a
+  platform location report. Only platform-origin events dedupe against the
+  current location — in-app `navigate()` calls keep intentional-push
+  semantics, including re-pushing the current route with fresh `extra`.
+
 ## [1.1.0] - 2026-04-18
 
 ### Changed

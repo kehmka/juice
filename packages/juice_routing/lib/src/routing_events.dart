@@ -70,15 +70,27 @@ class NavigateEvent extends RoutingEvent {
   /// Override transition animation for this navigation
   final RouteTransition? transition;
 
+  /// True when this navigation is the PLATFORM reporting a location
+  /// (Router.setNewRoutePath — startup report, URL bar edit, deep link)
+  /// rather than the app asking to go somewhere. Platform reports that name
+  /// the current location are reconciled to a no-op instead of pushed: on
+  /// every cold start the OS reports the same initial path the bloc just
+  /// seeded, and pushing it duplicated the root page (a phantom back button
+  /// on launch). In-app navigations never set this, so an intentional
+  /// re-push of the current route (fresh extra, replace, ...) is untouched.
+  final bool fromPlatform;
+
   NavigateEvent({
     required this.path,
     this.extra,
     this.replace = false,
     this.transition,
+    this.fromPlatform = false,
   });
 
   @override
-  String toString() => 'NavigateEvent($path${replace ? ', replace' : ''})';
+  String toString() =>
+      'NavigateEvent($path${replace ? ', replace' : ''}${fromPlatform ? ', fromPlatform' : ''})';
 }
 
 /// Pop the current route from the stack.

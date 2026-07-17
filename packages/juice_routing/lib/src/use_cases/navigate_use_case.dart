@@ -19,6 +19,15 @@ import 'guard_pipeline.dart';
 class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
   @override
   Future<void> execute(NavigateEvent event) async {
+    // A platform report of the location we're already at is a statement,
+    // not a request — reconcile to a no-op. Events process in order, so by
+    // the time the cold-start report runs, InitializeRoutingEvent has
+    // seeded the stack and state.current names the same path.
+    if (event.fromPlatform && _isCurrentLocation(event.path)) {
+      log('Platform report of current location ignored: ${event.path}');
+      return;
+    }
+
     // If already navigating, queue this navigation (latest wins)
     if (bloc.state.isNavigating) {
       bloc.queueNavigation(event);
@@ -34,6 +43,22 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
       redirectCount: 0,
       redirectChain: [event.path],
     );
+  }
+
+  /// Whether [path] (a URI string) names the stack's current entry —
+  /// same resolved path and identical query parameters.
+  bool _isCurrentLocation(String path) {
+    final current = bloc.state.current;
+    if (current == null) return false;
+    final uri = Uri.parse(path);
+    final targetPath = uri.path.isEmpty ? '/' : uri.path;
+    if (current.path != targetPath) return false;
+    final query = uri.queryParameters;
+    if (current.query.length != query.length) return false;
+    for (final key in query.keys) {
+      if (current.query[key] != query[key]) return false;
+    }
+    return true;
   }
 
   Future<void> _executeNavigation({

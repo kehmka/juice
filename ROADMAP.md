@@ -50,6 +50,7 @@ Legend: ✅ shipped · 📋 planned
 |---|---|---|---|
 | `juice_connectivity` | reachability / online-offline | making requests | ✅ |
 | `juice_lifecycle` | app foreground/background/resume | navigation, sessions | ✅ |
+| `juice_power` | charging state / charge level / OS power saver | when it's acceptable to be expensive | ✅ 0.1.0 |
 
 ### Domain services
 | Package | Owns | Does NOT own | Status |

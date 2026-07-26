@@ -258,6 +258,47 @@ _logger.log('Emitting $statusName', context: {
 
 ---
 
+## Family-Wide Debt
+
+### 22. Packages predating `EventConcurrency` still declare no mode (and pin `juice: ^1.4.0`)
+
+**Description:** `EventConcurrency` landed in juice 1.5.0 and AGENTS.md §4 now
+calls a concurrency mode "the primary fix, not a hand-rolled guard." Every
+package written before it still uses bare `UseCaseBuilder(...)` with no
+`concurrency:`, which silently means `concurrent` — same-type use cases may
+interleave across an `await`. Any of them doing read-modify-write on state has
+the read-before-await race latent.
+
+Their pubspecs also still say `juice: ^1.4.0`, so consumers can resolve a juice
+that does not have the API these packages should be using.
+
+Raised by Kevin 2026-07-25, after `juice_power` was built and the audit found
+that faithfully copying `juice_connectivity`'s shape had copied the gap too.
+
+**Packages affected (17):** `juice_analytics`, `juice_auth`,
+`juice_connectivity`, `juice_flags`, `juice_forms`, `juice_i18n`,
+`juice_lifecycle`, `juice_location`, `juice_network`, `juice_notifications`,
+`juice_paging`, `juice_permissions`, `juice_realtime`, `juice_routing`,
+`juice_storage`, `juice_sync`, `juice_theme`.
+
+**Already correct:** `juice_llm`, `juice_media`, `juice_observability`,
+`juice_power`.
+
+**Per package:**
+1. Bump `juice: ^1.6.0`.
+2. Give every `UseCaseBuilder` an explicit mode — `sequential` for events that
+   mutate shared state, `droppable` for exclusive flows (init, connect, flush,
+   pick), `concurrent` only where events are genuinely independent, stated on
+   purpose rather than by omission.
+3. Note it in the CHANGELOG; it is a behaviour change, not a cleanup.
+
+**Start with `juice_connectivity`** (Kevin's pick): its
+`ConnectivityChangedUseCase` reads state, compares, and emits, and its
+`InitializeConnectivityEvent` would double-subscribe if it ever arrived twice
+— the same two faults found and fixed in `juice_power`.
+
+---
+
 ## Summary
 
 | Priority | Count | Status |
@@ -267,7 +308,8 @@ _logger.log('Emitting $statusName', context: {
 | Low | 6 | All Fixed (#9-14) |
 | Tests | 4 | All Fixed (#15-18) |
 | Docs | 3 | Open |
-| **Total** | **21** | **18 Fixed, 3 Open** |
+| Family debt | 1 | Open (#22) |
+| **Total** | **22** | **18 Fixed, 4 Open** |
 
 ---
 
@@ -279,3 +321,4 @@ _logger.log('Emitting $statusName', context: {
 4. ~~**Fourth:** Add missing tests #15-18~~ DONE
 5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)
+7. **Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 17 packages that predate 1.5.0, `juice_connectivity` first

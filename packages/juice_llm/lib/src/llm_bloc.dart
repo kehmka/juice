@@ -150,6 +150,44 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// The tail of the generation queue — each [beginGeneration] chains here.
   Future<void> _genTail = Future<void>.value();
 
+  /// The ENGINE LEASE — exclusive ownership of the runtime for a caller that
+  /// holds a session ACROSS turns (a tool-loop conversation). The native
+  /// runtimes hold ONE live session per model, so any generation that starts
+  /// between a conversation's turns destroys the conversation's session
+  /// ("Bad state: Session is closed"). While a lease is held,
+  /// [beginGeneration] queues behind [EngineLease.release] instead of
+  /// touching the runtime. Serialization alone cannot provide this — the
+  /// queue is turn-grained; the lease is lifetime-grained.
+  Completer<void>? _lease;
+
+  /// Whether an [EngineLease] is currently held.
+  bool get engineLeased => _lease != null && !_lease!.isCompleted;
+
+  /// Acquire exclusive engine ownership: waits for the in-flight generation
+  /// (and any earlier lease) to finish, then holds the runtime until
+  /// [EngineLease.release]. The holder drives the runtime OUTSIDE
+  /// [beginGeneration] (e.g. flutter_gemma's chat lane); everyone else's
+  /// generations queue. ALWAYS release in a finally — an unreleased lease
+  /// starves every other caller, loudly visible via [engineLeased].
+  Future<EngineLease> acquireEngine() async {
+    // Chain onto the queue so acquisition respects in-flight + queued work,
+    // and subsequent generations chain behind our release.
+    final acquired = Completer<void>();
+    final release = Completer<void>();
+    _genTail = _genTail.then((_) {
+      _lease = release;
+      acquired.complete();
+      return release.future;
+    });
+    await acquired.future;
+    return EngineLease._(() {
+      if (!release.isCompleted) {
+        _lease = null;
+        release.complete();
+      }
+    });
+  }
+
   Future<GenerationOutcome> _startGeneration(
     LlmRequest request, {
     required void Function(LlmChunk) onChunk,
@@ -288,5 +326,18 @@ class LlmBloc extends JuiceBloc<LlmState> {
       // Config may never have been applied; ignore.
     }
     await super.close();
+  }
+}
+
+/// Exclusive engine ownership — see [LlmBloc.acquireEngine]. Release exactly
+/// once, in a finally.
+class EngineLease {
+  EngineLease._(this._release);
+  final void Function() _release;
+  var _released = false;
+  void release() {
+    if (_released) return;
+    _released = true;
+    _release();
   }
 }

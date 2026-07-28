@@ -506,4 +506,55 @@ void main() {
       await bloc.close();
     });
   });
+
+  group('EngineLease', () {
+    test('beginGeneration queues behind a held lease; release frees it',
+        () async {
+      final llm = LlmBloc.withConfig(LlmConfig());
+      await Future<void>.delayed(const Duration(milliseconds: 50)); // init
+      final lease = await llm.acquireEngine();
+      expect(llm.engineLeased, isTrue);
+
+      var completed = false;
+      final gen = llm
+          .beginGeneration(
+            LlmRequest(
+                requestId: 'lease-t1',
+                messages: [LlmMessage.user('hello')]),
+            onChunk: (_) {},
+          )
+          .then((o) {
+        completed = true;
+        return o;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(completed, isFalse,
+          reason: 'a generation must WAIT while the engine is leased');
+
+      lease.release();
+      expect(llm.engineLeased, isFalse);
+      // The LEASE contract is ordering, not generation success (no model is
+      // loaded here) — after release the queued generation must COMPLETE.
+      await gen.timeout(const Duration(seconds: 5));
+      expect(completed, isTrue);
+      lease.release(); // idempotent
+      await llm.close();
+    });
+
+    test('acquire waits for the in-flight generation', () async {
+      final llm = LlmBloc.withConfig(LlmConfig());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final gen = llm.beginGeneration(
+        LlmRequest(
+            requestId: 'lease-t2', messages: [LlmMessage.user('hi')]),
+        onChunk: (_) {},
+      );
+      final lease = await llm.acquireEngine();
+      // Acquisition resolving implies the queue ahead of us drained — the
+      // generation's future must already be settled (any outcome).
+      await gen.timeout(const Duration(milliseconds: 100));
+      lease.release();
+      await llm.close();
+    });
+  });
 }

@@ -1,3 +1,13 @@
+## 0.2.2
+
+- `LlmBloc.acquireEngine()` / `EngineLease`: exclusive engine ownership
+  for callers that hold a session across turns (tool-loop conversations).
+  Native runtimes keep ONE live session per model, so a generation starting
+  between a conversation's turns destroyed the conversation's session
+  ("Bad state: Session is closed"). While a lease is held, `beginGeneration`
+  queues behind release; serialization is turn-grained, the lease is
+  lifetime-grained. `engineLeased` exposes the state.
+
 # Changelog
 
 ## 0.2.1

@@ -97,6 +97,23 @@ class _FakeModelSource implements ModelSource {
   Future<void> delete(LlmModel model, String path) async {}
 }
 
+
+/// A provider stuck in "prefill": generate never yields a chunk, and — like
+/// a native runtime wedged mid-call — its cancel can never reach a yield
+/// boundary, so the subscription's cancel future never completes.
+class WedgedProvider extends FakeLlmProvider {
+  final started = Completer<void>();
+
+  @override
+  Stream<LlmChunk> generate(LlmRequest request) async* {
+    generateCalls++;
+    if (!started.isCompleted) started.complete();
+    // Await forever INSIDE the generator body: no yield boundary is ever
+    // reached, so cancellation can never take effect.
+    await Completer<void>().future;
+  }
+}
+
 void main() {
   Future<void> settle([int ms = 30]) =>
       Future<void>.delayed(Duration(milliseconds: ms));
@@ -555,6 +572,91 @@ void main() {
       await gen.timeout(const Duration(milliseconds: 100));
       lease.release();
       await llm.close();
+    });
+  });
+
+  group('Safe-point preempt + non-hanging stop (2026-07-30)', () {
+    test('stopGeneration returns even when the provider cancel hangs',
+        () async {
+      final fake = WedgedProvider();
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await settle();
+      fake.loaded = true;
+
+      final outcome = bloc.beginGeneration(
+          LlmRequest(requestId: 'well-1', messages: const []),
+          onChunk: (_) {});
+      await fake.started.future;
+
+      // The old form awaited the generator teardown — with a wedged native
+      // call that await NEVER completed and the caller hung forever.
+      final id = await bloc.stopGeneration()
+          .timeout(const Duration(seconds: 2));
+      expect(id, 'well-1');
+      expect((await outcome).kind, GenOutcomeKind.cancelled);
+    });
+
+    test('preemptAtSafePoint waits out prefill, cancels at first chunk',
+        () async {
+      final fake = FakeLlmProvider(
+          scriptedWords: List.filled(40, 'w'),
+          perToken: const Duration(milliseconds: 30));
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await settle();
+      fake.loaded = true;
+
+      final chunks = <LlmChunk>[];
+      final outcome = bloc.beginGeneration(
+          LlmRequest(requestId: 'well-2', messages: const []),
+          onChunk: chunks.add);
+      await settle(1); // let the queue start it (registration is chained)
+      // The first chunk is still ~30ms away ("prefill") — the preempt
+      // must WAIT for it, then cancel.
+      final freed = await bloc.preemptAtSafePoint(
+          where: (id) => id.startsWith('well-'));
+      expect(freed, isTrue);
+      expect(chunks, isNotEmpty, reason: 'never cancels before a chunk');
+      expect((await outcome).kind, GenOutcomeKind.cancelled);
+      expect(chunks.length, lessThan(40),
+          reason: 'cancelled mid-decode, not run to completion');
+    });
+
+    test('preemptAtSafePoint leaves a still-prefilling generation past '
+        'patience (never a wedge-window cancel)', () async {
+      final fake = WedgedProvider();
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await settle();
+      fake.loaded = true;
+
+      unawaited(bloc.beginGeneration(
+          LlmRequest(requestId: 'well-3', messages: const []),
+          onChunk: (_) {}));
+      await fake.started.future;
+
+      final freed = await bloc.preemptAtSafePoint(
+          where: (id) => id.startsWith('well-'),
+          patience: const Duration(milliseconds: 200));
+      expect(freed, isFalse, reason: 'no chunk ever came — leave it be');
+      expect(bloc.activeRequestId, 'well-3',
+          reason: 'the generation was NOT cancelled');
+    });
+
+    test('preemptAtSafePoint ignores requests the filter excludes', () async {
+      final fake = FakeLlmProvider(
+          scriptedWords: List.filled(20, 'w'),
+          perToken: const Duration(milliseconds: 20));
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await settle();
+      fake.loaded = true;
+
+      unawaited(bloc.beginGeneration(
+          LlmRequest(requestId: 'read:now', messages: const []),
+          onChunk: (_) {}));
+      await settle(1); // let the queue start it
+      final freed = await bloc.preemptAtSafePoint(
+          where: (id) => id.startsWith('well-'));
+      expect(freed, isFalse);
+      expect(bloc.activeRequestId, 'read:now');
     });
   });
 }

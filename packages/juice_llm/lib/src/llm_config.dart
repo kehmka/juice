@@ -24,6 +24,13 @@ class LlmConfig {
   /// Options applied on load.
   final LlmLoadOptions loadOptions;
 
+  /// ENGINE TRACE (0.3.0): every engine transition — queue, start, first
+  /// chunk, outcome, stop, teardown, lease — as one compact line. Wire it
+  /// to an on-device journal so a wedge is diagnosable after the fact
+  /// (Amoli's 2026-07-30 hunt: a runtime that wedges "over time" is
+  /// invisible without a transition log). Null = silent.
+  final void Function(String event)? onEngineTrace;
+
   /// Streaming-emission throttle: at most one state emission per session per
   /// this interval (a final unthrottled emission always lands on terminal
   /// status). Guards the rebuild pipeline against token-rate emissions.
@@ -41,5 +48,6 @@ class LlmConfig {
     this.loadOptions = const LlmLoadOptions(),
     this.streamThrottle = const Duration(milliseconds: 50),
     this.maxRetainedSessions = 8,
+    this.onEngineTrace,
   }) : provider = provider ?? EchoLlmProvider();
 }

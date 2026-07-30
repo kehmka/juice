@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:juice/juice.dart';
 
 import 'llm_config.dart';
@@ -119,6 +121,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
 
   /// requestId of the generation currently streaming, or null.
   String? get activeRequestId => _activeRequestId;
+
+  /// One compact line to the configured engine trace (no-op when unset).
+  void _trace(String event) => _config.onEngineTrace?.call(event);
   bool get isGenerating => _activeRequestId != null;
 
   /// Begin streaming [request] through the provider, forwarding each chunk to
@@ -139,6 +144,8 @@ class LlmBloc extends JuiceBloc<LlmState> {
     LlmRequest request, {
     required void Function(LlmChunk) onChunk,
   }) {
+    _trace('queue ${request.requestId} '
+        '(active=${_activeRequestId ?? '-'} leased=$engineLeased)');
     final next =
         _genTail.then((_) => _startGeneration(request, onChunk: onChunk));
     // The outcome future never throws (errors arrive as GenOutcomeKind.error),
@@ -172,10 +179,12 @@ class LlmBloc extends JuiceBloc<LlmState> {
   Future<EngineLease> acquireEngine() async {
     // Chain onto the queue so acquisition respects in-flight + queued work,
     // and subsequent generations chain behind our release.
+    _trace('lease-wait (active=${_activeRequestId ?? '-'})');
     final acquired = Completer<void>();
     final release = Completer<void>();
     _genTail = _genTail.then((_) {
       _lease = release;
+      _trace('lease-held');
       acquired.complete();
       return release.future;
     });
@@ -183,6 +192,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
     return EngineLease._(() {
       if (!release.isCompleted) {
         _lease = null;
+        _trace('lease-released');
         release.complete();
       }
     });
@@ -193,14 +203,38 @@ class LlmBloc extends JuiceBloc<LlmState> {
     required void Function(LlmChunk) onChunk,
   }) {
     _activeRequestId = request.requestId;
+    _trace('start ${request.requestId}');
+    final startedAt = DateTime.now();
+    int ms() => DateTime.now().difference(startedAt).inMilliseconds;
+    var tokens = 0;
     final outcome = Completer<GenerationOutcome>();
     _genOutcome = outcome;
+    _activeStreamed = false;
+    final firstChunk = Completer<void>();
+    _firstChunk = firstChunk;
+    void settleFirstChunk() {
+      if (!firstChunk.isCompleted) firstChunk.complete();
+    }
+
     _genSub = provider.generate(request).listen(
-      onChunk,
+      (c) {
+        // The first chunk marks the end of PREFILL — the runtime is now
+        // decoding, where cancellation is prompt and safe. The safe-point
+        // preempt ([preemptAtSafePoint]) waits on exactly this edge.
+        if (!_activeStreamed) {
+          _activeStreamed = true;
+          _trace('first-chunk ${request.requestId} +${ms()}ms');
+          settleFirstChunk();
+        }
+        tokens++;
+        onChunk(c);
+      },
       onDone: () {
         _genSub = null;
         _activeRequestId = null;
         _cancelThrottle();
+        settleFirstChunk();
+        _trace('done ${request.requestId} +${ms()}ms ${tokens}tok');
         if (!outcome.isCompleted) {
           outcome.complete(const GenerationOutcome(GenOutcomeKind.done));
         }
@@ -209,6 +243,8 @@ class LlmBloc extends JuiceBloc<LlmState> {
         _genSub = null;
         _activeRequestId = null;
         _cancelThrottle();
+        settleFirstChunk();
+        _trace('error ${request.requestId} +${ms()}ms ${tokens}tok: $e');
         if (!outcome.isCompleted) {
           outcome.complete(GenerationOutcome(GenOutcomeKind.error, error: e));
         }
@@ -216,6 +252,53 @@ class LlmBloc extends JuiceBloc<LlmState> {
       cancelOnError: true,
     );
     return outcome.future;
+  }
+
+  /// True once the ACTIVE generation has streamed at least one chunk —
+  /// prefill is over, the runtime is decoding: the safe-cancel window.
+  bool _activeStreamed = false;
+
+  /// Completes at the active generation's first chunk (or its end, so no
+  /// waiter ever hangs on a zero-chunk outcome).
+  Completer<void>? _firstChunk;
+
+  /// Preempt the active generation at the next SAFE point.
+  ///
+  /// Cancelling a provider mid-PREFILL can wedge the native runtime (LiteRT
+  /// wedged on exactly this, Amoli 2026-07-26) — and a wedged generator can
+  /// never reach the yield boundary a cancel needs, so the old blind
+  /// stop-then-generate pattern hung its caller forever (the Read button,
+  /// 2026-07-29). Once tokens stream, every chunk is a yield boundary and
+  /// cancellation is prompt.
+  ///
+  /// So: already decoding → cancel now. Still prefilling → wait for the
+  /// first chunk (the prefill's own duration bounds the wait), then cancel.
+  /// No chunk within [patience] → leave it to run and return false (the
+  /// caller queues; its own watchdog stays the loud ceiling). [where]
+  /// filters which requests may be preempted — e.g. only background
+  /// `'well-'` reads. Returns true when the engine was freed (cancelled or
+  /// ended on its own).
+  Future<bool> preemptAtSafePoint({
+    bool Function(String requestId)? where,
+    Duration patience = const Duration(seconds: 45),
+  }) async {
+    final id = _activeRequestId;
+    if (id == null) return true;
+    if (where != null && !where(id)) return false;
+    _trace('preempt-wait $id (streamed=$_activeStreamed)');
+    if (!_activeStreamed) {
+      final first = _firstChunk?.future;
+      if (first != null) {
+        final streamed = await Future.any<bool>([
+          first.then((_) => true),
+          Future<bool>.delayed(patience, () => false),
+        ]);
+        if (!streamed) return false;
+      }
+    }
+    if (_activeRequestId != id) return true; // ended on its own
+    await stopGeneration();
+    return true;
   }
 
   /// Stop the in-flight generation: cancels the provider stream (runtime stops
@@ -229,7 +312,24 @@ class LlmBloc extends JuiceBloc<LlmState> {
     _activeRequestId = null;
     _genOutcome = null;
     _cancelThrottle();
-    await sub?.cancel();
+    // The CALLER must never block on the provider's teardown: an async*
+    // generator cancel only completes at a yield boundary, and a runtime
+    // wedged mid-native-call has none — `await sub.cancel()` here hung a
+    // caller FOREVER, outside every watchdog (Amoli's Read button,
+    // 2026-07-29). The QUEUE still waits: one live session per model means
+    // the next generation may not touch the provider until teardown truly
+    // finishes — so the teardown chains onto [_genTail] instead, and queued
+    // work behind a wedged teardown surfaces through its callers' own
+    // watchdogs, loudly, rather than as a silent hang here.
+    _trace('stop ${id ?? '-'} (streamed=$_activeStreamed)');
+    if (sub != null) {
+      final stopAt = DateTime.now();
+      final teardown = sub.cancel().then((_) {
+        _trace('teardown ${id ?? '-'} '
+            '+${DateTime.now().difference(stopAt).inMilliseconds}ms');
+      });
+      _genTail = _genTail.then((_) => teardown).then((_) {}, onError: (_) {});
+    }
     if (outcome != null && !outcome.isCompleted) {
       outcome.complete(const GenerationOutcome(GenOutcomeKind.cancelled));
     }

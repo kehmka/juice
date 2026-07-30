@@ -1,3 +1,18 @@
+## 0.3.0
+
+- `LlmBloc.preemptAtSafePoint({where, patience})`: preempt the active
+  generation at the next SAFE point. Cancelling a provider mid-PREFILL can
+  wedge a native runtime (LiteRT, Amoli 2026-07-26); once tokens stream,
+  every chunk is a yield boundary and cancellation is prompt. Already
+  decoding → cancel now; still prefilling → wait for the first chunk, then
+  cancel; no chunk within `patience` → leave it running and return false.
+- `stopGeneration` no longer blocks its caller on the provider's teardown:
+  an `async*` cancel only completes at a yield boundary, and a runtime
+  wedged mid-native-call has none — the old `await sub.cancel()` hung a
+  caller forever, outside every watchdog. The GENERATION QUEUE still waits
+  for the real teardown (one live session per model), chained onto the
+  queue tail instead of the caller.
+
 ## 0.2.2
 
 - `LlmBloc.acquireEngine()` / `EngineLease`: exclusive engine ownership

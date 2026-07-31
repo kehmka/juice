@@ -2,9 +2,14 @@
 
 > **Status:** 0.1.0 built 2026-06-11 (Reviewed gate) — bloc, seams, lifecycle,
 > throttled streaming, and the pure-Dart `EchoLlmProvider` complete and fully
-> tested headless; example proves the real-model path via Ollama. The embedded
-> llama.cpp FFI runtime + real Gemma 4 weights are the next step (Glean Almanac
-> Phase A). See §"0.1.0 as built" for what shipped vs. this design.
+> tested headless; example proves the real-model path via Ollama. See §"0.1.0
+> as built" for what shipped vs. this design.
+> **Since then (code + CHANGELOG are the source of truth):** 0.2.1
+> resource-level serialization in `beginGeneration`; 0.2.2 the `EngineLease`
+> (lifetime-grained exclusive ownership for warm conversations); 0.3.0
+> `preemptAtSafePoint` (never cancel mid-prefill), the non-hanging
+> `stopGeneration`, and the `onEngineTrace` hook — each born from a field
+> failure in daily dogfood over a LiteRT runtime.
 > **Package:** `juice_llm`
 > **Primary Bloc:** `LlmBloc`
 

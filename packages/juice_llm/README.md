@@ -99,6 +99,14 @@ stream ends — natural completion, error, or cancel — it funnels through one
 terminal emission, so a session always reaches a terminal status and the
 queue is never wedged.
 
+Since 0.3.0, **`stopGeneration` never blocks its caller** on the provider's
+teardown: an `async*` cancel only completes at a yield boundary, and a runtime
+wedged mid-native-call has none — the old `await` there hung a caller forever,
+outside every watchdog. The teardown chains onto the generation queue instead,
+so the one-live-session guarantee still holds: the next generation waits until
+teardown truly finishes, and a wedged teardown surfaces through *that* caller's
+watchdog, loudly, rather than as a silent hang.
+
 ### Priority is the caller's pattern, not a parameter
 
 FIFO is fair, but a user watching a spinner should not wait out a background
@@ -116,16 +124,74 @@ if (outcome.kind == GenOutcomeKind.cancelled) {
   // Preempted by interactive work: leave this item undone; retry it later.
 }
 
-// Interactive ask — preempt an in-flight BACKGROUND generation, never
-// another interactive one. The next beginGeneration takes the freed turn.
-if (llm.activeRequestId?.startsWith('well-') ?? false) {
-  await llm.stopGeneration();
-}
+// Interactive ask — free the engine at the next SAFE point, background
+// lanes only. NOT a blind stopGeneration(): a cancel that lands mid-PREFILL
+// can wedge a native runtime (LiteRT) beyond recovery. preemptAtSafePoint
+// cancels only once tokens stream — already decoding → now; still
+// prefilling → right after the first chunk; no chunk within `patience` →
+// it returns false and leaves the generation alone (your queued turn is
+// the fallback, and your own watchdog stays the loud ceiling).
+await llm.preemptAtSafePoint(where: (id) => id.startsWith('well-'));
 final answer = await llm.beginGeneration(
   LlmRequest(requestId: 'chat-$n', messages: [...]),
   onChunk: (c) => out.write(c.textDelta),
 );
 ```
+
+## The engine lease
+
+Serialization is turn-grained; some callers need **lifetime-grained**
+ownership. A warm, multi-turn conversation (a tool-loop chat) drives the
+runtime's own session API across many turns — and native runtimes hold ONE
+live session per model, so any generation that runs between your turns
+destroys the conversation's session ("Bad state: Session is closed"). The
+lease closes that gap:
+
+```dart
+// Claim safely first (never mid-prefill), then own the engine for the
+// conversation's LIFETIME. While held, every beginGeneration in the app —
+// background enrichment included — queues behind release().
+await llm.preemptAtSafePoint(where: (id) => id.startsWith('well-'));
+final lease = await llm.acquireEngine(); // waits out in-flight + queued work
+try {
+  final chat = await runtime.createChat(...); // the runtime's session API,
+  while (conversationOpen) {                  // driven OUTSIDE beginGeneration
+    final reply = await chat.send(nextTurn);  // turns, tool calls, ...
+  }
+} finally {
+  lease.release(); // ALWAYS in a finally — release() is idempotent, and an
+}                  // unreleased lease starves every generation in the app.
+```
+
+Two disciplines make it safe in practice:
+
+- **Visibility** — `llm.engineLeased` is the app-wide signal. Long-running
+  background loops should check it in their own predicate and stand down,
+  rather than piling blind work into the queue.
+- **Release is the holder's job, loudly** — nothing times a lease out. A
+  conversation that forgets its `finally` is a real bug the `engineLeased`
+  flag makes visible, not something the package papers over.
+
+The example app's **Lease demo** button walks the whole pattern live
+(`example/lib/lease_demo.dart`): background lane preempted at a safe point,
+lease held, a queued generation visibly waiting, release, the queue resuming.
+
+## Observability
+
+Every engine transition can be traced — `queue`, `start`, `first-chunk`,
+`done`, `stop`, `teardown`, `lease-wait`, `lease-held`, `lease-released`,
+`preempt-wait` — through one hook:
+
+```dart
+LlmBloc.withConfig(LlmConfig(
+  onEngineTrace: (line) => journal.writeln(line), // e.g. an append-only file
+));
+```
+
+A runtime that "degrades over time" is undiagnosable from a screenshot; an
+append-only engine timeline turns the next wedge report into a timestamped
+sequence you can read. The hook is synchronous, line-oriented, and silent
+when unset.
 
 ## Fail-loud
 
@@ -150,7 +216,10 @@ visible in your app code.
 
 ## Status
 
-`0.1.0` — Reviewed. Bloc, seams, lifecycle, throttled streaming, and the Echo
-runtime are complete and fully tested headlessly. The real-model path is proven
-via the example's Ollama provider; an embedded FFI runtime is the maturation
-step toward the dogfood milestone. See `doc/SPEC.md`.
+`0.3.0` — production-proven in daily dogfood: an on-device journal app drives
+this bloc over a LiteRT runtime (flutter_gemma) for continuous background
+enrichment plus warm tool-loop conversations. The concurrency story matured
+there under real load: the serialized generation queue (0.2.1), the engine
+lease (0.2.2), and safe-point preemption, the non-hanging stop, and the engine
+trace (0.3.0) each exist because a field failure demanded them — the CHANGELOG
+tells those stories. Design record in `doc/SPEC.md`.

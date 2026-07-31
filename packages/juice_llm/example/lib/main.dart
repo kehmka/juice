@@ -1,6 +1,8 @@
 import 'package:juice/juice.dart';
 import 'package:juice_llm/juice_llm.dart';
 
+import 'lease_demo.dart';
+
 // To run a REAL local model instead of the echo runtime, install Ollama
 // (`ollama serve` + `ollama pull gemma3:1b`) and swap the provider below:
 //
@@ -70,6 +72,24 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
+  Future<void> _leaseDemo() async {
+    final transcript = await runLeaseDemo(BlocScope.get<LlmBloc>());
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('The engine lease'),
+        content: SingleChildScrollView(child: Text(transcript)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _input.dispose();
@@ -103,6 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: _generate,
                   icon: const Icon(Icons.auto_awesome),
                   label: const Text('Generate'),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _leaseDemo,
+                  icon: const Icon(Icons.lock_outline),
+                  label: const Text('Lease demo'),
                 ),
                 const SizedBox(width: 12),
                 if (_currentId != null) CancelButton(requestId: _currentId!),

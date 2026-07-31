@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2
+
+### Changed
+
+- Allow `juice_llm` 0.3.0 (safe-point preempt, non-hanging stop, engine
+  lease/trace). The provider seam this package implements is unchanged;
+  the old `^0.2.0` pin was blocking hosts from the 0.3.0 concurrency
+  fixes.
+
 ## 0.2.1
 
 ### Fixed

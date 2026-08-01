@@ -144,10 +144,22 @@ class LlmBloc extends JuiceBloc<LlmState> {
     LlmRequest request, {
     required void Function(LlmChunk) onChunk,
   }) {
+    // Wedged → fail NOW, not after an infinite queue wait. Checked again
+    // inside the chain for work that was already queued when the wedge was
+    // declared — it must not touch the stuck runtime either.
+    if (_wedged) {
+      _trace('refused ${request.requestId} (engine wedged)');
+      return Future.value(_wedgedOutcome);
+    }
     _trace('queue ${request.requestId} '
         '(active=${_activeRequestId ?? '-'} leased=$engineLeased)');
-    final next =
-        _genTail.then((_) => _startGeneration(request, onChunk: onChunk));
+    final next = _genTail.then<GenerationOutcome>((_) {
+      if (_wedged) {
+        _trace('refused ${request.requestId} (engine wedged, was queued)');
+        return _wedgedOutcome;
+      }
+      return _startGeneration(request, onChunk: onChunk);
+    });
     // The outcome future never throws (errors arrive as GenOutcomeKind.error),
     // but keep the chain unbreakable regardless.
     _genTail = next.then((_) {}, onError: (_) {});
@@ -156,6 +168,27 @@ class LlmBloc extends JuiceBloc<LlmState> {
 
   /// The tail of the generation queue — each [beginGeneration] chains here.
   Future<void> _genTail = Future<void>.value();
+
+  /// The runtime is WEDGED: a stopped generation's teardown never returned
+  /// within [LlmConfig.teardownPatience] — a native thread is stuck
+  /// mid-call and no in-process remedy exists. Once true, every queued and
+  /// future generation fails fast, [acquireEngine] throws, and the only
+  /// recovery is an app restart. Loud by construction: the alternative was
+  /// the poisoned queue, where everything waited forever in silence.
+  bool get engineWedged => _wedged;
+  bool _wedged = false;
+
+  void _declareWedged(String? id) {
+    if (_wedged) return;
+    _wedged = true;
+    _trace('wedged ${id ?? '-'} — teardown never returned '
+        '(${_config.teardownPatience.inSeconds}s); the native runtime is '
+        'stuck mid-call. Restart required; all engine work now fails fast.');
+  }
+
+  /// The outcome every generation receives once the engine is wedged.
+  static const _wedgedOutcome = GenerationOutcome(GenOutcomeKind.error,
+      error: 'engine wedged — restart required');
 
   /// The ENGINE LEASE — exclusive ownership of the runtime for a caller that
   /// holds a session ACROSS turns (a tool-loop conversation). The native
@@ -177,12 +210,22 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// generations queue. ALWAYS release in a finally — an unreleased lease
   /// starves every other caller, loudly visible via [engineLeased].
   Future<EngineLease> acquireEngine() async {
+    if (_wedged) {
+      _trace('lease-refused (engine wedged)');
+      throw StateError('engine wedged — restart required');
+    }
     // Chain onto the queue so acquisition respects in-flight + queued work,
     // and subsequent generations chain behind our release.
     _trace('lease-wait (active=${_activeRequestId ?? '-'})');
     final acquired = Completer<void>();
     final release = Completer<void>();
     _genTail = _genTail.then((_) {
+      if (_wedged) {
+        _trace('lease-refused (engine wedged, was queued)');
+        acquired.completeError(
+            StateError('engine wedged — restart required'));
+        return Future<void>.value();
+      }
       _lease = release;
       _trace('lease-held');
       acquired.complete();
@@ -282,6 +325,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
     bool Function(String requestId)? where,
     Duration patience = const Duration(seconds: 45),
   }) async {
+    // A wedged engine holds nothing preemptible — return true so the
+    // caller proceeds straight to its beginGeneration, which fails fast.
+    if (_wedged) return true;
     final id = _activeRequestId;
     if (id == null) return true;
     if (where != null && !where(id)) return false;
@@ -326,9 +372,18 @@ class LlmBloc extends JuiceBloc<LlmState> {
       final stopAt = DateTime.now();
       final teardown = sub.cancel().then((_) {
         _trace('teardown ${id ?? '-'} '
-            '+${DateTime.now().difference(stopAt).inMilliseconds}ms');
+            '+${DateTime.now().difference(stopAt).inMilliseconds}ms'
+            '${_wedged ? ' (late — after wedge declaration)' : ''}');
       });
-      _genTail = _genTail.then((_) => teardown).then((_) {}, onError: (_) {});
+      // THE TEARDOWN CEILING (0.4.0): a cancel with no yield boundary never
+      // returns; past the ceiling the engine is declared wedged and the
+      // queue tail RESOLVES so everything behind it can fail fast instead
+      // of waiting forever (the poisoned queue, 2026-08-01).
+      _genTail = _genTail
+          .then((_) => teardown.timeout(_config.teardownPatience, onTimeout: () {
+                _declareWedged(id);
+              }))
+          .then((_) {}, onError: (_) {});
     }
     if (outcome != null && !outcome.isCompleted) {
       outcome.complete(const GenerationOutcome(GenOutcomeKind.cancelled));

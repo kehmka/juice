@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3
+
+### Changed
+
+- `juice_llm` constraint widened to `>=0.3.0 <1.0.0`. This package
+  implements the stable provider seam only; re-pinning per juice_llm
+  minor blocked hosts twice (0.3.0's concurrency fixes, 0.4.0's wedge
+  fail-fast). The range now says what has always been true.
+
 ## 0.2.2
 
 ### Changed

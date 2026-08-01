@@ -36,6 +36,17 @@ class LlmConfig {
   /// status). Guards the rebuild pipeline against token-rate emissions.
   final Duration streamThrottle;
 
+  /// How long a stopped generation's provider teardown may take before the
+  /// engine is declared WEDGED. A cancel that lands mid-native-call has no
+  /// yield boundary to complete at — it never returns, and every queued
+  /// generation and lease behind it would wait forever (the poisoned-queue
+  /// incident, Amoli 2026-08-01: a wedged tag item's teardown starved the
+  /// colloquy, the drain, and a card for 20+ minutes). Past this ceiling
+  /// the bloc stops waiting: [LlmBloc.engineWedged] flips, and everything
+  /// queued or arriving fails FAST and LOUD instead of hanging. 8s is an
+  /// eternity for a healthy cancel (they run in milliseconds).
+  final Duration teardownPatience;
+
   /// Most-recent terminal sessions retained in state before old ones are
   /// auto-evicted. Consumers can also evict explicitly.
   final int maxRetainedSessions;
@@ -47,6 +58,7 @@ class LlmConfig {
     this.resolvePath,
     this.loadOptions = const LlmLoadOptions(),
     this.streamThrottle = const Duration(milliseconds: 50),
+    this.teardownPatience = const Duration(seconds: 8),
     this.maxRetainedSessions = 8,
     this.onEngineTrace,
   }) : provider = provider ?? EchoLlmProvider();

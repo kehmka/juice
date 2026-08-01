@@ -659,4 +659,82 @@ void main() {
       expect(bloc.activeRequestId, 'read:now');
     });
   });
+
+  group('the wedge (0.4.0) — a hung teardown fails fast, never silently', () {
+    LlmBloc wedgedBloc(WedgedProvider provider) => LlmBloc.withConfig(LlmConfig(
+          provider: provider,
+          teardownPatience: const Duration(milliseconds: 120),
+        ));
+
+    test('teardown past the ceiling declares the wedge; new work refuses',
+        () async {
+      final provider = WedgedProvider();
+      final bloc = wedgedBloc(provider);
+      await ready(bloc);
+
+      final gen = bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-1', messages: []),
+          onChunk: (_) {});
+      await provider.started.future;
+      expect(bloc.engineWedged, isFalse);
+
+      // The caller is released immediately (0.3.0 contract)…
+      await bloc.stopGeneration();
+      expect((await gen).kind, GenOutcomeKind.cancelled);
+
+      // …and past the teardown ceiling the engine is declared wedged.
+      await settle(300);
+      expect(bloc.engineWedged, isTrue);
+
+      // New generations fail FAST with a loud error — no queue wait.
+      final refused = await bloc.beginGeneration(
+          const LlmRequest(requestId: 'chat-1', messages: []),
+          onChunk: (_) {});
+      expect(refused.kind, GenOutcomeKind.error);
+      expect('${refused.error}', contains('wedged'));
+
+      // The lease refuses immediately rather than starving its caller.
+      await expectLater(bloc.acquireEngine(), throwsStateError);
+
+      // Nothing preemptible on a wedged engine — callers proceed to their
+      // own fast failure.
+      expect(await bloc.preemptAtSafePoint(), isTrue);
+    });
+
+    test('the incident replay: work arriving DURING the hung teardown '
+        'fails fast once the ceiling passes', () async {
+      // 2026-08-01, from the engine journal: stop at 11:16 (teardown never
+      // returned), a tag re-queue at 11:32 and a colloquy lease at 11:32:54
+      // then waited forever against an empty engine. This is that tape,
+      // with the 0.4.0 ending.
+      final provider = WedgedProvider();
+      final bloc = wedgedBloc(provider);
+      await ready(bloc);
+
+      final gen = bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-1', messages: []),
+          onChunk: (_) {});
+      await provider.started.future;
+      await bloc.stopGeneration();
+      await gen;
+
+      // While the teardown hangs (ceiling not yet passed), work arrives —
+      // exactly the 11:32 re-queue and lease-wait.
+      final queued = bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-2', messages: []),
+          onChunk: (_) {});
+      // The expectation attaches NOW — the rejection fires at the ceiling,
+      // and an unlistened error would kill the test zone.
+      final lease = expectLater(bloc.acquireEngine(), throwsStateError);
+
+      await settle(300); // ceiling passes → wedge declared → both settle
+
+      final outcome = await queued;
+      expect(outcome.kind, GenOutcomeKind.error,
+          reason: 'queued work must fail, not wait forever');
+      expect('${outcome.error}', contains('wedged'));
+      await lease;
+      expect(bloc.engineWedged, isTrue);
+    });
+  });
 }

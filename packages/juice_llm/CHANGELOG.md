@@ -1,3 +1,24 @@
+## 0.4.0
+
+- THE TEARDOWN CEILING + `LlmBloc.engineWedged`: a stopped generation's
+  provider teardown that never returns (a cancel landing mid-native-call
+  has no yield boundary to complete at) used to poison the generation
+  queue — every queued generation and lease behind it waited FOREVER
+  (Amoli, 2026-08-01: one wedged tag item's teardown starved the colloquy,
+  the background drain, and a card composer for twenty minutes, with the
+  engine idle the whole time). Past `LlmConfig.teardownPatience` (default
+  8s — a healthy cancel takes milliseconds) the bloc declares the engine
+  WEDGED: the queue tail resolves, every queued and future
+  `beginGeneration` completes fast with `error: 'engine wedged — restart
+  required'`, `acquireEngine` throws immediately, and
+  `preemptAtSafePoint` reports the engine free so callers reach their own
+  fast failure. No in-process recovery is attempted — a native thread
+  stuck mid-call cannot be salvaged from Dart, and pretending otherwise
+  would be a silent fallback; the bloc says "restart" loudly instead.
+- `onEngineTrace` vocabulary grows: `wedged …`, `refused … (engine
+  wedged)`, `lease-refused (engine wedged)`, and a `(late — after wedge
+  declaration)` suffix on a teardown that eventually returns after all.
+
 ## 0.3.0
 
 - `LlmBloc.preemptAtSafePoint({where, patience})`: preempt the active

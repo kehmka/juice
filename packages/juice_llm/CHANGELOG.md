@@ -1,3 +1,15 @@
+## 0.4.1
+
+- THE LATE-TEARDOWN UN-WEDGE: a wedge is a claim — "this native call
+  never returns." When the stuck teardown eventually DOES return, the
+  claim is falsified and the flag now lifts, restoring the engine without
+  an app restart (field log 2026-08-08: a mid-prefill stop's teardown
+  came back 89 seconds after the wedge was declared; the runtime had
+  recovered, but the sticky flag kept a healthy engine condemned). Only
+  the wedging teardown's own completion lifts it — a different teardown
+  finishing proves nothing about the stuck one. Traced loudly as
+  `un-wedged <id>`.
+
 ## 0.4.0
 
 - THE TEARDOWN CEILING + `LlmBloc.engineWedged`: a stopped generation's

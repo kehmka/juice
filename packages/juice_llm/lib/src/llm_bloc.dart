@@ -172,18 +172,42 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// The runtime is WEDGED: a stopped generation's teardown never returned
   /// within [LlmConfig.teardownPatience] — a native thread is stuck
   /// mid-call and no in-process remedy exists. Once true, every queued and
-  /// future generation fails fast, [acquireEngine] throws, and the only
-  /// recovery is an app restart. Loud by construction: the alternative was
-  /// the poisoned queue, where everything waited forever in silence.
+  /// future generation fails fast, [acquireEngine] throws, and recovery is
+  /// an app restart — UNLESS the stuck teardown eventually completes
+  /// (0.4.1): a late return proves the native thread came back, so the
+  /// wedge lifts and the engine serves again. Loud by construction either
+  /// way: the alternative was the poisoned queue, where everything waited
+  /// forever in silence.
   bool get engineWedged => _wedged;
   bool _wedged = false;
+
+  /// Which stop's teardown caused the wedge — only ITS late completion may
+  /// lift it (a different teardown finishing proves nothing about the
+  /// stuck one).
+  String? _wedgedBy;
 
   void _declareWedged(String? id) {
     if (_wedged) return;
     _wedged = true;
+    _wedgedBy = id;
     _trace('wedged ${id ?? '-'} — teardown never returned '
         '(${_config.teardownPatience.inSeconds}s); the native runtime is '
         'stuck mid-call. Restart required; all engine work now fails fast.');
+  }
+
+  /// THE LATE-TEARDOWN UN-WEDGE (0.4.1, from a field log 2026-08-08): a
+  /// mid-prefill stop wedged the engine, then its teardown returned 89s
+  /// later — the native runtime had RECOVERED, but the sticky flag kept a
+  /// healthy engine condemned until restart. A wedge is a claim ("this
+  /// native call never returns"); when the call returns, the claim is
+  /// falsified and the flag must lift. Only the wedging teardown's own
+  /// completion counts.
+  void _unwedgeOnLateTeardown(String? id) {
+    if (!_wedged || _wedgedBy != id) return;
+    _wedged = false;
+    _wedgedBy = null;
+    _trace('un-wedged ${id ?? '-'} — the late teardown completed; the '
+        'native runtime recovered and the engine serves again.');
   }
 
   /// The outcome every generation receives once the engine is wedged.
@@ -374,6 +398,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
         _trace('teardown ${id ?? '-'} '
             '+${DateTime.now().difference(stopAt).inMilliseconds}ms'
             '${_wedged ? ' (late — after wedge declaration)' : ''}');
+        _unwedgeOnLateTeardown(id);
       });
       // THE TEARDOWN CEILING (0.4.0): a cancel with no yield boundary never
       // returns; past the ceiling the engine is declared wedged and the

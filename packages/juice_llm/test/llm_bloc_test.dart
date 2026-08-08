@@ -114,6 +114,22 @@ class WedgedProvider extends FakeLlmProvider {
   }
 }
 
+/// A provider stuck mid-call until the TEST releases it — the 2026-08-08
+/// field shape: a mid-prefill stop whose teardown returned 89s later, well
+/// after the wedge was declared. Completing [release] is the native thread
+/// coming back.
+class LateTeardownProvider extends FakeLlmProvider {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Stream<LlmChunk> generate(LlmRequest request) async* {
+    generateCalls++;
+    if (!started.isCompleted) started.complete();
+    await release.future;
+  }
+}
+
 void main() {
   Future<void> settle([int ms = 30]) =>
       Future<void>.delayed(Duration(milliseconds: ms));
@@ -661,7 +677,8 @@ void main() {
   });
 
   group('the wedge (0.4.0) — a hung teardown fails fast, never silently', () {
-    LlmBloc wedgedBloc(WedgedProvider provider) => LlmBloc.withConfig(LlmConfig(
+    LlmBloc wedgedBloc(FakeLlmProvider provider) =>
+        LlmBloc.withConfig(LlmConfig(
           provider: provider,
           teardownPatience: const Duration(milliseconds: 120),
         ));
@@ -735,6 +752,46 @@ void main() {
       expect('${outcome.error}', contains('wedged'));
       await lease;
       expect(bloc.engineWedged, isTrue);
+    });
+
+    test('a LATE teardown lifts the wedge — the runtime recovered (0.4.1)',
+        () async {
+      // 2026-08-08, from a field log: a mid-prefill stop wedged the engine,
+      // then its teardown returned 89s later. The native runtime had
+      // recovered — but the sticky flag kept a healthy engine condemned
+      // until app restart. A wedge is a claim ("this call never returns");
+      // the late return falsifies it.
+      final provider = LateTeardownProvider();
+      final bloc = wedgedBloc(provider);
+      await ready(bloc);
+
+      final gen = bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-37', messages: []),
+          onChunk: (_) {});
+      await provider.started.future;
+      await bloc.stopGeneration();
+      await gen;
+
+      // Ceiling passes with the teardown still stuck → wedged, refusing.
+      await settle(300);
+      expect(bloc.engineWedged, isTrue);
+      final refused = await bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-38', messages: []),
+          onChunk: (_) {});
+      expect('${refused.error}', contains('wedged'));
+
+      // The stuck native call finally returns (89s in the field, ms here).
+      provider.release.complete();
+      await settle();
+      expect(bloc.engineWedged, isFalse,
+          reason: 'the late teardown falsifies the wedge claim');
+
+      // And the engine genuinely serves again.
+      final again = await bloc.beginGeneration(
+          const LlmRequest(requestId: 'well-39', messages: []),
+          onChunk: (_) {});
+      expect(again.kind, isNot(GenOutcomeKind.error),
+          reason: 'an un-wedged engine must accept new work');
     });
   });
 }

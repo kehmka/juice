@@ -586,6 +586,23 @@ class _CommitNavigationEvent extends BlocEvent {
 }
 ```
 
+### Shipped Concurrency Modes (1.3.0)
+
+The implementation uses `EventConcurrency` explicitly on every builder:
+
+| Event | Mode | Rationale |
+|---|---|---|
+| `InitializeRoutingEvent` | `droppable` | Initialization is exclusive |
+| `NavigateEvent` | `concurrent` | A later request must enter during an async guard to replace the depth-one queue; latest wins |
+| `PopEvent`, `PopUntilEvent`, `PopToRootEvent` | `sequential` | Serialize same-type stack/history mutations |
+| `ResetStackEvent` | `sequential` | Guarded reset commands complete in FIFO order |
+| `RouteVisibleEvent`, `RouteHiddenEvent` | `concurrent` | Shipped handlers are independent no-op extension points |
+
+Navigation's manual pending/queued state is intentional and is not replaced by
+`sequential`: doing so would run every intermediate request instead of retaining
+only the latest. Pop handlers contain no awaits and therefore remain immediate
+guard-bypassing operations even though same-type bursts are serialized.
+
 ---
 
 ## Route Guards

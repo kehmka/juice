@@ -92,10 +92,12 @@ class ProductBloc extends JuiceBloc<ProductState> {
                   typeOfEvent: LoadProductsEvent,
                   useCaseGenerator: () => LoadProductsUseCase(),
                   initialEventBuilder: () => LoadProductsEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SelectProductEvent,
                   useCaseGenerator: () => SelectProductUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [

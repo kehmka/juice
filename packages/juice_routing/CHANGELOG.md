@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-12
+
+### Changed
+
+- Require `juice ^1.6.0`.
+- Declare every routing event's concurrency policy explicitly.
+- Keep navigation intentionally `concurrent` so requests arriving during an
+  async guard can replace the depth-one queue and preserve latest-wins behavior.
+- Run reset-stack and pop mutations `sequential`ly; initialization is
+  `droppable`, while the shipped no-op visibility extension points remain
+  intentionally `concurrent`.
+- Update the example blocs to demonstrate explicit Juice 1.6 concurrency.
+
+### Tests
+
+- Replace timing-dependent guard overlap coverage with a gate that proves
+  navigation remains latest-wins.
+- Add gated coverage proving overlapping reset-stack commands run in FIFO order.
+
 ## [1.2.0] - 2026-07-16
 
 ### Fixed

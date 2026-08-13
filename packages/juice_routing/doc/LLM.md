@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_routing
-version: 1.1.0
+version: 1.3.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-09
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_routing — AI card
@@ -26,7 +26,7 @@ parsing.
 
 ```yaml
 dependencies:
-  juice_routing: ^1.1.0
+  juice_routing: ^1.3.0
 ```
 
 No platform setup. Optionally register `ScopeLifecycleBloc` (core juice) so a
@@ -89,15 +89,15 @@ RoutingConfig get config; PathResolver get pathResolver;
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeRoutingEvent(config, initialPath?)` | resolve initial path, build initial stack |
-| `NavigateEvent(path, extra?, replace?, transition?)` | run guards → push (or replace) |
-| `PopEvent(result?)` | pop top; **bypasses guards**; `CannotPopError` at root |
-| `PopUntilEvent(predicate)` | pop until predicate true; bypasses guards |
-| `PopToRootEvent()` | clear to first entry; bypasses guards |
-| `ResetStackEvent(path, extra?)` | run guards on `path`, replace whole stack |
-| `RouteVisibleEvent(routeKey)` / `RouteHiddenEvent(routeKey)` *internal* | time-on-route, sent by the navigator observer |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeRoutingEvent(config, initialPath?)` | `droppable` | resolve initial path, build initial stack |
+| `NavigateEvent(path, extra?, replace?, transition?)` | `concurrent` | run guards → push/replace; later pending requests replace the queue |
+| `PopEvent(result?)` | `sequential` | pop top; **bypasses guards**; `CannotPopError` at root |
+| `PopUntilEvent(predicate)` | `sequential` | pop until predicate true; bypasses guards |
+| `PopToRootEvent()` | `sequential` | clear to first entry; bypasses guards |
+| `ResetStackEvent(path, extra?)` | `sequential` | run guards on `path`, replace whole stack in command order |
+| `RouteVisibleEvent(routeKey)` / `RouteHiddenEvent(routeKey)` *internal* | `concurrent` | no-op extension points sent by the navigator observer |
 
 ## State
 
@@ -124,10 +124,14 @@ class RoutingState extends BlocState {            // immutable
 
 ## Concurrency
 
-Navigation is single-flight by a manual guard, not `EventConcurrency`: while one
-`NavigateEvent` is resolving (`state.pending != null`), a newer one is stashed via
-`queueNavigation` and run after — **latest wins**, at most one pending. `Pop*`
-events bypass guards and execute immediately.
+`NavigateEvent` is intentionally `concurrent`: while one navigation is resolving
+(`state.pending != null`), newer handlers must enter so `queueNavigation` can
+retain only the latest request. Making it `sequential` would execute every
+intermediate navigation and break the documented latest-wins contract.
+Reset-stack commands and each pop mutation type are `sequential`; pop handlers
+contain no awaits, so different pop event types still execute atomically and
+bypass guards immediately. Initialization is `droppable`; visibility events are
+independent no-op extension points and remain `concurrent`.
 
 ## Recipes
 

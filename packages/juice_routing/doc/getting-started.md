@@ -19,8 +19,8 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  juice: ^1.2.0
-  juice_routing: ^1.0.0
+  juice: ^1.6.0
+  juice_routing: ^1.3.0
 ```
 
 Then run:

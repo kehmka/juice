@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_routing/juice_routing.dart';
@@ -11,7 +13,8 @@ void main() {
       config = RoutingConfig(
         routes: [
           RouteConfig(path: '/', builder: (_) => const SizedBox()),
-          RouteConfig(path: '/profile/:userId', builder: (_) => const SizedBox()),
+          RouteConfig(
+              path: '/profile/:userId', builder: (_) => const SizedBox()),
           RouteConfig(path: '/settings', builder: (_) => const SizedBox()),
         ],
         initialPath: '/',
@@ -56,7 +59,8 @@ void main() {
     });
 
     group('platform-reported navigation (fromPlatform)', () {
-      test('cold-start report of the seeded path does not double-push', () async {
+      test('cold-start report of the seeded path does not double-push',
+          () async {
         bloc = RoutingBloc.withConfig(config);
         // No pre-wait: the report races initialization exactly as the Router
         // widget's setInitialRoutePath does on a real cold start. Event order
@@ -377,13 +381,14 @@ void main() {
 
     group('navigation queuing', () {
       test('latest navigation wins when concurrent', () async {
+        final gate = Completer<void>();
         final slowGuardConfig = RoutingConfig(
           routes: [
             RouteConfig(path: '/', builder: (_) => const SizedBox()),
             RouteConfig(
               path: '/slow',
               builder: (_) => const SizedBox(),
-              guards: [_SlowGuard()],
+              guards: [_GatedGuard(gate)],
             ),
             RouteConfig(path: '/settings', builder: (_) => const SizedBox()),
             RouteConfig(
@@ -396,15 +401,15 @@ void main() {
 
         // Start a slow navigation — will be pending
         bloc.navigate('/slow');
-        await Future.delayed(const Duration(milliseconds: 10));
+        await Future.delayed(Duration.zero);
         expect(bloc.state.isNavigating, isTrue);
 
         // Queue two more — only the latest should win
         bloc.navigate('/settings');
         bloc.navigate('/profile/42');
 
-        // Wait for slow guard + queued processing
-        await Future.delayed(const Duration(milliseconds: 300));
+        gate.complete();
+        await Future.delayed(const Duration(milliseconds: 50));
 
         expect(bloc.state.currentPath, '/profile/42');
       });
@@ -454,17 +459,72 @@ void main() {
         expect(bloc.state.currentPath, '/'); // Still at root
         expect(bloc.state.error, isA<GuardBlockedError>());
       });
+
+      test('overlapping resetStack commands run in FIFO order', () async {
+        final gate = Completer<void>();
+        final guard = _FirstCallGatedGuard(gate);
+        final guardConfig = RoutingConfig(
+          routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/settings',
+              builder: (_) => const SizedBox(),
+              guards: [guard],
+            ),
+            RouteConfig(
+              path: '/profile/:userId',
+              builder: (_) => const SizedBox(),
+              guards: [guard],
+            ),
+          ],
+        );
+        bloc = RoutingBloc.withConfig(guardConfig);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        bloc.resetStack('/settings');
+        bloc.resetStack('/profile/42');
+        await Future.delayed(Duration.zero);
+        expect(guard.calls, 1);
+        expect(bloc.state.pending?.targetPath, '/settings');
+
+        gate.complete();
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(guard.calls, 2);
+        expect(bloc.state.currentPath, '/profile/42');
+        expect(bloc.state.stack, hasLength(1));
+      });
     });
   });
 }
 
-class _SlowGuard extends RouteGuard {
+class _GatedGuard extends RouteGuard {
+  _GatedGuard(this.gate);
+
+  final Completer<void> gate;
+
   @override
-  String get name => 'SlowGuard';
+  String get name => 'GatedGuard';
 
   @override
   Future<GuardResult> check(RouteContext context) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    await gate.future;
+    return const GuardResult.allow();
+  }
+}
+
+class _FirstCallGatedGuard extends RouteGuard {
+  _FirstCallGatedGuard(this.gate);
+
+  final Completer<void> gate;
+  int calls = 0;
+
+  @override
+  String get name => 'FirstCallGatedGuard';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    calls++;
+    if (calls == 1) await gate.future;
     return const GuardResult.allow();
   }
 }

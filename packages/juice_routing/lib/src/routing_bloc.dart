@@ -54,34 +54,44 @@ class RoutingBloc extends JuiceBloc<RoutingState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeRoutingEvent,
                   useCaseGenerator: () => InitializeUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: NavigateEvent,
                   useCaseGenerator: () => NavigateUseCase(),
+                  // Must enter concurrently: later navigations observe pending
+                  // state and replace the depth-one queue (latest wins).
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PopEvent,
                   useCaseGenerator: () => PopUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PopUntilEvent,
                   useCaseGenerator: () => PopUntilUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PopToRootEvent,
                   useCaseGenerator: () => PopToRootUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ResetStackEvent,
                   useCaseGenerator: () => ResetStackUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RouteVisibleEvent,
                   useCaseGenerator: () => RouteVisibleUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RouteHiddenEvent,
                   useCaseGenerator: () => RouteHiddenUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
         );

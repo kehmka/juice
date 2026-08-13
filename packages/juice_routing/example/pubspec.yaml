@@ -8,7 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.3.0
+  juice: ^1.6.0
   juice_routing:
     path: ../
 

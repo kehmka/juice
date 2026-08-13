@@ -31,14 +31,25 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeConnectivityEvent,
                   useCaseGenerator: () => InitializeConnectivityUseCase(),
+                  // A second initialization would replace the config while
+                  // the first provider check is in flight and add another
+                  // stream subscription whose handle close() cannot reach.
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ConnectivityChangedEvent,
                   useCaseGenerator: () => ConnectivityChangedUseCase(),
+                  // Each reading compares against and conditionally replaces
+                  // shared state. Keep that transaction in arrival order even
+                  // if this use case later gains an await.
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CheckConnectivityEvent,
                   useCaseGenerator: () => CheckConnectivityUseCase(),
+                  // Concurrent checks ask the same provider for the same
+                  // present-tense answer; one in-flight read is sufficient.
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );

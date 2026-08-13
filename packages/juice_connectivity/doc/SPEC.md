@@ -65,11 +65,11 @@ otherwise online.
 
 ## Events
 
-| Event | Effect | Groups |
-|-------|--------|--------|
-| `InitializeConnectivityEvent(config)` | configure provider, start (debounced) listening, emit immediate initial reading | `connectivity:status`, `connectivity:type` |
-| `ConnectivityChangedEvent(snapshot)` | internal — derive status, emit only on change | changed groups only |
-| `CheckConnectivityEvent` | one-shot manual re-read | as above |
+| Event | Concurrency | Effect | Groups |
+|-------|-------------|--------|--------|
+| `InitializeConnectivityEvent(config)` | `droppable` | configure provider, start (debounced) listening, emit immediate initial reading | `connectivity:status`, `connectivity:type` |
+| `ConnectivityChangedEvent(snapshot)` | `sequential` | internal — derive status, emit only on change | changed groups only |
+| `CheckConnectivityEvent` | `droppable` | one-shot manual re-read | as above |
 
 ## Debounce
 
@@ -93,4 +93,5 @@ thin mapping verified by inspection and a one-time on-device run.
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-12 | Explicit event concurrency; Juice 1.6 floor |
 | 1.0 | 2026-05-28 | Implemented |

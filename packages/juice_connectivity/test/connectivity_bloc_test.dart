@@ -7,6 +7,8 @@ class FakeConnectivityProvider implements ConnectivityProvider {
   final _ctrl = StreamController<ConnectivitySnapshot>.broadcast();
   ConnectivitySnapshot _current;
   bool disposed = false;
+  int checks = 0;
+  Completer<ConnectivitySnapshot>? checkGate;
 
   FakeConnectivityProvider(
       [this._current = const ConnectivitySnapshot(type: ConnectionType.wifi)]);
@@ -15,7 +17,10 @@ class FakeConnectivityProvider implements ConnectivityProvider {
   Stream<ConnectivitySnapshot> get changes => _ctrl.stream;
 
   @override
-  Future<ConnectivitySnapshot> check() async => _current;
+  Future<ConnectivitySnapshot> check() {
+    checks++;
+    return checkGate?.future ?? Future.value(_current);
+  }
 
   @override
   Future<void> dispose() async {
@@ -127,6 +132,60 @@ void main() {
 
       expect(bloc.state.isOffline, isTrue);
       await bloc.close();
+    });
+
+    test('overlapping manual checks are coalesced', () async {
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle();
+      final checksAfterInitialization = p.checks;
+
+      final gate = Completer<ConnectivitySnapshot>();
+      p.checkGate = gate;
+      bloc.check();
+      await settle(1); // let the first check enter provider.check()
+      bloc.check();
+      await settle(1);
+
+      expect(p.checks, checksAfterInitialization + 1,
+          reason: 'the in-flight check makes a second read redundant');
+
+      p.checkGate = null;
+      gate.complete(const ConnectivitySnapshot(type: ConnectionType.none));
+      await settle();
+      expect(bloc.state.isOffline, isTrue);
+      await bloc.close();
+    });
+
+    test('overlapping initialization does not replace the active provider',
+        () async {
+      final first = FakeConnectivityProvider();
+      final second = FakeConnectivityProvider(
+          const ConnectivitySnapshot(type: ConnectionType.none));
+      final gate = Completer<ConnectivitySnapshot>();
+      first.checkGate = gate;
+
+      final bloc = ConnectivityBloc();
+      bloc.send(InitializeConnectivityEvent(config: cfg(first)));
+      await settle(1); // first initialization is now waiting on its check
+      bloc.send(InitializeConnectivityEvent(config: cfg(second)));
+      await settle(1);
+
+      expect(first.checks, 1);
+      expect(second.checks, 0,
+          reason: 'a second init would also create an untracked subscription');
+
+      first.checkGate = null;
+      gate.complete(const ConnectivitySnapshot(type: ConnectionType.cellular));
+      await settle();
+      expect(bloc.provider, same(first));
+      expect(bloc.state.connectionType, ConnectionType.cellular);
+
+      await bloc.close();
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse,
+          reason: 'the dropped config was never owned by the bloc');
+      await second.dispose();
     });
 
     test('close disposes the provider and stops listening', () async {

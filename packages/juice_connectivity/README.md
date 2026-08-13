@@ -17,7 +17,7 @@ decide what to do offline; consumers and glue packages (e.g. a future
 
 ```yaml
 dependencies:
-  juice_connectivity: ^0.1.0
+  juice_connectivity: ^0.2.0
 ```
 
 ## Use

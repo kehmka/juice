@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_connectivity
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   connectivity_plus: ">=6.1.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_connectivity — AI card
@@ -32,7 +32,7 @@ feed an `onlineSignal` to `juice_sync`. For the requests themselves use
 
 ```yaml
 dependencies:
-  juice_connectivity: ^0.1.0   # pulls connectivity_plus for the default provider
+  juice_connectivity: ^0.2.0   # pulls connectivity_plus for the default provider
 ```
 
 ## Construct
@@ -80,11 +80,11 @@ Future<void> close();                // cancels debounce + subscription, dispose
 
 ## Events
 
-| Event | Effect | Groups |
-|---|---|---|
-| `InitializeConnectivityEvent(config)` | configure provider, start (debounced) listening, emit immediate reading | changed groups |
-| `ConnectivityChangedEvent(snapshot)` *internal* | derive status, emit only on actual change | changed groups only |
-| `CheckConnectivityEvent` | one-shot manual re-read | changed groups only |
+| Event | Concurrency | Effect | Groups |
+|---|---|---|---|
+| `InitializeConnectivityEvent(config)` | `droppable` | configure provider, start (debounced) listening, emit immediate reading | changed groups |
+| `ConnectivityChangedEvent(snapshot)` *internal* | `sequential` | derive status, emit only on actual change | changed groups only |
+| `CheckConnectivityEvent` | `droppable` | one-shot manual re-read | changed groups only |
 
 ## State
 

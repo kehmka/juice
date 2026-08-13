@@ -1,6 +1,6 @@
 name: juice_connectivity
 description: Network reachability as a Juice bloc — online/offline and connection-type state behind a swappable provider seam.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_connectivity
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -16,7 +16,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.4.0
+  juice: ^1.6.0
   connectivity_plus: ^6.1.0
 
 dev_dependencies:

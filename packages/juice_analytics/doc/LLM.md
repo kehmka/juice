@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_analytics
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-09
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_analytics — AI card
@@ -30,7 +30,7 @@ you need a privacy consent gate. For crash/error reporting use
 
 ```yaml
 dependencies:
-  juice_analytics: ^0.1.0
+  juice_analytics: ^0.2.0
 ```
 
 ## Construct
@@ -74,14 +74,14 @@ List<AnalyticsSink> get sinks;
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeAnalyticsEvent(config)` | apply config, seed `enabled` from `initiallyEnabled` |
-| `LogEventEvent(name, params)` | fan out to sinks (or drop + `droppedCount++` if disabled) |
-| `SetScreenEvent(name)` | fan out + record `screenName` (dropped, uncounted, if disabled) |
-| `SetUserEvent(userId, traits)` | always record `userId`; forward identity to sinks only if enabled |
-| `SetConsentEvent(enabled)` | toggle `enabled` (no-op if unchanged) |
-| `FlushAnalyticsEvent` | `flush()` every sink |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeAnalyticsEvent(config)` | `droppable` | apply config, seed `enabled` from `initiallyEnabled` |
+| `LogEventEvent(name, params)` | `sequential` | fan out to sinks (or drop + `droppedCount++` if disabled) |
+| `SetScreenEvent(name)` | `sequential` | fan out + record `screenName` (dropped, uncounted, if disabled) |
+| `SetUserEvent(userId, traits)` | `sequential` | always record `userId`; forward identity to sinks only if enabled |
+| `SetConsentEvent(enabled)` | `sequential` | toggle `enabled` (no-op if unchanged) |
+| `FlushAnalyticsEvent` | `droppable` | `flush()` every sink |
 
 ## State
 

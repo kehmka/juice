@@ -35,17 +35,26 @@ to sinks only with consent.
 
 ## Events & use cases (6)
 
-`InitializeAnalyticsEvent`, `LogEventEvent`, `SetScreenEvent`, `SetUserEvent`,
-`SetConsentEvent`, `FlushAnalyticsEvent`. API: `log`, `screen`, `setUser`,
-`setConsent`, `flush`.
+| Event | Concurrency |
+|---|---|
+| `InitializeAnalyticsEvent` | `droppable` |
+| `LogEventEvent` | `sequential` |
+| `SetScreenEvent` | `sequential` |
+| `SetUserEvent` | `sequential` |
+| `SetConsentEvent` | `sequential` |
+| `FlushAnalyticsEvent` | `droppable` |
+
+API: `log`, `screen`, `setUser`, `setConsent`, `flush`.
 
 ## Testing
 
 Recording fake sink: fan-out to multiple sinks, throwing-sink isolation, consent
-drop + count, consent grant resumes flow, flush + dispose reach sinks. 6 tests.
+drop + count, consent grant resumes flow, ordered async sink calls, coalesced
+flush, and dispose. 8 tests.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---|---|---|
+| 1.1 | 2026-08-12 | Explicit event concurrency; Juice 1.6 floor |
 | 1.0 | 2026-05-28 | Implemented |

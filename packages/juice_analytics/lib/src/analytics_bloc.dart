@@ -34,22 +34,37 @@ class AnalyticsBloc extends JuiceBloc<AnalyticsState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: InitializeAnalyticsEvent,
-                useCaseGenerator: () => InitializeAnalyticsUseCase()),
+                useCaseGenerator: () => InitializeAnalyticsUseCase(),
+                // Reconfiguration replaces the owned sink list. Overlapping
+                // initialization could orphan sinks beyond close()'s reach.
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: LogEventEvent,
-                useCaseGenerator: () => LogEventUseCase()),
+                useCaseGenerator: () => LogEventUseCase(),
+                // Analytics sinks and event order are shared resources; keep
+                // same-type delivery and count updates in send order.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetScreenEvent,
-                useCaseGenerator: () => SetScreenUseCase()),
+                useCaseGenerator: () => SetScreenUseCase(),
+                // A slower earlier sink call must not overwrite a newer screen
+                // after its await completes.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetUserEvent,
-                useCaseGenerator: () => SetUserUseCase()),
+                useCaseGenerator: () => SetUserUseCase(),
+                // Preserve identity changes across async vendor calls.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetConsentEvent,
-                useCaseGenerator: () => SetConsentUseCase()),
+                useCaseGenerator: () => SetConsentUseCase(),
+                // Consent changes mutate shared state and must retain order.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: FlushAnalyticsEvent,
-                useCaseGenerator: () => FlushAnalyticsUseCase()),
+                useCaseGenerator: () => FlushAnalyticsUseCase(),
+                // One in-flight flush already covers every configured sink.
+                concurrency: EventConcurrency.droppable),
           ],
         );
 

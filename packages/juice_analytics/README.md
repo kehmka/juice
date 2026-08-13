@@ -15,7 +15,7 @@ destination is an `AnalyticsSink` adapter (Firebase, Mixpanel, Segment, PostHog)
 
 ```yaml
 dependencies:
-  juice_analytics: ^0.1.0
+  juice_analytics: ^0.2.0
 ```
 
 ## Use

@@ -46,11 +46,6 @@ class AuthBloc extends JuiceBloc<AuthState> {
   final StorageBloc storageBloc;
   Timer? _refreshTimer;
 
-  /// Singleflight completer — prevents concurrent refresh attempts.
-  ///
-  /// Shared across use cases via `bloc.refreshInFlight`.
-  Completer<String?>? refreshInFlight;
-
   AuthBloc({required this.storageBloc})
       : super(
           AuthState.initial,
@@ -58,26 +53,44 @@ class AuthBloc extends JuiceBloc<AuthState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeAuthEvent,
                   useCaseGenerator: () => RestoreSessionUseCase(),
+                  // Initialization owns provider configuration and session
+                  // restoration; overlapping runs could restore through
+                  // different configs and orphan provider ownership.
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LoginEvent,
                   useCaseGenerator: () => LoginUseCase(),
+                  // A queued second login would be stale after the first
+                  // succeeds; ignore rapid duplicates while one is active.
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LogoutEvent,
                   useCaseGenerator: () => LogoutUseCase(),
+                  // Revocation and secure-storage cleanup are one exclusive
+                  // flow; duplicate logout work is redundant.
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RefreshTokenEvent,
                   useCaseGenerator: () => RefreshTokenUseCase(),
+                  // Framework-level singleflight: all observers watch the
+                  // same isRefreshing lifecycle, so extra triggers can drop.
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateUserEvent,
                   useCaseGenerator: () => UpdateUserUseCase(),
+                  // Profile replacements mutate shared auth state in order.
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: TokenExpiryEvent,
                   useCaseGenerator: () => TokenExpiryUseCase(),
+                  // Only one timer-expiry handoff is useful at a time; the
+                  // refresh event it sends is independently droppable too.
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );
@@ -212,8 +225,7 @@ class AuthBloc extends JuiceBloc<AuthState> {
   void refreshToken() => send(RefreshTokenEvent());
 
   /// Update user profile in state.
-  void updateUser(AuthUser user) =>
-      send(UpdateUserEvent(updatedUser: user));
+  void updateUser(AuthUser user) => send(UpdateUserEvent(updatedUser: user));
 
   // ===========================================================
   // Lifecycle

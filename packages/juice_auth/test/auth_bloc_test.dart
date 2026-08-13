@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -131,8 +132,7 @@ void main() {
       expect(state.isRateLimited, true);
 
       final expired = AuthState(
-        loginCooldownUntil:
-            DateTime.now().subtract(const Duration(seconds: 1)),
+        loginCooldownUntil: DateTime.now().subtract(const Duration(seconds: 1)),
       );
       expect(expired.isRateLimited, false);
     });
@@ -275,8 +275,7 @@ void main() {
 
   group('AuthError', () {
     test('ProviderAuthError message includes provider', () {
-      final error =
-          ProviderAuthError('Wrong password', providerName: 'email');
+      final error = ProviderAuthError('Wrong password', providerName: 'email');
       expect(error.message, 'Wrong password');
       expect(error.providerName, 'email');
     });
@@ -346,12 +345,10 @@ void main() {
       when(() => emailProvider.dispose()).thenAnswer((_) async {});
 
       // Default storage stubs (no stored session)
-      when(() => storageBloc.secureRead(any()))
-          .thenAnswer((_) async => null);
+      when(() => storageBloc.secureRead(any())).thenAnswer((_) async => null);
       when(() => storageBloc.secureWrite(any(), any()))
           .thenAnswer((_) async {});
-      when(() => storageBloc.secureDelete(any()))
-          .thenAnswer((_) async {});
+      when(() => storageBloc.secureDelete(any())).thenAnswer((_) async {});
 
       config = AuthConfig(
         providers: {'email': emailProvider},
@@ -378,8 +375,7 @@ void main() {
         expect(bloc.state.status, AuthStatus.unauthenticated);
       });
 
-      test(
-          'transitions to unauthenticated when restoreSessionOnInit is false',
+      test('transitions to unauthenticated when restoreSessionOnInit is false',
           () async {
         final noRestoreConfig = AuthConfig(
           providers: {'email': emailProvider},
@@ -419,8 +415,7 @@ void main() {
             .thenAnswer((_) async => _makeResult(
                   accessToken: 'new-access-token',
                   refreshToken: 'new-refresh-token',
-                  expiresAt:
-                      DateTime.now().add(const Duration(hours: 1)),
+                  expiresAt: DateTime.now().add(const Duration(hours: 1)),
                 ));
 
         bloc = AuthBloc.withConfig(config, storageBloc: storageBloc);
@@ -475,6 +470,24 @@ void main() {
         expect(bloc.state.session?.providerName, 'email');
         verify(() => storageBloc.secureWrite(any(), any()))
             .called(greaterThan(0));
+      });
+
+      test('overlapping logins are dropped while authentication is active',
+          () async {
+        final gate = Completer<AuthResult>();
+        when(() => emailProvider.authenticate(any()))
+            .thenAnswer((_) => gate.future);
+
+        bloc.loginWithEmail('first@example.com', 'password');
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        bloc.loginWithEmail('second@example.com', 'password');
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        verify(() => emailProvider.authenticate(any())).called(1);
+
+        gate.complete(_makeResult());
+        await Future.delayed(_delay);
+        expect(bloc.state.status, AuthStatus.authenticated);
       });
 
       test('login failure increments attempts and sets error', () async {
@@ -540,8 +553,7 @@ void main() {
       });
 
       test('logout transitions to unauthenticated', () async {
-        when(() => emailProvider.revokeSession(any()))
-            .thenAnswer((_) async {});
+        when(() => emailProvider.revokeSession(any())).thenAnswer((_) async {});
 
         bloc.logout();
         await Future.delayed(_delay);
@@ -551,15 +563,31 @@ void main() {
         expect(bloc.state.session, isNull);
       });
 
-      test('logout clears stored tokens', () async {
+      test('overlapping logouts share one revocation and cleanup flow',
+          () async {
+        final gate = Completer<void>();
         when(() => emailProvider.revokeSession(any()))
-            .thenAnswer((_) async {});
+            .thenAnswer((_) => gate.future);
+
+        bloc.logout();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        bloc.logout();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        verify(() => emailProvider.revokeSession(any())).called(1);
+
+        gate.complete();
+        await Future.delayed(_delay);
+        expect(bloc.state.status, AuthStatus.unauthenticated);
+      });
+
+      test('logout clears stored tokens', () async {
+        when(() => emailProvider.revokeSession(any())).thenAnswer((_) async {});
 
         bloc.logout();
         await Future.delayed(_delay);
 
-        verify(() => storageBloc.secureDelete(any()))
-            .called(greaterThan(0));
+        verify(() => storageBloc.secureDelete(any())).called(greaterThan(0));
       });
 
       test('force logout skips provider revocation', () async {
@@ -596,8 +624,7 @@ void main() {
         when(() => emailProvider.authenticate(any()))
             .thenAnswer((_) async => _makeResult(
                   refreshToken: 'refresh-token',
-                  expiresAt:
-                      DateTime.now().add(const Duration(hours: 1)),
+                  expiresAt: DateTime.now().add(const Duration(hours: 1)),
                 ));
         bloc.loginWithEmail('test@example.com', 'password');
         await Future.delayed(_delay);
@@ -608,8 +635,7 @@ void main() {
             .thenAnswer((_) async => _makeResult(
                   accessToken: 'new-access',
                   refreshToken: 'new-refresh',
-                  expiresAt:
-                      DateTime.now().add(const Duration(hours: 2)),
+                  expiresAt: DateTime.now().add(const Duration(hours: 2)),
                 ));
 
         bloc.refreshToken();
@@ -677,8 +703,7 @@ void main() {
 
       test('ignores update when not authenticated', () async {
         // Logout first
-        when(() => emailProvider.revokeSession(any()))
-            .thenAnswer((_) async {});
+        when(() => emailProvider.revokeSession(any())).thenAnswer((_) async {});
         bloc.logout();
         await Future.delayed(_delay);
 
@@ -741,7 +766,7 @@ void main() {
     });
 
     // ============================================================
-    // Refresh scheduling: timer, past-window, and singleflight.
+    // Refresh scheduling: timer, past-window, and droppable singleflight.
     // These cover the README's "automatic token lifecycle" and
     // "singleflight refresh" claims, which were untested.
     // ============================================================
@@ -812,10 +837,10 @@ void main() {
         expect(bloc.state.session?.accessToken, 'auto-refreshed');
       });
 
-      test('concurrent RefreshTokenEvents collapse to a single provider call',
+      test('overlapping RefreshTokenEvents collapse to a single provider call',
           () async {
-        // Provider takes ~80ms so several events queue up before the
-        // first refresh completes — exercising the singleflight gate.
+        // Provider takes ~80ms so the first event stays active while the
+        // dispatcher drops the overlapping refresh triggers.
         when(() => emailProvider.refreshToken('refresh-token'))
             .thenAnswer((_) async {
           await Future<void>.delayed(const Duration(milliseconds: 80));
@@ -833,12 +858,11 @@ void main() {
         bloc.refreshToken();
         bloc.refreshToken();
 
-        // Wait past the provider delay so the inflight completer resolves.
+        // Wait past the provider delay so the refresh commits its state.
         await Future.delayed(const Duration(milliseconds: 200));
 
         verify(() => emailProvider.refreshToken('refresh-token')).called(1);
         expect(bloc.state.session?.accessToken, 'singleflight-result');
-        expect(bloc.refreshInFlight, isNull);
       });
     });
   });

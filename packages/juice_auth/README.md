@@ -9,7 +9,7 @@ Authentication lifecycle management for [Juice](https://pub.dev/packages/juice) 
 
 - **Single Source of Truth** — `authBloc.state.isAuthenticated` is synchronous, reactive, and always current
 - **Provider Agnostic** — `AuthProvider` interface decouples from Firebase, Supabase, or any backend
-- **Automatic Token Lifecycle** — secure storage, silent refresh before expiry, singleflight refresh
+- **Automatic Token Lifecycle** — secure storage, silent refresh before expiry, droppable singleflight refresh
 - **Atomic Logout** — one event clears tokens, storage, and session in deterministic order
 - **Session Expiry Detection** — `sessionExpired` status distinct from `unauthenticated` for proper UX
 - **Login Rate Limiting** — configurable max attempts with cooldown duration
@@ -19,7 +19,7 @@ Authentication lifecycle management for [Juice](https://pub.dev/packages/juice) 
 
 ```yaml
 dependencies:
-  juice_auth: ^0.2.0
+  juice_auth: ^0.3.0
 ```
 
 ## Quick Start

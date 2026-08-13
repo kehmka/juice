@@ -555,6 +555,17 @@ class AuthConfig {
 
 ## Events
 
+Shipping event concurrency:
+
+| Event | Mode |
+|---|---|
+| `InitializeAuthEvent` | `droppable` |
+| `LoginEvent` | `droppable` |
+| `LogoutEvent` | `droppable` |
+| `RefreshTokenEvent` | `droppable` |
+| `UpdateUserEvent` | `sequential` |
+| `TokenExpiryEvent` | `droppable` |
+
 ### Command Events
 
 ```dart
@@ -720,9 +731,6 @@ class LogoutUseCase extends BlocUseCase<AuthBloc, LogoutEvent> {
 
 ```dart
 class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
-  /// Singleflight completer — prevents concurrent refresh attempts
-  static Completer<String?>? _refreshInFlight;
-
   @override
   Future<void> execute(RefreshTokenEvent event) async {
     final session = bloc.state.session;
@@ -730,14 +738,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
       emitFailure(error: AuthError.noRefreshToken());
       return;
     }
-
-    // Singleflight: if refresh already in progress, await it
-    if (_refreshInFlight != null) {
-      await _refreshInFlight!.future;
-      return;
-    }
-
-    _refreshInFlight = Completer<String?>();
 
     try {
       emitUpdate(
@@ -761,8 +761,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
         lastRefreshedAt: DateTime.now(),
       );
 
-      _refreshInFlight!.complete(result.accessToken);
-
       emitUpdate(
         newState: bloc.state.copyWith(
           session: newSession,
@@ -772,8 +770,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
         groupsToRebuild: {AuthGroups.session},
       );
     } catch (e, st) {
-      _refreshInFlight!.completeError(e);
-
       // Refresh failed → session expired (not unauthenticated)
       emitUpdate(
         newState: bloc.state.copyWith(
@@ -784,8 +780,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
       );
 
       emitFailure(error: AuthError.refreshFailed(e.toString()), errorStackTrace: st);
-    } finally {
-      _refreshInFlight = null;
     }
   }
 }
@@ -1536,7 +1530,7 @@ test('rate limiting after max login attempts', () async {
 | `SwitchAccountEvent` | Switch stored account (Phase 3) |
 | `LoginUseCase` | Handles `LoginEvent` |
 | `LogoutUseCase` | Handles `LogoutEvent` |
-| `RefreshTokenUseCase` | Handles `RefreshTokenEvent` with singleflight |
+| `RefreshTokenUseCase` | Handles the `droppable` `RefreshTokenEvent` singleflight |
 | `RestoreSessionUseCase` | Handles `InitializeAuthEvent`, restores stored session |
 | `UpdateUserUseCase` | Handles `UpdateUserEvent` |
 
@@ -1562,14 +1556,12 @@ The roadmap items under [Implementation Phases → Phase 3](#phase-3-advanced)
 present in the shipping code. The current implementation corresponds to Phase 1
 + Phase 2 of the original plan.
 
-### Singleflight guard uses a public `refreshInFlight` field
+### Refresh singleflight is dispatcher-owned
 
-The `RefreshTokenUseCase`'s singleflight guard is implemented on
-`AuthBloc.refreshInFlight` (a public `Completer<String?>?` on the bloc) rather
-than encapsulated inside the use case. This is intentional: it lets future
-internal callers (e.g. the auto-refresh timer / `TokenExpiryUseCase`) share the
-same in-flight gate. The completer's future is `.ignore()`-ed so an orphan
-(no concurrent caller) does not surface as an unhandled async error.
+`RefreshTokenEvent` uses `EventConcurrency.droppable`, so overlapping timer,
+manual, and network-triggered refresh requests collapse before another use case
+can reach the provider. Consumers observe `AuthState.isRefreshing` and the
+resulting session state; the bloc no longer exposes an in-flight completer.
 
 ---
 
@@ -1577,5 +1569,6 @@ same in-flight gate. The completer's future is `.ignore()`-ed so an orphan
 
 | Version | Date | Status | Changes |
 |---------|------|--------|---------|
-| 0.1 | - | Draft | Initial spec |
+| 0.3 | 2026-08-12 | Implemented | Explicit event concurrency; Juice 1.6 floor; dispatcher-owned refresh singleflight |
 | 0.2 | - | Implemented | Reconciled with shipping code; added [Implementation Notes](#implementation-notes) (code is source of truth) |
+| 0.1 | - | Draft | Initial spec |

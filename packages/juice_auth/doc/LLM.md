@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_auth
-version: 0.2.1
+version: 0.3.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_storage: ">=1.2.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_auth — AI card
@@ -19,7 +19,7 @@ updated: 2026-06-09
 
 **Owns:** the auth state machine (`unknown → unauthenticated / authenticated /
 sessionExpired`), token/session persistence (secure storage via `juice_storage`),
-the proactive refresh timer + singleflight, and login rate-limiting.
+the proactive refresh timer + droppable singleflight, and login rate-limiting.
 **Does NOT own:** how a backend authenticates (the `AuthProvider` seam — REST,
 Firebase, Supabase…), HTTP token injection (use `juice_auth_network`), or route
 guarding (use `juice_auth_routing`).
@@ -28,7 +28,7 @@ guarding (use `juice_auth_routing`).
 
 ```yaml
 dependencies:
-  juice_auth: ^0.2.1
+  juice_auth: ^0.3.0
   juice_storage: ^1.2.0   # required — secure token/session storage
 ```
 
@@ -85,14 +85,14 @@ AuthConfig get config;
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeAuthEvent(config)` | set config; restore session if `restoreSessionOnInit` |
-| `LoginEvent(providerName, credentials)` | authenticate via the named provider, persist, schedule refresh |
-| `LogoutEvent(force?)` | revoke (unless `force`), clear storage, → `unauthenticated` |
-| `RefreshTokenEvent()` | manual token refresh (singleflight) |
-| `UpdateUserEvent(updatedUser)` | replace `state.user` |
-| `TokenExpiryEvent()` *internal* | fired by the refresh timer at `expiresAt − refreshBuffer` |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeAuthEvent(config)` | `droppable` | set config; restore session if `restoreSessionOnInit` |
+| `LoginEvent(providerName, credentials)` | `droppable` | authenticate via the named provider, persist, schedule refresh |
+| `LogoutEvent(force?)` | `droppable` | revoke (unless `force`), clear storage, → `unauthenticated` |
+| `RefreshTokenEvent()` | `droppable` | manual token refresh (singleflight) |
+| `UpdateUserEvent(updatedUser)` | `sequential` | replace `state.user` |
+| `TokenExpiryEvent()` *internal* | `droppable` | fired by the refresh timer at `expiresAt − refreshBuffer` |
 
 ## State
 
@@ -122,10 +122,10 @@ class AuthState extends BlocState {              // immutable
 
 ## Concurrency
 
-Token refresh is **singleflight** via `AuthBloc.refreshInFlight` (a shared
-`Completer<String?>`): concurrent triggers (the timer, a manual call, a
-`juice_auth_network` 401) collapse into one provider `refreshToken` call; all
-callers await the same result. Don't add a second refresh path.
+Token refresh is **singleflight** via `EventConcurrency.droppable`: overlapping
+triggers (the timer, a manual call, a `juice_auth_network` 401) collapse into
+one provider `refreshToken` call. Consumers observe the shared `isRefreshing`
+and session-state lifecycle; there is no public in-flight completer.
 
 ## Recipes
 
@@ -187,8 +187,8 @@ expect(auth.state.isAuthenticated, isTrue);
 
 - ❌ Importing a vendor auth SDK into a bloc/use-case — put it behind an
   `AuthProvider` impl.
-- ❌ Adding a second refresh trigger that bypasses `refreshInFlight` — breaks
-  singleflight, causes a refresh storm.
+- ❌ Adding a refresh path outside `RefreshTokenEvent` — bypasses the
+  `droppable` singleflight and can cause a refresh storm.
 - ❌ Storing the access token in `AuthState` and reading it from elsewhere as the
   *persistence* — persistence is secure storage; state is the live view.
 - ❌ Treating `sessionExpired` as `unauthenticated` — they're deliberately

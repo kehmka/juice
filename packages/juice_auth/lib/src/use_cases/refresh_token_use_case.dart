@@ -5,11 +5,10 @@ import '../auth_errors.dart';
 import '../auth_events.dart';
 import '../auth_state.dart';
 
-/// Handles [RefreshTokenEvent] — singleflight token refresh.
+/// Handles [RefreshTokenEvent] — a droppable, singleflight token refresh.
 ///
-/// If N components trigger refresh simultaneously, only 1 provider
-/// call executes. All N callers await the same [Completer] stored
-/// on `bloc.refreshInFlight`.
+/// The bloc's event registration drops overlapping refresh events, so only one
+/// provider call executes while observers follow the shared state lifecycle.
 class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
   @override
   Future<void> execute(RefreshTokenEvent event) async {
@@ -26,20 +25,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
       return;
     }
 
-    // Singleflight: if refresh already in progress, await it
-    if (bloc.refreshInFlight != null) {
-      log('Refresh already in flight, awaiting result');
-      try {
-        await bloc.refreshInFlight!.future;
-      } catch (_) {
-        // Already handled by the first caller
-      }
-      return;
-    }
-
-    bloc.refreshInFlight = Completer<String?>();
-    // Prevent unhandled async error if no concurrent caller is awaiting
-    bloc.refreshInFlight!.future.ignore();
     log('Token refresh started for ${session!.providerName}');
 
     try {
@@ -64,8 +49,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
         lastRefreshedAt: DateTime.now(),
       );
 
-      bloc.refreshInFlight!.complete(result.accessToken);
-
       emitUpdate(
         newState: bloc.state.copyWith(
           session: newSession,
@@ -77,10 +60,6 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
 
       log('Token refresh successful');
     } catch (e, st) {
-      if (!bloc.refreshInFlight!.isCompleted) {
-        bloc.refreshInFlight!.completeError(e);
-      }
-
       logError(e, st);
 
       // Refresh failed → session expired (not unauthenticated)
@@ -90,13 +69,15 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
           isRefreshing: false,
           lastError: RefreshFailedError(e.toString()),
         ),
-        groupsToRebuild: {AuthGroups.status, AuthGroups.session, AuthGroups.error},
+        groupsToRebuild: {
+          AuthGroups.status,
+          AuthGroups.session,
+          AuthGroups.error
+        },
         aviatorName: 'sessionExpired',
         error: RefreshFailedError(e.toString()),
         errorStackTrace: st,
       );
-    } finally {
-      bloc.refreshInFlight = null;
     }
   }
 }

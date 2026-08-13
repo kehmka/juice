@@ -284,13 +284,63 @@ Before 1.5.0 the same outcomes were hand-rolled. **Adopted so far:**
   deleted the bloc-side `_breadcrumbs`/`_errorCount` accumulator workaround.
 - `juice_media` 0.3.0 — `AcquireMediaEvent` → `droppable`; dropped the
   `state.picking` entry guard.
+- `juice_connectivity` 0.2.0 — initialize/check → `droppable`, connectivity
+  changes → `sequential`; overlapping-flow tests lock in the behavior.
+- `juice_analytics` 0.2.0 — log/screen/user/consent → `sequential`,
+  initialize/flush → `droppable`; ordering and coalescing tests lock in the
+  behavior.
+- `juice_auth` 0.3.0 — initialize/login/logout/refresh/expiry → `droppable`,
+  user updates → `sequential`; removed the public refresh completer in favor of
+  dispatcher-owned singleflight.
+- `juice_flags` 0.2.0 — initialize/refresh → `droppable`, fetched updates,
+  failures, and override mutations → `sequential`; gated-source coverage proves
+  refresh coalescing.
+- `juice_forms` 0.3.0 — initialization → `droppable`; field mutations,
+  whole-form validation, submission, and reset → `sequential`; token-guarded
+  per-field async validation stays intentionally `concurrent`. A gated handler
+  test proves overlapping submissions serialize and both callers complete.
+- `juice_i18n` 0.2.0 — initialization → `droppable`; explicit and system
+  locale events enter one bloc-owned FIFO because concurrency modes are keyed by
+  exact event type. Gated-source coverage proves global request ordering and
+  exclusive translation loads.
+- `juice_lifecycle` 0.2.0 — initialization → `droppable`, lifecycle changes →
+  `sequential`; burst coverage proves provider order is retained in the
+  `previous`/current phase pair.
+- `juice_location` 0.2.0 — initialization and one-shot reads → `droppable`,
+  tracking/position/permission mutations → `sequential`; gated-source coverage
+  proves duplicate in-flight reads are coalesced.
+- `juice_network` 0.13.0 — initialization → `droppable`; requests remain
+  intentionally `concurrent` under request-key coalescing and the global slot
+  limiter; configuration, cancellation, cache, reset, and observability events
+  → `sequential`. The 72-test suite locks in coalescing and concurrency limits.
+- `juice_notifications` 0.2.0 — initialization → `droppable`; initialization
+  and all platform-service mutations enter one cross-event FIFO; tap and
+  permission updates → `sequential`. Gated coverage proves schedule/cancel-all
+  order across event types.
+- `juice_paging` 0.2.0 — initialize, refresh, load-more, and retry →
+  `droppable`; delegated refresh/load-more dispatches are awaited. The shared
+  loading guard remains for cross-event exclusion, with gated coverage proving
+  duplicate load-more coalescing and refresh/load-more non-overlap.
+- `juice_permissions` 0.3.0 — initialization/settings → `droppable`, batch
+  prompts → `sequential`, independent checks and keyed individual prompts stay
+  intentionally `concurrent`. Gated coverage proves both parallel distinct
+  permissions and serialized/coalesced exclusive flows.
+- `juice_realtime` 0.2.0 — lifecycle/loss flows → `droppable`, sends,
+  establishment, and messages → `sequential`; the connect/reconnect shared
+  guard remains across event types. Connection epochs reject stale results and
+  callbacks; gated coverage proves disconnect and user-connect supersession.
+- `juice_routing` 1.3.0 — initialization → `droppable`, reset/pop mutations →
+  `sequential`, visibility hooks → `concurrent`; navigation stays intentionally
+  `concurrent` so requests can replace its depth-one latest-wins queue. Gated
+  coverage proves latest-wins navigation and FIFO reset commands.
+- `juice_storage` 2.1.0 — every builder explicitly uses `concurrent`; mutations
+  and resource lifecycle enter a bloc-wide FIFO, while read-only queries remain
+  genuinely concurrent. Gated coverage proves both overlapping reads and that
+  a delete cannot overtake a TTL write and leave stale expiration metadata.
 
-**Deliberately NOT adopted** — the modes are *per-event-type*, but these guards
-are *cross-event* (or carry extra logic), so a mode would change behavior:
+**Deliberately NOT adopted** — the modes are *per-event-type*, but this guard
+carries extra logic, so a mode would change behavior:
 
-- `juice_realtime` — `_connecting` is shared by `ConnectEvent` **and**
-  `ReconnectEvent`; per-type `droppable` wouldn't stop a connect/reconnect overlap.
-- `juice_paging` — `_loading` is shared by `LoadMore` **and** `Refresh`.
 - `juice_sync` — `droppable` would drop a flush trigger that must still *run* to
   set the `_pendingFlushRequest` re-check (work enqueued mid-flush).
 

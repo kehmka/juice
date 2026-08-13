@@ -275,14 +275,20 @@ that does not have the API these packages should be using.
 Raised by Kevin 2026-07-25, after `juice_power` was built and the audit found
 that faithfully copying `juice_connectivity`'s shape had copied the gap too.
 
-**Packages affected (17):** `juice_analytics`, `juice_auth`,
-`juice_connectivity`, `juice_flags`, `juice_forms`, `juice_i18n`,
-`juice_lifecycle`, `juice_location`, `juice_network`, `juice_notifications`,
-`juice_paging`, `juice_permissions`, `juice_realtime`, `juice_routing`,
-`juice_storage`, `juice_sync`, `juice_theme`.
+**Packages affected (2):** `juice_sync`, `juice_theme`.
 
 **Already correct:** `juice_llm`, `juice_media`, `juice_observability`,
-`juice_power`.
+`juice_power`, `juice_connectivity` 0.2.0, `juice_analytics` 0.2.0,
+`juice_auth` 0.3.0, `juice_flags` 0.2.0, `juice_forms` 0.3.0,
+`juice_i18n` 0.2.0, `juice_lifecycle` 0.2.0, `juice_location` 0.2.0,
+`juice_network` 0.13.0, `juice_notifications` 0.2.0,
+`juice_paging` 0.2.0, `juice_permissions` 0.3.0,
+`juice_realtime` 0.2.0, `juice_routing` 1.3.0,
+`juice_storage` 2.1.0.
+
+**Constraint-only tail:** `juice_auth_network` and `juice_auth_routing` also
+declare `juice: ^1.4.0`, but register no use cases. Raise them to `^1.6.0` in a
+separate glue-package pass after their direct dependencies have migrated.
 
 **Per package:**
 1. Bump `juice: ^1.6.0`.
@@ -292,10 +298,10 @@ that faithfully copying `juice_connectivity`'s shape had copied the gap too.
    purpose rather than by omission.
 3. Note it in the CHANGELOG; it is a behaviour change, not a cleanup.
 
-**Start with `juice_connectivity`** (Kevin's pick): its
-`ConnectivityChangedUseCase` reads state, compares, and emits, and its
-`InitializeConnectivityEvent` would double-subscribe if it ever arrived twice
-— the same two faults found and fixed in `juice_power`.
+**Completed first: `juice_connectivity` 0.2.0** (2026-08-12). Initialization
+and manual checks are `droppable`; connectivity changes are `sequential`; the
+package requires `juice ^1.6.0`. Behavioral tests cover overlapping initialize
+and check events.
 
 ---
 
@@ -321,4 +327,4 @@ that faithfully copying `juice_connectivity`'s shape had copied the gap too.
 4. ~~**Fourth:** Add missing tests #15-18~~ DONE
 5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)
-7. **Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 17 packages that predate 1.5.0, `juice_connectivity` first
+7. **Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages

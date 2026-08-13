@@ -1,6 +1,6 @@
 name: juice_paging
 description: Paged / infinite-scroll list state as a generic Juice bloc, behind a cursor-based fetcher seam.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_paging
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -17,7 +17,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.4.0
+  juice: ^1.6.0
 
 dev_dependencies:
   flutter_test:

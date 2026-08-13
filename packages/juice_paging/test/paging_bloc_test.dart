@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_paging/juice_paging.dart';
@@ -11,12 +12,17 @@ class FakeBackend {
   final int pageSize;
   int calls = 0;
   Object? failNextCursor; // when the cursor matches this, throw once
+  Completer<void>? gateNext;
   bool _failed = false;
 
   FakeBackend({this.total = 25, this.pageSize = 10}) : failNextCursor = _noFail;
 
   Future<PageResult<int>> fetch(Object? cursor) async {
     calls++;
+    final gate = gateNext;
+    gateNext = null;
+    if (gate != null) await gate.future;
+
     final offset = (cursor as int?) ?? 0;
     if (failNextCursor == cursor && !_failed) {
       _failed = true;
@@ -76,19 +82,50 @@ void main() {
       await bloc.close();
     });
 
-    test('concurrent loadMore is guarded (one fetch)', () async {
+    test('droppable loadMore coalesces overlapping requests', () async {
       final be = FakeBackend(total: 100);
       final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
       await settle();
 
       final callsBefore = be.calls;
+      final gate = Completer<void>();
+      be.gateNext = gate;
       bloc.loadMore();
-      bloc.loadMore(); // should be ignored while the first is in flight
+      bloc.loadMore();
       bloc.loadMore();
       await settle();
 
-      expect(be.calls, callsBefore + 1); // only one extra page fetched
+      expect(be.calls, callsBefore + 1);
+      expect(bloc.state.status, PagingStatus.loadingMore);
+
+      gate.complete();
+      await settle();
       expect(bloc.state.items.length, 20);
+      await bloc.close();
+    });
+
+    test('shared guard prevents refresh/loadMore cross-event overlap',
+        () async {
+      final be = FakeBackend(total: 100);
+      final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
+      await settle();
+
+      final callsBefore = be.calls;
+      final gate = Completer<void>();
+      be.gateNext = gate;
+      bloc.refresh();
+      await settle();
+      expect(bloc.state.status, PagingStatus.loadingFirst);
+
+      bloc.loadMore();
+      await settle();
+      expect(be.calls, callsBefore + 1);
+      expect(bloc.state.status, PagingStatus.loadingFirst);
+
+      gate.complete();
+      await settle();
+      expect(bloc.state.items.length, 10);
+      expect(bloc.state.status, PagingStatus.loaded);
       await bloc.close();
     });
   });
@@ -113,7 +150,8 @@ void main() {
 
   group('Errors', () {
     test('first-page error → error status, retry recovers', () async {
-      final be = FakeBackend(total: 25)..failNextCursor = null; // first page fails
+      final be = FakeBackend(total: 25)
+        ..failNextCursor = null; // first page fails
       final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
       await settle();
 
@@ -129,7 +167,8 @@ void main() {
     });
 
     test('loadMore error keeps items; retry resumes', () async {
-      final be = FakeBackend(total: 25)..failNextCursor = 10; // 2nd page fails once
+      final be = FakeBackend(total: 25)
+        ..failNextCursor = 10; // 2nd page fails once
       final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
       await settle();
       expect(bloc.state.items.length, 10);

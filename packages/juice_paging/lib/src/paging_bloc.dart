@@ -34,16 +34,20 @@ class PagingBloc<T> extends JuiceBloc<PagingState<T>> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: InitializePagingEvent,
-                useCaseGenerator: () => InitializePagingUseCase<T>()),
+                useCaseGenerator: () => InitializePagingUseCase<T>(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: RefreshPageEvent,
-                useCaseGenerator: () => RefreshPageUseCase<T>()),
+                useCaseGenerator: () => RefreshPageUseCase<T>(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: LoadMoreEvent,
-                useCaseGenerator: () => LoadMoreUseCase<T>()),
+                useCaseGenerator: () => LoadMoreUseCase<T>(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: RetryPageEvent,
-                useCaseGenerator: () => RetryPageUseCase<T>()),
+                useCaseGenerator: () => RetryPageUseCase<T>(),
+                concurrency: EventConcurrency.droppable),
           ],
         );
 

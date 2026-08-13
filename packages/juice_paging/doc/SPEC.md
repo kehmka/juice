@@ -50,17 +50,28 @@ so Juice's type-keyed dispatch matches cleanly; the use cases carry `<T>`.
 
 ## Events & use cases (4)
 
-`InitializePagingEvent`, `RefreshPageEvent`, `LoadMoreEvent`, `RetryPageEvent`.
+| Event | Concurrency | Behavior |
+|---|---|---|
+| `InitializePagingEvent` | `droppable` | Await first-page refresh when configured |
+| `RefreshPageEvent` | `droppable` | Fetch and replace the first page |
+| `LoadMoreEvent` | `droppable` | Fetch and append the next page |
+| `RetryPageEvent` | `droppable` | Await the appropriate delegated load |
+
+The bloc-wide loading guard remains intentional: modes exclude only same-type
+events, while refresh and load-more must also exclude each other.
+
 API: `refresh`, `loadMore`, `retry`.
 
 ## Testing
 
-Fake offset backend: first-page-on-init, loadMore appends to end, **concurrent
-loadMore guarded** (one fetch), refresh reloads, first-page error → error →
-retry recovers, loadMore error keeps items → retry resumes. 7 tests.
+Fake offset backend: first-page-on-init, loadMore appends to end, gated
+same-type loadMore requests coalesce, gated refresh excludes loadMore,
+refresh reloads, first-page error → error → retry recovers, loadMore error
+keeps items → retry resumes. 8 tests.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---|---|---|
+| 1.1 | 2026-08-12 | Explicit concurrency and cross-event exclusion coverage |
 | 1.0 | 2026-05-28 | Implemented |

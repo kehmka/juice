@@ -9,7 +9,7 @@ class InitializePagingUseCase<T>
   @override
   Future<void> execute(InitializePagingEvent event) async {
     if (bloc.config.loadOnInit) {
-      bloc.send(RefreshPageEvent());
+      await bloc.send(RefreshPageEvent());
     }
   }
 }

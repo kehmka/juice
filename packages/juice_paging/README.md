@@ -15,7 +15,7 @@ It does **not** own the transport — you supply a `PageFetcher`.
 
 ```yaml
 dependencies:
-  juice_paging: ^0.1.0
+  juice_paging: ^0.2.0
 ```
 
 ## Use

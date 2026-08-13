@@ -9,9 +9,9 @@ class RetryPageUseCase<T> extends BlocUseCase<PagingBloc<T>, RetryPageEvent> {
   @override
   Future<void> execute(RetryPageEvent event) async {
     if (bloc.state.items.isEmpty) {
-      bloc.send(RefreshPageEvent());
+      await bloc.send(RefreshPageEvent());
     } else {
-      bloc.send(LoadMoreEvent());
+      await bloc.send(LoadMoreEvent());
     }
   }
 }

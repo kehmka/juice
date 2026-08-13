@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_paging
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-09
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_paging — AI card
@@ -29,7 +29,7 @@ use `juice_network`.
 
 ```yaml
 dependencies:
-  juice_paging: ^0.1.0
+  juice_paging: ^0.2.0
 ```
 
 ## Construct
@@ -74,12 +74,12 @@ PageFetcher<T> get fetcher;
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializePagingEvent` | sends `RefreshPageEvent` if `loadOnInit` |
-| `RefreshPageEvent` | `fetch(null)`, replace items; existing items stay visible during load |
-| `LoadMoreEvent` | `fetch(nextCursor)`, append; **no-op** if loading, at `end`, or status still `initial` |
-| `RetryPageEvent` | re-dispatch refresh (empty list) or loadMore (non-empty) |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializePagingEvent` | `droppable` | awaits `RefreshPageEvent` if `loadOnInit` |
+| `RefreshPageEvent` | `droppable` | `fetch(null)`, replace items; existing items stay visible during load |
+| `LoadMoreEvent` | `droppable` | `fetch(nextCursor)`, append; **no-op** if loading, at `end`, or status still `initial` |
+| `RetryPageEvent` | `droppable` | awaits refresh (empty list) or loadMore (non-empty) |
 
 ## State
 
@@ -105,10 +105,13 @@ class PagingState<T> {        // BlocState
 
 ## Concurrency
 
-Use cases run with the default `concurrent` mode; overlap is prevented by a
-bloc-side boolean guard `_loading` (`isLoading` / `beginLoad` / `endLoad`).
-`refresh` and `loadMore` both early-return while a load is in flight, so a
-scroll listener firing `loadMore()` repeatedly issues exactly one fetch.
+All four event types are explicitly `droppable`, so duplicate same-type
+requests are coalesced for the full delegated operation. The bloc-wide boolean
+guard `_loading` (`isLoading` / `beginLoad` / `endLoad`) is intentionally
+retained because Juice concurrency modes are keyed by exact event type:
+`refresh` and `loadMore` must also exclude each other. A scroll listener firing
+`loadMore()` repeatedly therefore issues exactly one fetch, and cannot overlap
+an active refresh.
 
 ## Recipes
 

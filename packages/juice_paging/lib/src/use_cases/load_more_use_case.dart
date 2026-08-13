@@ -34,8 +34,8 @@ class LoadMoreUseCase<T> extends BlocUseCase<PagingBloc<T>, LoadMoreEvent> {
     } catch (e) {
       // Keep items + cursor so retry resumes from here.
       emitFailure(
-        newState: bloc.state.copyWith(
-            status: PagingStatus.error, error: e.toString()),
+        newState: bloc.state
+            .copyWith(status: PagingStatus.error, error: e.toString()),
         groupsToRebuild: {PagingGroups.status},
         error: e,
       );

@@ -6,15 +6,16 @@ import '../paging_state.dart';
 
 /// Handles [RefreshPageEvent] — load the first page, replacing existing items.
 /// Existing items stay visible while the first page loads.
-class RefreshPageUseCase<T> extends BlocUseCase<PagingBloc<T>, RefreshPageEvent> {
+class RefreshPageUseCase<T>
+    extends BlocUseCase<PagingBloc<T>, RefreshPageEvent> {
   @override
   Future<void> execute(RefreshPageEvent event) async {
     if (bloc.isLoading) return;
     bloc.beginLoad();
     try {
       emitUpdate(
-        newState: bloc.state.copyWith(
-            status: PagingStatus.loadingFirst, error: null),
+        newState:
+            bloc.state.copyWith(status: PagingStatus.loadingFirst, error: null),
         groupsToRebuild: {PagingGroups.status},
       );
 
@@ -30,8 +31,8 @@ class RefreshPageUseCase<T> extends BlocUseCase<PagingBloc<T>, RefreshPageEvent>
       );
     } catch (e) {
       emitFailure(
-        newState: bloc.state.copyWith(
-            status: PagingStatus.error, error: e.toString()),
+        newState: bloc.state
+            .copyWith(status: PagingStatus.error, error: e.toString()),
         groupsToRebuild: {PagingGroups.status},
         error: e,
       );

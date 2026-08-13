@@ -36,22 +36,30 @@ class PermissionsBloc extends JuiceBloc<PermissionsState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializePermissionsEvent,
                   useCaseGenerator: () => InitializePermissionsUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CheckPermissionEvent,
                   useCaseGenerator: () => CheckPermissionUseCase(),
+                  // Checks are independent and merge state only at emit time.
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RequestPermissionEvent,
                   useCaseGenerator: () => RequestPermissionUseCase(),
+                  // Different permissions may prompt independently; duplicate
+                  // permissions join requestsInFlight in the use case.
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RequestPermissionsEvent,
                   useCaseGenerator: () => RequestPermissionsUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: OpenAppSettingsEvent,
                   useCaseGenerator: () => OpenAppSettingsUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );

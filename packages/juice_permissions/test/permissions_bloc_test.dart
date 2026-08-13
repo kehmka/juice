@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_permissions/juice_permissions.dart';
 
@@ -12,6 +14,13 @@ class FakePermissionProvider implements PermissionProvider {
   /// Optional delay so concurrent requests overlap (for singleflight tests).
   final Duration delay;
 
+  final Map<JuicePermission, Completer<void>> statusGates = {};
+  final Map<JuicePermission, Completer<void>> requestGates = {};
+  final List<JuicePermission> statusStarts = [];
+  final List<JuicePermission> requestStarts = [];
+  Completer<void>? requestAllGate;
+  Completer<bool>? openSettingsGate;
+
   int requestCalls = 0;
   int openSettingsCalls = 0;
 
@@ -22,12 +31,19 @@ class FakePermissionProvider implements PermissionProvider {
   });
 
   @override
-  Future<PermissionStatus> status(JuicePermission p) async =>
-      statuses[p] ?? PermissionStatus.denied;
+  Future<PermissionStatus> status(JuicePermission p) async {
+    statusStarts.add(p);
+    final gate = statusGates[p];
+    if (gate != null) await gate.future;
+    return statuses[p] ?? PermissionStatus.denied;
+  }
 
   @override
   Future<PermissionStatus> request(JuicePermission p) async {
     requestCalls++;
+    requestStarts.add(p);
+    final gate = requestGates[p];
+    if (gate != null) await gate.future;
     if (delay > Duration.zero) await Future<void>.delayed(delay);
     return requestResults[p] ?? PermissionStatus.granted;
   }
@@ -36,12 +52,20 @@ class FakePermissionProvider implements PermissionProvider {
   Future<Map<JuicePermission, PermissionStatus>> requestAll(
       Set<JuicePermission> ps) async {
     requestCalls++;
-    return {for (final p in ps) p: requestResults[p] ?? PermissionStatus.granted};
+    final gate = requestAllGate;
+    requestAllGate = null;
+    if (gate != null) await gate.future;
+    return {
+      for (final p in ps) p: requestResults[p] ?? PermissionStatus.granted
+    };
   }
 
   @override
   Future<bool> openSettings() async {
     openSettingsCalls++;
+    final gate = openSettingsGate;
+    openSettingsGate = null;
+    if (gate != null) return gate.future;
     return true;
   }
 
@@ -83,8 +107,8 @@ void main() {
 
   group('PermissionsBloc', () {
     test('precheck reads statuses on init', () async {
-      final p = FakePermissionProvider(
-          statuses: {camera: PermissionStatus.granted});
+      final p =
+          FakePermissionProvider(statuses: {camera: PermissionStatus.granted});
       final bloc = PermissionsBloc.withConfig(
         PermissionsConfig(provider: p, precheck: {camera}),
       );
@@ -95,8 +119,8 @@ void main() {
     });
 
     test('check reads status without prompting', () async {
-      final p = FakePermissionProvider(
-          statuses: {camera: PermissionStatus.denied});
+      final p =
+          FakePermissionProvider(statuses: {camera: PermissionStatus.denied});
       final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
       await settle();
 
@@ -105,6 +129,31 @@ void main() {
 
       expect(bloc.state.statusOf(camera), PermissionStatus.denied);
       expect(p.requestCalls, 0); // no prompt
+      await bloc.close();
+    });
+
+    test('independent checks overlap and merge their results', () async {
+      final cameraGate = Completer<void>();
+      final micGate = Completer<void>();
+      final p = FakePermissionProvider(statuses: {
+        camera: PermissionStatus.granted,
+        mic: PermissionStatus.denied,
+      })
+        ..statusGates[camera] = cameraGate
+        ..statusGates[mic] = micGate;
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      bloc.check(camera);
+      bloc.check(mic);
+      await settle();
+      expect(p.statusStarts, [camera, mic]);
+
+      cameraGate.complete();
+      micGate.complete();
+      await settle();
+      expect(bloc.state.statusOf(camera), PermissionStatus.granted);
+      expect(bloc.state.statusOf(mic), PermissionStatus.denied);
       await bloc.close();
     });
 
@@ -156,6 +205,33 @@ void main() {
       await bloc.close();
     });
 
+    test('requests for different permissions remain concurrent', () async {
+      final cameraGate = Completer<void>();
+      final micGate = Completer<void>();
+      final p = FakePermissionProvider(requestResults: {
+        camera: PermissionStatus.granted,
+        mic: PermissionStatus.denied,
+      })
+        ..requestGates[camera] = cameraGate
+        ..requestGates[mic] = micGate;
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      bloc.request(camera);
+      bloc.request(mic);
+      await settle();
+      expect(p.requestStarts, [camera, mic]);
+      expect(bloc.state.inFlight, {camera, mic});
+
+      cameraGate.complete();
+      micGate.complete();
+      await settle();
+      expect(bloc.state.statusOf(camera), PermissionStatus.granted);
+      expect(bloc.state.statusOf(mic), PermissionStatus.denied);
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
     test('requestAll prompts a batch and records all statuses', () async {
       final p = FakePermissionProvider(requestResults: {
         camera: PermissionStatus.granted,
@@ -172,6 +248,31 @@ void main() {
       await bloc.close();
     });
 
+    test('overlapping batch requests run sequentially', () async {
+      final gate = Completer<void>();
+      final p = FakePermissionProvider(requestResults: {
+        camera: PermissionStatus.granted,
+        mic: PermissionStatus.denied,
+      })
+        ..requestAllGate = gate;
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      bloc.requestAll({camera});
+      bloc.requestAll({mic});
+      await settle();
+      expect(p.requestCalls, 1);
+      expect(bloc.state.inFlight, {camera});
+
+      gate.complete();
+      await settle();
+      expect(p.requestCalls, 2);
+      expect(bloc.state.statusOf(camera), PermissionStatus.granted);
+      expect(bloc.state.statusOf(mic), PermissionStatus.denied);
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
     test('openAppSettings delegates to the provider', () async {
       final p = FakePermissionProvider();
       final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
@@ -181,6 +282,23 @@ void main() {
       await settle();
 
       expect(p.openSettingsCalls, 1);
+      await bloc.close();
+    });
+
+    test('duplicate openAppSettings calls are dropped while one is active',
+        () async {
+      final gate = Completer<bool>();
+      final p = FakePermissionProvider()..openSettingsGate = gate;
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      bloc.openAppSettings();
+      bloc.openAppSettings();
+      await settle();
+      expect(p.openSettingsCalls, 1);
+
+      gate.complete(true);
+      await settle();
       await bloc.close();
     });
   });
@@ -222,8 +340,8 @@ void main() {
     });
 
     test('emitInitial:false skips the initial callback', () async {
-      final p = FakePermissionProvider(
-          statuses: {camera: PermissionStatus.granted});
+      final p =
+          FakePermissionProvider(statuses: {camera: PermissionStatus.granted});
       final bloc = PermissionsBloc.withConfig(
         PermissionsConfig(provider: p, precheck: {camera}),
       );

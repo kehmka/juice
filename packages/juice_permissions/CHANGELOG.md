@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-12
+
+### Changed
+
+- Require `juice ^1.6.0`.
+- Declare initialization and opening app settings `droppable`.
+- Keep status checks and individual permission requests intentionally
+  `concurrent`; checks merge at emit time, while requests retain
+  per-permission singleflight and allow different permissions to overlap.
+- Run batch permission requests `sequential`ly so their shared `inFlight` and
+  status mutations cannot interleave.
+
+### Tests
+
+- Add gated coverage for concurrent independent checks, concurrent distinct
+  permission prompts, sequential batch prompts, and duplicate Settings-open
+  coalescing.
+
 ## [0.2.0] - 2026-05-28
 
 ### Added

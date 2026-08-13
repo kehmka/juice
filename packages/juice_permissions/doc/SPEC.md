@@ -63,30 +63,34 @@ class PermissionsState extends BlocState {
 
 ## Events
 
-| Event | Effect | Groups |
-|-------|--------|--------|
-| `InitializePermissionsEvent(config)` | store provider, optionally pre-read `precheck` | `permissions:status`, per-permission |
-| `CheckPermissionEvent(p)` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
-| `RequestPermissionEvent(p)` | prompt (singleflight per permission) | above + `permissions:inflight` |
-| `RequestPermissionsEvent(set)` | batch prompt (no singleflight) | as above |
-| `OpenAppSettingsEvent` | open OS settings | — |
+| Event | Concurrency | Effect | Groups |
+|-------|-------------|--------|--------|
+| `InitializePermissionsEvent(config)` | `droppable` | store provider, optionally pre-read `precheck` | `permissions:status`, per-permission |
+| `CheckPermissionEvent(p)` | `concurrent` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
+| `RequestPermissionEvent(p)` | `concurrent` | prompt (singleflight per permission) | above + `permissions:inflight` |
+| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no singleflight) | as above |
+| `OpenAppSettingsEvent` | `droppable` | open OS settings | — |
 
 ## Singleflight
 
 Concurrent `RequestPermissionEvent`s for the same permission collapse to one OS
-prompt via `PermissionsBloc.requestsInFlight` (a per-permission `Completer` map);
-`state.inFlight` mirrors it for the UI. Batch requests do not coalesce.
+prompt via `PermissionsBloc.requestsInFlight` (a per-permission `Completer` map),
+while different permissions can proceed independently. `state.inFlight` mirrors
+the map for the UI. Batch requests do not coalesce, but run sequentially so
+their shared state mutations cannot interleave.
 
 ## Testing
 
 `PermissionsBloc` is tested with a fake `PermissionProvider`: request/deny/
 permanently-denied flows, per-permission singleflight (concurrent requests → one
-provider call), batch, and the settings delegation all run headlessly. The only
-device-touching code, `PermissionHandlerProvider`, is a thin enum/status mapping
-verified by inspection and a one-time on-device run.
+provider call), concurrent distinct checks and prompts, sequential batches, and
+droppable settings delegation all run headlessly. The only device-touching code,
+`PermissionHandlerProvider`, is a thin enum/status mapping verified by inspection
+and a one-time on-device run.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-12 | Explicit concurrency and gated overlap coverage |
 | 1.0 | 2026-05-28 | Implemented |

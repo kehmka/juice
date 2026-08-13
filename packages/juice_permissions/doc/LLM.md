@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_permissions
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   permission_handler: ">=11.3.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_permissions — AI card
@@ -33,7 +33,7 @@ instead of duplicating permission logic.
 
 ```yaml
 dependencies:
-  juice_permissions: ^0.2.0   # pulls permission_handler for the default provider
+  juice_permissions: ^0.3.0   # pulls permission_handler for the default provider
 ```
 
 Declare the underlying OS permissions you actually use in `Info.plist` /
@@ -79,13 +79,13 @@ PermissionProvider get provider;
 
 ## Events
 
-| Event | Effect | Groups |
-|---|---|---|
-| `InitializePermissionsEvent(config)` | store provider, pre-read `precheck` | `permissions:status`, per-permission |
-| `CheckPermissionEvent(p)` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
-| `RequestPermissionEvent(p)` | prompt (singleflight per permission) | above + `permissions:inflight` |
-| `RequestPermissionsEvent(set)` | batch prompt (no coalescing) | as above |
-| `OpenAppSettingsEvent` | open OS settings | — |
+| Event | Concurrency | Effect | Groups |
+|---|---|---|---|
+| `InitializePermissionsEvent(config)` | `droppable` | store provider, pre-read `precheck` | `permissions:status`, per-permission |
+| `CheckPermissionEvent(p)` | `concurrent` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
+| `RequestPermissionEvent(p)` | `concurrent` | prompt (singleflight per permission) | above + `permissions:inflight` |
+| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no coalescing) | as above |
+| `OpenAppSettingsEvent` | `droppable` | open OS settings | — |
 
 ## State
 
@@ -113,11 +113,14 @@ class PermissionsState extends BlocState {
 
 ## Concurrency
 
-`RequestPermissionEvent` is **singleflight per permission**: concurrent requests
-for the same `JuicePermission` share one OS prompt via
-`PermissionsBloc.requestsInFlight` (a per-permission `Completer` map, authoritative);
-`state.inFlight` mirrors it for the UI. `requestAll`/`RequestPermissionsEvent`
-batch requests do **not** coalesce.
+`RequestPermissionEvent` remains intentionally `concurrent`: requests for the
+same `JuicePermission` share one OS prompt via
+`PermissionsBloc.requestsInFlight` (a per-permission `Completer` map,
+authoritative), while different permissions may proceed independently.
+`CheckPermissionEvent` is also `concurrent` and merges current state only after
+its provider await. Batch requests mutate a shared in-flight set and therefore
+run `sequential`ly; they do not coalesce. Initialization and opening app
+settings are exclusive `droppable` flows.
 
 ## Recipes
 

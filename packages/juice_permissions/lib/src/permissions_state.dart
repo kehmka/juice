@@ -34,8 +34,7 @@ class PermissionsState extends BlocState {
       statuses[p] ?? PermissionStatus.unknown;
 
   /// Strictly granted.
-  bool isGranted(JuicePermission p) =>
-      statusOf(p) == PermissionStatus.granted;
+  bool isGranted(JuicePermission p) => statusOf(p) == PermissionStatus.granted;
 
   /// Usable — granted, or partially/provisionally granted (iOS `limited` /
   /// `provisional`). Use this for "can I proceed?" checks.

@@ -20,7 +20,7 @@ tap (the app routes it).
 
 ```yaml
 dependencies:
-  juice_notifications: ^0.1.0
+  juice_notifications: ^0.2.0
 ```
 
 The default service uses `flutter_local_notifications`; for scheduling, call

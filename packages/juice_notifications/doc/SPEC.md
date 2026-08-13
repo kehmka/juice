@@ -53,14 +53,18 @@ class NotificationsState extends BlocState {
 
 ## Events
 
-| Event | Effect | Groups |
-|-------|--------|--------|
-| `InitializeNotificationsEvent(config)` | configure, init service, listen for taps | — |
-| `ShowNotificationEvent` | post now | — |
-| `ScheduleNotificationEvent(n, when)` | schedule + track | `notifications:scheduled` |
-| `CancelNotificationEvent(id)` / `CancelAllNotificationsEvent` | cancel + untrack | `notifications:scheduled` |
-| `NotificationTappedEvent` | internal — record tap | `notifications:tap` |
-| `SetPermissionStatusEvent(granted)` | record permission (from `PermissionBinding`) | `notifications:permission` |
+| Event | Concurrency | Effect | Groups |
+|-------|-------------|--------|--------|
+| `InitializeNotificationsEvent(config)` | `droppable` + shared FIFO | configure, init service, listen for taps | — |
+| `ShowNotificationEvent` | `concurrent` dispatcher → shared FIFO | post now | — |
+| `ScheduleNotificationEvent(n, when)` | `concurrent` dispatcher → shared FIFO | schedule + track | `notifications:scheduled` |
+| `CancelNotificationEvent(id)` / `CancelAllNotificationsEvent` | `concurrent` dispatcher → shared FIFO | cancel + untrack | `notifications:scheduled` |
+| `NotificationTappedEvent` | `sequential` | internal — record tap | `notifications:tap` |
+| `SetPermissionStatusEvent(granted)` | `sequential` | record permission (from `PermissionBinding`) | `notifications:permission` |
+
+Initialization and all service mutations share one bloc-owned FIFO. Dispatcher
+execution stays concurrent for those event types so every operation enters the
+cross-event queue immediately and global send order is retained.
 
 ## Permissions
 
@@ -78,11 +82,12 @@ binding, no per-capability glue package.
 ## Testing
 
 Headless with a fake `NotificationService`: show/schedule/cancel/cancelAll,
-tap surfacing, permission flag, dispose. The device-touching
+cross-event service ordering, tap surfacing, permission flag, dispose. The device-touching
 `LocalNotificationService` is verified by inspection + one on-device run.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-12 | Juice 1.6 policy + cross-event service FIFO |
 | 1.0 | 2026-05-28 | Implemented (local-first) |

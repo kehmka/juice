@@ -1,12 +1,12 @@
 ---
 card_schema: "1.0"
 package: juice_notifications
-version: 0.1.1
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   flutter_local_notifications: ">=17.2.2"
   timezone: ">=0.9.4"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_notifications — AI card
@@ -27,7 +27,7 @@ an informational `permissionGranted` flag.
 
 ```yaml
 dependencies:
-  juice_notifications: ^0.1.1
+  juice_notifications: ^0.2.0
 ```
 
 Default backend is `flutter_local_notifications` — add its platform setup
@@ -74,15 +74,18 @@ void setPermissionStatus(bool granted);          // wire from juice_permissions
 
 ## Events
 
-| Event | Effect | Group |
-|---|---|---|
-| `InitializeNotificationsEvent(config)` | configure, init service, listen for taps | — |
-| `ShowNotificationEvent(n)` | post now (side-effect only) | — |
-| `ScheduleNotificationEvent(n, when)` | schedule + track (replaces same id) | `scheduled` |
-| `CancelNotificationEvent(id)` | cancel + untrack | `scheduled` |
-| `CancelAllNotificationsEvent` | cancel all + clear | `scheduled` |
-| `NotificationTappedEvent(tap)` *internal* | record `lastTap` | `tap` |
-| `SetPermissionStatusEvent(bool)` | record permission flag | `permission` |
+| Event | Concurrency | Effect | Group |
+|---|---|---|---|
+| `InitializeNotificationsEvent(config)` | `droppable` + shared FIFO | configure, init service, listen for taps | — |
+| `ShowNotificationEvent(n)` | `concurrent` dispatcher → shared FIFO | post now (side-effect only) | — |
+| `ScheduleNotificationEvent(n, when)` | `concurrent` dispatcher → shared FIFO | schedule + track (replaces same id) | `scheduled` |
+| `CancelNotificationEvent(id)` | `concurrent` dispatcher → shared FIFO | cancel + untrack | `scheduled` |
+| `CancelAllNotificationsEvent` | `concurrent` dispatcher → shared FIFO | cancel all + clear | `scheduled` |
+| `NotificationTappedEvent(tap)` *internal* | `sequential` | record `lastTap` | `tap` |
+| `SetPermissionStatusEvent(bool)` | `sequential` | record permission flag | `permission` |
+
+Service mutations enter one bloc-owned FIFO immediately. Per-type sequential
+modes cannot preserve ordering between schedule and cancellation event types.
 
 ## State
 

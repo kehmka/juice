@@ -9,12 +9,14 @@ class CancelAllNotificationsUseCase
     extends BlocUseCase<NotificationsBloc, CancelAllNotificationsEvent> {
   @override
   Future<void> execute(CancelAllNotificationsEvent event) async {
-    await bloc.service.cancelAll();
-    if (bloc.state.scheduled.isNotEmpty) {
-      emitUpdate(
-        newState: bloc.state.copyWith(scheduled: const []),
-        groupsToRebuild: {NotificationsGroups.scheduled},
-      );
-    }
+    await bloc.runServiceOperation(() async {
+      await bloc.service.cancelAll();
+      if (bloc.state.scheduled.isNotEmpty) {
+        emitUpdate(
+          newState: bloc.state.copyWith(scheduled: const []),
+          groupsToRebuild: {NotificationsGroups.scheduled},
+        );
+      }
+    });
   }
 }

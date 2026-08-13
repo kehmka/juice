@@ -9,15 +9,17 @@ class ScheduleNotificationUseCase
     extends BlocUseCase<NotificationsBloc, ScheduleNotificationEvent> {
   @override
   Future<void> execute(ScheduleNotificationEvent event) async {
-    await bloc.service.schedule(event.notification, event.when);
+    await bloc.runServiceOperation(() async {
+      await bloc.service.schedule(event.notification, event.when);
 
-    final next = [
-      ...bloc.state.scheduled.where((n) => n.id != event.notification.id),
-      event.notification,
-    ];
-    emitUpdate(
-      newState: bloc.state.copyWith(scheduled: next),
-      groupsToRebuild: {NotificationsGroups.scheduled},
-    );
+      final next = [
+        ...bloc.state.scheduled.where((n) => n.id != event.notification.id),
+        event.notification,
+      ];
+      emitUpdate(
+        newState: bloc.state.copyWith(scheduled: next),
+        groupsToRebuild: {NotificationsGroups.scheduled},
+      );
+    });
   }
 }

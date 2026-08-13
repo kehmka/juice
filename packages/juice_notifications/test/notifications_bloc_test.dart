@@ -9,24 +9,34 @@ class FakeNotificationService implements NotificationService {
   final List<JuiceNotification> shown = [];
   final List<JuiceNotification> scheduled = [];
   final List<int> cancelled = [];
+  final List<String> operations = [];
+  Completer<void>? scheduleGate;
   int cancelAllCalls = 0;
   bool disposed = false;
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize() async => operations.add('initialize');
 
   @override
   Future<void> show(JuiceNotification n) async => shown.add(n);
 
   @override
-  Future<void> schedule(JuiceNotification n, DateTime when) async =>
-      scheduled.add(n);
+  Future<void> schedule(JuiceNotification n, DateTime when) async {
+    operations.add('schedule:${n.id}:start');
+    await scheduleGate?.future;
+    scheduled.add(n);
+    operations.add('schedule:${n.id}:end');
+  }
 
   @override
   Future<void> cancel(int id) async => cancelled.add(id);
 
   @override
-  Future<void> cancelAll() async => cancelAllCalls++;
+  Future<void> cancelAll() async {
+    operations.add('cancelAll');
+    cancelAllCalls++;
+    scheduled.clear();
+  }
 
   @override
   Stream<NotificationTap> get taps => _taps.stream;
@@ -118,6 +128,40 @@ void main() {
       await settle();
 
       expect(svc.cancelAllCalls, 1);
+      expect(bloc.state.scheduled, isEmpty);
+      await bloc.close();
+    });
+
+    test('service mutations preserve send order across event types', () async {
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+
+      svc.scheduleGate = Completer<void>();
+      final first = bloc.send(
+        ScheduleNotificationEvent(notif(1), DateTime(2030)),
+      );
+      await settle();
+      final second = bloc.send(
+        ScheduleNotificationEvent(notif(2), DateTime(2030)),
+      );
+      final cancelAll = bloc.send(CancelAllNotificationsEvent());
+      await settle();
+
+      expect(svc.operations, ['initialize', 'schedule:1:start']);
+      svc.scheduleGate!.complete();
+      await Future.wait([first, second, cancelAll]);
+
+      expect(svc.operations, [
+        'initialize',
+        'schedule:1:start',
+        'schedule:1:end',
+        'schedule:2:start',
+        'schedule:2:end',
+        'cancelAll',
+      ]);
+      expect(svc.scheduled, isEmpty);
       expect(bloc.state.scheduled, isEmpty);
       await bloc.close();
     });

@@ -9,6 +9,8 @@ class ShowNotificationUseCase
     extends BlocUseCase<NotificationsBloc, ShowNotificationEvent> {
   @override
   Future<void> execute(ShowNotificationEvent event) async {
-    await bloc.service.show(event.notification);
+    await bloc.runServiceOperation(
+      () => bloc.service.show(event.notification),
+    );
   }
 }

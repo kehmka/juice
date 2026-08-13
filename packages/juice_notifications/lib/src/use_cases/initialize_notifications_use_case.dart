@@ -9,8 +9,10 @@ class InitializeNotificationsUseCase
     extends BlocUseCase<NotificationsBloc, InitializeNotificationsEvent> {
   @override
   Future<void> execute(InitializeNotificationsEvent event) async {
-    bloc.configure(event.config);
-    await bloc.service.initialize();
-    bloc.startListeningForTaps();
+    await bloc.runServiceOperation(() async {
+      bloc.configure(event.config);
+      await bloc.service.initialize();
+      bloc.startListeningForTaps();
+    });
   }
 }

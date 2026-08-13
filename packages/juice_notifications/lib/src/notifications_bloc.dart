@@ -26,6 +26,7 @@ import 'use_cases/show_notification_use_case.dart';
 class NotificationsBloc extends JuiceBloc<NotificationsState> {
   late NotificationsConfig _config;
   StreamSubscription<NotificationTap>? _tapSubscription;
+  Future<void> _serviceOperationTail = Future<void>.value();
 
   NotificationsBloc()
       : super(
@@ -34,30 +35,39 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeNotificationsEvent,
                   useCaseGenerator: () => InitializeNotificationsUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ShowNotificationEvent,
                   useCaseGenerator: () => ShowNotificationUseCase(),
+                  // Service mutations share a cross-event FIFO below. They
+                  // enter it concurrently to preserve global send order.
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ScheduleNotificationEvent,
                   useCaseGenerator: () => ScheduleNotificationUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CancelNotificationEvent,
                   useCaseGenerator: () => CancelNotificationUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CancelAllNotificationsEvent,
                   useCaseGenerator: () => CancelAllNotificationsUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: NotificationTappedEvent,
                   useCaseGenerator: () => NotificationTappedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetPermissionStatusEvent,
                   useCaseGenerator: () => SetPermissionStatusUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );
@@ -74,6 +84,24 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
 
   /// Store config during initialization.
   void configure(NotificationsConfig config) => _config = config;
+
+  /// Run one service mutation at a time across every notification event type.
+  ///
+  /// Scheduling and cancellation use different runtime event types but mutate
+  /// the same platform service and tracked list. Enqueuing before the first
+  /// await preserves their global send order.
+  Future<void> runServiceOperation(Future<void> Function() operation) async {
+    final previous = _serviceOperationTail;
+    final done = Completer<void>();
+    _serviceOperationTail = done.future;
+
+    try {
+      await previous;
+      await operation();
+    } finally {
+      done.complete();
+    }
+  }
 
   /// Forward service taps as events.
   void startListeningForTaps() {

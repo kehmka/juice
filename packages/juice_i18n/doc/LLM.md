@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_i18n
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_storage: ">=1.2.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_i18n — AI card
@@ -31,7 +31,7 @@ For formatting reach for `intl`; this owns string selection only.
 
 ```yaml
 dependencies:
-  juice_i18n: ^0.1.0
+  juice_i18n: ^0.2.0
   juice_storage: ^1.2.0   # for the default StorageLocalePersistence
 ```
 
@@ -94,13 +94,16 @@ Locale systemLocale();
 
 ## Events
 
-| Event | Effect | Groups |
-|---|---|---|
-| `InitializeI18nEvent(config)` | configure, load initial locale (persisted → system → fallback); does **not** persist | `i18n:locale`, `i18n:translations` |
-| `SetLocaleEvent(locale)` | resolve + load + persist (followSystem=false) | both |
-| `UseSystemLocaleEvent` | resolve system + load + persist (followSystem=true) | both |
+| Event | Concurrency | Effect | Groups |
+|---|---|---|---|
+| `InitializeI18nEvent(config)` | `droppable` | configure, load initial locale (persisted → system → fallback); does **not** persist | `i18n:locale`, `i18n:translations` |
+| `SetLocaleEvent(locale)` | `concurrent` dispatcher → shared FIFO | resolve + load + persist (followSystem=false) | both |
+| `UseSystemLocaleEvent` | `concurrent` dispatcher → shared FIFO | resolve system + load + persist (followSystem=true) | both |
 
 All three share the `I18nLoad` mixin: resolve → emit `isLoading` → load → emit → persist.
+The two switch event types deliberately enter a bloc-owned FIFO immediately;
+per-type `sequential` modes cannot order different runtime types. This keeps all
+translation loads exclusive while preserving request order across both APIs.
 
 ## State
 

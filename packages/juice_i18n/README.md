@@ -22,7 +22,7 @@ wrap your `AppLocalizations`).
 
 ```yaml
 dependencies:
-  juice_i18n: ^0.1.0
+  juice_i18n: ^0.2.0
 ```
 
 ## Use

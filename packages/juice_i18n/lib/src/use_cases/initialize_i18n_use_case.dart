@@ -13,18 +13,19 @@ class InitializeI18nUseCase extends BlocUseCase<I18nBloc, InitializeI18nEvent>
   Future<void> execute(InitializeI18nEvent event) async {
     bloc.configure(event.config);
 
-    final saved = await bloc.persistence?.load();
-    if (saved != null) {
-      final target =
-          saved.followSystem ? bloc.systemLocale() : saved.locale;
-      await loadAndApply(target,
-          followSystem: saved.followSystem, persist: false);
-      return;
-    }
+    await bloc.runLocaleChange(() async {
+      final saved = await bloc.persistence?.load();
+      if (saved != null) {
+        final target = saved.followSystem ? bloc.systemLocale() : saved.locale;
+        await loadAndApply(target,
+            followSystem: saved.followSystem, persist: false);
+        return;
+      }
 
-    final followSystem = event.config.followSystemByDefault;
-    final target =
-        followSystem ? bloc.systemLocale() : event.config.fallbackLocale;
-    await loadAndApply(target, followSystem: followSystem, persist: false);
+      final followSystem = event.config.followSystemByDefault;
+      final target =
+          followSystem ? bloc.systemLocale() : event.config.fallbackLocale;
+      await loadAndApply(target, followSystem: followSystem, persist: false);
+    });
   }
 }

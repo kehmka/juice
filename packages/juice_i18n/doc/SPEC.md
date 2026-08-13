@@ -88,23 +88,27 @@ Resolution: exact (language+country) → language-only → `fallbackLocale`.
 
 ## Events
 
-| Event | Effect | Groups |
-|-------|--------|--------|
-| `InitializeI18nEvent(config)` | configure, load initial locale (persisted → system → fallback) | `i18n:locale`, `i18n:translations` |
-| `SetLocaleEvent(locale)` | resolve + load + persist (followSystem=false) | both |
-| `UseSystemLocaleEvent` | resolve system + load + persist (followSystem=true) | both |
+| Event | Concurrency | Effect | Groups |
+|-------|-------------|--------|--------|
+| `InitializeI18nEvent(config)` | `droppable` | configure, load initial locale (persisted → system → fallback) | `i18n:locale`, `i18n:translations` |
+| `SetLocaleEvent(locale)` | `concurrent` dispatcher → shared FIFO | resolve + load + persist (followSystem=false) | both |
+| `UseSystemLocaleEvent` | `concurrent` dispatcher → shared FIFO | resolve system + load + persist (followSystem=true) | both |
 
 All three share the `I18nLoad` mixin (resolve → load → emit → persist).
+The switch events use a bloc-owned FIFO because Juice concurrency modes are
+per exact runtime type. This makes translation loading globally exclusive and
+preserves request order across explicit and follow-system changes.
 
 ## Testing
 
 `I18nBloc` runs headless via `MapTranslationSource` + a fake `LocalePersistence`
 + an injected `resolveSystemLocale`: init/fallback/system/restore, locale
-switching, resolution-to-fallback, missing-key, and pluralization (incl.
-fallback to `.other`).
+switching, cross-event FIFO ordering, resolution-to-fallback, missing-key, and
+pluralization (incl. fallback to `.other`).
 
 ## Spec Version
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-12 | Juice 1.6 concurrency policy + cross-event locale FIFO |
 | 1.0 | 2026-05-28 | Implemented |

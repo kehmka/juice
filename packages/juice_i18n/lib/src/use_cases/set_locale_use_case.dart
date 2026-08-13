@@ -9,6 +9,8 @@ class SetLocaleUseCase extends BlocUseCase<I18nBloc, SetLocaleEvent>
     with I18nLoad<SetLocaleEvent> {
   @override
   Future<void> execute(SetLocaleEvent event) async {
-    await loadAndApply(event.locale, followSystem: false);
+    await bloc.runLocaleChange(
+      () => loadAndApply(event.locale, followSystem: false),
+    );
   }
 }

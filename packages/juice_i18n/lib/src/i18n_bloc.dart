@@ -26,6 +26,7 @@ import 'use_cases/use_system_locale_use_case.dart';
 /// ```
 class I18nBloc extends JuiceBloc<I18nState> {
   late I18nConfig _config;
+  Future<void> _localeChangeTail = Future<void>.value();
 
   I18nBloc()
       : super(
@@ -34,14 +35,20 @@ class I18nBloc extends JuiceBloc<I18nState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeI18nEvent,
                   useCaseGenerator: () => InitializeI18nUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetLocaleEvent,
                   useCaseGenerator: () => SetLocaleUseCase(),
+                  // Locale changes share a cross-event FIFO below. Keeping
+                  // dispatcher execution concurrent lets every request enter
+                  // that queue immediately, preserving send order.
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UseSystemLocaleEvent,
                   useCaseGenerator: () => UseSystemLocaleUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
         );
@@ -66,6 +73,24 @@ class I18nBloc extends JuiceBloc<I18nState> {
   Locale systemLocale() =>
       _config.resolveSystemLocale?.call() ?? PlatformDispatcher.instance.locale;
 
+  /// Run one locale-changing operation at a time across every event type.
+  ///
+  /// `SetLocaleEvent` and `UseSystemLocaleEvent` have different runtime types,
+  /// so their per-type dispatcher modes cannot serialize them with each other.
+  /// Enqueuing here before the first await preserves global request order.
+  Future<void> runLocaleChange(Future<void> Function() operation) async {
+    final previous = _localeChangeTail;
+    final done = Completer<void>();
+    _localeChangeTail = done.future;
+
+    try {
+      await previous;
+      await operation();
+    } finally {
+      done.complete();
+    }
+  }
+
   /// Resolve [want] against the source's supported locales: exact (language +
   /// country) → language-only → fallback.
   Locale resolveLocale(Locale want) {
@@ -89,8 +114,7 @@ class I18nBloc extends JuiceBloc<I18nState> {
   /// values from [args]. Missing keys fall back via `config.onMissing`, else
   /// the key itself.
   String t(String key, {Map<String, Object>? args}) {
-    final raw =
-        state.translations[key] ?? _config.onMissing?.call(key) ?? key;
+    final raw = state.translations[key] ?? _config.onMissing?.call(key) ?? key;
     return _interpolate(raw, args);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_i18n/juice_i18n.dart';
@@ -9,6 +11,52 @@ class FakeLocalePersistence implements LocalePersistence {
   Future<LocaleChoice?> load() async => saved;
   @override
   Future<void> save(LocaleChoice choice) async => saved = choice;
+}
+
+class GatedTranslationSource implements TranslationSource {
+  @override
+  final List<Locale> supportedLocales = const [Locale('en'), Locale('es')];
+
+  final loadOrder = <String>[];
+  final pending = <({
+    String languageCode,
+    Completer<Map<String, String>> completer,
+  })>[];
+  bool gateLoads = false;
+  int activeLoads = 0;
+  int maxActiveLoads = 0;
+
+  @override
+  Future<Map<String, String>> load(Locale locale) async {
+    loadOrder.add(locale.languageCode);
+    activeLoads++;
+    if (activeLoads > maxActiveLoads) maxActiveLoads = activeLoads;
+
+    try {
+      if (!gateLoads) return _translations(locale.languageCode);
+
+      final completer = Completer<Map<String, String>>();
+      pending.add((
+        languageCode: locale.languageCode,
+        completer: completer,
+      ));
+      return await completer.future;
+    } finally {
+      activeLoads--;
+    }
+  }
+
+  void completeNext() {
+    final request = pending.removeAt(0);
+    request.completer.complete(_translations(request.languageCode));
+  }
+
+  Map<String, String> _translations(String languageCode) => {
+        'greeting': languageCode == 'es' ? 'Hola' : 'Hello',
+      };
+
+  @override
+  Future<void> dispose() async {}
 }
 
 void main() {
@@ -52,8 +100,8 @@ void main() {
     });
 
     test('follows system locale when configured', () async {
-      final bloc =
-          I18nBloc.withConfig(cfg(followSystemByDefault: true, system: const Locale('es')));
+      final bloc = I18nBloc.withConfig(
+          cfg(followSystemByDefault: true, system: const Locale('es')));
       await settle();
       expect(bloc.state.locale.languageCode, 'es');
       expect(bloc.state.followSystem, isTrue);
@@ -83,6 +131,39 @@ void main() {
       expect(bloc.state.locale.languageCode, 'es');
       expect(bloc.t('greeting', args: {'name': 'Ada'}), 'Hola Ada');
       expect(p.saved?.locale.languageCode, 'es');
+      await bloc.close();
+    });
+
+    test('serializes explicit and system locale loads in request order',
+        () async {
+      final translations = GatedTranslationSource();
+      final bloc = I18nBloc.withConfig(I18nConfig(
+        source: translations,
+        fallbackLocale: const Locale('en'),
+        followSystemByDefault: false,
+        resolveSystemLocale: () => const Locale('en'),
+      ));
+      await settle();
+
+      translations.gateLoads = true;
+      final explicit = bloc.send(SetLocaleEvent(const Locale('es')));
+      await settle();
+      final system = bloc.send(UseSystemLocaleEvent());
+      await settle();
+
+      expect(translations.loadOrder, ['en', 'es']);
+      expect(translations.activeLoads, 1);
+
+      translations.completeNext();
+      await settle();
+      expect(translations.loadOrder, ['en', 'es', 'en']);
+      expect(translations.maxActiveLoads, 1);
+
+      translations.completeNext();
+      await Future.wait([explicit, system]);
+      expect(bloc.state.locale, const Locale('en'));
+      expect(bloc.state.followSystem, isTrue);
+      expect(bloc.t('greeting'), 'Hello');
       await bloc.close();
     });
   });

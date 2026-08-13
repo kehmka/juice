@@ -1,6 +1,6 @@
 name: juice_location
 description: Device location (one-shot + continuous tracking) as a Juice bloc, behind a swappable source seam.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_location
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -17,7 +17,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.4.0
+  juice: ^1.6.0
   geolocator: ^13.0.0
 
 dev_dependencies:

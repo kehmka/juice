@@ -46,26 +46,31 @@ class LocationState extends BlocState {
 
 ## Events
 
-| Event | Effect | Groups |
-|-------|--------|--------|
-| `InitializeLocationEvent(config)` | store config | — |
-| `GetCurrentLocationEvent` | one-shot read (→ `LocationChanged`, or error) | `location:position` / `location:error` |
-| `StartTrackingEvent` | subscribe to `positions()` | `location:tracking` |
-| `StopTrackingEvent` | cancel subscription | `location:tracking` |
-| `LocationChangedEvent` | internal — record position | `location:position` |
-| `SetPermissionStatusEvent(granted)` | record permission (from `PermissionBinding`) | `location:permission` |
+| Event | Concurrency | Effect | Groups |
+|-------|-------------|--------|--------|
+| `InitializeLocationEvent(config)` | `droppable` | store config | — |
+| `GetCurrentLocationEvent` | `droppable` | one-shot read (→ `LocationChanged`, or error) | `location:position` / `location:error` |
+| `StartTrackingEvent` | `sequential` | subscribe to `positions()` | `location:tracking` |
+| `StopTrackingEvent` | `sequential` | cancel subscription | `location:tracking` |
+| `LocationChangedEvent` | `sequential` | internal — record position | `location:position` |
+| `SetPermissionStatusEvent(granted)` | `sequential` | record permission (from `PermissionBinding`) | `location:permission` |
+
+One-shot reads are exclusive, preventing slower duplicate requests from
+overwriting one another. State mutations retain event order.
 
 The bloc owns the tracking `StreamSubscription` (started in `startTracking`,
 cancelled in `stopTracking` and `close`).
 
 ## Testing
 
-Headless with a fake `LocationSource`: one-shot read, error surfacing, tracking
-start/stop (no updates after stop), permission flag, dispose. The device-touching
+Headless with a fake `LocationSource`: one-shot read and in-flight coalescing,
+error surfacing, ordered position bursts, tracking start/stop (no updates after
+stop), permission flag, dispose. The device-touching
 `GeolocatorLocationSource` is verified by inspection + one on-device run.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-12 | Juice 1.6 concurrency policy + overlap coverage |
 | 1.0 | 2026-05-28 | Implemented |

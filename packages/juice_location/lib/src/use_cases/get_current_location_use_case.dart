@@ -11,7 +11,7 @@ class GetCurrentLocationUseCase
   Future<void> execute(GetCurrentLocationEvent event) async {
     try {
       final position = await bloc.source.current();
-      bloc.send(LocationChangedEvent(position));
+      await bloc.send(LocationChangedEvent(position));
     } catch (e) {
       emitFailure(
         newState: bloc.state.copyWith(lastError: e.toString()),

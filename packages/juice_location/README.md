@@ -16,7 +16,7 @@ permission *grant* (that's `juice_permissions`, via `PermissionBinding`), or map
 
 ```yaml
 dependencies:
-  juice_location: ^0.1.0
+  juice_location: ^0.2.0
 ```
 
 The default source uses `geolocator` — follow its platform setup (Info.plist /

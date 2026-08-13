@@ -34,26 +34,32 @@ class LocationBloc extends JuiceBloc<LocationState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeLocationEvent,
                   useCaseGenerator: () => InitializeLocationUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: GetCurrentLocationEvent,
                   useCaseGenerator: () => GetCurrentLocationUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: StartTrackingEvent,
                   useCaseGenerator: () => StartTrackingUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: StopTrackingEvent,
                   useCaseGenerator: () => StopTrackingUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LocationChangedEvent,
                   useCaseGenerator: () => LocationChangedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetPermissionStatusEvent,
                   useCaseGenerator: () => SetPermissionStatusUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

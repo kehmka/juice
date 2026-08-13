@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_location
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   geolocator: ">=13.0.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_location — AI card
@@ -25,7 +25,7 @@ updated: 2026-06-09
 
 ```yaml
 dependencies:
-  juice_location: ^0.1.0
+  juice_location: ^0.2.0
 ```
 
 Default source is `geolocator` — add its platform setup (iOS
@@ -66,14 +66,17 @@ void setPermissionStatus(bool granted);  // wire from juice_permissions
 
 ## Events
 
-| Event | Effect | Group |
-|---|---|---|
-| `InitializeLocationEvent(config)` | store config | — |
-| `GetCurrentLocationEvent` | one-shot read → `LocationChanged`, or error | `position` / `error` |
-| `StartTrackingEvent` | subscribe to `positions()` (no-op if tracking) | `tracking` |
-| `StopTrackingEvent` | cancel subscription (no-op if not tracking) | `tracking` |
-| `LocationChangedEvent(pos)` *internal* | record position; clears error | `position` |
-| `SetPermissionStatusEvent(bool)` | record permission flag | `permission` |
+| Event | Concurrency | Effect | Group |
+|---|---|---|---|
+| `InitializeLocationEvent(config)` | `droppable` | store config | — |
+| `GetCurrentLocationEvent` | `droppable` | one-shot read → `LocationChanged`, or error | `position` / `error` |
+| `StartTrackingEvent` | `sequential` | subscribe to `positions()` (no-op if tracking) | `tracking` |
+| `StopTrackingEvent` | `sequential` | cancel subscription (no-op if not tracking) | `tracking` |
+| `LocationChangedEvent(pos)` *internal* | `sequential` | record position; clears error | `position` |
+| `SetPermissionStatusEvent(bool)` | `sequential` | record permission flag | `permission` |
+
+One-shot reads are exclusive: a second request while one is in flight is
+coalesced. Position and status mutations retain their event order.
 
 ## State
 

@@ -1116,6 +1116,20 @@ This is the **stable, contractual event surface** for FetchBloc.
 > `ResultEvent`"). Where the two disagree, the code wins. A full top-to-bottom
 > pass to scrub remaining `<T>` / `event.result` mentions is tracked separately.
 
+### Concurrency policy
+
+Every registered handler declares a Juice 1.6 concurrency mode:
+
+- `InitializeFetchEvent` is `droppable`.
+- HTTP request events are intentionally `concurrent`; `RequestCoalescer`
+  deduplicates identical keys and the bloc's slot queue enforces
+  `maxConcurrentRequests`.
+- Reset, interceptor configuration, cancellation, cache-maintenance, and
+  observability events are `sequential` per exact event type.
+
+The existing coalescing and concurrency-limit tests require request handlers to
+remain concurrent and guard this policy against accidental serialization.
+
 ### Event Input/Output Contract
 
 #### Request Events (results delivered to state)
@@ -2793,7 +2807,7 @@ packages/juice_network/
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.2.0
+  juice: ^1.6.0
   juice_storage: ^1.0.0  # For cache persistence
   dio: ^5.4.0
   crypto: ^3.0.3         # For body hashing
@@ -3192,3 +3206,4 @@ implemented. Runtime interceptor mutation is available via
 | 1.4 | - | Frozen | Original implementation contract |
 | 1.5 | - | Implemented | Reconciled with shipping code; added [Implementation Notes](#implementation-notes) (code is source of truth) |
 | 1.6 | 2026-06-09 | Implemented | Fixed the Events Contract "Request Events" subsection to match the shipped fire-and-forget API (non-generic events, `decode` callback, results to state @ `fetch:request:<canonical>`); removed the awaitable `event.result` usage example |
+| 1.7 | 2026-08-12 | Implemented | Documented Juice 1.6 event concurrency policy; request events remain intentionally concurrent |

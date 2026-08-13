@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_network
-version: 0.12.0
+version: 0.13.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_storage: ">=1.2.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_network — AI card
@@ -34,7 +34,7 @@ errors / dedup / observability. A single endpoint utility can just use Dio.
 
 ```yaml
 dependencies:
-  juice_network: ^0.12.0
+  juice_network: ^0.13.0
   juice_storage: ^1.2.0   # required — cache persistence
   dio: ^5.4.0             # the injected transport
 ```
@@ -100,18 +100,21 @@ Requests are **non-generic** events carrying a `decode` callback (not awaitable
 the code is the source of truth). Decoded value + status flow to state under the
 `fetch:request:<canonical>` group.
 
-| Event | Effect / default cache policy |
-|---|---|
-| `InitializeFetchEvent(config, interceptors?)` | configure Dio + interceptors; `isInitialized=true` |
-| `ResetFetchEvent(clearCache, cancelInflight, resetStats)` | return to baseline |
-| `ReconfigureInterceptorsEvent(interceptors)` | rebuild the Dio interceptor chain (priority-sorted) |
-| `GetEvent(url, decode?, cachePolicy?, ttl?, scope?, …)` | GET; default policy = `config.defaultCachePolicy` (`networkFirst`); `retryable=true` |
-| `PostEvent(url, body?, idempotencyKey?, …)` | POST; default `networkOnly`; `retryable=false` (retry needs `idempotencyKey`) |
-| `PutEvent` / `PatchEvent` / `DeleteEvent` / `HeadEvent` | mutation/read; mutations default `networkOnly` |
-| `InvalidateCacheEvent(key?, urlPattern?, namespace?)` | drop matching cache entries |
-| `ClearCacheEvent(namespace?)` · `PruneCacheEvent(targetBytes?)` · `CleanupExpiredCacheEvent` | cache maintenance |
-| `CancelRequestEvent(key)` · `CancelScopeEvent(scope)` · `CancelAllEvent` | cancel → callers see `CancelledError` |
-| `ResetStatsEvent` *internal-ish* · `ClearLastErrorEvent` | observability |
+| Event | Concurrency | Effect / default cache policy |
+|---|---|---|
+| `InitializeFetchEvent(config, interceptors?)` | `droppable` | configure Dio + interceptors; `isInitialized=true` |
+| `ResetFetchEvent(clearCache, cancelInflight, resetStats)` | `sequential` | return to baseline |
+| `ReconfigureInterceptorsEvent(interceptors)` | `sequential` | rebuild the Dio interceptor chain (priority-sorted) |
+| `GetEvent(url, decode?, cachePolicy?, ttl?, scope?, …)` | `concurrent` | GET; default policy = `config.defaultCachePolicy` (`networkFirst`); `retryable=true` |
+| `PostEvent(url, body?, idempotencyKey?, …)` | `concurrent` | POST; default `networkOnly`; `retryable=false` (retry needs `idempotencyKey`) |
+| `PutEvent` / `PatchEvent` / `DeleteEvent` / `HeadEvent` | `concurrent` | mutation/read; mutations default `networkOnly` |
+| `InvalidateCacheEvent(key?, urlPattern?, namespace?)` | `sequential` | drop matching cache entries |
+| `ClearCacheEvent(namespace?)` · `PruneCacheEvent(targetBytes?)` · `CleanupExpiredCacheEvent` | `sequential` | cache maintenance |
+| `CancelRequestEvent(key)` · `CancelScopeEvent(scope)` · `CancelAllEvent` | `sequential` | cancel → callers see `CancelledError` |
+| `ResetStatsEvent` *internal-ish* · `ClearLastErrorEvent` | `sequential` | observability |
+
+HTTP events stay intentionally concurrent: `RequestCoalescer` deduplicates
+identical keys and the bloc's slot queue enforces `maxConcurrentRequests`.
 
 ## State
 

@@ -21,7 +21,7 @@ A lifecycle-aware HTTP workflow package for [Juice](https://pub.dev/packages/jui
 
 ```yaml
 dependencies:
-  juice_network: ^0.10.0
+  juice_network: ^0.13.0
 ```
 
 ## Quick Start
@@ -200,25 +200,14 @@ FetchConfig(
 
 ## Events
 
-| Event | Description |
-|-------|-------------|
-| `InitializeFetchEvent` | Initialize with configuration |
-| `GetEvent` | HTTP GET request |
-| `PostEvent` | HTTP POST request |
-| `PutEvent` | HTTP PUT request |
-| `PatchEvent` | HTTP PATCH request |
-| `DeleteEvent` | HTTP DELETE request |
-| `HeadEvent` | HTTP HEAD request |
-| `InvalidateCacheEvent` | Invalidate cache by key, pattern, or namespace |
-| `ClearCacheEvent` | Clear all cached responses (or by namespace) |
-| `CleanupExpiredCacheEvent` | Remove expired cache entries |
-| `PruneCacheEvent` | Prune cache to target size |
-| `CancelRequestEvent` | Cancel a specific request |
-| `CancelScopeEvent` | Cancel all requests in a scope |
-| `CancelAllEvent` | Cancel all inflight requests |
-| `ResetFetchEvent` | Reset FetchBloc to baseline state |
-| `ResetStatsEvent` | Reset statistics counters |
-| `ReconfigureInterceptorsEvent` | Change interceptors at runtime |
+| Event | Concurrency | Description |
+|-------|-------------|-------------|
+| `InitializeFetchEvent` | `droppable` | Initialize with configuration |
+| `GetEvent` / `PostEvent` / `PutEvent` / `PatchEvent` / `DeleteEvent` / `HeadEvent` | `concurrent` | HTTP requests; coalescer + global slot limit govern parallel work |
+| `InvalidateCacheEvent` / `ClearCacheEvent` / `CleanupExpiredCacheEvent` / `PruneCacheEvent` | `sequential` | Cache maintenance |
+| `CancelRequestEvent` / `CancelScopeEvent` / `CancelAllEvent` | `sequential` | Cancel inflight work |
+| `ResetFetchEvent` / `ResetStatsEvent` | `sequential` | Reset state or statistics |
+| `ReconfigureInterceptorsEvent` | `sequential` | Change interceptors at runtime |
 
 ## Rebuild Groups
 

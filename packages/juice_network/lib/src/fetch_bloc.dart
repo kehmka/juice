@@ -55,10 +55,12 @@ class FetchBloc extends JuiceBloc<FetchState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeFetchEvent,
                   useCaseGenerator: () => InitializeFetchUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ResetFetchEvent,
                   useCaseGenerator: () => ResetFetchUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => InlineUseCaseBuilder<FetchBloc, FetchState,
                     ReconfigureInterceptorsEvent>(
@@ -76,64 +78,80 @@ class FetchBloc extends JuiceBloc<FetchState> {
                           .add(FetchInterceptorAdapter(interceptor));
                     }
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // HTTP Methods
             () => UseCaseBuilder(
                   typeOfEvent: GetEvent,
                   useCaseGenerator: () => GetUseCase(),
+                  // Requests are independent and the request layer provides
+                  // key-based coalescing plus a global concurrency limit.
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PostEvent,
                   useCaseGenerator: () => PostUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PutEvent,
                   useCaseGenerator: () => PutUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PatchEvent,
                   useCaseGenerator: () => PatchUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: DeleteEvent,
                   useCaseGenerator: () => DeleteUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: HeadEvent,
                   useCaseGenerator: () => HeadUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
 
             // Cancellation
             () => UseCaseBuilder(
                   typeOfEvent: CancelRequestEvent,
                   useCaseGenerator: () => CancelRequestUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CancelScopeEvent,
                   useCaseGenerator: () => CancelScopeUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CancelAllEvent,
                   useCaseGenerator: () => CancelAllUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Cache
             () => UseCaseBuilder(
                   typeOfEvent: InvalidateCacheEvent,
                   useCaseGenerator: () => InvalidateCacheUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ClearCacheEvent,
                   useCaseGenerator: () => ClearCacheUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: PruneCacheEvent,
                   useCaseGenerator: () => PruneCacheUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CleanupExpiredCacheEvent,
                   useCaseGenerator: () => CleanupExpiredCacheUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Observability
@@ -145,6 +163,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
                       groups: {FetchGroups.statsGroup},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => InlineUseCaseBuilder<FetchBloc, FetchState,
                     ClearLastErrorEvent>(
@@ -155,6 +174,7 @@ class FetchBloc extends JuiceBloc<FetchState> {
                       groups: {FetchGroups.error},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         ) {

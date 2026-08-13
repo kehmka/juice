@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-08-12
+
+### Changed
+
+- Require `juice ^1.6.0` and declare an explicit concurrency policy for every
+  event.
+- Keep HTTP request events intentionally concurrent so request-key coalescing
+  and `maxConcurrentRequests` continue to govern parallel work.
+- Coalesce overlapping initialization and serialize configuration,
+  cancellation, cache-maintenance, reset, and observability mutations.
+
 ## [0.12.1] - 2026-06-16
 
 ### Changed

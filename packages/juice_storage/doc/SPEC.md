@@ -18,7 +18,7 @@ behind one bloc.
 
 ## Dependencies
 
-`juice` + the platform storage plugins (`hive`/`hive_flutter`,
+`juice` + the platform storage plugins (`hive_ce`/`hive_ce_flutter`,
 `shared_preferences`, `sqflite`, `flutter_secure_storage`).
 
 ## Family-shape notes (intentional divergences)
@@ -46,6 +46,11 @@ Everything else follows the family shape: `StorageBloc extends
 JuiceBloc<StorageState>`, immutable `StorageState extends BlocState` with
 `copyWith` and `static const initial`, event-driven use cases.
 
+All builders explicitly use `EventConcurrency.concurrent`. Mutations and
+resource-lifecycle commands enter one bloc-wide FIFO in send order, while
+read-only queries remain concurrent. A TTL read enters the mutation FIFO only
+for lazy eviction and re-checks expiration before deleting.
+
 ## State
 
 ```dart
@@ -70,4 +75,5 @@ groups via the bloc's helper.
 
 | Version | Date | Status |
 |---------|------|--------|
+| 1.1 | 2026-08-13 | Documents cross-event FIFO ordering |
 | 1.0 | 2026-05-28 | Implemented (documents shipping behavior) |

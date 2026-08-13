@@ -14,6 +14,7 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 - **Background Cleanup**: Optional background task for proactive cache eviction
 - **Secure Storage**: Encrypted storage for sensitive data (tokens, credentials)
 - **Event-Driven**: Full BLoC pattern integration with helper methods for convenience
+- **Ordered Mutations**: Writes/deletes/cleanup preserve order while reads remain concurrent
 - **Lazy Loading**: Support for lazy Hive box initialization
 
 ## Platform Support
@@ -33,8 +34,8 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 
 ```yaml
 dependencies:
-  juice: ^1.4.0
-  juice_storage: ^1.2.0
+  juice: ^1.6.0
+  juice_storage: ^2.1.0
 ```
 
 ### Platform setup — secure storage

@@ -46,6 +46,7 @@ class StorageBloc extends JuiceBloc<StorageState> {
   final CacheIndex _cacheIndex;
   Timer? _cleanupTimer;
   bool _cleanupRunning = false;
+  Future<void> _storageMutationTail = Future<void>.value();
 
   /// For testing: allows overriding the current time.
   ///
@@ -81,96 +82,117 @@ class StorageBloc extends JuiceBloc<StorageState> {
             typeOfEvent: InitializeStorageEvent,
             useCaseGenerator: () =>
                 InitializeUseCase(config: config, cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
 
       // Hive
       () => UseCaseBuilder(
             typeOfEvent: HiveOpenBoxEvent,
             useCaseGenerator: () => HiveOpenBoxUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: HiveCloseBoxEvent,
             useCaseGenerator: () => HiveCloseBoxUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: HiveReadEvent,
             useCaseGenerator: () => HiveReadUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: HiveWriteEvent,
             useCaseGenerator: () => HiveWriteUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: HiveDeleteEvent,
             useCaseGenerator: () => HiveDeleteUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: HiveKeysEvent,
             useCaseGenerator: () => HiveKeysUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
 
       // Prefs
       () => UseCaseBuilder(
             typeOfEvent: PrefsReadEvent,
             useCaseGenerator: () => PrefsReadUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: PrefsWriteEvent,
             useCaseGenerator: () => PrefsWriteUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: PrefsDeleteEvent,
             useCaseGenerator: () => PrefsDeleteUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
 
       // Secure
       () => UseCaseBuilder(
             typeOfEvent: SecureReadEvent,
             useCaseGenerator: () => SecureReadUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SecureWriteEvent,
             useCaseGenerator: () => SecureWriteUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SecureDeleteEvent,
             useCaseGenerator: () => SecureDeleteUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SecureDeleteAllEvent,
             useCaseGenerator: () => SecureDeleteAllUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
 
       // SQLite
       () => UseCaseBuilder(
             typeOfEvent: SqliteQueryEvent,
             useCaseGenerator: () => SqliteQueryUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SqliteInsertEvent,
             useCaseGenerator: () => SqliteInsertUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SqliteUpdateEvent,
             useCaseGenerator: () => SqliteUpdateUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SqliteDeleteEvent,
             useCaseGenerator: () => SqliteDeleteUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SqliteRawEvent,
             useCaseGenerator: () => SqliteRawUseCase(),
+            concurrency: EventConcurrency.concurrent,
           ),
 
       // Cache management
       () => UseCaseBuilder(
             typeOfEvent: CacheCleanupEvent,
             useCaseGenerator: () => CacheCleanupUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
       () => UseCaseBuilder(
             typeOfEvent: ClearAllEvent,
             useCaseGenerator: () => ClearAllUseCase(cacheIndex: cacheIndex),
+            concurrency: EventConcurrency.concurrent,
           ),
     ];
   }
@@ -180,6 +202,26 @@ class StorageBloc extends JuiceBloc<StorageState> {
 
   /// The cache index for TTL metadata.
   CacheIndex get cacheIndex => _cacheIndex;
+
+  /// Run one storage mutation at a time across every mutation event type.
+  ///
+  /// Mutation builders intentionally enter this queue concurrently. Enqueuing
+  /// before the first await preserves their global send order. Read-only
+  /// queries bypass this queue and remain genuinely concurrent.
+  Future<void> runStorageMutation(
+    Future<void> Function() mutation,
+  ) async {
+    final previous = _storageMutationTail;
+    final done = Completer<void>();
+    _storageMutationTail = done.future;
+
+    try {
+      await previous;
+      await mutation();
+    } finally {
+      done.complete();
+    }
+  }
 
   // ===========================================================================
   // Rebuild Groups
@@ -429,6 +471,7 @@ class StorageBloc extends JuiceBloc<StorageState> {
   @override
   Future<void> close() async {
     _cleanupTimer?.cancel();
+    await _storageMutationTail;
     await _cacheIndex.close();
     await super.close();
   }

@@ -98,6 +98,16 @@ class HiveAdapterFactory {
     return _adapters[boxName] as HiveAdapter<T>?;
   }
 
+  /// Install an adapter without opening a box.
+  ///
+  /// Intended only for tests that need deterministic adapter behavior.
+  static void setForTesting(
+    String boxName,
+    HiveAdapter<dynamic> adapter,
+  ) {
+    _adapters[boxName] = adapter;
+  }
+
   /// Close a box and remove its adapter.
   static Future<void> close(String boxName) async {
     final adapter = _adapters.remove(boxName);

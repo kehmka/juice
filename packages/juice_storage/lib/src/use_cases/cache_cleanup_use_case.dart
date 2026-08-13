@@ -1,5 +1,3 @@
-import 'package:juice/juice.dart';
-
 import '../adapters/adapters.dart';
 import '../cache/cache_index.dart';
 import '../cache/cache_stats.dart';
@@ -8,18 +6,20 @@ import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for cleaning up expired cache entries.
 ///
 /// This performs eager cleanup by iterating through all expired entries
 /// in the cache index and deleting them from their respective backends.
-class CacheCleanupUseCase extends BlocUseCase<StorageBloc, CacheCleanupEvent> {
+class CacheCleanupUseCase
+    extends SerializedStorageMutationUseCase<CacheCleanupEvent> {
   final CacheIndex cacheIndex;
 
   CacheCleanupUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(CacheCleanupEvent event) async {
+  Future<void> executeMutation(CacheCleanupEvent event) async {
     try {
       if (!event.runNow) {
         // If not running now, just succeed (interval setup handled elsewhere)

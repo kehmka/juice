@@ -1,5 +1,4 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:juice/juice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adapters/adapters.dart';
@@ -9,17 +8,18 @@ import '../storage_config.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for initializing all storage backends.
 class InitializeUseCase
-    extends BlocUseCase<StorageBloc, InitializeStorageEvent> {
+    extends SerializedStorageMutationUseCase<InitializeStorageEvent> {
   final StorageConfig config;
   final CacheIndex cacheIndex;
 
   InitializeUseCase({required this.config, required this.cacheIndex});
 
   @override
-  Future<void> execute(InitializeStorageEvent event) async {
+  Future<void> executeMutation(InitializeStorageEvent event) async {
     try {
       var status = const StorageBackendStatus();
 

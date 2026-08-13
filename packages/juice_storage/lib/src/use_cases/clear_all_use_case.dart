@@ -1,23 +1,22 @@
-import 'package:juice/juice.dart';
-
 import '../adapters/adapters.dart';
 import '../cache/cache_index.dart';
 import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for clearing all storage (logout scenario).
 ///
 /// Clears data from all storage backends based on the provided options.
 /// This is a destructive operation - use with care.
-class ClearAllUseCase extends BlocUseCase<StorageBloc, ClearAllEvent> {
+class ClearAllUseCase extends SerializedStorageMutationUseCase<ClearAllEvent> {
   final CacheIndex cacheIndex;
 
   ClearAllUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(ClearAllEvent event) async {
+  Future<void> executeMutation(ClearAllEvent event) async {
     final options = event.options;
     final groupsToRebuild = <String>{StorageBloc.groupInit};
 

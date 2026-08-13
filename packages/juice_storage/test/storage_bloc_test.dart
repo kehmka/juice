@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +11,10 @@ import 'package:juice_storage/src/storage_bloc.dart';
 import 'package:juice_storage/src/storage_config.dart';
 import 'package:juice_storage/src/storage_events.dart';
 import 'package:juice_storage/src/storage_state.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'mocks.dart';
 
 /// Helper to ensure CacheMetadata adapter is registered.
 void _ensureAdapterRegistered() {
@@ -25,6 +29,27 @@ void _ensureAdapterRegistered() {
     } catch (_) {
       // Already registered
     }
+  }
+}
+
+class _GatedCacheIndex extends CacheIndex {
+  final setExpiryStarted = Completer<void>();
+  final releaseSetExpiry = Completer<void>();
+  final removeExpiryCalled = Completer<void>();
+
+  @override
+  Future<void> setExpiry(String storageKey, Duration ttl) async {
+    setExpiryStarted.complete();
+    await releaseSetExpiry.future;
+    await super.setExpiry(storageKey, ttl);
+  }
+
+  @override
+  Future<void> removeExpiry(String storageKey) async {
+    if (!removeExpiryCalled.isCompleted) {
+      removeExpiryCalled.complete();
+    }
+    await super.removeExpiry(storageKey);
   }
 }
 
@@ -209,6 +234,93 @@ void main() {
     });
 
     group('Hive helper methods', () {
+      test('allows independent reads to overlap', () async {
+        final box = MockLazyBox<dynamic>();
+        final firstStarted = Completer<void>();
+        final secondStarted = Completer<void>();
+        final releaseReads = Completer<void>();
+
+        when(() => box.get(any())).thenAnswer((invocation) async {
+          final key = invocation.positionalArguments.single as String;
+          if (key == 'first') {
+            firstStarted.complete();
+          } else if (key == 'second') {
+            secondStarted.complete();
+          }
+          await releaseReads.future;
+          return '$key-value';
+        });
+        HiveAdapterFactory.setForTesting(
+          'parallel',
+          HiveAdapter<dynamic>(box),
+        );
+
+        final cacheIndex = CacheIndex();
+        await cacheIndex.init();
+        final bloc = StorageBloc(
+          config: StorageConfig.test(),
+          cacheIndex: cacheIndex,
+        );
+
+        final first = bloc.hiveRead<String>('parallel', 'first');
+        await firstStarted.future;
+        final second = bloc.hiveRead<String>('parallel', 'second');
+        final secondOverlapped = await Future.any<bool>([
+          secondStarted.future.then((_) => true),
+          Future<bool>.delayed(
+            const Duration(milliseconds: 50),
+            () => false,
+          ),
+        ]);
+
+        releaseReads.complete();
+        expect(await first, 'first-value');
+        expect(await second, 'second-value');
+        expect(secondOverlapped, isTrue);
+
+        HiveAdapterFactory.resetForTesting();
+        await bloc.close();
+      });
+
+      test('preserves write-delete order across event types', () async {
+        final cacheIndex = _GatedCacheIndex();
+        await cacheIndex.init();
+
+        final bloc = StorageBloc(
+          config: StorageConfig.test(),
+          cacheIndex: cacheIndex,
+        );
+
+        await bloc.hiveOpenBox('cache');
+        final write = bloc.hiveWrite(
+          'cache',
+          'ordered',
+          'value',
+          ttl: const Duration(minutes: 5),
+        );
+        await cacheIndex.setExpiryStarted.future;
+
+        final delete = bloc.hiveDelete('cache', 'ordered');
+        await Future.any<void>([
+          cacheIndex.removeExpiryCalled.future,
+          Future<void>.delayed(const Duration(milliseconds: 50)),
+        ]);
+
+        expect(cacheIndex.removeExpiryCalled.isCompleted, isFalse);
+        cacheIndex.releaseSetExpiry.complete();
+        await Future.wait([write, delete]);
+
+        final storageKey = cacheIndex.canonicalKey(
+          'hive',
+          'ordered',
+          'cache',
+        );
+        expect(await bloc.hiveRead<String>('cache', 'ordered'), isNull);
+        expect(cacheIndex.getMetadata(storageKey), isNull);
+
+        await bloc.close();
+      });
+
       test('hiveWrite and hiveRead work', () async {
         final cacheIndex = CacheIndex();
         await cacheIndex.init();

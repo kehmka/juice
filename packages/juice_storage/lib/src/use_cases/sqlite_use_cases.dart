@@ -5,6 +5,7 @@ import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for executing SQLite queries.
 class SqliteQueryUseCase extends BlocUseCase<StorageBloc, SqliteQueryEvent> {
@@ -43,9 +44,10 @@ class SqliteQueryUseCase extends BlocUseCase<StorageBloc, SqliteQueryEvent> {
 }
 
 /// Use case for inserting into SQLite.
-class SqliteInsertUseCase extends BlocUseCase<StorageBloc, SqliteInsertEvent> {
+class SqliteInsertUseCase
+    extends SerializedStorageMutationUseCase<SqliteInsertEvent> {
   @override
-  Future<void> execute(SqliteInsertEvent event) async {
+  Future<void> executeMutation(SqliteInsertEvent event) async {
     try {
       final gateway = SqliteGatewayFactory.instance;
       if (gateway == null) {
@@ -93,9 +95,10 @@ class SqliteInsertUseCase extends BlocUseCase<StorageBloc, SqliteInsertEvent> {
 }
 
 /// Use case for updating SQLite rows.
-class SqliteUpdateUseCase extends BlocUseCase<StorageBloc, SqliteUpdateEvent> {
+class SqliteUpdateUseCase
+    extends SerializedStorageMutationUseCase<SqliteUpdateEvent> {
   @override
-  Future<void> execute(SqliteUpdateEvent event) async {
+  Future<void> executeMutation(SqliteUpdateEvent event) async {
     try {
       final gateway = SqliteGatewayFactory.instance;
       if (gateway == null) {
@@ -138,9 +141,10 @@ class SqliteUpdateUseCase extends BlocUseCase<StorageBloc, SqliteUpdateEvent> {
 }
 
 /// Use case for deleting SQLite rows.
-class SqliteDeleteUseCase extends BlocUseCase<StorageBloc, SqliteDeleteEvent> {
+class SqliteDeleteUseCase
+    extends SerializedStorageMutationUseCase<SqliteDeleteEvent> {
   @override
-  Future<void> execute(SqliteDeleteEvent event) async {
+  Future<void> executeMutation(SqliteDeleteEvent event) async {
     try {
       final gateway = SqliteGatewayFactory.instance;
       if (gateway == null) {
@@ -193,9 +197,10 @@ class SqliteDeleteUseCase extends BlocUseCase<StorageBloc, SqliteDeleteEvent> {
 }
 
 /// Use case for executing raw SQL.
-class SqliteRawUseCase extends BlocUseCase<StorageBloc, SqliteRawEvent> {
+class SqliteRawUseCase
+    extends SerializedStorageMutationUseCase<SqliteRawEvent> {
   @override
-  Future<void> execute(SqliteRawEvent event) async {
+  Future<void> executeMutation(SqliteRawEvent event) async {
     try {
       final gateway = SqliteGatewayFactory.instance;
       if (gateway == null) {

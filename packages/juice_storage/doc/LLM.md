@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_storage
-version: 1.2.0
+version: 2.1.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-10
+  juice: ">=1.6.0"
+updated: 2026-08-13
 ---
 
 # juice_storage — AI card
@@ -44,10 +44,10 @@ updated: 2026-06-10
 
 ```yaml
 dependencies:
-  juice_storage: ^1.2.0
+  juice_storage: ^2.1.0
 ```
 
-Pulls `hive`/`hive_flutter`, `shared_preferences`, `sqflite`,
+Pulls `hive_ce`/`hive_ce_flutter`, `shared_preferences`, `sqflite`,
 `flutter_secure_storage`. **macOS requires a `keychain-access-groups`
 entitlement in both `.entitlements` files** — without it the secure backend is
 `notInitialized` and every `secure*` call fails loudly (this also breaks
@@ -71,6 +71,17 @@ await storage.initialize();
 
 `initialize()` runs `InitializeStorageEvent` and (if enabled) starts a periodic,
 re-entrancy-guarded cleanup timer.
+
+## Concurrency and ordering
+
+All builders explicitly use `EventConcurrency.concurrent`. Mutations and
+resource-lifecycle commands enter a bloc-wide mutation FIFO immediately, so a
+write, delete, cleanup, or clear-all cannot overtake an earlier mutation of a
+different runtime event type. Read-only queries bypass the FIFO and remain
+genuinely concurrent. A Hive/prefs read joins the mutation FIFO only if it finds
+an expired value and must perform lazy eviction; it re-checks expiration inside
+the FIFO before deleting. Do not replace the mutation FIFO with per-type
+`sequential`, which cannot order different mutation event types.
 
 ## API
 
@@ -231,6 +242,7 @@ expect(await storage.hiveRead<int>('cache', 'k'), isNull);   // expired
 ## Invariants
 
 - `await initialize()` precedes all operations; helpers are `Future`-based.
+- Mutations execute through one cross-event FIFO; read-only queries stay concurrent.
 - State is health-only; data flows through `OperationResult`/`Future` to avoid
   concurrency bugs.
 - TTL is honored by the `CacheIndex` (shared `clock`) for Hive + prefs; secure

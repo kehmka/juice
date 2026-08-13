@@ -6,6 +6,7 @@ import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for reading from SharedPreferences with TTL check.
 ///
@@ -30,19 +31,26 @@ class PrefsReadUseCase extends BlocUseCase<StorageBloc, PrefsReadEvent> {
       // Check TTL expiration (uses logical key)
       final storageKey = cacheIndex.canonicalKey('prefs', event.key);
       if (cacheIndex.isExpired(storageKey)) {
-        // Step 1: Delete expired data (adapter handles prefixing)
-        await adapter.delete(event.key);
+        // The query stays concurrent until it discovers expired data. Lazy
+        // eviction is a mutation and must join the shared mutation FIFO.
+        await bloc.runStorageMutation(() async {
+          // A mutation queued before this read may have refreshed the value.
+          // Re-check inside the FIFO before deleting anything.
+          if (!cacheIndex.isExpired(storageKey)) {
+            final value = await adapter.read(event.key);
+            emitUpdate();
+            event.succeed(value);
+            return;
+          }
 
-        // Step 2: Remove cache metadata
-        await cacheIndex.removeExpiry(storageKey);
+          await adapter.delete(event.key);
+          await cacheIndex.removeExpiry(storageKey);
 
-        // Step 3: Emit rebuild groups for observers
-        emitUpdate(
-          groupsToRebuild: {StorageBloc.groupPrefs, StorageBloc.groupCache},
-        );
-
-        // Step 4: Return null successfully (expired = no value)
-        event.succeed(null);
+          emitUpdate(
+            groupsToRebuild: {StorageBloc.groupPrefs, StorageBloc.groupCache},
+          );
+          event.succeed(null);
+        });
         return;
       }
 
@@ -71,13 +79,14 @@ class PrefsReadUseCase extends BlocUseCase<StorageBloc, PrefsReadEvent> {
 }
 
 /// Use case for writing to SharedPreferences with optional TTL.
-class PrefsWriteUseCase extends BlocUseCase<StorageBloc, PrefsWriteEvent> {
+class PrefsWriteUseCase
+    extends SerializedStorageMutationUseCase<PrefsWriteEvent> {
   final CacheIndex cacheIndex;
 
   PrefsWriteUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(PrefsWriteEvent event) async {
+  Future<void> executeMutation(PrefsWriteEvent event) async {
     try {
       final adapter = PrefsAdapterFactory.instance;
       if (adapter == null) {
@@ -129,13 +138,14 @@ class PrefsWriteUseCase extends BlocUseCase<StorageBloc, PrefsWriteEvent> {
 }
 
 /// Use case for deleting from SharedPreferences.
-class PrefsDeleteUseCase extends BlocUseCase<StorageBloc, PrefsDeleteEvent> {
+class PrefsDeleteUseCase
+    extends SerializedStorageMutationUseCase<PrefsDeleteEvent> {
   final CacheIndex cacheIndex;
 
   PrefsDeleteUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(PrefsDeleteEvent event) async {
+  Future<void> executeMutation(PrefsDeleteEvent event) async {
     try {
       final adapter = PrefsAdapterFactory.instance;
       if (adapter == null) {

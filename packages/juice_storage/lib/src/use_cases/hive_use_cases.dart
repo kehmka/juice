@@ -6,11 +6,13 @@ import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for opening a Hive box.
-class HiveOpenBoxUseCase extends BlocUseCase<StorageBloc, HiveOpenBoxEvent> {
+class HiveOpenBoxUseCase
+    extends SerializedStorageMutationUseCase<HiveOpenBoxEvent> {
   @override
-  Future<void> execute(HiveOpenBoxEvent event) async {
+  Future<void> executeMutation(HiveOpenBoxEvent event) async {
     try {
       final adapter = await HiveAdapterFactory.open<dynamic>(
         event.box,
@@ -46,9 +48,10 @@ class HiveOpenBoxUseCase extends BlocUseCase<StorageBloc, HiveOpenBoxEvent> {
 }
 
 /// Use case for closing a Hive box.
-class HiveCloseBoxUseCase extends BlocUseCase<StorageBloc, HiveCloseBoxEvent> {
+class HiveCloseBoxUseCase
+    extends SerializedStorageMutationUseCase<HiveCloseBoxEvent> {
   @override
-  Future<void> execute(HiveCloseBoxEvent event) async {
+  Future<void> executeMutation(HiveCloseBoxEvent event) async {
     try {
       await HiveAdapterFactory.close(event.box);
 
@@ -96,20 +99,29 @@ class HiveReadUseCase extends BlocUseCase<StorageBloc, HiveReadEvent> {
       // Check TTL expiration
       final storageKey = cacheIndex.canonicalKey('hive', event.key, event.box);
       if (cacheIndex.isExpired(storageKey)) {
-        // Lazy eviction: delete expired data
-        await adapter.delete(event.key);
-        await cacheIndex.removeExpiry(storageKey);
+        // The query stays concurrent until it discovers expired data. Lazy
+        // eviction is a mutation and must join the shared mutation FIFO.
+        await bloc.runStorageMutation(() async {
+          // A mutation queued before this read may have refreshed the value.
+          // Re-check inside the FIFO before deleting anything.
+          if (!cacheIndex.isExpired(storageKey)) {
+            final value = await adapter.read(event.key);
+            emitUpdate();
+            event.succeed(value);
+            return;
+          }
 
-        // Emit rebuild group for the box
-        emitUpdate(
-          groupsToRebuild: {
-            StorageBloc.groupHive(event.box),
-            StorageBloc.groupCache,
-          },
-        );
+          await adapter.delete(event.key);
+          await cacheIndex.removeExpiry(storageKey);
 
-        // Return null for expired data (success, not failure)
-        event.succeed(null);
+          emitUpdate(
+            groupsToRebuild: {
+              StorageBloc.groupHive(event.box),
+              StorageBloc.groupCache,
+            },
+          );
+          event.succeed(null);
+        });
         return;
       }
 
@@ -137,13 +149,14 @@ class HiveReadUseCase extends BlocUseCase<StorageBloc, HiveReadEvent> {
 }
 
 /// Use case for writing to Hive with optional TTL.
-class HiveWriteUseCase extends BlocUseCase<StorageBloc, HiveWriteEvent> {
+class HiveWriteUseCase
+    extends SerializedStorageMutationUseCase<HiveWriteEvent> {
   final CacheIndex cacheIndex;
 
   HiveWriteUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(HiveWriteEvent event) async {
+  Future<void> executeMutation(HiveWriteEvent event) async {
     try {
       final adapter = HiveAdapterFactory.get<dynamic>(event.box);
       if (adapter == null) {
@@ -208,13 +221,14 @@ class HiveWriteUseCase extends BlocUseCase<StorageBloc, HiveWriteEvent> {
 }
 
 /// Use case for deleting from Hive.
-class HiveDeleteUseCase extends BlocUseCase<StorageBloc, HiveDeleteEvent> {
+class HiveDeleteUseCase
+    extends SerializedStorageMutationUseCase<HiveDeleteEvent> {
   final CacheIndex cacheIndex;
 
   HiveDeleteUseCase({required this.cacheIndex});
 
   @override
-  Future<void> execute(HiveDeleteEvent event) async {
+  Future<void> executeMutation(HiveDeleteEvent event) async {
     try {
       final adapter = HiveAdapterFactory.get<dynamic>(event.box);
       if (adapter == null) {

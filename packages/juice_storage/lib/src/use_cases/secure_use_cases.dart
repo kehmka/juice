@@ -5,6 +5,7 @@ import '../storage_bloc.dart';
 import '../storage_events.dart';
 import '../storage_exceptions.dart';
 import '../storage_state.dart';
+import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for reading from secure storage.
 ///
@@ -45,9 +46,10 @@ class SecureReadUseCase extends BlocUseCase<StorageBloc, SecureReadEvent> {
 }
 
 /// Use case for writing to secure storage.
-class SecureWriteUseCase extends BlocUseCase<StorageBloc, SecureWriteEvent> {
+class SecureWriteUseCase
+    extends SerializedStorageMutationUseCase<SecureWriteEvent> {
   @override
-  Future<void> execute(SecureWriteEvent event) async {
+  Future<void> executeMutation(SecureWriteEvent event) async {
     try {
       final adapter = SecureAdapterFactory.instance;
       if (adapter == null) {
@@ -83,9 +85,10 @@ class SecureWriteUseCase extends BlocUseCase<StorageBloc, SecureWriteEvent> {
 }
 
 /// Use case for deleting from secure storage.
-class SecureDeleteUseCase extends BlocUseCase<StorageBloc, SecureDeleteEvent> {
+class SecureDeleteUseCase
+    extends SerializedStorageMutationUseCase<SecureDeleteEvent> {
   @override
-  Future<void> execute(SecureDeleteEvent event) async {
+  Future<void> executeMutation(SecureDeleteEvent event) async {
     try {
       final adapter = SecureAdapterFactory.instance;
       if (adapter == null) {
@@ -122,9 +125,9 @@ class SecureDeleteUseCase extends BlocUseCase<StorageBloc, SecureDeleteEvent> {
 
 /// Use case for deleting all secure storage.
 class SecureDeleteAllUseCase
-    extends BlocUseCase<StorageBloc, SecureDeleteAllEvent> {
+    extends SerializedStorageMutationUseCase<SecureDeleteAllEvent> {
   @override
-  Future<void> execute(SecureDeleteAllEvent event) async {
+  Future<void> executeMutation(SecureDeleteAllEvent event) async {
     try {
       final adapter = SecureAdapterFactory.instance;
       if (adapter == null) {

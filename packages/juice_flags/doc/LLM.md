@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_flags
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-09
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_flags — AI card
@@ -31,7 +31,7 @@ actually changed.
 
 ```yaml
 dependencies:
-  juice_flags: ^0.1.0
+  juice_flags: ^0.2.0
 ```
 
 ## Construct
@@ -78,14 +78,14 @@ void clearFlagOverride(String key);
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeFlagsEvent(config)` | seed defaults, subscribe to `changes()`, optional first fetch |
-| `RefreshFlagsEvent` | pull from source, emit only changed flags |
-| `FlagsUpdatedEvent(values)` *internal* | live-stream values arrived → diff + emit changed |
-| `FlagsFetchFailedEvent(error)` *internal* | live-stream error → `emitFailure`, values intact |
-| `SetFlagOverrideEvent(key, value)` | apply local override (wins) |
-| `ClearFlagOverrideEvent(key)` | revert to fetched/default |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeFlagsEvent(config)` | `droppable` | seed defaults, subscribe to `changes()`, optional first fetch |
+| `RefreshFlagsEvent` | `droppable` | pull from source, emit only changed flags |
+| `FlagsUpdatedEvent(values)` *internal* | `sequential` | live-stream values arrived → diff + emit changed |
+| `FlagsFetchFailedEvent(error)` *internal* | `sequential` | live-stream error → `emitFailure`, values intact |
+| `SetFlagOverrideEvent(key, value)` | `sequential` | apply local override (wins) |
+| `ClearFlagOverrideEvent(key)` | `sequential` | revert to fetched/default |
 
 ## State
 

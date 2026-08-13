@@ -16,7 +16,7 @@ local map). The bloc never depends on a vendor SDK.
 
 ```yaml
 dependencies:
-  juice_flags: ^0.1.0
+  juice_flags: ^0.2.0
 ```
 
 ## Use

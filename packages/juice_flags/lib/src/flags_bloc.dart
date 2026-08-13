@@ -40,22 +40,35 @@ class FlagsBloc extends JuiceBloc<FlagsState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: InitializeFlagsEvent,
-                useCaseGenerator: () => InitializeFlagsUseCase()),
+                useCaseGenerator: () => InitializeFlagsUseCase(),
+                // Configuration owns the source subscription and value
+                // layers; overlapping initialization must not duplicate it.
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: RefreshFlagsEvent,
-                useCaseGenerator: () => RefreshFlagsUseCase()),
+                useCaseGenerator: () => RefreshFlagsUseCase(),
+                // One remote fetch already obtains the latest full snapshot.
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: FlagsUpdatedEvent,
-                useCaseGenerator: () => FlagsUpdatedUseCase()),
+                useCaseGenerator: () => FlagsUpdatedUseCase(),
+                // Replaces the shared fetched layer and resolved state.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: FlagsFetchFailedEvent,
-                useCaseGenerator: () => FlagsFetchFailedUseCase()),
+                useCaseGenerator: () => FlagsFetchFailedUseCase(),
+                // Preserve the order of status/error state transitions.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetFlagOverrideEvent,
-                useCaseGenerator: () => SetFlagOverrideUseCase()),
+                useCaseGenerator: () => SetFlagOverrideUseCase(),
+                // Override writes mutate a shared map and resolved state.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ClearFlagOverrideEvent,
-                useCaseGenerator: () => ClearFlagOverrideUseCase()),
+                useCaseGenerator: () => ClearFlagOverrideUseCase(),
+                // Override removals mutate the same shared value layers.
+                concurrency: EventConcurrency.sequential),
           ],
         );
 
@@ -116,9 +129,7 @@ class FlagsBloc extends JuiceBloc<FlagsState> {
   Set<String> changedKeys(
       Map<String, Object?> oldValues, Map<String, Object?> newValues) {
     final keys = {...oldValues.keys, ...newValues.keys};
-    return keys
-        .where((k) => oldValues[k] != newValues[k])
-        .toSet();
+    return keys.where((k) => oldValues[k] != newValues[k]).toSet();
   }
 
   // === Typed reads (always resolve to something) ===

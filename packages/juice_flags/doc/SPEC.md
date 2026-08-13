@@ -55,14 +55,14 @@ class FlagsState extends BlocState {
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeFlagsEvent(config)` | seed defaults, subscribe to `changes()`, optional first fetch |
-| `RefreshFlagsEvent` | pull from source, emit changed flags |
-| `FlagsUpdatedEvent(values)` | internal — live-stream values arrived |
-| `FlagsFetchFailedEvent(error)` | internal — live-stream error |
-| `SetFlagOverrideEvent(key, value)` | local override (wins) |
-| `ClearFlagOverrideEvent(key)` | revert override |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeFlagsEvent(config)` | `droppable` | seed defaults, subscribe to `changes()`, optional first fetch |
+| `RefreshFlagsEvent` | `droppable` | pull from source, emit changed flags |
+| `FlagsUpdatedEvent(values)` | `sequential` | internal — live-stream values arrived |
+| `FlagsFetchFailedEvent(error)` | `sequential` | internal — live-stream error |
+| `SetFlagOverrideEvent(key, value)` | `sequential` | local override (wins) |
+| `ClearFlagOverrideEvent(key)` | `sequential` | revert override |
 
 ## Fail-loud, read-safe
 
@@ -76,10 +76,12 @@ visible, values safe.
 Headless with a fake source. Covered: defaults before fetch, fetched overlays
 default, **diff-on-fetch** (only changed flag's group emitted), fetch failure
 (error surfaced + reads safe), **live stream** updates only changed flags,
-overrides win/clear, close disposes source. 8 tests.
+overrides win/clear, overlapping refresh coalescing, close disposes source. 9
+tests.
 
 ## Spec Version
 
 | Version | Date | Status |
 |---|---|---|
+| 1.1 | 2026-08-12 | Explicit event concurrency; Juice 1.6 floor |
 | 1.0 | 2026-05-28 | Implemented |

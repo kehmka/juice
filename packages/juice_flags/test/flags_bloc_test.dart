@@ -23,13 +23,17 @@ class FakeFlagsSource implements FlagsSource {
   Map<String, Object?> next;
   Object? fetchError;
   bool disposed = false;
+  int fetchCount = 0;
+  Completer<Map<String, Object?>>? fetchGate;
   final _controller = StreamController<Map<String, Object?>>.broadcast();
 
   FakeFlagsSource([this.next = const {}]);
 
   @override
   Future<Map<String, Object?>> fetch() async {
+    fetchCount++;
     if (fetchError != null) throw fetchError!;
+    if (fetchGate != null) return fetchGate!.future;
     return Map.of(next);
   }
 
@@ -121,6 +125,32 @@ void main() {
       await rec.cancel();
       await bloc.close();
     });
+
+    test('overlapping refreshes share one source fetch', () async {
+      final src = FakeFlagsSource();
+      final bloc = FlagsBloc.withConfig(FlagsConfig(
+        source: src,
+        defaults: {'enabled': false},
+        fetchOnInit: false,
+      ));
+      await settle();
+
+      final gate = Completer<Map<String, Object?>>();
+      src.fetchGate = gate;
+      bloc.refresh();
+      await settle(1);
+      bloc.refresh();
+      await settle(1);
+
+      expect(src.fetchCount, 1,
+          reason: 'one in-flight full snapshot makes another fetch redundant');
+
+      gate.complete({'enabled': true});
+      await settle();
+      expect(bloc.boolFlag('enabled'), isTrue);
+      expect(bloc.state.loading, isFalse);
+      await bloc.close();
+    });
   });
 
   group('Fetch failure (fail-loud, read-safe)', () {
@@ -189,7 +219,8 @@ void main() {
   group('Lifecycle', () {
     test('close disposes the source', () async {
       final src = FakeFlagsSource();
-      final bloc = FlagsBloc.withConfig(FlagsConfig(source: src, fetchOnInit: false));
+      final bloc =
+          FlagsBloc.withConfig(FlagsConfig(source: src, fetchOnInit: false));
       await settle();
       await bloc.close();
       expect(src.disposed, isTrue);

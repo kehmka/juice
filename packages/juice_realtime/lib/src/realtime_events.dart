@@ -31,16 +31,21 @@ class SendEvent extends RealtimeEvent {
 class ReconnectEvent extends RealtimeEvent {}
 
 /// Internal: the connection opened successfully.
-class ConnectionEstablishedEvent extends RealtimeEvent {}
+class ConnectionEstablishedEvent extends RealtimeEvent {
+  final int? connectionEpoch;
+  ConnectionEstablishedEvent({this.connectionEpoch});
+}
 
 /// Internal: the connection dropped or failed to open.
 class ConnectionLostEvent extends RealtimeEvent {
   final Object? error;
-  ConnectionLostEvent(this.error);
+  final int? connectionEpoch;
+  ConnectionLostEvent(this.error, {this.connectionEpoch});
 }
 
 /// Internal: a message arrived.
 class MessageReceivedEvent extends RealtimeEvent {
   final RealtimeMessage message;
-  MessageReceivedEvent(this.message);
+  final int? connectionEpoch;
+  MessageReceivedEvent(this.message, {this.connectionEpoch});
 }

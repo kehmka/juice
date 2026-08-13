@@ -7,7 +7,9 @@ import 'package:juice_realtime/juice_realtime.dart';
 class FakeRealtimeConnection implements RealtimeConnection {
   final _controller = StreamController<RealtimeMessage>();
   final List<Object> sent = [];
+  Completer<void>? sendGate;
   bool closed = false;
+  int closeCalls = 0;
 
   void emit(RealtimeMessage m) => _controller.add(m);
 
@@ -20,10 +22,16 @@ class FakeRealtimeConnection implements RealtimeConnection {
   Stream<RealtimeMessage> get messages => _controller.stream;
 
   @override
-  Future<void> send(Object data) async => sent.add(data);
+  Future<void> send(Object data) async {
+    sent.add(data);
+    final gate = sendGate;
+    sendGate = null;
+    if (gate != null) await gate.future;
+  }
 
   @override
   Future<void> close() async {
+    closeCalls++;
     closed = true;
     if (!_controller.isClosed) await _controller.close();
   }
@@ -33,12 +41,18 @@ class FakeRealtimeConnection implements RealtimeConnection {
 class FakeRealtimeConnector implements RealtimeConnector {
   bool failConnect = false;
   final List<FakeRealtimeConnection> connections = [];
+  Completer<void>? connectGate;
+  int connectCalls = 0;
   bool disposed = false;
 
   FakeRealtimeConnection get latest => connections.last;
 
   @override
   Future<RealtimeConnection> connect() async {
+    connectCalls++;
+    final gate = connectGate;
+    connectGate = null;
+    if (gate != null) await gate.future;
     if (failConnect) throw StateError('connect failed');
     final c = FakeRealtimeConnection();
     connections.add(c);
@@ -96,12 +110,14 @@ void main() {
       final got = <RealtimeMessage>[];
       final sub = bloc.messages.listen(got.add);
 
-      conn.latest.emit(const RealtimeMessage('hello'));
+      conn.latest.emit(const RealtimeMessage('one'));
+      conn.latest.emit(const RealtimeMessage('two'));
+      conn.latest.emit(const RealtimeMessage('three'));
       await settle();
 
-      expect(bloc.state.lastMessage?.data, 'hello');
-      expect(bloc.state.messageCount, 1);
-      expect(got.single.data, 'hello');
+      expect(bloc.state.lastMessage?.data, 'three');
+      expect(bloc.state.messageCount, 3);
+      expect(got.map((m) => m.data), ['one', 'two', 'three']);
 
       await sub.cancel();
       await bloc.close();
@@ -119,6 +135,26 @@ void main() {
       bloc.sendMessage('ping');
       await settle();
       expect(conn.latest.sent, ['ping']);
+      await bloc.close();
+    });
+
+    test('overlapping sends preserve FIFO order', () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+
+      final gate = Completer<void>();
+      conn.latest.sendGate = gate;
+      bloc.sendMessage('first');
+      bloc.sendMessage('second');
+      await settle();
+      expect(conn.latest.sent, ['first']);
+
+      gate.complete();
+      await settle();
+      expect(conn.latest.sent, ['first', 'second']);
       await bloc.close();
     });
 
@@ -162,8 +198,8 @@ void main() {
 
     test('gives up loudly after maxReconnectAttempts', () async {
       final conn = FakeRealtimeConnector()..failConnect = true;
-      final bloc = RealtimeBloc.withConfig(
-          cfg(conn, autoConnect: true, maxAttempts: 2));
+      final bloc =
+          RealtimeBloc.withConfig(cfg(conn, autoConnect: true, maxAttempts: 2));
       await settle(120); // initial attempt + 2 backoff retries
 
       expect(bloc.state.status, RealtimeStatus.disconnected);
@@ -171,17 +207,72 @@ void main() {
       await bloc.close();
     });
 
-    test('concurrent connect calls open only one connection', () async {
-      final conn = FakeRealtimeConnector();
+    test('connect/reconnect overlap opens only one connection', () async {
+      final gate = Completer<void>();
+      final conn = FakeRealtimeConnector()..connectGate = gate;
       final bloc = RealtimeBloc.withConfig(cfg(conn));
       await settle();
 
       bloc.connect();
-      bloc.connect(); // guarded — should be ignored while the first is in flight
+      bloc.send(ReconnectEvent());
       bloc.connect();
       await settle();
 
+      expect(conn.connectCalls, 1);
+      expect(bloc.state.status, RealtimeStatus.connecting);
+
+      gate.complete();
+      await settle();
       expect(conn.connections.length, 1);
+      expect(bloc.state.status, RealtimeStatus.connected);
+      await bloc.close();
+    });
+
+    test('disconnect wins against a pending connect completion', () async {
+      final gate = Completer<void>();
+      final conn = FakeRealtimeConnector()..connectGate = gate;
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+
+      bloc.connect();
+      await settle();
+      expect(bloc.state.status, RealtimeStatus.connecting);
+
+      bloc.disconnect();
+      await settle();
+      expect(bloc.state.status, RealtimeStatus.disconnected);
+
+      gate.complete();
+      await settle();
+      expect(conn.connections.single.closed, isTrue);
+      expect(bloc.state.status, RealtimeStatus.disconnected);
+      expect(bloc.hasConnection, isFalse);
+      await bloc.close();
+    });
+
+    test('user connect supersedes a scheduled reconnect', () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(RealtimeConfig(
+        connector: conn,
+        autoConnect: false,
+        initialBackoff: const Duration(milliseconds: 80),
+        maxBackoff: const Duration(milliseconds: 80),
+      ));
+      await settle();
+      bloc.connect();
+      await settle();
+
+      conn.latest.drop();
+      await settle();
+      expect(bloc.state.status, RealtimeStatus.reconnecting);
+
+      bloc.connect();
+      await settle();
+      expect(conn.connections.length, 2);
+      expect(bloc.state.status, RealtimeStatus.connected);
+
+      await settle(120);
+      expect(conn.connections.length, 2);
       expect(bloc.state.status, RealtimeStatus.connected);
       await bloc.close();
     });

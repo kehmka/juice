@@ -8,8 +8,11 @@ import '../realtime_state.dart';
 class DisconnectUseCase extends BlocUseCase<RealtimeBloc, DisconnectEvent> {
   @override
   Future<void> execute(DisconnectEvent event) async {
-    bloc.markManualClose();
+    final connectionEpoch = bloc.markManualClose();
     await bloc.teardownConnection();
+
+    // A newer user connect supersedes this disconnect while teardown awaits.
+    if (!bloc.isConnectionEpoch(connectionEpoch)) return;
 
     emitUpdate(
       newState: bloc.state.copyWith(

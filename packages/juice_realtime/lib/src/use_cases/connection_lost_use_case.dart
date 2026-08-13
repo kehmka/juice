@@ -12,17 +12,14 @@ class ConnectionLostUseCase
     extends BlocUseCase<RealtimeBloc, ConnectionLostEvent> {
   @override
   Future<void> execute(ConnectionLostEvent event) async {
-    bloc.endConnecting();
-    await bloc.teardownConnection();
-    final error = event.error?.toString();
+    final connectionEpoch = bloc.beginConnectionLoss(event.connectionEpoch);
+    if (connectionEpoch == null) return;
 
-    if (bloc.manualClose) {
-      emitUpdate(
-        newState: bloc.state.copyWith(status: RealtimeStatus.disconnected),
-        groupsToRebuild: {RealtimeGroups.status},
-      );
-      return;
-    }
+    await bloc.teardownConnection();
+
+    if (!bloc.isCurrentConnectionEpoch(connectionEpoch)) return;
+    bloc.endConnecting();
+    final error = event.error?.toString();
 
     final attempt = bloc.state.reconnectAttempts + 1;
 
@@ -31,10 +28,12 @@ class ConnectionLostUseCase
       emitFailure(
         newState: bloc.state.copyWith(
           status: RealtimeStatus.disconnected,
-          lastError: error ?? 'Connection lost; gave up after $attempt attempts',
+          lastError:
+              error ?? 'Connection lost; gave up after $attempt attempts',
         ),
         groupsToRebuild: {RealtimeGroups.status},
-        error: event.error ?? StateError('realtime: reconnect attempts exhausted'),
+        error:
+            event.error ?? StateError('realtime: reconnect attempts exhausted'),
       );
       return;
     }

@@ -71,7 +71,8 @@ class RealtimeState extends BlocState {
       lastMessage: lastMessage ?? this.lastMessage,
       reconnectAttempts: reconnectAttempts ?? this.reconnectAttempts,
       messageCount: messageCount ?? this.messageCount,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError:
+          identical(lastError, _unset) ? this.lastError : lastError as String?,
     );
   }
 

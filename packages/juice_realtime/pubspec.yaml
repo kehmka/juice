@@ -1,6 +1,6 @@
 name: juice_realtime
 description: Persistent realtime connections (WebSocket/SSE) with auto-reconnect as a Juice bloc, behind a swappable seam.
-version: 0.1.1
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_realtime
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -17,7 +17,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.4.0
+  juice: ^1.6.0
   web_socket_channel: ^3.0.0
 
 dev_dependencies:

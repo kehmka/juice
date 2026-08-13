@@ -10,6 +10,7 @@ class MessageReceivedUseCase
     extends BlocUseCase<RealtimeBloc, MessageReceivedEvent> {
   @override
   Future<void> execute(MessageReceivedEvent event) async {
+    if (!bloc.isCurrentConnectionEpoch(event.connectionEpoch)) return;
     bloc.pushMessage(event.message);
 
     emitUpdate(

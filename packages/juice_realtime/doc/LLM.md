@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_realtime
-version: 0.1.1
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   web_socket_channel: ">=3.0.0"
-updated: 2026-06-09
+updated: 2026-08-12
 ---
 
 # juice_realtime — AI card
@@ -30,7 +30,7 @@ For request/response use `juice_network`; for durable offline writes use
 
 ```yaml
 dependencies:
-  juice_realtime: ^0.1.1
+  juice_realtime: ^0.2.0
 ```
 
 ## Construct
@@ -82,16 +82,16 @@ bool get hasConnection;
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeRealtimeEvent(config)` | apply config; auto-connect if set |
-| `ConnectEvent` | fresh connect; resets attempts; clears manual-close (guarded) |
-| `DisconnectEvent` | mark manual-close, cancel pending reconnect, close |
-| `SendEvent(data)` | send over live connection; fail-loud if not connected |
-| `ReconnectEvent` *internal* | scheduled retry fired; **preserves** attempt count |
-| `ConnectionEstablishedEvent` *internal* | → `connected`; reset attempts |
-| `ConnectionLostEvent(error?)` *internal* | drop/fail → reconnect or give up loudly |
-| `MessageReceivedEvent(msg)` *internal* | push to stream + update `lastMessage`/count |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeRealtimeEvent(config)` | `droppable` | apply config; await auto-connect if set |
+| `ConnectEvent` | `droppable` | fresh connect; reset attempts; cancel pending backoff |
+| `DisconnectEvent` | `droppable` | mark manual-close, invalidate pending work, close |
+| `SendEvent(data)` | `sequential` | send over live connection in FIFO order; fail-loud if not connected |
+| `ReconnectEvent` *internal* | `droppable` | scheduled retry fired; **preserves** attempt count |
+| `ConnectionEstablishedEvent` *internal* | `sequential` | → `connected`; reset attempts when epoch is current |
+| `ConnectionLostEvent(error?)` *internal* | `droppable` | current drop/fail → reconnect or give up loudly |
+| `MessageReceivedEvent(msg)` *internal* | `sequential` | current message → stream + update `lastMessage`/count |
 
 ## State
 
@@ -117,10 +117,14 @@ listen to `bloc.messages` — the broadcast stream never drops one.
 
 ## Concurrency
 
-`ConnectUseCase` returns early if `bloc.isConnecting` — the `_connecting` flag
-(set by `beginConnecting`/`endConnecting`) guards against overlapping connect
-attempts. `markManualClose` clears it and cancels the reconnect timer so a late
-drop after a user `disconnect()` cannot trigger a reconnect.
+Connect, reconnect, and disconnect are individually `droppable`, while the
+shared `_connecting` flag excludes connect/reconnect across their different
+runtime event types. Every attempt also owns a connection epoch. Disconnect or
+a newer attempt invalidates that epoch, so stale connector results, stream
+callbacks, and internal events cannot revive or mutate a superseded connection.
+A user connect cancels pending backoff. Sends and inbound messages are
+`sequential` to preserve FIFO order; connection-loss handling is `droppable` so
+an error/done pair cannot run duplicate teardown and backoff flows.
 
 ## Recipes
 
@@ -180,6 +184,8 @@ expect(rt.state.status, RealtimeStatus.connected);
 - `send` while not `connected` → `emitFailure` + `lastError` (never a silent drop).
 - `connect()` throws → `ConnectionLostEvent` → backoff/reconnect path.
 - Connection `messages` closes/errors → drop detected → reconnect or give up.
+- A connector result or callback from a superseded epoch is ignored; a late
+  connection object is closed immediately.
 - Reconnect exhaustion (`> maxReconnectAttempts`) → `emitFailure`, status
   `disconnected`, `lastError` set — **never** silent infinite retry.
 

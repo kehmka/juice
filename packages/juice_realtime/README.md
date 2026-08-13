@@ -16,7 +16,7 @@ backoff. It does **not** own one-shot HTTP (that's `juice_network`) or message
 
 ```yaml
 dependencies:
-  juice_realtime: ^0.1.0
+  juice_realtime: ^0.2.0
 ```
 
 ## Use

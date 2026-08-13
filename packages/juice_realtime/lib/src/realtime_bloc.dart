@@ -37,6 +37,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   Timer? _reconnectTimer;
   bool _manualClose = false;
   bool _connecting = false;
+  int _connectionEpoch = 0;
 
   final StreamController<RealtimeMessage> _messages =
       StreamController<RealtimeMessage>.broadcast();
@@ -47,28 +48,36 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: InitializeRealtimeEvent,
-                useCaseGenerator: () => InitializeRealtimeUseCase()),
+                useCaseGenerator: () => InitializeRealtimeUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: ConnectEvent,
-                useCaseGenerator: () => ConnectUseCase()),
+                useCaseGenerator: () => ConnectUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: ReconnectEvent,
-                useCaseGenerator: () => ReconnectUseCase()),
+                useCaseGenerator: () => ReconnectUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: DisconnectEvent,
-                useCaseGenerator: () => DisconnectUseCase()),
+                useCaseGenerator: () => DisconnectUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: SendEvent,
-                useCaseGenerator: () => SendUseCase()),
+                useCaseGenerator: () => SendUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ConnectionEstablishedEvent,
-                useCaseGenerator: () => ConnectionEstablishedUseCase()),
+                useCaseGenerator: () => ConnectionEstablishedUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ConnectionLostEvent,
-                useCaseGenerator: () => ConnectionLostUseCase()),
+                useCaseGenerator: () => ConnectionLostUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: MessageReceivedEvent,
-                useCaseGenerator: () => MessageReceivedUseCase()),
+                useCaseGenerator: () => MessageReceivedUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
         );
 
@@ -90,35 +99,96 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   /// Whether the live connection can send.
   bool get hasConnection => _connection != null;
 
-  /// A connect attempt is in flight (guards against overlapping connects).
+  /// A connection lifecycle transition is in flight.
   bool get isConnecting => _connecting;
-  void beginConnecting() => _connecting = true;
+
+  /// Begin a connect attempt and return its epoch.
+  ///
+  /// A user-initiated connect supersedes manual-close state and any scheduled
+  /// reconnect. Reconnect attempts leave that policy untouched.
+  int beginConnecting({bool userInitiated = false}) {
+    if (userInitiated) {
+      _manualClose = false;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    }
+    _connecting = true;
+    return ++_connectionEpoch;
+  }
+
   void endConnecting() => _connecting = false;
+
+  /// Whether [epoch] still owns the connection lifecycle.
+  bool isConnectionEpoch(int epoch) => !isClosed && epoch == _connectionEpoch;
+
+  /// Whether a live attempt/callback is current and not manually closed.
+  ///
+  /// A null epoch keeps manually dispatched internal events source-compatible.
+  bool isCurrentConnectionEpoch(int? epoch) =>
+      !_manualClose &&
+      !isClosed &&
+      (epoch == null || epoch == _connectionEpoch);
+
+  /// Claim connection-loss handling and invalidate callbacks from the old link.
+  /// Returns the transition epoch, or null when the loss event is stale.
+  int? beginConnectionLoss(int? connectionEpoch) {
+    if (!isCurrentConnectionEpoch(connectionEpoch)) return null;
+    _connecting = true;
+    return ++_connectionEpoch;
+  }
 
   // === Connection lifecycle (resources live here) ===
 
   /// Open a connection and wire its message stream to internal events.
   /// Sends [ConnectionEstablishedEvent] on success, [ConnectionLostEvent] on
   /// failure or drop.
-  Future<void> openConnection() async {
-    _manualClose = false;
+  Future<void> openConnection(int connectionEpoch) async {
     try {
       final conn = await _config.connector.connect();
+      if (!isCurrentConnectionEpoch(connectionEpoch)) {
+        await conn.close();
+        return;
+      }
+
       _connection = conn;
       _messageSub = conn.messages.listen(
         (m) {
-          if (!isClosed) send(MessageReceivedEvent(m));
+          if (isCurrentConnectionEpoch(connectionEpoch)) {
+            send(MessageReceivedEvent(
+              m,
+              connectionEpoch: connectionEpoch,
+            ));
+          }
         },
         onError: (Object e) {
-          if (!isClosed) send(ConnectionLostEvent(e));
+          if (isCurrentConnectionEpoch(connectionEpoch)) {
+            send(ConnectionLostEvent(
+              e,
+              connectionEpoch: connectionEpoch,
+            ));
+          }
         },
         onDone: () {
-          if (!isClosed) send(ConnectionLostEvent(null));
+          if (isCurrentConnectionEpoch(connectionEpoch)) {
+            send(ConnectionLostEvent(
+              null,
+              connectionEpoch: connectionEpoch,
+            ));
+          }
         },
       );
-      if (!isClosed) send(ConnectionEstablishedEvent());
+      if (isCurrentConnectionEpoch(connectionEpoch)) {
+        await send(ConnectionEstablishedEvent(
+          connectionEpoch: connectionEpoch,
+        ));
+      }
     } catch (e) {
-      if (!isClosed) send(ConnectionLostEvent(e));
+      if (isCurrentConnectionEpoch(connectionEpoch)) {
+        await send(ConnectionLostEvent(
+          e,
+          connectionEpoch: connectionEpoch,
+        ));
+      }
     }
   }
 
@@ -134,20 +204,23 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   bool get manualClose => _manualClose;
 
   /// Mark a user-initiated disconnect and cancel any pending reconnect.
-  void markManualClose() {
+  int markManualClose() {
     _manualClose = true;
     _connecting = false;
+    final epoch = ++_connectionEpoch;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    return epoch;
   }
 
   /// Tear down the current connection + subscription (not the broadcast stream).
   Future<void> teardownConnection() async {
-    await _messageSub?.cancel();
+    final messageSub = _messageSub;
+    final connection = _connection;
     _messageSub = null;
-    final conn = _connection;
     _connection = null;
-    await conn?.close();
+    await messageSub?.cancel();
+    await connection?.close();
   }
 
   /// Whether another reconnect is allowed given [attempt] (1-based).
@@ -174,9 +247,8 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
 
   @override
   Future<void> close() async {
-    _reconnectTimer?.cancel();
-    await _messageSub?.cancel();
-    await _connection?.close();
+    markManualClose();
+    await teardownConnection();
     await _messages.close();
     try {
       await _config.connector.dispose();

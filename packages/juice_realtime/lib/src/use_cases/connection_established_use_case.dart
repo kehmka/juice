@@ -9,6 +9,7 @@ class ConnectionEstablishedUseCase
     extends BlocUseCase<RealtimeBloc, ConnectionEstablishedEvent> {
   @override
   Future<void> execute(ConnectionEstablishedEvent event) async {
+    if (!bloc.isCurrentConnectionEpoch(event.connectionEpoch)) return;
     bloc.endConnecting();
     emitUpdate(
       newState: bloc.state.copyWith(

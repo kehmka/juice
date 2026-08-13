@@ -9,8 +9,10 @@ class ConnectUseCase extends BlocUseCase<RealtimeBloc, ConnectEvent> {
   @override
   Future<void> execute(ConnectEvent event) async {
     if (bloc.isConnecting) return; // a connect is already in flight
-    bloc.beginConnecting();
+    final connectionEpoch = bloc.beginConnecting(userInitiated: true);
     await bloc.teardownConnection();
+
+    if (!bloc.isCurrentConnectionEpoch(connectionEpoch)) return;
 
     emitUpdate(
       newState: bloc.state.copyWith(
@@ -21,6 +23,6 @@ class ConnectUseCase extends BlocUseCase<RealtimeBloc, ConnectEvent> {
       groupsToRebuild: {RealtimeGroups.status},
     );
 
-    await bloc.openConnection();
+    await bloc.openConnection(connectionEpoch);
   }
 }

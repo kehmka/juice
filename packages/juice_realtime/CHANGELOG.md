@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-12
+
+### Changed
+
+- Require `juice ^1.6.0` and declare a concurrency mode for every event.
+- Use `droppable` for initialization, connect/reconnect/disconnect, and
+  connection-loss handling; keep the shared `_connecting` guard because connect
+  and reconnect are different event types.
+- Run outbound sends, connection-established updates, and inbound message
+  updates `sequential`ly to preserve ordering and state mutation safety.
+
+### Fixed
+
+- Reject stale connector completions and callbacks with a connection epoch, so
+  disconnecting during a pending connect cannot be undone by its late result.
+- Cancel a scheduled reconnect when a user initiates a fresh connect.
+- Detach connection resources before awaiting their cleanup, making overlapping
+  lifecycle teardown safe and idempotent.
+
+### Tests
+
+- Add gated coverage for connect/reconnect exclusion, disconnect versus a late
+  connect completion, manual-connect timer supersession, and outbound FIFO
+  ordering; burst messages verify ordered delivery and counting.
+
 ## [0.1.1] - 2026-05-28
 
 ### Fixed

@@ -10,7 +10,7 @@ class InitializeRealtimeUseCase
   Future<void> execute(InitializeRealtimeEvent event) async {
     bloc.configure(event.config);
     if (event.config.autoConnect) {
-      bloc.send(ConnectEvent());
+      await bloc.send(ConnectEvent());
     }
   }
 }

@@ -11,15 +11,17 @@ class ReconnectUseCase extends BlocUseCase<RealtimeBloc, ReconnectEvent> {
   Future<void> execute(ReconnectEvent event) async {
     if (bloc.manualClose) return; // user disconnected meanwhile
     if (bloc.isConnecting) return; // a connect is already in flight
-    bloc.beginConnecting();
+    final connectionEpoch = bloc.beginConnecting();
 
     await bloc.teardownConnection();
+
+    if (!bloc.isCurrentConnectionEpoch(connectionEpoch)) return;
 
     emitUpdate(
       newState: bloc.state.copyWith(status: RealtimeStatus.connecting),
       groupsToRebuild: {RealtimeGroups.status},
     );
 
-    await bloc.openConnection();
+    await bloc.openConnection(connectionEpoch);
   }
 }

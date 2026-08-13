@@ -50,6 +50,11 @@ timer (lifecycle resources, released in `close()`).
   `ConnectionEstablishedEvent`.
 - `disconnect()` sets a manual-close flag and cancels any pending reconnect, so a
   late drop can't trigger a reconnect.
+- Every connect attempt owns an epoch. Disconnect and newer attempts invalidate
+  older epochs; stale connector results are closed and stale callbacks/events
+  are ignored. A user connect also cancels any pending reconnect timer.
+- Connection resources are detached synchronously before async cleanup so
+  overlapping teardown paths cannot close a newer connection.
 
 ## State
 
@@ -67,9 +72,22 @@ class RealtimeState extends BlocState {
 
 ## Events
 
-`InitializeRealtimeEvent`, `ConnectEvent`, `DisconnectEvent`, `SendEvent`,
-`ReconnectEvent`*, `ConnectionEstablishedEvent`*, `ConnectionLostEvent`*,
-`MessageReceivedEvent`*. (*internal)
+| Event | Concurrency | Behavior |
+|---|---|---|
+| `InitializeRealtimeEvent` | `droppable` | Configure and optionally connect |
+| `ConnectEvent` | `droppable` | User connect; reset attempts and pending backoff |
+| `ReconnectEvent`* | `droppable` | Scheduled connect preserving attempts |
+| `DisconnectEvent` | `droppable` | Invalidate pending work and close |
+| `SendEvent` | `sequential` | Preserve outbound FIFO |
+| `ConnectionEstablishedEvent`* | `sequential` | Apply current-epoch success |
+| `ConnectionLostEvent`* | `droppable` | Handle one current loss flow |
+| `MessageReceivedEvent`* | `sequential` | Preserve inbound order/count |
+
+(*internal)
+
+The `_connecting` guard remains intentional: Juice modes are keyed by exact
+event type, while `ConnectEvent` and `ReconnectEvent` must also exclude each
+other.
 
 ## Fail-loud
 
@@ -81,8 +99,9 @@ drop. Reconnect exhaustion → `emitFailure`, never silent infinite retry.
 Headless with a fake connector + fake connection: connect→connected, message →
 `lastMessage`/count/stream, send forwards, send-while-disconnected fail-loud,
 drop → reconnecting → reconnect (fresh connection, attempts reset), give-up after
-`maxReconnectAttempts`, manual disconnect suppresses reconnect, close disposes
-connector. 9 tests.
+`maxReconnectAttempts`, connect/reconnect exclusion, disconnect beats a late
+connect, user connect cancels pending backoff, outbound FIFO, manual disconnect
+suppresses reconnect, close disposes connector. 13 tests.
 
 ## Scope
 
@@ -93,4 +112,5 @@ existing seam and are planned post-0.1.
 
 | Version | Date | Status |
 |---|---|---|
+| 1.1 | 2026-08-12 | Explicit concurrency and epoch-safe lifecycle |
 | 1.0 | 2026-05-28 | Implemented |

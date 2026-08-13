@@ -17,7 +17,7 @@ socket).
 
 ```yaml
 dependencies:
-  juice_lifecycle: ^0.1.0
+  juice_lifecycle: ^0.2.0
 ```
 
 ## Use

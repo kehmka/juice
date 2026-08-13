@@ -11,6 +11,6 @@ class InitializeLifecycleUseCase
   Future<void> execute(InitializeLifecycleEvent event) async {
     bloc.configure(event.config);
     bloc.startListening();
-    bloc.send(LifecycleChangedEvent(bloc.provider.current));
+    await bloc.send(LifecycleChangedEvent(bloc.provider.current));
   }
 }

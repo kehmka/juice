@@ -27,10 +27,12 @@ class LifecycleBloc extends JuiceBloc<LifecycleState> {
             () => UseCaseBuilder(
                   typeOfEvent: InitializeLifecycleEvent,
                   useCaseGenerator: () => InitializeLifecycleUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LifecycleChangedEvent,
                   useCaseGenerator: () => LifecycleChangedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

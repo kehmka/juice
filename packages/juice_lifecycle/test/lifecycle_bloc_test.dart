@@ -63,6 +63,26 @@ void main() {
   });
 
   group('LifecycleBloc', () {
+    test('drops overlapping initialization', () async {
+      final firstProvider = FakeLifecycleProvider(AppLifecycle.inactive);
+      final secondProvider = FakeLifecycleProvider(AppLifecycle.paused);
+      final bloc = LifecycleBloc();
+
+      final first = bloc.send(InitializeLifecycleEvent(
+        config: LifecycleConfig(provider: firstProvider),
+      ));
+      final second = bloc.send(InitializeLifecycleEvent(
+        config: LifecycleConfig(provider: secondProvider),
+      ));
+      await Future.wait([first, second]);
+
+      expect(bloc.provider, same(firstProvider));
+      expect(bloc.state.lifecycle, AppLifecycle.inactive);
+      await bloc.close();
+      expect(firstProvider.disposed, isTrue);
+      expect(secondProvider.disposed, isFalse);
+    });
+
     test('emits the current phase on init', () async {
       final p = FakeLifecycleProvider(AppLifecycle.inactive);
       final bloc = LifecycleBloc.withConfig(LifecycleConfig(provider: p));
@@ -86,6 +106,22 @@ void main() {
       p.emit(AppLifecycle.resumed);
       await settle();
       expect(bloc.state.isForeground, isTrue);
+      expect(bloc.state.previous, AppLifecycle.paused);
+      expect(bloc.state.resumedFromBackground, isTrue);
+      await bloc.close();
+    });
+
+    test('processes rapid transitions in stream order', () async {
+      final p = FakeLifecycleProvider();
+      final bloc = LifecycleBloc.withConfig(LifecycleConfig(provider: p));
+      await settle();
+
+      final inactive = bloc.send(LifecycleChangedEvent(AppLifecycle.inactive));
+      final paused = bloc.send(LifecycleChangedEvent(AppLifecycle.paused));
+      final resumed = bloc.send(LifecycleChangedEvent(AppLifecycle.resumed));
+      await Future.wait([inactive, paused, resumed]);
+
+      expect(bloc.state.lifecycle, AppLifecycle.resumed);
       expect(bloc.state.previous, AppLifecycle.paused);
       expect(bloc.state.resumedFromBackground, isTrue);
       await bloc.close();

@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_lifecycle
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-09
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_lifecycle — AI card
@@ -30,7 +30,7 @@ blur, "refresh on resume", pause expensive work in the background. The
 
 ```yaml
 dependencies:
-  juice_lifecycle: ^0.1.0
+  juice_lifecycle: ^0.2.0
 ```
 
 ## Construct
@@ -73,10 +73,13 @@ observe state. Drive transitions through the provider (or a fake in tests).
 
 ## Events
 
-| Event | Effect | Groups |
-|---|---|---|
-| `InitializeLifecycleEvent(config)` | configure provider, start listening, emit current phase | `lifecycle:state` |
-| `LifecycleChangedEvent(phase)` *internal* | emit only when the phase changes, tracking `previous` | `lifecycle:state` |
+| Event | Concurrency | Effect | Groups |
+|---|---|---|---|
+| `InitializeLifecycleEvent(config)` | `droppable` | configure provider, start listening, emit current phase | `lifecycle:state` |
+| `LifecycleChangedEvent(phase)` *internal* | `sequential` | emit only when the phase changes, tracking `previous` | `lifecycle:state` |
+
+Sequential transition handling preserves provider stream order during bursts,
+so `previous` always names the phase immediately before the current one.
 
 ## State
 

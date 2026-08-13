@@ -17,7 +17,7 @@ no `setState`, no controllers, no notifiers.
 
 ```yaml
 dependencies:
-  juice_forms: ^0.1.0
+  juice_forms: ^0.3.0
 ```
 
 ## Selective refresh — the core idea

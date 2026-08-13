@@ -51,34 +51,54 @@ class FormsBloc extends JuiceBloc<FormsState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: InitializeFormsEvent,
-                useCaseGenerator: () => InitializeFormsUseCase()),
+                useCaseGenerator: () => InitializeFormsUseCase(),
+                // Configuration replaces all field behavior and the submit
+                // handler; only one initialization may own that transition.
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: RegisterFieldEvent,
-                useCaseGenerator: () => RegisterFieldUseCase()),
+                useCaseGenerator: () => RegisterFieldUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: UnregisterFieldEvent,
-                useCaseGenerator: () => UnregisterFieldUseCase()),
+                useCaseGenerator: () => UnregisterFieldUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ChangeFieldEvent,
-                useCaseGenerator: () => ChangeFieldUseCase()),
+                useCaseGenerator: () => ChangeFieldUseCase(),
+                // Field changes replace entries in the shared fields map and
+                // update validation tokens; preserve input order.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: TouchFieldEvent,
-                useCaseGenerator: () => TouchFieldUseCase()),
+                useCaseGenerator: () => TouchFieldUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SetFieldEnabledEvent,
-                useCaseGenerator: () => SetFieldEnabledUseCase()),
+                useCaseGenerator: () => SetFieldEnabledUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: RunAsyncValidationEvent,
-                useCaseGenerator: () => RunAsyncValidationUseCase()),
+                useCaseGenerator: () => RunAsyncValidationUseCase(),
+                // Different fields validate independently; same-field stale
+                // results are rejected by the monotonic validation token.
+                concurrency: EventConcurrency.concurrent),
             () => UseCaseBuilder(
                 typeOfEvent: ValidateFormEvent,
-                useCaseGenerator: () => ValidateFormUseCase()),
+                useCaseGenerator: () => ValidateFormUseCase(),
+                // Every awaitable validation must run and complete its own
+                // Completer, while whole-form passes must not overlap.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SubmitFormEvent,
-                useCaseGenerator: () => SubmitFormUseCase()),
+                useCaseGenerator: () => SubmitFormUseCase(),
+                // Sequential, not droppable: submitNow callers each require a
+                // completion, and submit handlers must never overlap.
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ResetFormEvent,
-                useCaseGenerator: () => ResetFormUseCase()),
+                useCaseGenerator: () => ResetFormUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
         );
 
@@ -112,7 +132,8 @@ class FormsBloc extends JuiceBloc<FormsState> {
   // === Validation primitives ===
 
   /// Run a field's sync validators against [value]; first error wins.
-  String? syncErrorFor(String name, Object? value, Map<String, Object?> values) {
+  String? syncErrorFor(
+      String name, Object? value, Map<String, Object?> values) {
     final cfg = _configs[name];
     if (cfg == null) return null;
     for (final v in cfg.validators) {
@@ -122,7 +143,8 @@ class FormsBloc extends JuiceBloc<FormsState> {
     return null;
   }
 
-  AsyncValidator? asyncValidatorFor(String name) => _configs[name]?.asyncValidator;
+  AsyncValidator? asyncValidatorFor(String name) =>
+      _configs[name]?.asyncValidator;
 
   Duration debounceFor(String name) =>
       _configs[name]?.asyncDebounce ?? Duration.zero;
@@ -177,7 +199,8 @@ class FormsBloc extends JuiceBloc<FormsState> {
 
   void register(FieldConfig config) => send(RegisterFieldEvent(config));
   void unregister(String name) => send(UnregisterFieldEvent(name));
-  void change(String name, Object? value) => send(ChangeFieldEvent(name, value));
+  void change(String name, Object? value) =>
+      send(ChangeFieldEvent(name, value));
   void touch(String name) => send(TouchFieldEvent(name));
   void setEnabled(String name, bool enabled) =>
       send(SetFieldEnabledEvent(name, enabled));

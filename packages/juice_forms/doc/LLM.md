@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_forms
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.4.0"
-updated: 2026-06-10
+  juice: ">=1.6.0"
+updated: 2026-08-12
 ---
 
 # juice_forms — AI card
@@ -32,7 +32,7 @@ field doesn't rebuild the others). It's a feature bloc with no platform SDK.
 
 ```yaml
 dependencies:
-  juice_forms: ^0.2.0
+  juice_forms: ^0.3.0
 ```
 
 ## Construct
@@ -75,18 +75,18 @@ enabled)`. Built-in `Validators`: `required`, `minLength`, `maxLength`, `email`,
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeFormsEvent(config)` | store handler, register initial fields |
-| `RegisterFieldEvent(config)` | add a field at runtime |
-| `UnregisterFieldEvent(name)` | remove a field + cancel its async |
-| `ChangeFieldEvent(name, value)` | set value, sync-validate now, arm debounced async |
-| `TouchFieldEvent(name)` | mark touched (blur) |
-| `SetFieldEnabledEvent(name, enabled)` | toggle interactable |
-| `RunAsyncValidationEvent(name, token)` *internal* | debounced async fired; token-guarded |
-| `ValidateFormEvent` | full pass, mark all touched |
-| `SubmitFormEvent` | validate, then run handler if valid |
-| `ResetFormEvent` | restore initial values, clear submit status |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeFormsEvent(config)` | `droppable` | store handler, register initial fields |
+| `RegisterFieldEvent(config)` | `sequential` | add a field at runtime |
+| `UnregisterFieldEvent(name)` | `sequential` | remove a field + cancel its async |
+| `ChangeFieldEvent(name, value)` | `sequential` | set value, sync-validate now, arm debounced async |
+| `TouchFieldEvent(name)` | `sequential` | mark touched (blur) |
+| `SetFieldEnabledEvent(name, enabled)` | `sequential` | toggle interactable |
+| `RunAsyncValidationEvent(name, token)` *internal* | `concurrent` | debounced async fired; token-guarded |
+| `ValidateFormEvent` | `sequential` | full pass, mark all touched |
+| `SubmitFormEvent` | `sequential` | validate, then run handler if valid |
+| `ResetFormEvent` | `sequential` | restore initial values, clear submit status |
 
 ## State
 
@@ -122,13 +122,13 @@ matching, no extra API.
 
 ## Concurrency
 
-Use cases run with the default `concurrent` mode. Async validation is made
-race-safe by a **monotonic per-field token** plus a debounce timer, both held on
-the bloc (`_token` / `_debounce`). Every `change` bumps the token and re-arms
-the debounce; `RunAsyncValidationEvent` checks `isCurrentToken` **before and
-after** the await, so a stale async answer never overwrites a newer value's
-state. `validate()`/`submit()` call `cancelAllAsyncValidation()` then do their
-own awaited pass (`computeAllErrors`) — never fooled by an in-flight check.
+State and structure mutations are `sequential`. `RunAsyncValidationEvent` is
+intentionally `concurrent`: independent fields can validate together, while a
+**monotonic per-field token** makes same-field stale answers harmless. Every
+change bumps the token and re-arms the debounce; validation checks the token
+before and after its await. Whole-form validate and submit passes are
+`sequential`, so they never overlap and every awaitable event's `Completer`
+resolves; they cannot be `droppable` without stranding callers.
 
 ## Recipes
 

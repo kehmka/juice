@@ -107,7 +107,8 @@ void main() {
     test('cross-field matches', () async {
       final bloc = FormsBloc.withConfig(FormsConfig(fields: [
         const FieldConfig(name: 'password'),
-        FieldConfig(name: 'confirm', validators: [Validators.matches('password')]),
+        FieldConfig(
+            name: 'confirm', validators: [Validators.matches('password')]),
       ]));
       await settle();
 
@@ -195,7 +196,8 @@ void main() {
 
     test('stale async result is dropped when the field changes again',
         () async {
-      final av = RecordingAsyncValidator(delay: const Duration(milliseconds: 40));
+      final av =
+          RecordingAsyncValidator(delay: const Duration(milliseconds: 40));
       final bloc = FormsBloc.withConfig(FormsConfig(fields: [
         FieldConfig(
           name: 'user',
@@ -224,7 +226,9 @@ void main() {
     test('valid form runs the handler and marks submitted', () async {
       Map<String, Object?>? received;
       final bloc = FormsBloc.withConfig(FormsConfig(
-        fields: [FieldConfig(name: 'email', validators: [Validators.required()])],
+        fields: [
+          FieldConfig(name: 'email', validators: [Validators.required()])
+        ],
         onSubmit: (values) async => received = values,
       ));
       await settle();
@@ -240,10 +244,48 @@ void main() {
       await bloc.close();
     });
 
+    test('overlapping submissions run sequentially and both complete',
+        () async {
+      final firstGate = Completer<void>();
+      var calls = 0;
+      var active = 0;
+      var maxActive = 0;
+      final bloc = FormsBloc.withConfig(FormsConfig(
+        fields: const [FieldConfig(name: 'value', initialValue: 'ready')],
+        onSubmit: (_) async {
+          calls++;
+          active++;
+          if (active > maxActive) maxActive = active;
+          if (calls == 1) await firstGate.future;
+          active--;
+        },
+      ));
+      await settle();
+
+      final first = bloc.submitNow();
+      await settle(1);
+      final second = bloc.submitNow();
+      await settle(1);
+
+      expect(calls, 1,
+          reason: 'the second whole-form pass waits for the first handler');
+      expect(maxActive, 1);
+
+      firstGate.complete();
+      expect(await first, isTrue);
+      expect(await second, isTrue,
+          reason: 'sequential preserves every awaitable completion');
+      expect(calls, 2);
+      expect(maxActive, 1);
+      await bloc.close();
+    });
+
     test('invalid form does not submit; touches fields', () async {
       var called = false;
       final bloc = FormsBloc.withConfig(FormsConfig(
-        fields: [FieldConfig(name: 'email', validators: [Validators.required()])],
+        fields: [
+          FieldConfig(name: 'email', validators: [Validators.required()])
+        ],
         onSubmit: (_) async => called = true,
       ));
       await settle();
@@ -292,7 +334,8 @@ void main() {
     });
 
     test('submit awaits async validation before deciding', () async {
-      final av = RecordingAsyncValidator(delay: const Duration(milliseconds: 20));
+      final av =
+          RecordingAsyncValidator(delay: const Duration(milliseconds: 20));
       var called = false;
       final bloc = FormsBloc.withConfig(FormsConfig(
         fields: [FieldConfig(name: 'user', asyncValidator: av.call)],

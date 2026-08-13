@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-12
+
+### Changed
+
+- **Requires `juice ^1.6.0`.**
+- Declared concurrency for every event. Field/structure mutations and
+  whole-form validate/submit/reset passes are `sequential`; initialization is
+  `droppable`; token-guarded per-field async validation remains intentionally
+  `concurrent`.
+- Whole-form submissions no longer overlap. `SubmitFormEvent` is sequential
+  rather than droppable so every `submitNow()` caller is guaranteed to resolve.
+
 ## [0.2.0] - 2026-06-10
 
 From dogfooding (Glean DOGFOOD.md F3).

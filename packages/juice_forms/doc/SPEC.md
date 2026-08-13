@@ -99,18 +99,18 @@ debounced check.
 
 ## Events
 
-| Event | Effect |
-|---|---|
-| `InitializeFormsEvent(config)` | store submit handler, register initial fields |
-| `RegisterFieldEvent(config)` | add a field at runtime |
-| `UnregisterFieldEvent(name)` | remove a field |
-| `ChangeFieldEvent(name, value)` | set value, sync-validate, arm async |
-| `TouchFieldEvent(name)` | mark touched |
-| `SetFieldEnabledEvent(name, enabled)` | toggle enabled |
-| `RunAsyncValidationEvent(name, token)` | internal — debounced async fired |
-| `ValidateFormEvent` | full pass, mark all touched |
-| `SubmitFormEvent` | validate, then run handler if valid |
-| `ResetFormEvent` | restore initial values, clear status |
+| Event | Concurrency | Effect |
+|---|---|---|
+| `InitializeFormsEvent(config)` | `droppable` | store submit handler, register initial fields |
+| `RegisterFieldEvent(config)` | `sequential` | add a field at runtime |
+| `UnregisterFieldEvent(name)` | `sequential` | remove a field |
+| `ChangeFieldEvent(name, value)` | `sequential` | set value, sync-validate, arm async |
+| `TouchFieldEvent(name)` | `sequential` | mark touched |
+| `SetFieldEnabledEvent(name, enabled)` | `sequential` | toggle enabled |
+| `RunAsyncValidationEvent(name, token)` | `concurrent` | internal — debounced async fired |
+| `ValidateFormEvent` | `sequential` | full pass, mark all touched |
+| `SubmitFormEvent` | `sequential` | validate, then run handler if valid |
+| `ResetFormEvent` | `sequential` | restore initial values, clear status |
 
 ## Submit (fail-loud)
 
@@ -124,7 +124,8 @@ debounced check.
 Headless (no widgets). Covered: sync first-error/clear, cross-field matches,
 **selective refresh** (asserting emitted group sets), validity-flip gating,
 async validating→resolve, **stale-async-dropped**, submit valid/invalid/
-no-handler/throw, submit-awaits-async, register/unregister, reset. 17 tests.
+no-handler/throw, submit-awaits-async, serialized submissions,
+register/unregister, reset. 21 tests.
 
 
 ## Awaitable validate/submit (0.2)
@@ -139,5 +140,6 @@ always completed (or completed with the error), never left hanging.
 
 | Version | Date | Status | Changes |
 |---|---|---|---|
-| 1.0 | 2026-05-28 | Implemented | Initial |
+| 1.2 | 2026-08-12 | Implemented | Explicit event concurrency; Juice 1.6 floor; serialized whole-form work |
 | 1.1 | 2026-06-10 | Implemented | Awaitable validateNow/submitNow (0.2.0, dogfood F3) |
+| 1.0 | 2026-05-28 | Implemented | Initial |

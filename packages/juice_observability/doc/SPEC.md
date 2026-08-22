@@ -46,6 +46,21 @@ those events achieves the same safety; adopting it here is a possible follow-up.
 `SetUserEvent`, `SetContextEvent`, `SetEnabledEvent`. API: `recordError`,
 `breadcrumb`, `setUser`, `setContext`, `setEnabled`.
 
+## DevTools mirror (non-bloc)
+
+`DevtoolsJuiceLogger` — a `JuiceLogger` decorator, not bloc machinery. Mirrors
+every *typed* structured entry (`context['type']`) to `dart:developer`
+`postEvent` as `juice:<type>`; untyped chatter stays console-only; errors
+without a type post as `juice:error`. Values sanitized for the wire
+(primitives pass; objects cross as `toString` capped at 512). Inner logger
+always receives the call first. The `post` function is an injected seam
+(defaults to `developer.postEvent`).
+
+Phase 1 is instant events only: core logs a use case's start but not its
+completion, so duration spans would be dishonest. When core gains
+`use_case_completed`, Timeline spans slot in without schema changes
+(ROADMAP: BlocSignal tee-up item 1).
+
 ## Testing
 
 Recording fake reporter (`captureUncaught: false`): fan-out with breadcrumbs,

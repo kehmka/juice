@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-21
+
+### New Features
+
+#### DevtoolsJuiceLogger — the framework's telemetry, live in DevTools
+
+A `JuiceLogger` decorator that mirrors Juice's existing structured log
+entries (use-case executions, state emissions, bloc lifecycle, event
+subscriptions, unhandled events, leak detection, and all error types) to the
+VM's extension-event stream via `dart:developer` `postEvent`, as
+`juice:<type>` events — consumable live by DevTools and any VM-service
+listener. A mirror on the existing logger seam, not new instrumentation:
+
+- Typed entries (`context['type']`) post as `juice:<type>`; untyped chatter
+  stays console-only; errors without a type always post as `juice:error`.
+- Wire-safe payloads: primitives pass through; live objects (states, blocs,
+  group sets) cross as `toString` capped at 512 chars.
+- Decorates any inner logger (default `DefaultJuiceLogger`) — console
+  logging keeps working; the `post` function is an injectable seam for
+  tests.
+- Phase 1 is instant events by design; duration spans await a
+  `use_case_completed` entry in core (ROADMAP: BlocSignal tee-up, item 1).
+
+One line to adopt: `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`.
+
 ## [0.2.0] - 2026-06-09
 
 ### Changed

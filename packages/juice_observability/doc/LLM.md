@@ -33,6 +33,16 @@ dependencies:
   juice_observability: ^0.1.0
 ```
 
+## DevTools mirror
+
+```dart
+JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger());          // default console under it
+JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger(inner: my)); // keep a custom logger
+```
+
+Typed entries → `postEvent('juice:<type>', …)`. Do not put live objects in
+payload expectations — values cross as capped `toString`.
+
 ## Construct
 
 No required seam — defaults to `NoopCrashReporter` (safe before a provider is

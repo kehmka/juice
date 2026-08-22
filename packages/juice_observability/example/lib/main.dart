@@ -4,6 +4,12 @@ import 'package:juice_observability/juice_observability.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Mirror Juice's structured log entries (use-case runs, emissions, bloc
+  // lifecycle, leaks, errors) to the VM's extension-event stream as
+  // `juice:<type>` events — live in DevTools and any VM-service listener.
+  // A decorator: console logging keeps working underneath.
+  JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger());
+
   // Console reporter so reports are visible with no backend. A real app adds a
   // Sentry/Crashlytics reporter to the list.
   BlocScope.register<ObservabilityBloc>(

@@ -3,6 +3,7 @@
 library juice_observability;
 
 export 'src/crash_reporter.dart';
+export 'src/devtools_juice_logger.dart';
 export 'src/observability_bloc.dart';
 export 'src/observability_config.dart';
 export 'src/observability_events.dart';

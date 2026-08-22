@@ -176,6 +176,17 @@ When you *do* stay `concurrent`, follow the discipline:
 
 ---
 
+## 4b. Telemetry (juice ≥ 1.7.0)
+
+Every use-case execution logs a structured START (`use_case_execution`) and
+exactly one END sharing its `executionId`: `use_case_completed` (with
+`elapsedMicros`) or `use_case_error` (also stamped). Mirror everything to
+DevTools with `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`
+(`juice_observability ≥ 0.3.0`). Gotcha: `use_case_error` has TWO sources
+sharing the type — the executor's span-closer (has `executionId`) and
+`BlocErrorHandler`'s summary (has `bloc`/`state`). Span consumers key on
+`executionId` presence.
+
 ## 5. Gotchas — what AI models get wrong about Juice
 
 1. **`StatelessJuiceWidget` subclasses CANNOT be `const`.** `const MyWidget()`

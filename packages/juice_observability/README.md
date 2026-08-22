@@ -1,7 +1,8 @@
 # juice_observability
 
 Crash reporting + breadcrumbs as a [Juice](https://pub.dev/packages/juice) bloc —
-with global error capture, fanned out to one or more reporters.
+with global error capture fanned out to one or more reporters, and a DevTools
+mirror that puts the framework's own telemetry on the wire.
 
 [![pub package](https://img.shields.io/pub/v/juice_observability.svg)](https://pub.dev/packages/juice_observability)
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
@@ -16,8 +17,28 @@ reporters. It does **not** own a vendor SDK — each `CrashReporter` is an adapt
 
 ```yaml
 dependencies:
-  juice_observability: ^0.1.0
+  juice_observability: ^0.3.1
 ```
+
+## DevTools mirror — `DevtoolsJuiceLogger`
+
+One line puts every structured entry Juice already logs — use-case
+executions and completions, state emissions, bloc lifecycle, leak
+detection, and all error types — on the VM's extension-event stream as
+`juice:<type>` events, live in DevTools and any VM-service listener:
+
+```dart
+JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger());
+// or keep your own console logger underneath:
+JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger(inner: myLogger));
+```
+
+A decorator on the existing logger seam, not new instrumentation: console
+logging keeps working; untyped chatter stays console-only; payloads are
+wire-safe (live objects cross as `toString`, capped). With juice ≥ 1.7.0,
+starts and ends share an `executionId` with `elapsedMicros` — enough to
+draw honest duration spans, even when same-type events overlap under
+`concurrent`.
 
 ## Use
 

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-21
+
+- Docs: README now actually introduces `DevtoolsJuiceLogger` (0.3.0's
+  headline was missing from the pub.dev page) and the install snippet is
+  current. Requires `juice ^1.7.0` so the span pairing documented here is
+  structural, not aspirational.
+- Example: demonstrates the mirror IN FULL — a Juice-pure `TelemetryFeedBloc`
+  fed through the injectable `post` seam (teeing to the real VM post and an
+  in-app panel), so every tap shows its `use_case_execution →
+  use_case_completed` pair with `executionId` and elapsed time, no DevTools
+  required. Teaches the self-loop guard (`isSelfTelemetry`): a bloc that
+  consumes telemetry must filter out its own. Example tests cover the
+  formatter, the guard, and a real start/end pair.
+
 ## [0.3.0] - 2026-08-21
 
 ### New Features

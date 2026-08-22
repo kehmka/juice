@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.7.1] - 2026-08-21
+
+- Docs: README gains the 1.7.0 telemetry-pair bullet and a current install
+  snippet (was `^1.4.0`). No code changes.
+
 ## [1.7.0] - 2026-08-21
 
 ### New Features

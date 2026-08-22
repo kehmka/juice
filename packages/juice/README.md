@@ -28,6 +28,7 @@ The framework is most compelling when you lean into ownership and lifecycle, not
 - **Status-aware streams**: `StreamStatus` separates transient workflow state from persistent app state
 - **Cross-bloc orchestration**: event subscriptions, state relays, and status relays
 - **Per-item async state**: `EntityStatuses<K>` + `BlocUseCase.guardEntity` track which *rows* of a collection are in flight or failed — the item-grained companion to `StreamStatus`, with guaranteed cleanup (no stuck spinners) (1.6.0). See the [EntityStatus guide](doc/ENTITY_STATUS_GUIDE.md) and [spec](doc/ENTITY_STATUS_SPEC.md).
+- **Use-case telemetry pair**: every execution logs a start and an end entry sharing a process-unique `executionId`, with `elapsedMicros` on completion or error — honest duration spans even when same-type events overlap, consumable live in DevTools via `juice_observability`'s `DevtoolsJuiceLogger` (1.7.0)
 
 ## Quick Example
 
@@ -72,7 +73,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
 
 ```yaml
 dependencies:
-  juice: ^1.4.0
+  juice: ^1.7.0
 ```
 
 ## Recommended Evaluation Path

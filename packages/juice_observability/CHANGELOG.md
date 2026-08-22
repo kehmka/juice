@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-21
+
+### New Features
+
+#### DevTools extension — Juice telemetry, visualized
+
+Ships a DevTools extension (`extension/devtools/`) that consumes the
+`juice:<type>` events `DevtoolsJuiceLogger` posts and renders four views:
+**Timeline** (every transition, newest last), **Spans** (use-case
+executions paired by `executionId` — honest durations even under
+`concurrent` overlap, running/failed/elapsed), **Blocs** (per-bloc
+emission count with the rebuild GROUPS each emission targeted — the
+rebuild inspector groups make explainable), and **Problems** (errors,
+unhandled events, leak detection). Loads automatically when a Juice app
+using `DevtoolsJuiceLogger` connects to DevTools; a live-filter box and
+clear across all four.
+
+Source: `packages/juice_observability_devtools_extension` (`publish_to:
+none`). The model is a pure `TelemetryModel` (7 unit tests, no VM); the
+live `TelemetryStore` adds the VM wiring, split because
+`devtools_extensions` is web-only.
+
 ## [0.3.1] - 2026-08-21
 
 - Docs: README now actually introduces `DevtoolsJuiceLogger` (0.3.0's

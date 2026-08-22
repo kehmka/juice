@@ -1,0 +1,5 @@
+name: juice_observability
+issueTracker: https://github.com/kehmka/juice/issues
+version: 0.1.0
+materialIconCodePoint: '0xe347'
+requiresConnection: true

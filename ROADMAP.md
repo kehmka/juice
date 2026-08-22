@@ -369,7 +369,7 @@ bloc-on-signals bridge, reviewed at v1.0.1 the week it shipped). None are
 migrations — BlocSignal solves the container layer and doesn't touch the
 constellation; these are the parts worth having. Ordered by value.
 
-### 1 · DevTools telemetry + lint tooling  📋
+### 1 · DevTools telemetry + lint tooling  ✅ phases 1–2 · 📋 phase 3 (lint)
 The gap that should sting: one week old, BlocSignal ships a DevTools
 extension (trace panel, state diffs, leak alerts), a lint package with
 quick-fixes, and a `dart:developer` telemetry observer. Juice's graft

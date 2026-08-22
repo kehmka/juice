@@ -56,10 +56,11 @@ without a type post as `juice:error`. Values sanitized for the wire
 always receives the call first. The `post` function is an injected seam
 (defaults to `developer.postEvent`).
 
-Phase 1 is instant events only: core logs a use case's start but not its
-completion, so duration spans would be dishonest. When core gains
-`use_case_completed`, Timeline spans slot in without schema changes
-(ROADMAP: BlocSignal tee-up item 1).
+Spans: juice ≥ 1.7.0 emits the telemetry pair — `use_case_execution` and
+`use_case_completed`/`use_case_error` sharing an `executionId`, with
+`elapsedMicros` on the end entry — so consumers can draw duration spans by
+pairing `juice:` events. The span-closing `use_case_error` is the one
+carrying `executionId` (BlocErrorHandler's summary shares the type).
 
 ## Testing
 

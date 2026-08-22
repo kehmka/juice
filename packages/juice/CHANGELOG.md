@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.7.0] - 2026-08-21
+
+### New Features
+
+#### Use-case telemetry pair — spans become possible
+
+Every use-case execution now logs exactly two structured entries sharing a
+process-unique `executionId`: the existing `use_case_execution` start (which
+gains the id), and a new end entry — `use_case_completed` with
+`elapsedMicros` on success, or the existing `use_case_error` (which gains
+`executionId` + `elapsedMicros`) on throw. A telemetry consumer (e.g.
+`juice_observability`'s `DevtoolsJuiceLogger`) can now draw honest duration
+spans, including when same-type events overlap under
+`EventConcurrency.concurrent`.
+
+Note: `use_case_error` has two sources sharing the type — the executor's
+span-closing entry (has `executionId`) and `BlocErrorHandler`'s summary
+(has `bloc`/`state`). Span consumers key on `executionId` presence.
+
+Additive, log-schema only; no behavior changes.
+
 ## [1.6.0] - 2026-06-23
 
 ### New Features

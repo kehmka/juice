@@ -120,24 +120,45 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
   final void Function(Object error, StackTrace stack, EventBase event) _onError;
   final JuiceLogger _logger;
 
+  /// Monotonic id stamped on a use case's start and end log entries, so a
+  /// telemetry consumer can pair them into a span even when two events of
+  /// the SAME type overlap under `EventConcurrency.concurrent`. Process-wide
+  /// (static) on purpose: uniqueness must hold across blocs.
+  static int _nextExecutionId = 0;
+
   /// Executes a use case for the given event.
   ///
   /// Creates a use case instance from the builder, wires it with context,
   /// and executes it. Errors are logged and passed to the error handler.
+  ///
+  /// Every execution logs exactly two structured entries: the
+  /// `use_case_execution` start, and — sharing its `executionId` — either
+  /// `use_case_completed` (with `elapsedMicros`) or `use_case_error` (also
+  /// with `elapsedMicros`). A span consumer closes on whichever arrives.
   Future<void> execute(UseCaseBuilderBase builder, EventBase event) async {
     final useCase = builder.generator();
     final context = _contextFactory(event);
+    final executionId = _nextExecutionId++;
 
     _logger.log('Executing use case', context: {
       'type': 'use_case_execution',
       'useCase': useCase.runtimeType.toString(),
       'event': event.runtimeType.toString(),
+      'executionId': executionId,
     });
 
     _wireUseCase(useCase, context);
 
+    final stopwatch = Stopwatch()..start();
     try {
       await useCase.execute(event);
+      _logger.log('Use case completed', context: {
+        'type': 'use_case_completed',
+        'useCase': useCase.runtimeType.toString(),
+        'event': event.runtimeType.toString(),
+        'executionId': executionId,
+        'elapsedMicros': stopwatch.elapsedMicroseconds,
+      });
     } catch (error, stackTrace) {
       _logger.logError(
         'Use case execution failed',
@@ -147,6 +168,8 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           'type': 'use_case_error',
           'useCase': useCase.runtimeType.toString(),
           'event': event.runtimeType.toString(),
+          'executionId': executionId,
+          'elapsedMicros': stopwatch.elapsedMicroseconds,
         },
       );
       _onError(error, stackTrace, event);

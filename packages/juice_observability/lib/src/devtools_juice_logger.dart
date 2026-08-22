@@ -9,18 +9,20 @@ import 'package:juice/juice.dart';
 /// The framework already attaches a structured `context` map — with a `type`
 /// discriminator — at every load-bearing point: `use_case_execution`,
 /// `state_emission`, `state_emission_skipped`, `bloc_lifecycle`,
-/// `event_subscription`, `unhandled_event`, `use_case_error`, `bloc_error`,
+/// `use_case_completed`, `event_subscription`, `unhandled_event`,
+/// `use_case_error`, `bloc_error`,
 /// `error_handler_error`, `leak_detection`. This logger is a mirror on that
 /// existing seam, not new instrumentation: every typed entry is posted as an
 /// extension event of kind `juice:<type>`; untyped chatter stays
 /// console-only. Errors without a typed context post as `juice:error` —
 /// an error is always worth surfacing.
 ///
-/// PHASE 1 — instant events only, deliberately. The core logs a use case's
-/// START but not its completion, so duration spans cannot be honest yet;
-/// when core gains a `use_case_completed` entry, Timeline spans slot in here
-/// without breaking the event schema. (Tracked on the ROADMAP under the
-/// BlocSignal tee-up.)
+/// SPANS: from juice 1.7.0 the core logs a `use_case_completed` end entry
+/// (and stamps `use_case_error`) sharing the start's `executionId`, with
+/// `elapsedMicros` — so a consumer can pair `juice:use_case_execution` with
+/// its end event into an honest duration span, even when same-type events
+/// overlap under `concurrent`. (`use_case_error` has two sources sharing
+/// the type; the span-closing one carries `executionId`.)
 ///
 /// Wire it once at startup, wrapping whatever logger you already use:
 ///

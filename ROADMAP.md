@@ -361,3 +361,68 @@ flows; require fixing only if an app hits them):
 - **`juice_sync`** — `close()` during an in-flight flush disposes the store
   between the executor await and the durable delete; add a post-await
   `isClosing` guard when hardening.
+
+## Teed up from the BlocSignal comparison (2026-08-21)
+
+Five items stolen with pride from `BlocSignal` (Randal Schwartz's
+bloc-on-signals bridge, reviewed at v1.0.1 the week it shipped). None are
+migrations — BlocSignal solves the container layer and doesn't touch the
+constellation; these are the parts worth having. Ordered by value.
+
+### 1 · DevTools telemetry + lint tooling  📋
+The gap that should sting: one week old, BlocSignal ships a DevTools
+extension (trace panel, state diffs, leak alerts), a lint package with
+quick-fixes, and a `dart:developer` telemetry observer. Juice's graft
+point already exists: every use-case execution and emission funnels
+through the logger/StatusEmitter seam. **Phase 1 (cheap):** a
+`JuiceDevtoolsObserver` on that seam posting `dart:developer`
+`postEvent`/Timeline spans — visible in stock DevTools with zero UI work.
+**Phase 2:** a real extension panel (transitions timeline, state diff,
+group-rebuild inspector — the groups vocabulary makes rebuild tracing
+MORE explainable than signals' auto-graph). **Phase 3:** `juice_lint`
+(use-case-per-file, no-cross-feature-deps, relay-not-listener — the
+AGENTS.md idioms as analyzer rules). Home: `juice_observability` for the
+observer; extension packaging rules may force a dedicated package —
+decide at build.
+
+### 2 · Opt-in select-style rebuilds alongside groups  📋
+Signals' headline: per-value rebuild precision, auto-tracked. The honest
+Juice version is selector + equality, no dependency-graph magic: a
+`SelectJuiceWidget<TBloc, T>` / `.select<T>((state) => value)` that
+rebuilds only when the selected value changes by `==`. **Positioning
+(the one-knob-per-purpose resolution):** groups remain the canonical
+bloc-driven invalidation vocabulary — cross-widget, intent-named;
+`select` is a leaf-widget optimization for hot cells (list rows, tickers)
+inside a group's blast radius. Additive; no change to existing widgets.
+Gate: a real rebuild-storm case in an app (Amoli's person grid or well
+counters are candidates), measured before and after.
+
+### 3 · `restartable` as a fourth EventConcurrency mode  📋
+New same-type event supersedes the in-flight one (typeahead, search,
+scrubbing). Dart can't kill an awaited future, so the honest semantics
+are **emission fencing**: an epoch counter per event type; a superseded
+run's `emitUpdate`s become no-ops, and an optional `isSuperseded` check
+lets long loops bail early. Documented loudly: side effects already
+performed are NOT rolled back — restartable fences state, not the world.
+Gate: a real consumer (none of the 25 packages needed it in the
+concurrency migration — that's the tell it ships only when an app asks).
+
+### 4 · `==`-dedup as an emit option  📋
+BlocSignal dedups every transition by equality; Juice emits what you
+emit. The opt-in version: `emitUpdate(skipIfUnchanged: true)` comparing
+`newState == state` before emitting (requires value equality on that
+state — caller's responsibility, documented). Per-call, not per-bloc:
+dedup is a statement about a specific emission site, and a blanket mode
+would silently swallow intentional re-emits (waiting → waiting refresh
+patterns). Gate: same as select — a measured storm first.
+
+### 5 · The AI skill bundle, in-repo  📋
+BlocSignal ships a Claude Code plugin + skill bundle in the repo
+(marketplace manifests included) — architectural idioms as an installable
+skill for coding agents. Juice already wrote the content: AGENTS.md
+(relays not listeners, demonstrate-in-full, one-knob-per-purpose, the
+concurrency semantics doc). Packaging it as `.claude-plugin/` +
+`skills/juice/` is distribution, not authorship — any consumer repo (or
+future contributor's agent) installs the idioms instead of rediscovering
+them. Cheapest item on this list; also the only marketing Juice has ever
+needed ("a personal toolkit" — but the skill travels with the code).

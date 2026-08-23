@@ -1,0 +1,5 @@
+
+# The DevTools extension web build is generated (see
+# ../juice_observability_devtools_extension: dart run devtools_extensions
+# build_and_copy). Kept out of git; .pubignore re-includes it for pub.
+extension/devtools/build/

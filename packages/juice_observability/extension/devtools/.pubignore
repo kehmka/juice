@@ -1,0 +1,3 @@
+# Even though extension/devtools/build/ is git-ignored, it MUST ship in
+# the pub archive or the DevTools extension loads empty. This un-ignores it.
+!build

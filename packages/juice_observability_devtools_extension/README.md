@@ -18,11 +18,20 @@ flutter run -d chrome --dart-define=use_simulated_environment=true
 
 ## Ship (into the host package)
 
+Don't publish `juice_observability` by hand — the built bundle is **not in
+git** (44 MB of Flutter-web + CanvasKit; `extension/devtools/build/` is
+git-ignored). A `.pubignore` re-includes it in the pub archive, and the
+publish script rebuilds it first so the shipped bundle is never stale:
+
 ```sh
-dart run devtools_extensions build_and_copy --source=. --dest=../juice_observability/extension/devtools
-dart run devtools_extensions validate --package=../juice_observability
+bash packages/juice_observability/tool/publish.sh   # from the repo root
 ```
 
-The build output lands in `../juice_observability/extension/devtools/build`
-and is committed — pub.dev ships it with the package. Bump
-`extension/devtools/config.yaml`'s `version` when the panel changes.
+That runs `build_and_copy` → `validate` → `flutter pub publish`. For a
+quick local rebuild without publishing:
+
+```sh
+dart run devtools_extensions build_and_copy --source=. --dest=../juice_observability/extension/devtools
+```
+
+Bump `extension/devtools/config.yaml`'s `version` when the panel changes.

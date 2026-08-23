@@ -407,14 +407,17 @@ performed are NOT rolled back — restartable fences state, not the world.
 Gate: a real consumer (none of the 25 packages needed it in the
 concurrency migration — that's the tell it ships only when an app asks).
 
-### 4 · `==`-dedup as an emit option  📋
-BlocSignal dedups every transition by equality; Juice emits what you
-emit. The opt-in version: `emitUpdate(skipIfUnchanged: true)` comparing
-`newState == state` before emitting (requires value equality on that
-state — caller's responsibility, documented). Per-call, not per-bloc:
-dedup is a statement about a specific emission site, and a blanket mode
-would silently swallow intentional re-emits (waiting → waiting refresh
-patterns). Gate: same as select — a measured storm first.
+### 4 · `==`-dedup as an emit option  ✅ (already in core)
+ALREADY SHIPPED as `emitUpdate(skipIfSame: true)` — the audit for this
+item found core already had exactly the proposed design: per-call (never
+bloc-wide), comparing `newState == state`, logging `state_emission_skipped`
+when it fires (the type the DevTools panel already renders). What item 4
+actually needed was DISCOVERABILITY, not code: it was undocumented and its
+behavior untested (the prior "coverage" only mocked the parameter away).
+Done 2026-08-21 — real behavior tests (test/bloc/skip_if_same_test.dart,
+incl. the value-equality precondition), plus AGENTS §4c and a core README
+bullet. The `skipIfUnchanged` name in this note was never real; the field
+is `skipIfSame`.
 
 ### 5 · The AI skill bundle, in-repo  📋
 BlocSignal ships a Claude Code plugin + skill bundle in the repo

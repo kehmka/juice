@@ -187,6 +187,23 @@ sharing the type — the executor's span-closer (has `executionId`) and
 `BlocErrorHandler`'s summary (has `bloc`/`state`). Span consumers key on
 `executionId` presence.
 
+## 4c. Skipping duplicate emits (`skipIfSame`)
+
+`emitUpdate(newState: …, groupsToRebuild: …, skipIfSame: true)` suppresses
+the emission when `newState == state`, logging `state_emission_skipped`
+instead of rebuilding. Two rules:
+
+- **It is PER-CALL, never a bloc-wide mode.** Turn it on at a specific
+  emission site where a no-op refresh is possible (re-fetch that often
+  returns identical data). A blanket mode would swallow intentional
+  re-emits — e.g. a `waiting → waiting` refresh, or re-emitting an equal
+  state to replay a transient. Only `emitUpdate` has it; `emitWaiting`/
+  `emitFailure`/`emitCancel` deliberately do not.
+- **It requires VALUE EQUALITY on the state.** With only identity `==`,
+  `newState == state` is always false and nothing is ever skipped. Give
+  the state (or the changed field's type) real `==`/`hashCode` —
+  `EntityStatuses` and the framework value types already have it.
+
 ## 5. Gotchas — what AI models get wrong about Juice
 
 1. **`StatelessJuiceWidget` subclasses CANNOT be `const`.** `const MyWidget()`

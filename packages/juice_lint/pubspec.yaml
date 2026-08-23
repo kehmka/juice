@@ -1,0 +1,17 @@
+name: juice_lint
+description: Custom analyzer lints for the Juice framework — the AGENTS.md idioms as rules.
+version: 0.1.0
+repository: https://github.com/kehmka/juice
+publish_to: none  # flip when first published; validate the analysis surface first
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  analyzer: ^8.0.0
+  custom_lint_builder: ^0.8.1
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+  custom_lint: ^0.8.1

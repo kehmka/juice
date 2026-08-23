@@ -369,7 +369,7 @@ bloc-on-signals bridge, reviewed at v1.0.1 the week it shipped). None are
 migrations — BlocSignal solves the container layer and doesn't touch the
 constellation; these are the parts worth having. Ordered by value.
 
-### 1 · DevTools telemetry + lint tooling  ✅ phases 1–2 · 📋 phase 3 (lint)
+### 1 · DevTools telemetry + lint tooling  ✅ phases 1–3
 The gap that should sting: one week old, BlocSignal ships a DevTools
 extension (trace panel, state diffs, leak alerts), a lint package with
 quick-fixes, and a `dart:developer` telemetry observer. Juice's graft
@@ -384,6 +384,12 @@ MORE explainable than signals' auto-graph). **Phase 3:** `juice_lint`
 AGENTS.md idioms as analyzer rules). Home: `juice_observability` for the
 observer; extension packaging rules may force a dedicated package —
 decide at build.
+
+**Phase 3 SHIPPED (juice_lint 0.1.0, 2026-08-21):** three custom_lint
+rules — juice_generic_event, juice_mutable_state_field,
+juice_behavior_in_state — scoped to package:juice base types, verified by
+an expect_lint fixture suite (example/). The const-widget gotcha is
+already a compile error, so no rule for it.
 
 ### 2 · Opt-in select-style rebuilds alongside groups  📋
 Signals' headline: per-value rebuild precision, auto-tracked. The honest

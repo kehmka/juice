@@ -204,6 +204,11 @@ instead of rebuilding. Two rules:
   the state (or the changed field's type) real `==`/`hashCode` —
   `EntityStatuses` and the framework value types already have it.
 
+> Many of these gotchas are now enforced by **`juice_lint`** (a
+> `custom_lint` plugin): `juice_generic_event`, `juice_mutable_state_field`,
+> `juice_behavior_in_state`. Add it as a dev_dependency to catch them in the
+> IDE.
+
 ## 5. Gotchas — what AI models get wrong about Juice
 
 1. **`StatelessJuiceWidget` subclasses CANNOT be `const`.** `const MyWidget()`

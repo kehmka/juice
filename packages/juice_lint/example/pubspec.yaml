@@ -1,0 +1,16 @@
+name: juice_lint_example
+description: Fixtures proving juice_lint rules fire (and don't over-fire).
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  juice:
+    path: ../../juice
+
+dev_dependencies:
+  custom_lint: ^0.8.1
+  juice_lint:
+    path: ../

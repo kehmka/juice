@@ -6,6 +6,8 @@ import 'storage_config.dart';
 import 'storage_events.dart';
 import 'storage_state.dart';
 import 'use_cases/use_cases.dart';
+import 'adapters/hive_gateway.dart';
+import 'adapters/hive_gateway_impl.dart';
 
 /// BLoC for managing local storage operations.
 ///
@@ -59,29 +61,37 @@ class StorageBloc extends JuiceBloc<StorageState> {
   /// Creates a StorageBloc with the given configuration.
   ///
   /// Optionally accepts a [cacheIndex] for testing.
-  factory StorageBloc({required StorageConfig config, CacheIndex? cacheIndex}) {
+  factory StorageBloc(
+      {required StorageConfig config,
+      CacheIndex? cacheIndex,
+      HiveGateway? hiveGateway}) {
     final index = cacheIndex ?? CacheIndex();
-    return StorageBloc._(config: config, cacheIndex: index);
+    return StorageBloc._(
+        config: config,
+        cacheIndex: index,
+        hiveGateway: hiveGateway ?? const HiveGatewayImpl());
   }
 
-  StorageBloc._({required StorageConfig config, required CacheIndex cacheIndex})
+  StorageBloc._(
+      {required StorageConfig config,
+      required CacheIndex cacheIndex,
+      required HiveGateway hiveGateway})
       : _config = config,
         _cacheIndex = cacheIndex,
         super(
           const StorageState(),
-          _buildUseCases(config, cacheIndex),
+          _buildUseCases(config, cacheIndex, hiveGateway),
         );
 
   static List<UseCaseBuilderGenerator> _buildUseCases(
-    StorageConfig config,
-    CacheIndex cacheIndex,
-  ) {
+      StorageConfig config, CacheIndex cacheIndex, HiveGateway hive) {
     return [
       // Initialize
       () => UseCaseBuilder(
             typeOfEvent: InitializeStorageEvent,
             useCaseGenerator: () =>
-                InitializeUseCase(config: config, cacheIndex: cacheIndex),
+                InitializeUseCase(
+                    config: config, cacheIndex: cacheIndex, hive: hive),
             concurrency: EventConcurrency.concurrent,
           ),
 

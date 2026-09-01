@@ -5,6 +5,8 @@
 library;
 
 export 'hive_adapter.dart';
+export 'hive_gateway.dart';
+export 'hive_gateway_impl.dart';
 export 'key_value_adapter.dart';
 export 'prefs_adapter.dart';
 export 'secure_adapter.dart';

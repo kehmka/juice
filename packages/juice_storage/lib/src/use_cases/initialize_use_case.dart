@@ -16,8 +16,12 @@ class InitializeUseCase
     extends SerializedStorageMutationUseCase<InitializeStorageEvent> {
   final StorageConfig config;
   final CacheIndex cacheIndex;
+  final HiveGateway hive;
 
-  InitializeUseCase({required this.config, required this.cacheIndex});
+  InitializeUseCase(
+      {required this.config,
+      required this.cacheIndex,
+      this.hive = const HiveGatewayImpl()});
 
   @override
   Future<void> executeMutation(InitializeStorageEvent event) async {
@@ -39,16 +43,12 @@ class InitializeUseCase
       );
       for (var attempt = 0; attempt < 2; attempt++) {
         try {
-          if (config.hivePath != null) {
-            await Hive.initFlutter(config.hivePath);
-          } else {
-            await Hive.initFlutter();
-          }
+          await hive.init(config.hivePath);
 
           // Register adapters
           for (final adapter in config.hiveAdapters) {
-            if (!Hive.isAdapterRegistered(adapter.typeId)) {
-              Hive.registerAdapter(adapter);
+            if (!hive.isAdapterRegistered(adapter.typeId)) {
+              hive.registerAdapter(adapter);
             }
           }
 
@@ -60,10 +60,9 @@ class InitializeUseCase
           // Open configured boxes
           final hiveBoxes = <String, BoxInfo>{};
           for (final boxName in config.hiveBoxesToOpen) {
-            final hiveAdapter = await HiveAdapterFactory.open<dynamic>(boxName);
             hiveBoxes[boxName] = BoxInfo(
               name: boxName,
-              entryCount: hiveAdapter.length,
+              entryCount: await hive.openBox(boxName),
             );
           }
 

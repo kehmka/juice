@@ -1,4 +1,5 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:juice/juice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adapters/adapters.dart';
@@ -23,60 +24,81 @@ class InitializeUseCase
     try {
       var status = const StorageBackendStatus();
 
-      // 1. Initialize Hive
-      try {
-        status = status.copyWith(hive: BackendState.initializing);
-        emitUpdate(
-          newState: bloc.state.copyWith(backendStatus: status),
-          groupsToRebuild: {StorageBloc.groupInit},
-        );
-
-        if (config.hivePath != null) {
-          await Hive.initFlutter(config.hivePath);
-        } else {
-          await Hive.initFlutter();
-        }
-
-        // Register adapters
-        for (final adapter in config.hiveAdapters) {
-          if (!Hive.isAdapterRegistered(adapter.typeId)) {
-            Hive.registerAdapter(adapter);
+      // 1. Initialize Hive — with ONE bounded retry. A process killed
+      // mid-write (a dev kill, an OS jetsam) can leave a stale box lock
+      // that fails exactly one cold boot; the app then ran a whole
+      // session with hive dead and every cache/prefs consumer throwing
+      // "CacheIndex not initialized" (observed 2026-09-01, first boot
+      // after a killed battery session). One short-delay retry heals the
+      // transient class; a real failure still fails — LOUDLY, in the log
+      // as well as the state.
+      status = status.copyWith(hive: BackendState.initializing);
+      emitUpdate(
+        newState: bloc.state.copyWith(backendStatus: status),
+        groupsToRebuild: {StorageBloc.groupInit},
+      );
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (config.hivePath != null) {
+            await Hive.initFlutter(config.hivePath);
+          } else {
+            await Hive.initFlutter();
           }
-        }
 
-        // Initialize CacheIndex (uses Hive internally, must be after Hive.initFlutter)
-        // This must happen before opening user boxes so TTL tracking is ready
-        await cacheIndex.init();
+          // Register adapters
+          for (final adapter in config.hiveAdapters) {
+            if (!Hive.isAdapterRegistered(adapter.typeId)) {
+              Hive.registerAdapter(adapter);
+            }
+          }
 
-        // Open configured boxes
-        final hiveBoxes = <String, BoxInfo>{};
-        for (final boxName in config.hiveBoxesToOpen) {
-          final hiveAdapter = await HiveAdapterFactory.open<dynamic>(boxName);
-          hiveBoxes[boxName] = BoxInfo(
-            name: boxName,
-            entryCount: hiveAdapter.length,
+          // Initialize CacheIndex (uses Hive internally, must be after
+          // Hive.initFlutter). Must happen before opening user boxes so
+          // TTL tracking is ready.
+          await cacheIndex.init();
+
+          // Open configured boxes
+          final hiveBoxes = <String, BoxInfo>{};
+          for (final boxName in config.hiveBoxesToOpen) {
+            final hiveAdapter = await HiveAdapterFactory.open<dynamic>(boxName);
+            hiveBoxes[boxName] = BoxInfo(
+              name: boxName,
+              entryCount: hiveAdapter.length,
+            );
+          }
+
+          status = status.copyWith(hive: BackendState.ready);
+          emitUpdate(
+            newState: bloc.state
+                .copyWith(backendStatus: status, hiveBoxes: hiveBoxes),
+            groupsToRebuild: {StorageBloc.groupInit},
+          );
+          break;
+        } catch (e, st) {
+          if (attempt == 0) {
+            JuiceLoggerConfig.logger.log(
+                'storage: hive init failed (attempt 1) — retrying once: $e');
+            await Future<void>.delayed(const Duration(milliseconds: 300));
+            continue;
+          }
+          JuiceLoggerConfig.logger.logError(
+              'storage: hive init failed after retry — the hive-backed '
+              'cache is DEAD this session',
+              e,
+              st);
+          status = status.copyWith(hive: BackendState.error);
+          emitUpdate(
+            newState: bloc.state.copyWith(
+              backendStatus: status,
+              lastError: StorageError(
+                message: 'Hive initialization failed: $e',
+                type: StorageErrorType.backendNotAvailable,
+                timestamp: DateTime.now(),
+              ),
+            ),
+            groupsToRebuild: {StorageBloc.groupInit},
           );
         }
-
-        status = status.copyWith(hive: BackendState.ready);
-        emitUpdate(
-          newState:
-              bloc.state.copyWith(backendStatus: status, hiveBoxes: hiveBoxes),
-          groupsToRebuild: {StorageBloc.groupInit},
-        );
-      } catch (e) {
-        status = status.copyWith(hive: BackendState.error);
-        emitUpdate(
-          newState: bloc.state.copyWith(
-            backendStatus: status,
-            lastError: StorageError(
-              message: 'Hive initialization failed: $e',
-              type: StorageErrorType.backendNotAvailable,
-              timestamp: DateTime.now(),
-            ),
-          ),
-          groupsToRebuild: {StorageBloc.groupInit},
-        );
       }
 
       // 2. Initialize SharedPreferences

@@ -435,3 +435,50 @@ concurrency semantics doc). Packaging it as `.claude-plugin/` +
 future contributor's agent) installs the idioms instead of rediscovering
 them. Cheapest item on this list; also the only marketing Juice has ever
 needed ("a personal toolkit" — but the skill travels with the code).
+
+## Work docket — cleanup while #2 and #3 wait (2026-09-02)
+
+State at survey: 28 packages, `main` 5 commits ahead of origin, tree
+clean. Items 1 and 4 above are done; #2 (select-rebuilds) and #3
+(`restartable`) stay parked on their gates by decision. What remains is
+integrity and distribution debt, ordered by priority.
+
+### 1 · `juice_storage` version-integrity drift  🔴
+Three commits (HiveGateway seam + one bounded retry on the stale-lock
+cold boot + its pins) changed shipped behavior while the pubspec stayed
+at `2.1.0` — and `2.1.0` is already on pub.dev with the OLD code. One
+version number, two different packages. Amoli hit the stale-lock bug on
+2026-09-01, so a consumer is waiting on this.
+→ Bump to `2.2.0` (additive seam + new retry), `[2.2.0]` CHANGELOG entry,
+publish. Do this BEFORE pushing so `main` is self-consistent.
+
+### 2 · Push the unpushed commits
+Five on `main` (storage seam/pins, juice_lint, item 4). Safe once #1 has
+landed.
+
+### 3 · `juice_observability 0.4.0` — committed, unpublished  🟡
+pub.dev is at `0.3.1`; `0.4.0` is the DevTools-extension release. Publish
+runs through `tool/publish.sh` (rebuilds the extension into the archive
+via `.pubignore !build`). Standing caveat: the live panel has only been
+verified against the simulated environment — one look at it in real
+Chrome DevTools before the permanent publish.
+
+### 4 · `juice` README drift (1.7.2?)  🟡 decision
+Item 4 added one line to the core README after `1.7.1` shipped, so the
+pub.dev page is one line stale. Recommendation: let it ride and fold into
+the next real core change rather than burn a version on a doc line.
+
+### 5 · Dogfood `juice_lint`  🟢
+Built, `publish_to: none`, and wired into ZERO packages'
+`analysis_options.yaml` — none of the three rules fire anywhere. Wire it
+into a canary (`juice_examples`) so the rules run under analyze. That is
+also the precondition for ever publishing it.
+
+### 6 · Item 5 above — the AI skill bundle  🟢
+Ungated and the cheapest item on the list. Package AGENTS.md as
+`.claude-plugin/` + `skills/juice/`. Distribution, not authorship.
+
+### Hygiene gate, every publish
+Package tests green + `dart pub publish --dry-run`, and audit BOTH the
+README and `example/lib/main.dart` — both freeze into the archive (the
+1.7.0 → 1.7.1 stale-docs lesson).

@@ -1,0 +1,9 @@
+include: package:flutter_lints/flutter.yaml
+
+# juice_lint (custom_lint plugin). The IDE's analysis server surfaces its
+# diagnostics; `flutter analyze` loads the plugin but does NOT report them
+# (custom_lint's documented CLI behavior, verified 2026-09-02) — run
+# `dart run custom_lint` here, or `melos run lint:juice` from the root.
+analyzer:
+  plugins:
+    - custom_lint

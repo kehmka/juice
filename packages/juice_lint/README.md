@@ -34,8 +34,19 @@ analyzer:
 Disable a rule (project-wide) under `custom_lint:` in `analysis_options.yaml`,
 or inline with `// ignore: juice_generic_event`.
 
+## Example
+
+`example/README.md` walks each rule: the offending code, the exact warning,
+and the fix, with the `AGENTS.md` idiom it encodes.
+
 ## Develop
 
 Fixtures in `example/lib/fixtures.dart` use `// expect_lint: <code>` markers;
 `cd example && dart run custom_lint` verifies every rule fires and none
 over-fires.
+
+Dogfood canary: the five `juice_examples` apps carry the plugin;
+`melos run lint:juice` from the workspace root runs it across them (all
+clean as of 2026-09-02; all three rules confirmed live on real app code by
+planted sentinels). Note `flutter analyze` loads the plugin but does not
+report its diagnostics — only `dart run custom_lint` and the IDE do.

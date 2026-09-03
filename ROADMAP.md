@@ -468,11 +468,31 @@ Item 4 added one line to the core README after `1.7.1` shipped, so the
 pub.dev page is one line stale. Recommendation: let it ride and fold into
 the next real core change rather than burn a version on a doc line.
 
-### 5 · Dogfood `juice_lint`  🟢
-Built, `publish_to: none`, and wired into ZERO packages'
-`analysis_options.yaml` — none of the three rules fire anywhere. Wire it
-into a canary (`juice_examples`) so the rules run under analyze. That is
-also the precondition for ever publishing it.
+### 5 · Dogfood `juice_lint`  ✅ 2026-09-02
+Was built, `publish_to: none`, and wired into ZERO packages — none of the
+three rules had ever fired on real code. Now wired into all five
+`juice_examples` apps (custom_lint + juice_lint path dev deps, analyzer
+plugin in analysis_options) and runnable as `melos run lint:juice` —
+`flutter analyze` does not load analyzer plugins, so it is its own script.
+Result: all five apps CLEAN, and all three rules proven live on real app
+code by planted sentinels (a mutable field + a closure field in NotesState,
+a generic event in settings_events — each tripped its rule under
+`dart run custom_lint`, then reverted). Not added to the `ci` script — a CI
+gate is a rule, decided separately.
+
+What the validation established about the SURFACE (the pubspec's open
+question): (a) `dart run custom_lint` is the runner — `flutter analyze`
+loads the plugin (the analysis server spins the plugin isolate) but does
+not report its diagnostics, custom_lint's documented CLI behavior, verified
+by the same sentinel through both runners; (b) the IDE path (analysis
+server + plugin, what VS Code/IntelliJ show) is UNTESTED from the CLI —
+open notes_app in an IDE, plant a non-final field in NotesState, expect the
+squiggle; (c) under a memory/time-restricted sandbox the plugin isolate is
+SIGKILLed and `flutter analyze` reports "analysis server exited with code
+-9" for every app carrying the plugin block — fine on a dev machine, a
+resource note for any constrained CI runner running `melos run analyze`.
+Publishing stays `none` until it has caught something real in a consumer
+app; the surface is validated, the value is not yet.
 
 ### 6 · Item 5 above — the AI skill bundle  🟢
 Ungated and the cheapest item on the list. Package AGENTS.md as

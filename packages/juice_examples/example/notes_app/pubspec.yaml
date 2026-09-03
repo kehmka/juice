@@ -18,6 +18,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # juice_lint dogfood canary: the AGENTS.md idioms as analyzer rules. Run
+  # with `dart run custom_lint` — flutter analyze loads the plugin but does
+  # not report its diagnostics.
+  custom_lint: ^0.8.1
+  juice_lint:
+    path: ../../../juice_lint
 
 dependency_overrides:
   juice:

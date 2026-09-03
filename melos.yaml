@@ -21,6 +21,10 @@ scripts:
     run: dart run melos exec --concurrency=1 --dir-exists=test --ignore=notes_app -- flutter test
     description: Run tests in all packages
 
+  lint:juice:
+    run: dart run melos exec --concurrency=1 --scope="chat_app,dashboard,ecommerce,notes_app,social_feed" -- dart run custom_lint
+    description: Run juice_lint (custom_lint) on the example-app canaries — flutter analyze does not load analyzer plugins
+
   format:
     run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format "${targets[@]}"; fi'
     description: Format all packages

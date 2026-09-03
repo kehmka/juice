@@ -1,4 +1,3 @@
-import 'package:hive_ce/hive.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'hive_adapter.dart';

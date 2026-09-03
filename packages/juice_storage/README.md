@@ -35,7 +35,7 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 ```yaml
 dependencies:
   juice: ^1.6.0
-  juice_storage: ^2.1.0
+  juice_storage: ^2.2.0
 ```
 
 ### Platform setup — secure storage
@@ -82,6 +82,29 @@ BlocScope.register<StorageBloc>(
 final storage = BlocScope.get<StorageBloc>();
 await storage.initialize();
 ```
+
+### Initialization and backend failures
+
+Backends initialize independently and in order (Hive, SharedPreferences,
+SQLite, secure). A backend that fails does **not** fail `initialize()`: the
+call completes, `state.isInitialized` becomes true, and the failed backend is
+reported as `BackendState.error` in `state.backendStatus` with the cause in
+`state.lastError`. Operations on a failed backend then fail loudly, so check
+status before relying on one:
+
+```dart
+await storage.initialize();
+if (storage.state.backendStatus.hive != BackendState.ready) {
+  // storage.state.lastError carries the cause
+}
+```
+
+Hive gets one automatic retry (after 300ms) before it is declared failed — a
+process killed mid-write can leave a stale box lock that fails exactly one
+cold boot. Both outcomes are logged through `JuiceLoggerConfig`:
+`storage: hive init failed (attempt 1) — retrying once` (healed) or
+`storage: hive init failed after retry` (the backend stays in `error` until
+you call `initialize()` again). The other backends are single-attempt.
 
 ### Hive Storage
 

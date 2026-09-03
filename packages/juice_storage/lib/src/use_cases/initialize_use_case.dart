@@ -1,4 +1,3 @@
-import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:juice/juice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +11,23 @@ import '../storage_state.dart';
 import 'serialized_storage_mutation_use_case.dart';
 
 /// Use case for initializing all storage backends.
+///
+/// Runs four legs in order — Hive, SharedPreferences, SQLite, secure
+/// storage — each guarded independently: a backend that fails to initialize
+/// is marked [BackendState.error] with a [StorageError] in `lastError`, and
+/// initialization CONTINUES to the next backend. The event succeeds and
+/// `isInitialized` becomes true regardless, so callers must read
+/// `backendStatus` rather than infer readiness from completion.
+///
+/// The Hive leg gets ONE bounded retry (300ms delay) before it is declared
+/// failed — see the inline note for the stale-lock incident behind it. Watch
+/// the log for `storage: hive init failed (attempt 1) — retrying once`
+/// (healed) or `storage: hive init failed after retry` (the backend stays in
+/// [BackendState.error] until initialization is sent again). All other legs
+/// are single-attempt.
+///
+/// [hive] is the [HiveGateway] the Hive leg runs over. It defaults to the
+/// shipped [HiveGatewayImpl] and exists so tests can inject a fake.
 class InitializeUseCase
     extends SerializedStorageMutationUseCase<InitializeStorageEvent> {
   final StorageConfig config;
@@ -33,7 +49,7 @@ class InitializeUseCase
       // that fails exactly one cold boot; the app then ran a whole
       // session with hive dead and every cache/prefs consumer throwing
       // "CacheIndex not initialized" (observed 2026-09-01, first boot
-      // after a killed battery session). One short-delay retry heals the
+      // after the process was killed mid-write). One short-delay retry heals the
       // transient class; a real failure still fails — LOUDLY, in the log
       // as well as the state.
       status = status.copyWith(hive: BackendState.initializing);

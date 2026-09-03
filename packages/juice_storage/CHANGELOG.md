@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-02
+
+### Added
+- `HiveGateway` seam (`init` / `isAdapterRegistered` / `registerAdapter` /
+  `openBox`) with `HiveGatewayImpl` as the shipped default, injected through
+  `StorageBloc`'s factory exactly like `CacheIndex`. `InitializeUseCase`'s hive
+  leg now runs entirely over the seam, so Hive's static init surface is no
+  longer untestable. The gateway is an internal adapter (not exported); the
+  factory parameter exists for test injection.
+
+### Fixed
+- **Stale-lock cold boot no longer kills the session silently.** A process
+  killed mid-write can leave a Hive box lock that fails exactly one boot. The
+  old catch put the whole session on a dead cache with no log line saying why
+  (observed 2026-09-01: every prefs read throwing `CacheIndex not initialized`).
+  Hive init now gets ONE bounded retry after 300ms, and a final failure is
+  loud: logged through `JuiceLoggerConfig.logError` as well as the state's
+  `StorageError` (`backendNotAvailable`). Exactly two attempts, never more.
+
+### Tests
+- Three pins on the retry: clean init is one call with no noise; one transient
+  failure heals on the single retry (ready, boxes open, `retrying once` logged,
+  no error); persistent failure is loud and bounded (error state +
+  `StorageError` + `DEAD this session` logged, exactly two attempts).
+
 ## [2.1.0] - 2026-08-13
 
 ### Changed

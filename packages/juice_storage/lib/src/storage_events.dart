@@ -6,7 +6,9 @@ import 'core/result_event.dart';
 
 /// Initialize the storage system.
 ///
-/// Returns void on completion.
+/// Returns void on completion — including when a backend failed to
+/// initialize. Readiness lives in `StorageState.backendStatus`, not in
+/// this event completing; see `InitializeUseCase`.
 class InitializeStorageEvent extends StorageResultEvent<void> {
   InitializeStorageEvent({
     super.requestId,

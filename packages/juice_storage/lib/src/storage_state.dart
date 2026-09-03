@@ -3,9 +3,17 @@ import 'cache/cache_stats.dart';
 
 /// State of a storage backend.
 enum BackendState {
+  /// Initialization has not run for this backend yet.
   uninitialized,
+
+  /// Initialization is in progress.
   initializing,
+
+  /// Initialized and usable.
   ready,
+
+  /// Initialization failed. Operations on this backend fail loudly until
+  /// initialization is sent again; the cause is in [StorageState.lastError].
   error,
 }
 
@@ -88,6 +96,9 @@ class StorageError {
 /// Error types for storage operations.
 enum StorageErrorType {
   notInitialized,
+
+  /// A backend failed to initialize (or is unavailable on this platform).
+  /// Carried by [StorageState.lastError] when [BackendState.error] is set.
   backendNotAvailable,
   boxNotOpen,
   keyNotFound,

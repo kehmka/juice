@@ -60,7 +60,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
 
   /// Creates a StorageBloc with the given configuration.
   ///
-  /// Optionally accepts a [cacheIndex] for testing.
+  /// Optionally accepts a [cacheIndex] and a [hiveGateway] for testing;
+  /// both default to the shipped implementations.
   factory StorageBloc(
       {required StorageConfig config,
       CacheIndex? cacheIndex,
@@ -263,6 +264,14 @@ class StorageBloc extends JuiceBloc<StorageState> {
   ///
   /// This must be called before using any storage operations.
   /// Optionally starts background cleanup if enabled in config.
+  ///
+  /// Backends initialize independently, and a failure in one does NOT fail
+  /// this call: it completes, [StorageState.isInitialized] becomes true, and
+  /// the failed backend is reported as [BackendState.error] in
+  /// [StorageState.backendStatus] with the cause in [StorageState.lastError].
+  /// Check those before relying on a backend. Hive gets one automatic retry
+  /// (see [InitializeUseCase]); beyond that, call this again to re-run
+  /// initialization.
   Future<void> initialize() async {
     await sendForResult<void>(InitializeStorageEvent(
       groupsToRebuild: {groupInit},

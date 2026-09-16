@@ -459,9 +459,17 @@ landed.
 ### 3 · `juice_observability 0.4.0` — committed, unpublished  🟡
 pub.dev is at `0.3.1`; `0.4.0` is the DevTools-extension release. Publish
 runs through `tool/publish.sh` (rebuilds the extension into the archive
-via `.pubignore !build`). Standing caveat: the live panel has only been
-verified against the simulated environment — one look at it in real
-Chrome DevTools before the permanent publish.
+via `.pubignore !build`). LIVE-VERIFIED 2026-09-15 against the
+juice_observability example on macOS in real DevTools 2.57.0: extension
+discovered from the path dep, enable prompt, then Timeline (48 events —
+execution/completed pairs with ms durations, emissions with groups),
+Blocs (per-bloc emission count, groups, last event, state summary),
+Problems ("no problems — good") all populated from live button presses.
+Two notes from the look: config.yaml says `version: 0.1.0` while the
+package is 0.4.0 (DevTools shows "v0.1.0" in the panel header — align
+before publish); and Problems is FRAMEWORK problems (use_case_error,
+leaks, unhandled events), not the app's own reported errors — the two
+recorded errors correctly show in Blocs' state summary, not Problems.
 
 ### 4 · `juice` README drift (1.7.2?)  🟡 decision
 Item 4 added one line to the core README after `1.7.1` shipped, so the

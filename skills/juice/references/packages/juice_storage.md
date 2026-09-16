@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_storage
-version: 2.1.0
+version: 2.2.0
 requires:
   juice: ">=1.6.0"
-updated: 2026-08-13
+updated: 2026-09-15
 ---
 
 # juice_storage — AI card
@@ -44,7 +44,7 @@ updated: 2026-08-13
 
 ```yaml
 dependencies:
-  juice_storage: ^2.1.0
+  juice_storage: ^2.2.0
 ```
 
 Pulls `hive_ce`/`hive_ce_flutter`, `shared_preferences`, `sqflite`,
@@ -70,7 +70,11 @@ await storage.initialize();
 ```
 
 `initialize()` runs `InitializeStorageEvent` and (if enabled) starts a periodic,
-re-entrancy-guarded cleanup timer.
+re-entrancy-guarded cleanup timer. **Completion is not readiness:** the four
+backends (Hive, prefs, SQLite, secure) initialize independently, and a failed
+one does NOT fail the call — it completes, `state.isInitialized` goes true, and
+the failure is only visible as `BackendState.error` in `state.backendStatus`
+with the cause in `state.lastError`. Check status before relying on a backend.
 
 ## Concurrency and ordering
 
@@ -198,7 +202,10 @@ class StorageBadge extends StatelessJuiceWidget<StorageBloc> {
 
 `StorageConfig.test()` (no background cleanup). Inject a `CacheIndex` and override
 `clock` to test TTL deterministically; drive an `sqflite_common_ffi` database for
-SQLite. Do **not** assert reads off `state` — `await` the helper's `Future`:
+SQLite. The Hive init leg runs over a `HiveGateway` seam (internal; not
+exported) injected as `StorageBloc(..., hiveGateway: fake)` — a test fake imports
+`package:juice_storage/src/adapters/hive_gateway.dart` directly. That is how the
+retry is pinned (`test/use_cases/initialize_use_case_test.dart`). Do **not** assert reads off `state` — `await` the helper's `Future`:
 
 ```dart
 final storage = StorageBloc(config: StorageConfig.test(), cacheIndex: index);
@@ -212,6 +219,14 @@ expect(await storage.hiveRead<int>('cache', 'k'), isNull);   // expired
 ## Failure modes
 
 - Operating before `await initialize()` → `StorageNotInitializedException`.
+- A backend failing to initialize → `backendStatus.<backend> == BackendState.error`
+  + `lastError` (`backendNotAvailable`); operations on it then fail loudly. It
+  stays `error` until `initialize()` is sent again (there is no re-init guard).
+  Hive alone gets ONE bounded retry (300 ms) before that — a process killed
+  mid-write can leave a stale box lock that fails exactly one cold boot. Log
+  lines: `storage: hive init failed (attempt 1) — retrying once` (healed) /
+  `storage: hive init failed after retry` (dead until re-init). Other backends
+  are single-attempt.
 - Reading an unopened box → `BoxNotOpenException`; missing key → `null` (read) /
   `KeyNotFoundException` where applicable.
 - Backend unavailable on platform → `BackendNotAvailableException` /
@@ -229,8 +244,11 @@ expect(await storage.hiveRead<int>('cache', 'k'), isNull);   // expired
   `StorageBloc(config: ...)` then `await initialize()`.
 - ❌ Skipping `await initialize()` — every operation throws until it completes.
 - ❌ Expecting read values in `state` — they return via the `Future` only.
-- ❌ Importing the internal adapters (`lib/src/adapters/*`) — not exported; fake
-  at the bloc boundary instead.
+- ❌ Importing the internal adapters (`lib/src/adapters/*`) in APP code — not
+  exported; fake at the bloc boundary. (A test fake of `HiveGateway` is the one
+  sanctioned deep import.)
+- ❌ Treating `await initialize()` returning as "all backends ready" — read
+  `state.backendStatus`.
 - ❌ A TTL on `secureWrite` expecting expiry — unsupported.
 
 ## Integrates with
@@ -242,6 +260,8 @@ expect(await storage.hiveRead<int>('cache', 'k'), isNull);   // expired
 ## Invariants
 
 - `await initialize()` precedes all operations; helpers are `Future`-based.
+- A failed backend never fails `initialize()`; readiness is `backendStatus`, and
+  a dead backend is never quiet (logged through `JuiceLoggerConfig` + `lastError`).
 - Mutations execute through one cross-event FIFO; read-only queries stay concurrent.
 - State is health-only; data flows through `OperationResult`/`Future` to avoid
   concurrency bugs.

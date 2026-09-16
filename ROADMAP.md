@@ -518,7 +518,43 @@ live: an actual install into a consumer repo and the skill's trigger rate
 on real prompts — skill-creator's eval loop and description optimizer
 are the follow-ups when the bundle has a first consumer.
 
+### 7 · Versioning audit + the nine stale AI cards  ✅ 2026-09-15
+Kevin's hunch ("many packages are behind in versioning") checked on five
+axes across all 25 published packages: local vs pub.dev (all match), code
+under lib/ changed since the version-bump commit (none — the storage
+drift was a one-off), declared `juice` floor vs features actually used
+(no floor is dishonest; nobody uses EntityStatuses/guardEntity/skipIfSame
+yet), AI-card `version` vs pubspec, CHANGELOG top vs pubspec. Findings:
+(a) ISSUES #22 is the real "behind" — see item 8; (b) NINE cards had
+drifted from their package version, untracked anywhere, and the skill
+bundle (item 6) had just started shipping them: juice_llm 0.1.0→0.4.1,
+juice_observability 0.2.0→0.4.0 (also `requires` said 1.5.0 vs pubspec
+1.7.0; the card knew nothing of DevtoolsJuiceLogger or the extension),
+juice_storage 2.1.0→2.2.0 (the seam + retry), juice_media 0.4.0→0.5.0,
+juice_llm_llamacpp 0.1.0→0.2.3, and one patch each on auth_network,
+auth_routing, sync, theme. All nine refreshed against source (every
+symbol grepped in lib/ before it went on a card; changelog-only perf
+figures left out), `requires` mirrors pubspec on all nine, `updated`
+2026-09-15. Minor, parked: juice_llm and juice_llm_llamacpp use
+`## 0.4.1` CHANGELOG headings, the other 23 use `## [0.4.1] - date`.
+Lesson banked in ISSUES #23: nothing checked card-vs-pubspec; the drift
+was invisible until a human asked.
+
+### 8 · ISSUES #22 — the concurrency-migration tail  📋 NEXT
+`juice_sync` and `juice_theme` predate EventConcurrency: bare builders
+(silently `concurrent`), `juice: ^1.4.0`; `juice_auth_network` /
+`juice_auth_routing` are the constraint-only tail. The 2026-09-15 read
+sharpened the risk: sync's flush use case has a guard and re-checks
+`bloc.state.pending` per item, but enqueue / discard / retry are unguarded
+read-modify-writes on the queue across an await — the exact race the rule
+exists for, in a durable mutation queue. Which mode each event gets is
+doctrine, so the build starts with a per-event table for sign-off (draft:
+`sequential` for the queue mutations, `droppable` for flush, `concurrent`
+for the online-changed signal), then floors to `^1.6.0`, minor bumps,
+publish, then the two glue floors.
+
 ### Hygiene gate, every publish
 Package tests green + `dart pub publish --dry-run`, and audit BOTH the
 README and `example/lib/main.dart` — both freeze into the archive (the
-1.7.0 → 1.7.1 stale-docs lesson).
+1.7.0 → 1.7.1 stale-docs lesson). And the AI card: `doc/LLM.md`'s
+`version` must equal the pubspec's (ISSUES #23).

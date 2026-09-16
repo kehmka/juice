@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_media
-version: 0.4.0
+version: 0.5.0
 requires:
   juice: ">=1.5.0"
   image_picker: ">=1.1.0"
-updated: 2026-06-10
+updated: 2026-09-15
 ---
 
 # juice_media — AI card
@@ -31,7 +31,7 @@ when you track a *gallery* of uploads.
 
 ```yaml
 dependencies:
-  juice_media: ^0.4.0
+  juice_media: ^0.5.0
 ```
 
 Default source uses `image_picker` — add its platform setup (iOS `Info.plist`
@@ -115,7 +115,9 @@ class MediaState extends BlocState {
   bool get isUploading; bool get allUploaded;   // allUploaded counts remote-origin items (seeded completed)
 }
 // MediaItem: id, path?/bytes?, name, mimeType, sizeBytes, kind, uri (remote-origin),
-//            assetId? (0.5 — stable library identity, for dedupe across paths),
+//            assetId? (stable library identity — PHAsset.localIdentifier / MediaStore id —
+//              set by a source that has it, null from image_picker; persist it to dedupe
+//              the same photo arriving by two ingest paths; carried by withSession/toString),
 //            session? (draft partition tag — state.inSession(tag) filters); isRemote
 // Constructors: MediaItem(...), MediaItem.remote(uri: …), MediaItem.local(path: …)
 // UploadState: itemId, status, progress(0..1), remoteUrl?, error?; isActive, isDone

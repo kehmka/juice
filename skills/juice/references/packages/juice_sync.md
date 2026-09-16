@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_sync
-version: 0.1.0
+version: 0.1.2
 requires:
   juice: ">=1.4.0"
-  juice_storage: ">=1.2.0"
-updated: 2026-06-09
+  juice_storage: ">=1.2.0 <3.0.0"
+updated: 2026-09-15
 ---
 
 # juice_sync — AI card
@@ -30,8 +30,8 @@ streams use `juice_realtime`.
 
 ```yaml
 dependencies:
-  juice_sync: ^0.1.0
-  juice_storage: ^1.2.0   # for the durable StorageSyncStore
+  juice_sync: ^0.1.2
+  juice_storage: ^2.2.0   # for the durable StorageSyncStore (any 1.2+ works)
 ```
 
 ## Construct
@@ -61,6 +61,8 @@ typedef MutationExecutor = Future<void> Function(Mutation m);
 //  CONTRACT: send m.id as the idempotency key; server dedupes (AT-LEAST-ONCE).
 
 // Persistence. REQUIRED. Default StorageSyncStore (durable); InMemorySyncStore (tests only).
+// StorageSyncStore opens its own boxes (the outbox + a private `juice_sync_meta`)
+// on first use — there is nothing to add to StorageConfig.hiveBoxesToOpen.
 abstract class SyncStore {
   Future<void> put(Mutation m);
   Future<void> delete(String id);
@@ -178,6 +180,8 @@ expect(bloc.state.pending, isEmpty);
 
 - `enqueue` → throws `StorageSyncError` (persist failed) or `ArgumentError`
   (non-JSON payload). Surfaces to the caller; nothing is queued.
+  `StorageSyncError.toString()` includes its `cause`, so the wrapped storage
+  failure is visible, never opaque.
 - Executor `PermanentSyncError` → mutation dead-lettered (in `state.failed`).
 - Executor other throw → retried with backoff; after `maxAttempts` → dead-letter.
 - `loadAll` failure on init → `status == error`, **not** an empty queue.

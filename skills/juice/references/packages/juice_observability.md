@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_observability
-version: 0.2.0
+version: 0.4.0
 requires:
-  juice: ">=1.5.0"
-updated: 2026-06-09
+  juice: ">=1.7.0"
+updated: 2026-09-15
 ---
 
 # juice_observability — AI card
@@ -16,7 +16,8 @@ updated: 2026-06-09
 ## Purpose
 
 **Owns:** the capture pipeline — global handlers, the breadcrumb ring, and
-fan-out to reporters.
+fan-out to reporters — plus the framework-telemetry mirror (`DevtoolsJuiceLogger`)
+and the DevTools extension that renders it.
 **Does NOT own:** the vendor SDK (each `CrashReporter` is an adapter) or basic
 logging (`juice`'s `DefaultJuiceLogger`; this is app-level crash reporting).
 
@@ -30,18 +31,43 @@ each report. For event/screen tracking use `juice_analytics`.
 
 ```yaml
 dependencies:
-  juice_observability: ^0.1.0
+  juice_observability: ^0.4.0
 ```
 
-## DevTools mirror
+## DevTools mirror + extension
 
 ```dart
 JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger());          // default console under it
 JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger(inner: my)); // keep a custom logger
+JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger(post: (kind, data) {
+  developer.postEvent(kind, data); myFeed.add(kind, data);         // the post seam: tee / test
+}));
 ```
 
-Typed entries → `postEvent('juice:<type>', …)`. Do not put live objects in
-payload expectations — values cross as capped `toString`.
+`DevtoolsJuiceLogger` is a `JuiceLogger` DECORATOR on the existing logger
+seam, not new instrumentation. Every entry Juice already logs with a
+`context['type']` (`use_case_execution` / `use_case_completed` /
+`use_case_error`, `state_emission`, `state_emission_skipped`,
+`bloc_lifecycle`, `event_subscription`, `unhandled_event`, `bloc_error`,
+`error_handler_error`, `leak_detection`) is mirrored to the VM's
+extension-event stream as `postEvent('juice:<type>', payload)`; an error
+with no type posts as `juice:error`; untyped chatter stays console-only.
+Payloads are wire-safe: primitives pass through, live objects cross as
+`toString` capped at `DevtoolsJuiceLogger.maxFieldLength` (512). Requires
+`juice ≥ 1.7.0` so starts and ends share an `executionId` (+
+`elapsedMicros`) — that is what makes duration spans honest under
+`concurrent` overlap.
+
+**The extension** (`extension/devtools/`, built from
+`packages/juice_observability_devtools_extension`) is discovered by DevTools
+from this dependency alone — a `juice_observability` tab appears; enable it
+once when prompted. Four views: **Timeline** (every entry as it arrives),
+**Spans** (one row per use-case run, paired by `executionId`, with
+duration), **Blocs** (per bloc: emission count, groups touched, last event,
+state summary), **Problems** (FRAMEWORK problems only — `use_case_error`,
+unhandled events, leaks, error-handler errors; errors the app *reports*
+through this bloc are data and show in Blocs' state summary). It listens
+from the moment it opens — the VM event stream has no replay.
 
 ## Construct
 
@@ -161,7 +187,9 @@ obs.setEnabled(userConsentedToCrashReports);
 ## Testing
 
 Headless — fake the reporter, set `captureUncaught: false` so tests don't hijack
-the global handlers:
+the global handlers. Test the mirror through its `post` seam (capture
+`(kind, data)` pairs; assert on `kind == 'juice:use_case_completed'` and
+`data['executionId']`) — never on DevTools.
 
 ```dart
 class RecordingReporter implements CrashReporter {
@@ -213,4 +241,6 @@ expect(r.errors, hasLength(1));
 
 ## See also
 
-`SPEC.md` (capture/races) · `README.md` (narrative) · repo `AGENTS.md` (framework).
+`SPEC.md` (capture/races) · `README.md` (narrative; "DevTools extension" section) ·
+`example/` (the mirror teed into an in-app feed, with the self-loop guard a
+telemetry-consuming bloc needs) · repo `AGENTS.md` §4b (telemetry).

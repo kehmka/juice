@@ -290,6 +290,17 @@ that faithfully copying `juice_connectivity`'s shape had copied the gap too.
 declare `juice: ^1.4.0`, but register no use cases. Raise them to `^1.6.0` in a
 separate glue-package pass after their direct dependencies have migrated.
 
+**Re-confirmed 2026-09-15** by a five-axis versioning audit of all 25
+published packages (the only "behind" it found besides #23). Sharpened:
+`juice_sync`'s flush use case has a guard and re-checks `bloc.state.pending`
+before each item, but `enqueue` / `discard` / `retry` are unguarded
+read-modify-writes on the queue across an `await` — the exact race AGENTS
+§4 names, in a durable mutation queue. `juice_theme` has the same shape at
+lower stakes (every use case awaits its persistence then reads state). Which
+mode each event gets is doctrine: the build opens with a per-event table for
+sign-off (draft: `sequential` for the queue mutations, `droppable` for
+flush, `concurrent` for the online-changed signal).
+
 **Per package:**
 1. Bump `juice: ^1.6.0`.
 2. Give every `UseCaseBuilder` an explicit mode — `sequential` for events that
@@ -304,6 +315,33 @@ package requires `juice ^1.6.0`. Behavioral tests cover overlapping initialize
 and check events.
 
 ---
+
+### 23. AI cards drifted from their package version, and nothing checked
+
+**Description:** `doc/ai-cards/TEMPLATE.md` requires a card's `version` to
+mirror its pubspec ("if they drift, the card is stale — fix it"), but no
+script, test, or publish step ever compared them. On 2026-09-15 NINE of 24
+cards had drifted: `juice_llm` 0.1.0 vs 0.4.1 (four minors of engine-lease,
+preemption, and wedge semantics absent), `juice_observability` 0.2.0 vs
+0.4.0 (the card knew nothing of `DevtoolsJuiceLogger` or the extension, and
+its `requires` said juice 1.5.0 vs pubspec 1.7.0), `juice_storage` 2.1.0
+vs 2.2.0, `juice_media` 0.4.0 vs 0.5.0, `juice_llm_llamacpp` 0.1.0 vs
+0.2.3, and a patch each on `juice_auth_network`, `juice_auth_routing`,
+`juice_sync`, `juice_theme`. Invisible until a human asked — and the AI skill
+bundle (`skills/juice/`, ROADMAP docket item 6) had just started shipping
+the cards to consumer repos.
+
+**Fixed 2026-09-15:** all nine refreshed against source (every symbol
+grepped in `lib/` before it went on a card), `requires` mirrors pubspec on
+all, `updated` set.
+
+**Still open — the mechanism:** a check that `doc/LLM.md` `version` equals
+the pubspec `version` (and `requires` equals the pubspec's juice-family
+constraints), runnable as a melos script and part of the per-publish
+hygiene gate (ROADMAP docket). Whether it also gates `ci` is a decision, not
+a default. Related: `juice_llm` and `juice_llm_llamacpp` use `## 0.4.1`
+CHANGELOG headings where the other 23 use `## [0.4.1] - date`; a
+CHANGELOG-top-vs-pubspec check would want one style.
 
 ## Summary
 
@@ -328,3 +366,4 @@ and check events.
 5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)
 7. **Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages
+8. **Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)

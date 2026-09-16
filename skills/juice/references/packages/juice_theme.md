@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_theme
-version: 0.1.1
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # juice_theme — AI card

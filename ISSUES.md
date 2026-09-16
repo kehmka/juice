@@ -323,7 +323,7 @@ and check events.
 
 ---
 
-### 23. AI cards drifted from their package version, and nothing checked
+### 23. ~~AI cards drifted from their package version, and nothing checked~~ RESOLVED 2026-09-16 (tool/check_cards.sh)
 
 **Description:** `doc/ai-cards/TEMPLATE.md` requires a card's `version` to
 mirror its pubspec ("if they drift, the card is stale — fix it"), but no
@@ -342,13 +342,24 @@ the cards to consumer repos.
 grepped in `lib/` before it went on a card), `requires` mirrors pubspec on
 all, `updated` set.
 
-**Still open — the mechanism:** a check that `doc/LLM.md` `version` equals
-the pubspec `version` (and `requires` equals the pubspec's juice-family
-constraints), runnable as a melos script and part of the per-publish
-hygiene gate (ROADMAP docket). Whether it also gates `ci` is a decision, not
-a default. Related: `juice_llm` and `juice_llm_llamacpp` use `## 0.4.1`
-CHANGELOG headings where the other 23 use `## [0.4.1] - date`; a
-CHANGELOG-top-vs-pubspec check would want one style.
+**Mechanism, 2026-09-16:** `tool/check_cards.sh` (`melos run cards:check`)
+fails on any card whose `version` differs from its pubspec, any `requires`
+entry that differs from the pubspec constraint (`^1.6.0` ↔ `">=1.6.0"`;
+explicit ranges verbatim), or a juice-family dependency the card omits. A
+published package with no card is reported, not failed (juice core's guide
+is AGENTS.md by design). Proven to catch a planted mismatch — and on its
+FIRST real run it found four more drifts the 2026-09-15 refresh had missed:
+`juice_theme`'s card still said 0.1.1 / juice >=1.4.0 (the refresh script had
+crashed before reaching it; 0.2.0 shipped with that stale card in its archive
+— docs-only, fixed in tree, ships with the next theme publish), and
+`juice_auth`, `juice_i18n`, `juice_network` had said `juice_storage
+">=1.2.0"` since June while their pubspecs widened to `<3.0.0`. All four
+fixed 2026-09-16. Wired into the one scripted publish path
+(`juice_observability/tool/publish.sh`) and the ROADMAP hygiene gate; NOT in
+`ci` — that is a decision, not a default.
+Still parked: `juice_llm` and `juice_llm_llamacpp` use `## 0.4.1` CHANGELOG
+headings where the other 23 use `## [0.4.1] - date`; a CHANGELOG-top check
+would want one style first.
 
 ## Summary
 
@@ -373,4 +384,4 @@ CHANGELOG-top-vs-pubspec check would want one style.
 5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)
 7. ~~**Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages~~ DONE 2026-09-15
-8. **Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)
+8. ~~**Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)~~ DONE 2026-09-16

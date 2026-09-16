@@ -13,5 +13,7 @@ echo "==> Building the DevTools extension web app"
   dart run devtools_extensions build_and_copy --source=. --dest="$PKG/extension/devtools")
 echo "==> Validating"
 (cd "$EXT" && dart run devtools_extensions validate --package="$PKG")
+echo "==> AI card vs pubspec (ISSUES #23)"
+"$ROOT/tool/check_cards.sh" juice_observability
 echo "==> Publishing"
 (cd "$PKG" && flutter pub publish)

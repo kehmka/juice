@@ -29,6 +29,10 @@ scripts:
     run: tool/sync_skill.sh --check
     description: Fail if skills/juice/references/ has drifted from AGENTS.md, llms.txt, or any package's doc/LLM.md (fix with tool/sync_skill.sh)
 
+  cards:check:
+    run: tool/check_cards.sh
+    description: Fail if any AI card's front matter (version, requires) has drifted from its pubspec (ISSUES #23) — run before every publish
+
   format:
     run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format "${targets[@]}"; fi'
     description: Format all packages

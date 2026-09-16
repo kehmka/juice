@@ -4,8 +4,8 @@ package: juice_i18n
 version: 0.2.0
 requires:
   juice: ">=1.6.0"
-  juice_storage: ">=1.2.0"
-updated: 2026-08-12
+  juice_storage: ">=1.2.0 <3.0.0"
+updated: 2026-09-16
 ---
 
 # juice_i18n — AI card

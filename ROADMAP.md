@@ -573,5 +573,7 @@ juice_auth_network 0.1.3 and juice_auth_routing 0.1.2 (floors only).
 ### Hygiene gate, every publish
 Package tests green + `dart pub publish --dry-run`, and audit BOTH the
 README and `example/lib/main.dart` — both freeze into the archive (the
-1.7.0 → 1.7.1 stale-docs lesson). And the AI card: `doc/LLM.md`'s
-`version` must equal the pubspec's (ISSUES #23).
+1.7.0 → 1.7.1 stale-docs lesson). And the AI card: `melos run cards:check`
+(`tool/check_cards.sh <pkg>`) — `doc/LLM.md`'s `version` and `requires` must
+mirror the pubspec (ISSUES #23; its first run caught four real drifts,
+including a card the day-before refresh had missed).

@@ -891,7 +891,7 @@ RouteConfig(
 
 2. **Intent abstraction** — A use case says `'orderComplete'`, not `'/orders/123/confirmation'`. The path is an implementation detail.
 
-3. **Centralized mapping** — The intent→path translation lives in one place (`AviatorRoutingAdapter`), not scattered across use cases.
+3. **Centralized mapping** — The intent→path translation lives in one place (the bloc's `aviatorBuilders`, or one app-level function that builds them — see the recipe below), not scattered across use cases.
 
 ### When to Use What
 
@@ -908,7 +908,7 @@ RouteConfig(
 
 **Important:** An Aviator intent is not guaranteed to succeed.
 
-When `AviatorRoutingAdapter` converts intent to `NavigateEvent`, that event goes through the guard pipeline. Guards can block or redirect.
+When an Aviator's `navigateWhere` calls `routingBloc.navigate(...)`, that event goes through the guard pipeline. Guards can block or redirect.
 
 ```dart
 // Use case triggers intent
@@ -957,20 +957,20 @@ Use cases express intent, adapter bridges to RoutingBloc:
 // Use case (doesn't know paths)
 emitUpdate(aviatorName: 'orderComplete', aviatorArgs: {'orderId': order.id});
 
-// Centralized adapter configuration
-final aviator = AviatorRoutingAdapter(
-  routingBloc: routingBloc,
-  pathBuilder: (name, args) => switch (name) {
-    'orderComplete' => '/orders/${args['orderId']}/confirmation',
-    'showProfile' => '/profile/${args['userId']}',
-    'checkout' => '/checkout',
-    _ => '/$name',
-  },
-);
+// The bloc registers one Aviator per intent (juice core API — see the
+// recipe below for keeping the path mapping in ONE place):
+OrderBloc()
+    : super(OrderState.initial, [/* use cases */], aviatorBuilders: [
+        () => Aviator(
+              name: 'orderComplete',
+              navigateWhere: (args) =>
+                  routingBloc.navigate('/orders/${args['orderId']}/confirmation', extra: args),
+            ),
+      ]);
 
-// Widget can also use Aviator for decoupling
+// A widget navigates through the routing bloc directly.
 ElevatedButton(
-  onPressed: () => aviator.navigate('showProfile', {'userId': '123'}),
+  onPressed: () => routingBloc.navigate('/profile/123'),
   child: Text('View Profile'),
 )
 
@@ -1007,7 +1007,7 @@ Do your use cases trigger navigation?
          │
          ├─ NO → Use cases send NavigateEvent directly
          │
-         └─ YES → Use Aviators + AviatorRoutingAdapter (Pattern 2)
+         └─ YES → Use Aviators + the routingAviator recipe (Pattern 2)
                   │
                   └─ Do you need guards/deep links/observable state?
                      │
@@ -1016,35 +1016,39 @@ Do your use cases trigger navigation?
                      └─ YES → Aviators + juice_routing (Pattern 2)
 ```
 
-### AviatorRoutingAdapter
+### Recipe — bridging Aviators to RoutingBloc (app code, not shipped)
 
-The bridge between intent and execution:
+Juice core's `Aviator` already IS the bridge: `Aviator(name:, navigateWhere:)`
+(`NavigateWhere = FutureOr<void> Function(Map<String, dynamic> args)`),
+registered through a bloc's `aviatorBuilders`. Nothing in `juice_routing`
+needs to exist for this — it is how the example app wires `viewProduct`.
+To keep the intent→path mapping in ONE place instead of one closure per
+bloc, an app writes a small helper and reuses it:
 
 ```dart
-/// Adapter that connects Juice Aviators to RoutingBloc
-class AviatorRoutingAdapter extends AviatorBase {
-  final RoutingBloc routingBloc;
+/// App-level: one function owns every intent → path. Copy into your app.
+AviatorBuilder routingAviator(
+  RoutingBloc routingBloc,
+  String name,
+  String Function(Map<String, dynamic> args) pathBuilder,
+) =>
+    () => Aviator(
+          name: name,
+          navigateWhere: (args) =>
+              routingBloc.navigate(pathBuilder(args), extra: args),
+        );
 
-  /// Maps intent name + args to a path
-  final String Function(String name, Map<String, dynamic> args) pathBuilder;
-
-  /// Optional: extract extra from args (default: pass args as extra)
-  final Object? Function(String name, Map<String, dynamic> args)? extraBuilder;
-
-  AviatorRoutingAdapter({
-    required this.routingBloc,
-    required this.pathBuilder,
-    this.extraBuilder,
-  });
-
-  @override
-  FutureOr<void> navigate(String name, Map<String, dynamic> args) {
-    final path = pathBuilder(name, args);
-    final extra = extraBuilder?.call(name, args) ?? args;
-    routingBloc.send(NavigateEvent(path: path, extra: extra));
-  }
-}
+// In a bloc:
+OrderBloc(RoutingBloc routing)
+    : super(OrderState.initial, [/* use cases */], aviatorBuilders: [
+        routingAviator(routing, 'orderComplete',
+            (a) => '/orders/${a['orderId']}/confirmation'),
+        routingAviator(routing, 'checkout', (_) => '/checkout'),
+      ]);
 ```
+
+Because `navigateWhere` goes through `routingBloc.navigate`, the resulting
+`NavigateEvent` passes the guard pipeline like any other navigation.
 
 ### Summary
 
@@ -1053,7 +1057,7 @@ class AviatorRoutingAdapter extends AviatorBase {
 | **Aviator = intent** | Use cases express *what* should happen |
 | **RoutingBloc = execution** | Routing layer handles *how* it happens |
 | **Guards apply to both** | Aviator intent → NavigateEvent → guards can reject |
-| **Mapping is centralized** | `pathBuilder` in adapter, not scattered |
+| **Mapping is centralized** | one `routingAviator` helper (recipe above), not scattered |
 | **Widgets can use either** | Direct RoutingBloc for simple cases, Aviator for decoupling |
 | **Aviators work standalone** | juice_routing is optional; Aviators still useful without it |
 
@@ -1229,7 +1233,7 @@ test('redirect loop is capped', () async {
 - [ ] Scope integration with `ScopeLifecycleBloc`
 - [ ] Route transitions
 - [ ] History tracking with time-on-route
-- [ ] `AviatorRoutingAdapter`
+- [ ] A shipped `routingAviator` helper (today: the app-side recipe under "Aviator vs RoutingBloc Guidelines")
 
 ### Phase 3: Advanced
 

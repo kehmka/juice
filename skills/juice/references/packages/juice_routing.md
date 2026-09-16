@@ -4,7 +4,7 @@ package: juice_routing
 version: 1.3.0
 requires:
   juice: ">=1.6.0"
-updated: 2026-08-12
+updated: 2026-09-16
 ---
 
 # juice_routing — AI card
@@ -154,6 +154,13 @@ class Crumb extends StatelessJuiceWidget<RoutingBloc> {
 //    AuthGuard redirects to '/login?returnTo=/profile'; after login:
 routing.resetStack(returnTo ?? '/');
 ```
+
+### Bridging an Aviator to RoutingBloc
+
+Juice core's `Aviator(name:, navigateWhere: (args) => routingBloc.navigate(path, extra: args))`
+registered in a bloc's `aviatorBuilders` — nothing extra ships here. `SPEC.md`
+"Aviator vs RoutingBloc Guidelines" has the one-helper recipe that keeps the
+intent→path mapping in one place.
 
 ## Testing
 

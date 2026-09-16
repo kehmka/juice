@@ -5,7 +5,7 @@ version: 0.1.0
 requires:
   juice: ">=1.6.0"
   battery_plus: ">=6.2.0"
-updated: 2026-07-25
+updated: 2026-09-16
 ---
 
 # juice_power — AI card
@@ -170,3 +170,55 @@ final bloc = PowerBloc.withConfig(PowerConfig(provider: fake, pollInterval: Dura
 fake.emit(const PowerSnapshot(status: BatteryStatus.discharging, percent: 12));
 fake.setSilently(...);   // a level that moves with NO status change → only the poll sees it
 ```
+
+## Failure modes
+
+- **The default provider never throws for a reading it cannot make.** An
+  out-of-range or unreadable level and an unreadable saver flag become `null`
+  (unknown) with a log line — the Simulator's `-1` and the Android devices
+  that throw both land here. Unknown is then handled by the State invariants
+  above, never by a fabricated number.
+- **A custom provider that throws from `check()`** fails `InitializePowerEvent`
+  / `CheckPowerEvent` loudly through the framework's use-case error path
+  (`use_case_error`, the bloc error handler). There is no `emitFailure`: state
+  is left as it was (on a cold boot, `initial` — which answers "may I run?"
+  with *no*). Make the provider report unknown instead of throwing.
+- **An error on `changes`** is not caught by the bloc's subscription (no
+  `onError`); a provider's stream must not error. Report unknown snapshots
+  instead.
+- `pollInterval: Duration.zero` disables the poll: the level then moves only
+  when the platform pushes a status change.
+
+## Anti-patterns
+
+- ❌ A `_wasPluggedIn` field and a `stream.listen` in the consumer to detect
+  the unplug — that is a relay (`StateRelay`, Recipe 1). The bloc already
+  emits only real changes with precise groups.
+- ❌ Policy in the bloc or the provider ("pause below 20%"). It belongs in the
+  use case that does the expensive work (Recipe 2), which alone knows the cost.
+- ❌ Treating a `null` `percent` / `saverOn` as `0` / `false`. Each is wrong in
+  a way that matters — see the unknown-handling table under State.
+- ❌ Asking "may I run?" before the immediate `check()` has resolved and
+  reading `initial` as an answer. `withConfig` issues that check for exactly
+  this; give it a tick.
+- ❌ Constructing a second `PowerBloc` for a second consumer — that is a second
+  poll timer. One bloc, many relays.
+
+## Invariants
+
+- **Unknown is conservative.** `status` unknown → not plugged in; `percent`
+  unknown → `isAtOrBelow` is false; `saverOn` unknown → `saverAsked` is false.
+  `copyWith` can CLEAR `percent` and `saverOn` (an `_unset` sentinel), so a
+  device that stops reporting does not serve its last number forever.
+- **Only what changed is emitted.** An unchanged reading is a no-op — no
+  emission, no `lastChangedAt` — so the poll never wakes consumers for nothing.
+- **`withConfig` reads immediately**; state is real before the first physical
+  change.
+- **`close()` cancels the poll and the subscription, then disposes the
+  provider** — nothing outlives the bloc.
+
+## See also
+
+`SPEC.md` (the thermal-state decision, why unknown is conservative) ·
+`README.md` (narrative) · siblings `juice_connectivity` (network gate) and
+`juice_lifecycle` (foreground gate) · repo `AGENTS.md` (framework; §3 relays).

@@ -74,7 +74,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
 
 ```yaml
 dependencies:
-  juice: ^1.7.0
+  juice: ^1.7.1
 ```
 
 ## Recommended Evaluation Path

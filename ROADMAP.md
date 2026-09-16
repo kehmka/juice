@@ -63,14 +63,14 @@ Legend: ✅ shipped · 📋 planned
 | `juice_analytics` | event/screen tracking + consent | the vendor SDK (a sink) | ✅ |
 | `juice_paging` | paged/infinite-scroll list state | the transport (a fetcher) | ✅ |
 | `juice_observability` | crash capture + breadcrumbs | the vendor SDK (a reporter) | ✅ |
-| `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | ✅ 0.1.0 |
+| `juice_llm` | on-device inference lifecycle (model acquire/load/unload, generation + embedding sessions) | prompt/RAG composition, retrieval, the runtime (behind `LlmProvider`) | ✅ 0.4.1 |
 
 ### LLM runtime providers (impls of `juice_llm`'s `LlmProvider` seam — never in core)
 | Package | Runtime(s) | Deps | Status |
 |---|---|---|---|
 | `juice_llm` ▸ `EchoLlmProvider` | pure-Dart reference (the zero-dep default) | none | ✅ in core |
 | `juice_llm_cloud` | OpenAI · Anthropic · Ollama (HTTP+SSE, **opt-in off-device**) — one shared `HttpSseLlmProvider` base | `http` | 📋 recipe now → promote |
-| `juice_llm_llamacpp` | embedded llama.cpp (on-device, GGUF/Metal, no server) | `llama_cpp_dart` | ✅ 0.1.0 (built; unpublished) |
+| `juice_llm_llamacpp` | embedded llama.cpp (on-device, GGUF/Metal, no server) | `llama_cpp_dart` | ✅ 0.2.3 |
 
 ### Presentation services
 | Package | Owns | Does NOT own | Status |

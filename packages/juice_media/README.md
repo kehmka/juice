@@ -23,7 +23,7 @@ seam), or editing/cropping UI.
 
 ```yaml
 dependencies:
-  juice_media: ^0.1.0
+  juice_media: ^0.5.0
 ```
 
 The default source uses `image_picker` — follow its platform setup (Info.plist /

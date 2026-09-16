@@ -32,6 +32,7 @@ package then has a per-package **AI card** at `packages/<pkg>/doc/LLM.md`
 - [juice_connectivity](packages/juice_connectivity.md): online/offline reachability signal.
 - [juice_lifecycle](packages/juice_lifecycle.md): app foreground/background/resume.
 - [juice_permissions](packages/juice_permissions.md): permission grant state + the generic `PermissionBinding` helper.
+- [juice_power](packages/juice_power.md): charging state / charge level / OS power saver — the signal for "is it acceptable to be expensive right now".
 
 ## Domain & capability
 
@@ -42,7 +43,9 @@ package then has a per-package **AI card** at `packages/<pkg>/doc/LLM.md`
 - [juice_sync](packages/juice_sync.md): durable offline outbox / mutation queue.
 - [juice_analytics](packages/juice_analytics.md): event/screen tracking behind a consent gate + fan-out sinks.
 - [juice_paging](packages/juice_paging.md): generic paged / infinite-scroll list state.
-- [juice_observability](packages/juice_observability.md): crash reporting + breadcrumbs with global error capture.
+- [juice_observability](packages/juice_observability.md): crash reporting + breadcrumbs with global error capture, the DevTools telemetry mirror, and the DevTools extension.
+- [juice_llm](packages/juice_llm.md): on-device inference lifecycle — model acquire/load/unload, generation + embedding sessions, engine lease and wedge contract — behind an `LlmProvider` seam.
+- [juice_llm_llamacpp](packages/juice_llm_llamacpp.md): the embedded llama.cpp `LlmProvider` (GGUF/Metal, multimodal via a projector, no server).
 
 ## Presentation
 

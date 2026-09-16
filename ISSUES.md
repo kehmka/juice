@@ -260,7 +260,7 @@ _logger.log('Emitting $statusName', context: {
 
 ## Family-Wide Debt
 
-### 22. Packages predating `EventConcurrency` still declare no mode (and pin `juice: ^1.4.0`)
+### 22. ~~Packages predating `EventConcurrency` still declare no mode (and pin `juice: ^1.4.0`)~~ RESOLVED 2026-09-15 (modes only; FIFO deferred)
 
 **Description:** `EventConcurrency` landed in juice 1.5.0 and AGENTS.md §4 now
 calls a concurrency mode "the primary fix, not a hand-rolled guard." Every
@@ -297,9 +297,16 @@ before each item, but `enqueue` / `discard` / `retry` are unguarded
 read-modify-writes on the queue across an `await` — the exact race AGENTS
 §4 names, in a durable mutation queue. `juice_theme` has the same shape at
 lower stakes (every use case awaits its persistence then reads state). Which
-mode each event gets is doctrine: the build opens with a per-event table for
-sign-off (draft: `sequential` for the queue mutations, `droppable` for
-flush, `concurrent` for the online-changed signal).
+mode each event gets is doctrine: the build opened with a per-event table for
+sign-off.
+
+**Resolved 2026-09-15:** juice_sync 0.2.0 and juice_theme 0.2.0 declare every
+mode (see each CHANGELOG and card's Concurrency table); auth_network 0.1.3 and
+auth_routing 0.1.2 raise the floor. Modes only: the bloc-owned FIFO that would
+serialize Retry against Discard was judged against the same gate as
+`restartable` — no consumer of juice_sync exists — and deferred; the window is
+documented in the card, the CHANGELOG, and the builder comment. Reopen the FIFO
+when a consumer can issue `retryFailed()` and `discard()` back-to-back.
 
 **Per package:**
 1. Bump `juice: ^1.6.0`.
@@ -365,5 +372,5 @@ CHANGELOG-top-vs-pubspec check would want one style.
 4. ~~**Fourth:** Add missing tests #15-18~~ DONE
 5. ~~**Fifth:** Address low priority issues (#9-14)~~ DONE
 6. **Finally:** Address documentation gaps (#19-21)
-7. **Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages
+7. ~~**Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages~~ DONE 2026-09-15
 8. **Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)

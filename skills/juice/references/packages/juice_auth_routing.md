@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_auth_routing
-version: 0.1.1
+version: 0.1.2
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_auth: ">=0.2.1"
   juice_routing: ">=1.1.0"
 updated: 2026-09-15
@@ -34,7 +34,7 @@ bridge to handle mid-session logout/expiry.
 
 ```yaml
 dependencies:
-  juice_auth_routing: ^0.1.1
+  juice_auth_routing: ^0.1.2
   juice_auth: ^0.2.1
   juice_routing: ^1.1.0
 ```

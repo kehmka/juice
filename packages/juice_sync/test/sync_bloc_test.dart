@@ -322,4 +322,145 @@ void main() {
       expect(store.disposed, isTrue);
     });
   });
+
+  concurrencyModeTests();
+}
+
+// ---------------------------------------------------------------------------
+// Concurrency modes (0.2.0, ISSUES #22): gated fakes prove the mode chosen for
+// each event, the way the rest of the family pins theirs.
+// ---------------------------------------------------------------------------
+
+/// loadAll blocks on [gate] and counts calls — proves `droppable` init.
+class GatedLoadStore extends InMemorySyncStore {
+  Completer<void>? gate;
+  int loads = 0;
+  @override
+  Future<List<Mutation>> loadAll() async {
+    loads++;
+    if (gate != null) await gate!.future;
+    return super.loadAll();
+  }
+}
+
+/// put blocks on [gate] and counts calls — proves `sequential` retries.
+class GatedPutStore extends InMemorySyncStore {
+  GatedPutStore([super.seed = const []]);
+  Completer<void>? gate;
+  int puts = 0;
+  @override
+  Future<void> put(Mutation mutation) async {
+    puts++;
+    if (gate != null) await gate!.future;
+    return super.put(mutation);
+  }
+}
+
+/// The executor blocks while sending [gatedType] — holds a flush mid-pass.
+class GatedExecutor extends FakeExecutor {
+  String? gatedType;
+  Completer<void>? gate;
+  @override
+  Future<void> call(Mutation m) async {
+    await super.call(m);
+    if (m.type == gatedType && gate != null) await gate!.future;
+  }
+}
+
+Mutation _failed(String id, int seq) => Mutation(
+      id: id,
+      seq: seq,
+      type: 't',
+      payload: const {},
+      createdAt: DateTime(2026),
+      status: MutationStatus.failed,
+      attempts: 3,
+    );
+
+void concurrencyModeTests() {
+  Future<void> settle([int ms = 20]) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+
+  group('Concurrency modes (0.2.0)', () {
+    test('overlapping initializations coalesce to ONE loadAll (droppable)',
+        () async {
+      final ex = FakeExecutor();
+      final store = GatedLoadStore()..gate = Completer<void>();
+      SyncConfig cfg() => SyncConfig(executor: ex.call, store: store);
+
+      final bloc = SyncBloc();
+      bloc.send(InitializeSyncEvent(config: cfg()));
+      await settle(1); // first init is now waiting inside loadAll
+      bloc.send(InitializeSyncEvent(config: cfg()));
+      await settle(1);
+
+      expect(store.loads, 1, reason: 'the second init mid-load is dropped');
+
+      store.gate!.complete();
+      store.gate = null;
+      await settle();
+      expect(bloc.state.status, isNot(SyncStatus.loading));
+      await bloc.close();
+    });
+
+    test('overlapping retries serialize: the second put waits (sequential)',
+        () async {
+      final ex = FakeExecutor();
+      final store = GatedPutStore([_failed('A', 0), _failed('B', 1)]);
+      final bloc = SyncBloc.withConfig(SyncConfig(
+        executor: ex.call,
+        store: store,
+        onlineSignal: Stream<bool>.value(false), // stay offline: no drain
+      ));
+      await settle();
+      expect(bloc.state.failed.map((m) => m.id), ['A', 'B']);
+      final putsAfterInit = store.puts;
+
+      store.gate = Completer<void>();
+      bloc.retryFailed('A');
+      await settle(1); // A's revive is now waiting inside put
+      bloc.retryFailed('B');
+      await settle(1);
+
+      expect(store.puts, putsAfterInit + 1,
+          reason: "B's retry must not start until A's completes");
+
+      store.gate!.complete();
+      store.gate = null;
+      await settle();
+      expect(bloc.state.failed, isEmpty);
+      expect(bloc.state.pending.map((m) => m.id), ['A', 'B']);
+      expect(store.puts, putsAfterInit + 2);
+      await bloc.close();
+    });
+
+    test('a mutation enqueued MID-FLUSH is sent by the same flush (re-run flag)',
+        () async {
+      final ex = GatedExecutor()
+        ..gatedType = 'a'
+        ..gate = Completer<void>();
+      final bloc = SyncBloc.withConfig(SyncConfig(
+        executor: ex.call,
+        store: InMemorySyncStore(),
+        // no periodicRetry: only the re-run flag can drain 'b'
+      ));
+      await settle();
+
+      await bloc.enqueue('a', {});
+      await settle(1); // flush is holding on send('a')
+      await bloc.enqueue('b', {}); // its FlushRequested hits the guard → flag
+      await settle(1);
+      expect(ex.sent.map((m) => m.type), ['a'],
+          reason: "b waits; the pass is still inside 'a'");
+
+      ex.gate!.complete();
+      ex.gate = null;
+      await settle();
+
+      expect(ex.sent.map((m) => m.type), ['a', 'b'],
+          reason: 'the re-run pass drained b with no further trigger');
+      expect(bloc.state.pending, isEmpty);
+      await bloc.close();
+    });
+  });
 }

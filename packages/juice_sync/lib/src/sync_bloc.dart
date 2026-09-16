@@ -49,24 +49,47 @@ class SyncBloc extends JuiceBloc<SyncState> {
       : super(
           SyncState.initial,
           [
+            // Concurrency modes (juice ≥ 1.5.0) — the primary mechanism, per
+            // AGENTS §4. `sequential` on every event that mutates the queue:
+            // same-type events run one-at-a-time, so a read before an `await`
+            // can no longer be written stale. NOTE: modes are keyed by exact
+            // event type, so Retry and Discard are each serialized against
+            // THEMSELVES, not against each other — `retryFailed()` then
+            // `discard(id)` on the same id inside one store write can still
+            // resurrect it. A bloc-owned FIFO (the juice_storage /
+            // juice_i18n pattern) would close that; deferred until a
+            // consumer needs it (ISSUES #22).
             () => UseCaseBuilder(
                 typeOfEvent: InitializeSyncEvent,
-                useCaseGenerator: () => InitializeSyncUseCase()),
+                useCaseGenerator: () => InitializeSyncUseCase(),
+                concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
                 typeOfEvent: EnqueueMutationEvent,
-                useCaseGenerator: () => EnqueueMutationUseCase()),
+                useCaseGenerator: () => EnqueueMutationUseCase(),
+                concurrency: EventConcurrency.sequential),
+            // Flush is deliberately `concurrent` WITH its hand-rolled guard
+            // kept: a trigger arriving mid-flush sets a re-run flag so the
+            // pass repeats and catches mutations enqueued after its snapshot
+            // (the missed-wakeup fix). `droppable` would drop that trigger;
+            // `sequential` would run one extra pass per trigger where the
+            // flag coalesces them to one. The guard check is synchronous,
+            // before any await, so it cannot race with itself.
             () => UseCaseBuilder(
                 typeOfEvent: FlushRequestedEvent,
-                useCaseGenerator: () => FlushUseCase()),
+                useCaseGenerator: () => FlushUseCase(),
+                concurrency: EventConcurrency.concurrent),
             () => UseCaseBuilder(
                 typeOfEvent: RetryFailedEvent,
-                useCaseGenerator: () => RetryFailedUseCase()),
+                useCaseGenerator: () => RetryFailedUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: DiscardMutationEvent,
-                useCaseGenerator: () => DiscardMutationUseCase()),
+                useCaseGenerator: () => DiscardMutationUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: OnlineChangedEvent,
-                useCaseGenerator: () => OnlineChangedUseCase()),
+                useCaseGenerator: () => OnlineChangedUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
         );
 

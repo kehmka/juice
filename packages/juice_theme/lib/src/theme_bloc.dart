@@ -26,21 +26,35 @@ class ThemeBloc extends JuiceBloc<ThemeState> {
       : super(
           ThemeState.initial,
           [
+            // Concurrency modes (juice ≥ 1.5.0), per AGENTS §4. `commit`
+            // emits synchronously then awaits `save`, so STATE is already
+            // race-free; `sequential` orders the SAVES, so persistence can
+            // never hold an older selection than state — at the cost that a
+            // second change's emit waits behind the previous change's save
+            // (the whole use case queues; ms with prefs). Keyed by exact event
+            // type: Toggle and SetThemeMode both write `mode` and are not
+            // serialized against each other — a bloc-owned persist tail would
+            // close that; stakes (a stale theme on next launch) too low
+            // pending a consumer (ISSUES #22).
             () => UseCaseBuilder(
                   typeOfEvent: InitializeThemeEvent,
                   useCaseGenerator: () => InitializeThemeUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetThemeModeEvent,
                   useCaseGenerator: () => SetThemeModeUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ToggleThemeEvent,
                   useCaseGenerator: () => ToggleThemeUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetFlavorEvent,
                   useCaseGenerator: () => SetFlavorUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

@@ -24,7 +24,7 @@ fire-and-forget → awaitable bridge for refresh. With it, it's three adapters.
 dependencies:
   juice_auth: ^0.2.1
   juice_network: ^0.11.0
-  juice_auth_network: ^0.1.0
+  juice_auth_network: ^0.1.3
 ```
 
 ## Usage

@@ -303,6 +303,16 @@ Before 1.5.0 the same outcomes were hand-rolled. **Adopted so far:**
   locale events enter one bloc-owned FIFO because concurrency modes are keyed by
   exact event type. Gated-source coverage proves global request ordering and
   exclusive translation loads.
+- `juice_sync` 0.2.0 — initialize → `droppable`; enqueue / retry / discard /
+  online-changed → `sequential`; flush stays `concurrent` WITH its single-owner
+  guard (the re-run flag is missed-wakeup semantics `droppable` would lose).
+  Modes are per exact type, so Retry↔Discard on one id is a documented,
+  deferred cross-type window (a bloc-owned FIFO closes it; no consumer yet).
+  Gated-store coverage proves all three.
+- `juice_theme` 0.2.0 — initialize → `droppable`; mode/toggle/flavor →
+  `sequential`, which orders the SAVES (state was already race-free: `commit`
+  emits before it awaits) at the cost that a second change's emit waits behind
+  the previous save. Gated-persistence coverage pins exactly that.
 - `juice_lifecycle` 0.2.0 — initialization → `droppable`, lifecycle changes →
   `sequential`; burst coverage proves provider order is retained in the
   `previous`/current phase pair.
@@ -540,7 +550,7 @@ figures left out), `requires` mirrors pubspec on all nine, `updated`
 Lesson banked in ISSUES #23: nothing checked card-vs-pubspec; the drift
 was invisible until a human asked.
 
-### 8 · ISSUES #22 — the concurrency-migration tail  📋 NEXT
+### 8 · ISSUES #22 — the concurrency-migration tail  ✅ 2026-09-15 (modes only, no FIFO — Kevin's call)
 `juice_sync` and `juice_theme` predate EventConcurrency: bare builders
 (silently `concurrent`), `juice: ^1.4.0`; `juice_auth_network` /
 `juice_auth_routing` are the constraint-only tail. The 2026-09-15 read
@@ -548,10 +558,17 @@ sharpened the risk: sync's flush use case has a guard and re-checks
 `bloc.state.pending` per item, but enqueue / discard / retry are unguarded
 read-modify-writes on the queue across an await — the exact race the rule
 exists for, in a durable mutation queue. Which mode each event gets is
-doctrine, so the build starts with a per-event table for sign-off (draft:
-`sequential` for the queue mutations, `droppable` for flush, `concurrent`
-for the online-changed signal), then floors to `^1.6.0`, minor bumps,
-publish, then the two glue floors.
+doctrine, so the build started with a per-event table for sign-off. Reading
+the code overturned two draft cells: flush stays `concurrent` WITH its guard
+(the re-run flag is missed-wakeup semantics; `droppable` would drop the
+trigger), and online-changed went `sequential` like every other signal in
+the family. Per-type modes cannot serialize Retry against Discard; the
+bloc-owned FIFO that would was judged against the same gate as
+`restartable` — no consumer of juice_sync exists — and deferred, documented
+in the card, CHANGELOG and builder comment. Shipped: juice_sync 0.2.0,
+juice_theme 0.2.0 (with the property sequential actually has: a second
+change's emit waits behind the previous save — the test pins it),
+juice_auth_network 0.1.3 and juice_auth_routing 0.1.2 (floors only).
 
 ### Hygiene gate, every publish
 Package tests green + `dart pub publish --dry-run`, and audit BOTH the

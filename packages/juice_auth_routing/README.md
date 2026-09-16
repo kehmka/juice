@@ -21,7 +21,7 @@ ends while they're sitting on a protected route.
 dependencies:
   juice_auth: ^0.2.1
   juice_routing: ^1.1.0
-  juice_auth_routing: ^0.1.0
+  juice_auth_routing: ^0.1.2
 ```
 
 ## Guards (checked on navigation)

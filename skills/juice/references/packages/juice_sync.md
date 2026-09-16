@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_sync
-version: 0.1.2
+version: 0.2.0
 requires:
-  juice: ">=1.4.0"
+  juice: ">=1.6.0"
   juice_storage: ">=1.2.0 <3.0.0"
 updated: 2026-09-15
 ---
@@ -30,7 +30,7 @@ streams use `juice_realtime`.
 
 ```yaml
 dependencies:
-  juice_sync: ^0.1.2
+  juice_sync: ^0.2.0
   juice_storage: ^2.2.0   # for the durable StorageSyncStore (any 1.2+ works)
 ```
 
@@ -119,11 +119,19 @@ class SyncState {                 // status: loading | idle | syncing | error
 
 ## Concurrency
 
-`FlushRequestedEvent` is registered `concurrent` (default) with a manual
-single-owner guard: `_isFlushing` + a `_pendingFlushRequest` trailing re-check
-(so work enqueued mid-flush is still drained). `EventConcurrency.droppable` is a
-candidate to replace the flag, but the re-check would still be needed — tracked
-in ROADMAP.
+Explicit modes since 0.2.0 (juice ≥ 1.6.0):
+
+| Event | Mode | Why |
+|---|---|---|
+| `InitializeSyncEvent` | `droppable` | exclusive init; a second mid-load is ignored |
+| `EnqueueMutationEvent` | `sequential` | mutates `pending` (atomic today — no await — but the rule's criterion) |
+| `RetryFailedEvent` | `sequential` | snapshots `failed`, then awaits `put` per item |
+| `DiscardMutationEvent` | `sequential` | awaits `delete` between the membership read and the emit |
+| `OnlineChangedEvent` | `sequential` | a signal; toggle order guaranteed |
+| `FlushRequestedEvent` | `concurrent` + guard | DECIDED, not a candidate: the single-owner guard sets a RE-RUN flag on a mid-flush trigger so the pass repeats and catches later enqueues; `droppable` would drop the trigger, `sequential` would run one extra pass per trigger |
+
+Modes are keyed by exact event type: `Retry` and `Discard` are serialized
+against themselves, not each other (see Invariants).
 
 ## Recipes
 
@@ -212,6 +220,11 @@ expect(bloc.state.pending, isEmpty);
   head advances; recovered `inFlight` re-sent.
 - **Durable order:** by persisted `seq` (hive keys are unordered).
 - Known 0.2 edge: `close()` mid-flush — see ROADMAP "known edge-case items".
+- **Cross-type window (documented, deferred):** `retryFailed()` then
+  `discard(id)` on the same id inside one store write can resurrect it — Retry
+  snapshots `failed` before its `put`s. A bloc-owned mutation FIFO closes it;
+  deferred until a consumer needs it (ISSUES #22). Sequence the two calls if
+  your app can issue both.
 
 ## See also
 

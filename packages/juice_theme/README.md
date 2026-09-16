@@ -17,7 +17,7 @@ The theme *selection*: `ThemeMode` (light/dark/system) and an optional named
 
 ```yaml
 dependencies:
-  juice_theme: ^0.1.0
+  juice_theme: ^0.2.0
 ```
 
 ## Use

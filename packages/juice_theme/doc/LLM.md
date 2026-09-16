@@ -96,6 +96,19 @@ under `system`, read `MediaQuery.platformBrightnessOf(context)` in the UI.
 | `ThemeGroups.mode` → `theme:mode` | mode changed (set/toggle/init) |
 | `ThemeGroups.flavor` → `theme:flavor` | flavor changed (set/init) |
 
+## Concurrency
+
+Explicit modes since 0.2.0 (juice ≥ 1.6.0):
+
+| Event | Mode | Why |
+|---|---|---|
+| `InitializeThemeEvent` | `droppable` | exclusive init; a second mid-load is ignored |
+| `SetThemeModeEvent` / `ToggleThemeEvent` / `SetFlavorEvent` | `sequential` | `commit` emits synchronously THEN awaits `save`; state is already race-free — `sequential` orders the saves so persistence never holds an older selection than state. Cost: it queues the WHOLE use case, so a second change's emit waits behind the previous change's `save` (ms with prefs) |
+
+Keyed by exact event type: `Toggle` and `SetThemeMode` both write `mode` and
+are not serialized against each other (a stale theme on next launch at worst;
+a bloc-owned persist tail would close it — deferred).
+
 ## Recipes
 
 ```dart

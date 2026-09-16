@@ -17,7 +17,7 @@ transport (the `MutationExecutor` seam), offline *reads* / caching (that's
 
 ```yaml
 dependencies:
-  juice_sync: ^0.1.0
+  juice_sync: ^0.2.0
   juice_storage: ^1.2.0   # for the durable StorageSyncStore
 ```
 

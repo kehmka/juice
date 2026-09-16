@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-09-15
+
+### Changed
+- Requires `juice: ^1.6.0` (was `^1.4.0`) — the constraint-only tail of
+  ISSUES #22. This glue package registers no use cases; the floor now matches
+  the family so a consumer cannot resolve a `juice` older than the one its
+  dependencies assume. No API change.
+
 ## [0.1.2] - 2026-06-16
 
 ### Changed

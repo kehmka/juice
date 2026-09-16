@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-15
+
+### Changed — behaviour, not cleanup (ISSUES #22)
+- Requires `juice: ^1.6.0`. Every `UseCaseBuilder` now declares an
+  `EventConcurrency` mode (the package predated 1.5.0 and ran everything
+  `concurrent`, which silently allowed same-type use cases to interleave
+  across an `await`):
+  - `InitializeSyncEvent` → `droppable` (a second init mid-load is ignored).
+  - `EnqueueMutationEvent`, `RetryFailedEvent`, `DiscardMutationEvent`,
+    `OnlineChangedEvent` → `sequential` (same-type events run one at a time,
+    in order; a read before an `await` can no longer be written stale).
+  - `FlushRequestedEvent` → `concurrent`, explicitly, WITH its hand-rolled
+    single-owner guard kept: a trigger arriving mid-flush sets a re-run flag so
+    the pass repeats and catches mutations enqueued after its snapshot. Neither
+    `droppable` (would drop the trigger) nor `sequential` (one extra pass per
+    trigger) reproduces that.
+- Known, documented, deferred: modes are keyed by exact event type, so
+  `RetryFailedEvent` and `DiscardMutationEvent` are each serialized against
+  themselves, not each other — `retryFailed()` then `discard(id)` on the same
+  id inside one store write can resurrect it. A bloc-owned mutation FIFO (the
+  `juice_storage` / `juice_i18n` pattern) closes it and is deferred until a
+  consumer needs it.
+
+### Tests
+- Gated-store coverage: overlapping initializations coalesce to one `loadAll`;
+  overlapping retries serialize (the second `put` waits for the first);
+  a mutation enqueued mid-flush is sent by the same flush (the re-run flag).
+
 ## [0.1.2] - 2026-06-16
 
 ### Changed

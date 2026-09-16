@@ -17,7 +17,7 @@ reporters. It does **not** own a vendor SDK — each `CrashReporter` is an adapt
 
 ```yaml
 dependencies:
-  juice_observability: ^0.3.1
+  juice_observability: ^0.4.0
 ```
 
 ## DevTools mirror — `DevtoolsJuiceLogger`
@@ -39,6 +39,29 @@ wire-safe (live objects cross as `toString`, capped). With juice ≥ 1.7.0,
 starts and ends share an `executionId` with `elapsedMicros` — enough to
 draw honest duration spans, even when same-type events overlap under
 `concurrent`.
+
+## DevTools extension — the panel
+
+0.4.0 ships a DevTools extension that renders what `DevtoolsJuiceLogger`
+posts. Nothing to install: with `juice_observability` in your dependencies,
+DevTools discovers it and adds a **juice_observability** tab (enable it
+once when prompted). Four views:
+
+- **Timeline** — every entry as it arrives: use-case starts and completions
+  with elapsed time, emissions with their rebuild groups, lifecycle,
+  errors.
+- **Spans** — each use-case run as one row: use case, event, duration,
+  paired by `executionId`.
+- **Blocs** — per bloc: emission count, groups touched, last event, and a
+  summary of the current state.
+- **Problems** — framework problems only: failed use cases, unhandled
+  events, leaks, error-handler errors. Errors your app *reports* through
+  this bloc are data, and show in Blocs' state summary instead.
+
+The panel listens from the moment it opens; the VM event stream has no
+replay, so open it before the traffic you want to see. Quick check:
+`cd example && flutter run -d macos`, open the DevTools URL it prints,
+press the demo buttons.
 
 ## Use
 

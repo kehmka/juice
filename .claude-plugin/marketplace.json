@@ -1,0 +1,15 @@
+{
+  "name": "juice",
+  "owner": { "name": "Kevin Ehmka", "url": "https://github.com/kehmka" },
+  "description": "Skills for building with the Juice Flutter framework and its package family.",
+  "plugins": [
+    {
+      "name": "juice",
+      "source": "./",
+      "description": "The Juice AI guide (AGENTS.md) and every package's AI card, as a skill that triggers on any Juice code.",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": ["flutter", "dart", "juice", "bloc", "state-management"]
+    }
+  ]
+}

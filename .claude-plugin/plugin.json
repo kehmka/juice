@@ -1,0 +1,10 @@
+{
+  "name": "juice",
+  "description": "The Juice Flutter framework's AI guide as an installable skill: the mental model, the canonical package shape, EventConcurrency, the gotchas AI models reliably get wrong, and a per-package AI card for every juice_* package.",
+  "version": "0.1.0",
+  "author": { "name": "Kevin Ehmka" },
+  "homepage": "https://kehmka.github.io/juice/",
+  "repository": "https://github.com/kehmka/juice",
+  "license": "MIT",
+  "keywords": ["flutter", "dart", "juice", "bloc", "state-management", "skill"]
+}

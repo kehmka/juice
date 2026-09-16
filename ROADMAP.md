@@ -425,7 +425,7 @@ incl. the value-equality precondition), plus AGENTS §4c and a core README
 bullet. The `skipIfUnchanged` name in this note was never real; the field
 is `skipIfSame`.
 
-### 5 · The AI skill bundle, in-repo  📋
+### 5 · The AI skill bundle, in-repo  ✅ (2026-09-15 — see the docket, item 6)
 BlocSignal ships a Claude Code plugin + skill bundle in the repo
 (marketplace manifests included) — architectural idioms as an installable
 skill for coding agents. Juice already wrote the content: AGENTS.md
@@ -502,9 +502,21 @@ resource note for any constrained CI runner running `melos run analyze`.
 Publishing stays `none` until it has caught something real in a consumer
 app; the surface is validated, the value is not yet.
 
-### 6 · Item 5 above — the AI skill bundle  🟢
-Ungated and the cheapest item on the list. Package AGENTS.md as
-`.claude-plugin/` + `skills/juice/`. Distribution, not authorship.
+### 6 · Item 5 above — the AI skill bundle  ✅ 2026-09-15
+Shipped as a Claude Code plugin at the repo root: `.claude-plugin/plugin.json`
++ `marketplace.json` (CLI-validated) and `skills/juice/`. The skill is a
+thin ROUTING layer (SKILL.md: trigger, workflow, which reference for which
+task, the five things bloc intuition gets wrong as pointers) over copies
+of the doctrine — `references/agents-guide.md` (AGENTS.md), `index.md`
+(llms.txt), `packages/*.md` (all 24 AI cards), `juice/*.md` (core docs) —
+produced by `tool/sync_skill.sh`, whose `--check` mode fails on drift
+(`melos run skill:check`; NOT wired into `ci` — a gate is a decision).
+Links inside the copies are rewritten to resolve within the bundle
+(verified: 0 broken). Install: `/plugin marketplace add kehmka/juice`
+then `/plugin install juice@juice`; the skill is `/juice:juice`. Untested
+live: an actual install into a consumer repo and the skill's trigger rate
+on real prompts — skill-creator's eval loop and description optimizer
+are the follow-ups when the bundle has a first consumer.
 
 ### Hygiene gate, every publish
 Package tests green + `dart pub publish --dry-run`, and audit BOTH the

@@ -98,6 +98,22 @@ Recommended first-time evaluation order:
 3. `dashboard`: auth + routing guards
 4. `ecommerce`: package composition across the ecosystem
 
+## For AI coding agents
+
+Juice is barely represented in training data, so the repo ships its own AI
+guide ([AGENTS.md](AGENTS.md)) and a per-package AI card at
+`packages/<pkg>/doc/LLM.md`. For a project that *uses* Juice, the same
+material installs as a Claude Code plugin whose skill triggers on any Juice
+code:
+
+```
+/plugin marketplace add kehmka/juice
+/plugin install juice@juice
+```
+
+The skill is `/juice:juice`; its `references/` are synced copies of the
+guide and every card (`tool/sync_skill.sh`).
+
 ## Release Notes
 
 This workspace now treats `packages/juice` as the single source of truth for the core framework. The release also tightens package metadata, improves example positioning, and shifts the public story toward lifecycle-aware application architecture rather than generic state management alone.

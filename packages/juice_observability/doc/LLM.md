@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_observability
-version: 0.4.0
+version: 0.5.0
 requires:
   juice: ">=1.7.0"
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # juice_observability — AI card
@@ -31,7 +31,7 @@ each report. For event/screen tracking use `juice_analytics`.
 
 ```yaml
 dependencies:
-  juice_observability: ^0.4.0
+  juice_observability: ^0.5.0
 ```
 
 ## DevTools mirror + extension
@@ -152,12 +152,14 @@ class ObservabilityState {    // BlocState
 
 ## Concurrency
 
-`RecordErrorEvent` and `AddBreadcrumbEvent` are registered
-**`EventConcurrency.sequential`** (juice ≥ 1.5.0): same-type events queue and run
-one-at-a-time, so the breadcrumb-ring and error-counter read-modify-writes live
-naturally in state (`state.breadcrumbs` / `state.errorCount`) without any
-bloc-side accumulator. This is the framework mode that replaced the original
-hand-rolled workaround.
+Every builder declares its mode since 0.5.0:
+
+| Event | Mode | Why |
+|---|---|---|
+| `InitializeObservabilityEvent` | `droppable` | exclusive init |
+| `RecordErrorEvent` / `AddBreadcrumbEvent` | `sequential` | the breadcrumb-ring and error-counter read-modify-writes live in state with no bloc-side accumulator (the mode that replaced the original hand-rolled workaround) |
+| `SetUserEvent` / `SetContextEvent` | `sequential` | await the reporter fan-out; complete in call order |
+| `SetEnabledEvent` | `sequential` | toggles the gate; order matters |
 
 ## Recipes
 

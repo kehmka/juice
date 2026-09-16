@@ -17,7 +17,7 @@ reporters. It does **not** own a vendor SDK — each `CrashReporter` is an adapt
 
 ```yaml
 dependencies:
-  juice_observability: ^0.4.0
+  juice_observability: ^0.5.0
 ```
 
 ## DevTools mirror — `DevtoolsJuiceLogger`

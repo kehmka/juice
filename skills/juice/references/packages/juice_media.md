@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_media
-version: 0.5.0
+version: 0.6.0
 requires:
   juice: ">=1.5.0"
   image_picker: ">=1.1.0"
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # juice_media — AI card
@@ -31,7 +31,7 @@ when you track a *gallery* of uploads.
 
 ```yaml
 dependencies:
-  juice_media: ^0.5.0
+  juice_media: ^0.6.0
 ```
 
 Default source uses `image_picker` — add its platform setup (iOS `Info.plist`
@@ -139,8 +139,14 @@ never rebuilds the gallery.
 
 ## Concurrency
 
-- **`AcquireMediaEvent` is `EventConcurrency.droppable`** (juice ≥ 1.5.0): a pick
-  fired while one is in flight is dropped at dispatch (no manual entry guard).
+Every builder declares its mode since 0.6.0:
+
+| Event | Mode | Why |
+|---|---|---|
+| `InitializeMediaEvent` | `droppable` | exclusive init |
+| `AcquireMediaEvent` | `droppable` | a pick fired while one is in flight is dropped at dispatch (no manual entry guard) |
+| `AddRemoteItems` / `AddLocalItems` / `RemoveItem` / `ClearItems` / `SetPermissionStatus` | `sequential` | mutate `items` / permission (atomic today — declarative) |
+| `UploadItem` / `UploadAll` / `CancelUpload` / `UploadProgress` / `UploadCompleted` / `UploadFailed` | `sequential` | mutate the `uploads` map; per-item order matters (atomic today) |
 - **Upload staleness guard:** `beginUpload` callbacks check `_active` membership
   before sending; `UploadProgressUseCase` ignores progress unless status is
   still `uploading`. A **cancel** cleans up *before* the handle errors, so a

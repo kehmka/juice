@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_llm
-version: 0.4.1
+version: 0.5.0
 requires:
   juice: ">=1.5.0"
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # juice_llm — AI card
@@ -33,7 +33,7 @@ swappable (llama.cpp / Ollama / LiteRT / cloud).
 
 ```yaml
 dependencies:
-  juice_llm: ^0.4.1
+  juice_llm: ^0.5.0
 ```
 
 ## Construct
@@ -148,6 +148,11 @@ Streamed token emissions are **throttled**: ≤ one emission per
 terminal status always flushed. Bind a streaming widget to `LlmGroups.gen(id)`.
 
 ## Concurrency
+
+Every builder declares its mode since 0.5.0: `InitializeLlmEvent` /
+`FetchModelEvent` → `droppable`; `LoadModel` / `UnloadModel` / `Generate` /
+`Embed` / `EvictSession` → `sequential`; `CancelGenerationEvent` →
+`concurrent` (it must run DURING the streaming generate; idempotent).
 
 One runtime context ⇒ one live stream.
 

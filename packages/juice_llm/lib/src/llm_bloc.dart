@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:juice/juice.dart';
 
@@ -66,8 +65,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
           LlmState.initial,
           [
             () => UseCaseBuilder(
-                typeOfEvent: InitializeLlmEvent,
-                useCaseGenerator: () => InitializeLlmUseCase()),
+                  typeOfEvent: InitializeLlmEvent,
+                  useCaseGenerator: () => InitializeLlmUseCase(),
+                  concurrency: EventConcurrency.droppable,
+                ),
             // droppable: a second fetch tap while one runs is redundant.
             () => UseCaseBuilder(
                 typeOfEvent: FetchModelEvent,
@@ -89,15 +90,19 @@ class LlmBloc extends JuiceBloc<LlmState> {
                 concurrency: EventConcurrency.sequential),
             // concurrent: cancel must run *during* a generate to stop it.
             () => UseCaseBuilder(
-                typeOfEvent: CancelGenerationEvent,
-                useCaseGenerator: () => CancelGenerationUseCase()),
+                  typeOfEvent: CancelGenerationEvent,
+                  useCaseGenerator: () => CancelGenerationUseCase(),
+                  concurrency: EventConcurrency.concurrent,
+                ),
             () => UseCaseBuilder(
                 typeOfEvent: EmbedEvent,
                 useCaseGenerator: () => EmbedUseCase(),
                 concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
-                typeOfEvent: EvictSessionEvent,
-                useCaseGenerator: () => EvictSessionUseCase()),
+                  typeOfEvent: EvictSessionEvent,
+                  useCaseGenerator: () => EvictSessionUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
           ],
         );
 
@@ -246,8 +251,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
     _genTail = _genTail.then((_) {
       if (_wedged) {
         _trace('lease-refused (engine wedged, was queued)');
-        acquired.completeError(
-            StateError('engine wedged — restart required'));
+        acquired.completeError(StateError('engine wedged — restart required'));
         return Future<void>.value();
       }
       _lease = release;
@@ -405,9 +409,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
       // queue tail RESOLVES so everything behind it can fail fast instead
       // of waiting forever (the poisoned queue, 2026-08-01).
       _genTail = _genTail
-          .then((_) => teardown.timeout(_config.teardownPatience, onTimeout: () {
-                _declareWedged(id);
-              }))
+          .then(
+              (_) => teardown.timeout(_config.teardownPatience, onTimeout: () {
+                    _declareWedged(id);
+                  }))
           .then((_) {}, onError: (_) {});
     }
     if (outcome != null && !outcome.isCompleted) {
@@ -462,8 +467,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
   Map<String, GenerationSession> upsertSession(GenerationSession s) {
     final next = Map<String, GenerationSession>.from(state.sessions);
     next[s.requestId] = s;
-    final terminal =
-        next.values.where((x) => x.isTerminal).toList();
+    final terminal = next.values.where((x) => x.isTerminal).toList();
     final overflow = terminal.length - _config.maxRetainedSessions;
     if (overflow > 0) {
       for (var i = 0; i < overflow; i++) {

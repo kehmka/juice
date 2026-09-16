@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-16
+
+### Changed — every builder now declares its `EventConcurrency` mode
+- 0.2.0 made `RecordError` / `AddBreadcrumb` `sequential` and left four
+  builders bare. Now explicit: `InitializeObservabilityEvent` → `droppable`;
+  `SetUserEvent`, `SetContextEvent`, `SetEnabledEvent` → `sequential` (the
+  two that fan out to reporters await them; they now complete in the order
+  the calls were made — the analytics precedent).
+- DevTools extension `config.yaml` `version` aligned to the package (the
+  panel header read "v0.1.0" on 0.4.0).
+
+### Tests
+- Gated-reporter coverage: a second `setUser` does not start its fan-out
+  until the first completes.
+
 ## [0.4.0] - 2026-08-21
 
 ### New Features

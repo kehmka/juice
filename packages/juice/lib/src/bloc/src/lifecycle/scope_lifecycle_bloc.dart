@@ -5,6 +5,7 @@ import '../use_case_builders/use_case_builder.dart';
 import 'scope_state.dart';
 import 'scope_events.dart';
 import 'scope_use_cases.dart';
+import '../core/event_concurrency.dart';
 
 /// Configuration for ScopeLifecycleBloc behavior.
 @immutable
@@ -96,10 +97,12 @@ class ScopeLifecycleBloc extends JuiceBloc<ScopeState> {
             () => UseCaseBuilder(
                   typeOfEvent: StartScopeEvent,
                   useCaseGenerator: () => StartScopeUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: EndScopeEvent,
                   useCaseGenerator: () => EndScopeUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
         );

@@ -40,8 +40,10 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
           ObservabilityState.initial,
           [
             () => UseCaseBuilder(
-                typeOfEvent: InitializeObservabilityEvent,
-                useCaseGenerator: () => InitializeObservabilityUseCase()),
+                  typeOfEvent: InitializeObservabilityEvent,
+                  useCaseGenerator: () => InitializeObservabilityUseCase(),
+                  concurrency: EventConcurrency.droppable,
+                ),
             // sequential: the breadcrumb ring + error counter are
             // read-modify-writes of state; serializing same-type events makes
             // them race-free without bloc-side accumulators (juice ≥ 1.5.0).
@@ -54,14 +56,20 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
                 useCaseGenerator: () => AddBreadcrumbUseCase(),
                 concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
-                typeOfEvent: SetUserEvent,
-                useCaseGenerator: () => SetUserUseCase()),
+                  typeOfEvent: SetUserEvent,
+                  useCaseGenerator: () => SetUserUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: SetContextEvent,
-                useCaseGenerator: () => SetContextUseCase()),
+                  typeOfEvent: SetContextEvent,
+                  useCaseGenerator: () => SetContextUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: SetEnabledEvent,
-                useCaseGenerator: () => SetEnabledUseCase()),
+                  typeOfEvent: SetEnabledEvent,
+                  useCaseGenerator: () => SetEnabledUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
           ],
         );
 
@@ -109,10 +117,13 @@ class ObservabilityBloc extends JuiceBloc<ObservabilityState> {
 
   void recordError(Object error, [StackTrace? stack, bool fatal = false]) =>
       send(RecordErrorEvent(error, stack, fatal: fatal));
-  void breadcrumb(String message, {String? category, Map<String, Object?> data = const {}}) =>
-      send(AddBreadcrumbEvent(Breadcrumb(message, category: category, data: data)));
+  void breadcrumb(String message,
+          {String? category, Map<String, Object?> data = const {}}) =>
+      send(AddBreadcrumbEvent(
+          Breadcrumb(message, category: category, data: data)));
   void setUser(String? userId) => send(SetUserEvent(userId));
-  void setContext(String key, Object? value) => send(SetContextEvent(key, value));
+  void setContext(String key, Object? value) =>
+      send(SetContextEvent(key, value));
   void setEnabled(bool enabled) => send(SetEnabledEvent(enabled));
 
   @override

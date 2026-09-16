@@ -300,6 +300,12 @@ lower stakes (every use case awaits its persistence then reads state). Which
 mode each event gets is doctrine: the build opened with a per-event table for
 sign-off.
 
+**Completed 2026-09-16:** the consistency scan found the "already correct"
+packages had declared only the non-default events — 21 bare builders across
+juice_media, juice_observability, juice_llm and core's ScopeLifecycleBloc.
+All explicit now (media 0.6.0, observability 0.5.0, llm 0.5.0, juice 1.7.2);
+see ROADMAP "Adopted so far".
+
 **Resolved 2026-09-15:** juice_sync 0.2.0 and juice_theme 0.2.0 declare every
 mode (see each CHANGELOG and card's Concurrency table); auth_network 0.1.3 and
 auth_routing 0.1.2 raise the floor. Modes only: the bloc-owned FIFO that would

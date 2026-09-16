@@ -826,7 +826,7 @@ packages/juice/lib/src/bloc/src/
 3. **Disposal always proceeds:** Timeout only affects `cleanupCompleted` flag; blocs are **always** disposed after timeout. This prevents the app from hanging indefinitely.
 4. **Error resilience:** Individual cleanup task failures are logged but don't abort disposal
 5. **Idempotent end:** Multiple `end()` calls return the **same future** (not just same result)
-6. **Concurrent safety:** In-flight ends are tracked via `getOrCreateEndingFuture()`, no double-dispose
+6. **Concurrent safety:** In-flight ends are tracked via `getOrCreateEndingFuture()`, no double-dispose. Since juice 1.7.2 the modes are explicit: `StartScopeEvent` → `sequential`, `EndScopeEvent` → `concurrent` (independent scopes end in parallel; the same scope ends once through the singleflight)
 7. **Phase consistency:** If `phase==ending`, await the in-flight future instead of returning dummy result
 8. **Graceful degradation:** FeatureScope works without ScopeBloc (just no reactive cleanup)
 9. **Deterministic IDs:** Scope IDs use monotonic counter (collision-free, deterministic in tests)

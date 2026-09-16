@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.2] - 2026-09-16
+
+### Changed
+- Patch, not minor: no API or behavior change. `ScopeLifecycleBloc` — the
+  framework's own bloc — now declares its
+  `EventConcurrency` modes like every package in the family:
+  `StartScopeEvent` → `sequential` (mutates the scopes map; atomic today),
+  `EndScopeEvent` → `concurrent`, explicit, keeping its per-scope
+  singleflight (`getOrCreateEndingFuture`): independent scopes end in
+  parallel, the same scope ends once.
+
+### Docs
+- README: the `skipIfSame` bullet (BlocSignal tee-up item 4) and the install
+  snippet, both of which had drifted after 1.7.1 shipped.
+
 ## [1.7.1] - 2026-08-21
 
 - Docs: README gains the 1.7.0 telemetry-pair bullet and a current install

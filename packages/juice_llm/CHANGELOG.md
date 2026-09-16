@@ -1,3 +1,15 @@
+## 0.5.0
+
+- Every builder now declares its `EventConcurrency` mode. Three were bare:
+  `InitializeLlmEvent` → `droppable` (a second init while the first is
+  probing the model source is ignored); `CancelGenerationEvent` →
+  `concurrent`, explicitly — its own doc comment already prescribed it: it
+  must run DURING the streaming `GenerateUseCase`, and it is idempotent (a
+  cancel for a request that is not active is a no-op); `EvictSessionEvent`
+  → `sequential` (mutates the session set).
+- Tests: gated-source coverage proves overlapping initializations coalesce
+  to one `isPresent` probe.
+
 ## 0.4.1
 
 - THE LATE-TEARDOWN UN-WEDGE: a wedge is a claim — "this native call

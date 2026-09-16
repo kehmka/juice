@@ -794,4 +794,53 @@ void main() {
           reason: 'an un-wedged engine must accept new work');
     });
   });
+
+  concurrencyModeTests();
+}
+
+// ---------------------------------------------------------------------------
+// Concurrency modes (0.5.0): a gated model source proves `droppable` init.
+// ---------------------------------------------------------------------------
+
+/// isPresent blocks on [gate] and counts probes.
+class _GatedModelSource extends _FakeModelSource {
+  Completer<void>? gate;
+  int probes = 0;
+  @override
+  Future<bool> isPresent(LlmModel model, String path) async {
+    probes++;
+    if (gate != null) await gate!.future;
+    return false;
+  }
+}
+
+void concurrencyModeTests() {
+  Future<void> settle([int ms = 20]) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+
+  group('Concurrency modes (0.5.0)', () {
+    test('overlapping initializations coalesce to ONE model probe (droppable)',
+        () async {
+      final source = _GatedModelSource()..gate = Completer<void>();
+      LlmConfig cfg() => LlmConfig(
+            provider: FakeLlmProvider(),
+            modelSource: source,
+            initialModel: _model(),
+            resolvePath: (m) => '/tmp/${m.id}.gguf',
+          );
+
+      final bloc = LlmBloc();
+      bloc.send(InitializeLlmEvent(config: cfg()));
+      await settle(1); // first init is now waiting inside isPresent
+      bloc.send(InitializeLlmEvent(config: cfg()));
+      await settle(1);
+      expect(source.probes, 1, reason: 'the second init mid-probe is dropped');
+
+      source.gate!.complete();
+      source.gate = null;
+      await settle();
+      expect(bloc.state.modelStatus, LlmModelStatus.absent);
+      await bloc.close();
+    });
+  });
 }

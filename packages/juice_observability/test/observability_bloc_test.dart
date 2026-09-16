@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice_observability/juice_observability.dart';
 
@@ -137,6 +139,58 @@ void main() {
       await settle();
       await bloc.close();
       expect(a.disposed, isTrue);
+    });
+  });
+
+  concurrencyModeTests();
+}
+
+// ---------------------------------------------------------------------------
+// Concurrency modes (0.5.0): a gated reporter proves `sequential` on the
+// events that fan out to reporters, the way the rest of the family pins theirs.
+// ---------------------------------------------------------------------------
+
+/// setUser blocks on [gate]; [setUserStarts] counts calls that have BEGUN —
+/// a queued (sequential) call is visible as "not started".
+class GatedReporter extends RecordingReporter {
+  Completer<void>? gate;
+  int setUserStarts = 0;
+  final users = <String?>[];
+  @override
+  Future<void> setUser(String? userId) async {
+    setUserStarts++;
+    if (gate != null) await gate!.future;
+    users.add(userId);
+  }
+}
+
+void concurrencyModeTests() {
+  Future<void> settle([int ms = 20]) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+
+  group('Concurrency modes (0.5.0)', () {
+    test('a second setUser does not start its fan-out until the first '
+        'completes (sequential) — and reporters see them in call order',
+        () async {
+      final r = GatedReporter()..gate = Completer<void>();
+      final bloc = ObservabilityBloc.withConfig(
+          ObservabilityConfig(reporters: [r], captureUncaught: false));
+      await settle();
+
+      bloc.setUser('first');
+      await settle(1); // first fan-out is now waiting inside setUser
+      bloc.setUser('second');
+      await settle(1);
+      expect(r.setUserStarts, 1,
+          reason: 'sequential: the second call is queued, not started');
+
+      r.gate!.complete();
+      r.gate = null;
+      await settle();
+      expect(r.setUserStarts, 2);
+      expect(r.users, ['first', 'second']);
+      expect(bloc.state.userId, 'second');
+      await bloc.close();
     });
   });
 }

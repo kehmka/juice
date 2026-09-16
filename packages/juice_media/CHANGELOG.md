@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-16
+
+### Changed — every builder now declares its `EventConcurrency` mode
+- 0.3.0 gave `AcquireMediaEvent` `droppable` and left the other twelve
+  builders bare (silently `concurrent`). Now explicit: `InitializeMediaEvent`
+  → `droppable`; every item / upload / permission mutation → `sequential`
+  (`AddRemoteItems`, `AddLocalItems`, `RemoveItem`, `ClearItems`,
+  `SetPermissionStatus`, `UploadItem`, `UploadAll`, `CancelUpload`,
+  `UploadProgress`, `UploadCompleted`, `UploadFailed`). Every one of those
+  use cases is atomic today (no `await`), so this is declarative: it states
+  the intent AGENTS §4 asks for and protects each against a future await.
+  No observable behavior change; no new tests, because there is nothing to
+  gate.
+
 ## [0.5.0] - 2026-06-24
 
 From dogfooding (Glean library ingest): the same library photo can arrive by

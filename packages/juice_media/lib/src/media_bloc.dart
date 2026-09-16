@@ -46,8 +46,10 @@ class MediaBloc extends JuiceBloc<MediaState> {
           MediaState.initial,
           [
             () => UseCaseBuilder(
-                typeOfEvent: InitializeMediaEvent,
-                useCaseGenerator: () => InitializeMediaUseCase()),
+                  typeOfEvent: InitializeMediaEvent,
+                  useCaseGenerator: () => InitializeMediaUseCase(),
+                  concurrency: EventConcurrency.droppable,
+                ),
             // droppable: a pick fired while one is in flight is ignored
             // (juice ≥ 1.5.0) — replaces a manual `state.picking` entry guard.
             () => UseCaseBuilder(
@@ -55,38 +57,60 @@ class MediaBloc extends JuiceBloc<MediaState> {
                 useCaseGenerator: () => AcquireMediaUseCase(),
                 concurrency: EventConcurrency.droppable),
             () => UseCaseBuilder(
-                typeOfEvent: AddRemoteItemsEvent,
-                useCaseGenerator: () => AddRemoteItemsUseCase()),
+                  typeOfEvent: AddRemoteItemsEvent,
+                  useCaseGenerator: () => AddRemoteItemsUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: AddLocalItemsEvent,
-                useCaseGenerator: () => AddLocalItemsUseCase()),
+                  typeOfEvent: AddLocalItemsEvent,
+                  useCaseGenerator: () => AddLocalItemsUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: RemoveItemEvent,
-                useCaseGenerator: () => RemoveItemUseCase()),
+                  typeOfEvent: RemoveItemEvent,
+                  useCaseGenerator: () => RemoveItemUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: ClearItemsEvent,
-                useCaseGenerator: () => ClearItemsUseCase()),
+                  typeOfEvent: ClearItemsEvent,
+                  useCaseGenerator: () => ClearItemsUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: UploadItemEvent,
-                useCaseGenerator: () => UploadItemUseCase()),
+                  typeOfEvent: UploadItemEvent,
+                  useCaseGenerator: () => UploadItemUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: UploadAllEvent,
-                useCaseGenerator: () => UploadAllUseCase()),
+                  typeOfEvent: UploadAllEvent,
+                  useCaseGenerator: () => UploadAllUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: UploadProgressEvent,
-                useCaseGenerator: () => UploadProgressUseCase()),
+                  typeOfEvent: UploadProgressEvent,
+                  useCaseGenerator: () => UploadProgressUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: UploadCompletedEvent,
-                useCaseGenerator: () => UploadCompletedUseCase()),
+                  typeOfEvent: UploadCompletedEvent,
+                  useCaseGenerator: () => UploadCompletedUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: UploadFailedEvent,
-                useCaseGenerator: () => UploadFailedUseCase()),
+                  typeOfEvent: UploadFailedEvent,
+                  useCaseGenerator: () => UploadFailedUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: CancelUploadEvent,
-                useCaseGenerator: () => CancelUploadUseCase()),
+                  typeOfEvent: CancelUploadEvent,
+                  useCaseGenerator: () => CancelUploadUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
             () => UseCaseBuilder(
-                typeOfEvent: SetPermissionStatusEvent,
-                useCaseGenerator: () => SetPermissionStatusUseCase()),
+                  typeOfEvent: SetPermissionStatusEvent,
+                  useCaseGenerator: () => SetPermissionStatusUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
           ],
         );
 

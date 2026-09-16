@@ -313,6 +313,18 @@ Before 1.5.0 the same outcomes were hand-rolled. **Adopted so far:**
   `sequential`, which orders the SAVES (state was already race-free: `commit`
   emits before it awaits) at the cost that a second change's emit waits behind
   the previous save. Gated-persistence coverage pins exactly that.
+- **Family complete, 2026-09-16** — the three packages the #22 list called
+  "already correct" had only declared the events that NEEDED a non-default
+  mode; the rest were bare (= `concurrent`, undeclared). Now every builder in
+  every package is explicit: `juice_media` 0.6.0 (init → `droppable`; the
+  twelve item/upload/permission mutations → `sequential`, all atomic today —
+  declarative), `juice_observability` 0.5.0 (init → `droppable`; setUser /
+  setContext / setEnabled → `sequential`; gated-reporter test), `juice_llm`
+  0.5.0 (init → `droppable`, gated-source test; evict → `sequential`; cancel
+  → `concurrent` EXPLICITLY — its own doc comment prescribed it: it must run
+  during the streaming generate, and the sign-off table's `droppable` was
+  wrong across requests), and juice core 1.7.2's own `ScopeLifecycleBloc`
+  (start → `sequential`; end → `concurrent` with its per-scope singleflight).
 - `juice_lifecycle` 0.2.0 — initialization → `droppable`, lifecycle changes →
   `sequential`; burst coverage proves provider order is retained in the
   `previous`/current phase pair.

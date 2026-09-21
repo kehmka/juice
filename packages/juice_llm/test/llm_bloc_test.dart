@@ -492,11 +492,11 @@ void main() {
       // the first's stream has fully finished.
       final order = <String>[];
       final a = bloc.beginGeneration(
-        LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
+        const LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
         onChunk: (_) => order.add('a'),
       );
       final b = bloc.beginGeneration(
-        LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
+        const LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
         onChunk: (_) => order.add('b'),
       );
       final outcomes = await Future.wait([a, b]);
@@ -518,7 +518,7 @@ void main() {
       await ready(bloc);
 
       final a = bloc.beginGeneration(
-        LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
+        const LlmRequest(requestId: 'well-1', messages: [LlmMessage.user('a')]),
         onChunk: (_) {},
       );
       await settle(25); // let the background stream get going
@@ -529,7 +529,7 @@ void main() {
       final stopped = await bloc.stopGeneration();
       expect(stopped, 'well-1');
       final b = bloc.beginGeneration(
-        LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
+        const LlmRequest(requestId: 'chat-1', messages: [LlmMessage.user('b')]),
         onChunk: (c) => chatChunks.add(c.textDelta),
       );
 
@@ -551,7 +551,7 @@ void main() {
       var completed = false;
       final gen = llm
           .beginGeneration(
-            LlmRequest(
+            const LlmRequest(
                 requestId: 'lease-t1',
                 messages: [LlmMessage.user('hello')]),
             onChunk: (_) {},
@@ -578,7 +578,7 @@ void main() {
       final llm = LlmBloc.withConfig(LlmConfig());
       await Future<void>.delayed(const Duration(milliseconds: 50));
       final gen = llm.beginGeneration(
-        LlmRequest(
+        const LlmRequest(
             requestId: 'lease-t2', messages: [LlmMessage.user('hi')]),
         onChunk: (_) {},
       );
@@ -600,7 +600,7 @@ void main() {
       fake.loaded = true;
 
       final outcome = bloc.beginGeneration(
-          LlmRequest(requestId: 'well-1', messages: const []),
+          const LlmRequest(requestId: 'well-1', messages: []),
           onChunk: (_) {});
       await fake.started.future;
 
@@ -623,7 +623,7 @@ void main() {
 
       final chunks = <LlmChunk>[];
       final outcome = bloc.beginGeneration(
-          LlmRequest(requestId: 'well-2', messages: const []),
+          const LlmRequest(requestId: 'well-2', messages: []),
           onChunk: chunks.add);
       await settle(1); // let the queue start it (registration is chained)
       // The first chunk is still ~30ms away ("prefill") — the preempt
@@ -645,7 +645,7 @@ void main() {
       fake.loaded = true;
 
       unawaited(bloc.beginGeneration(
-          LlmRequest(requestId: 'well-3', messages: const []),
+          const LlmRequest(requestId: 'well-3', messages: []),
           onChunk: (_) {}));
       await fake.started.future;
 
@@ -666,7 +666,7 @@ void main() {
       fake.loaded = true;
 
       unawaited(bloc.beginGeneration(
-          LlmRequest(requestId: 'read:now', messages: const []),
+          const LlmRequest(requestId: 'read:now', messages: []),
           onChunk: (_) {}));
       await settle(1); // let the queue start it
       final freed = await bloc.preemptAtSafePoint(

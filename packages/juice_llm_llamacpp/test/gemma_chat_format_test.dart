@@ -39,7 +39,7 @@ void main() {
     test('markers attach to the right turn across multiple messages', () {
       final p = gemmaChatFormat([
         LlmMessage.user('first', images: [_bytes(4)]),
-        LlmMessage.assistant('ok'),
+        const LlmMessage.assistant('ok'),
         LlmMessage.user('second', audio: [_bytes(4)]),
       ]);
       expect(kMediaMarker.allMatches(p).length, 2);

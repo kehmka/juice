@@ -233,7 +233,7 @@ packages:
       path: "../../juice"
       relative: true
     source: path
-    version: "1.7.1"
+    version: "1.7.2"
   juice_lint:
     dependency: "direct dev"
     description:

@@ -222,7 +222,7 @@ packages:
       path: "../juice"
       relative: true
     source: path
-    version: "1.7.1"
+    version: "1.7.2"
   leak_tracker:
     dependency: transitive
     description:

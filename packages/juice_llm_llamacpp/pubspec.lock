@@ -105,14 +105,14 @@ packages:
       path: "../juice"
       relative: true
     source: path
-    version: "1.6.0"
+    version: "1.7.2"
   juice_llm:
     dependency: "direct main"
     description:
       path: "../juice_llm"
       relative: true
     source: path
-    version: "0.4.0"
+    version: "0.5.0"
   leak_tracker:
     dependency: transitive
     description:

@@ -413,7 +413,7 @@ juice_behavior_in_state — scoped to package:juice base types, verified by
 an expect_lint fixture suite (example/). The const-widget gotcha is
 already a compile error, so no rule for it.
 
-### 2 · Opt-in select-style rebuilds alongside groups  📋
+### 2 · Opt-in select-style rebuilds alongside groups  📋 → ALREADY BUILT as `JuiceSelector` (see the 2026-09-16 comparison: untested, outside groups; keep-and-fix or deprecate)
 Signals' headline: per-value rebuild precision, auto-tracked. The honest
 Juice version is selector + equality, no dependency-graph magic: a
 `SelectJuiceWidget<TBloc, T>` / `.select<T>((state) => value)` that
@@ -457,6 +457,51 @@ concurrency semantics doc). Packaging it as `.claude-plugin/` +
 future contributor's agent) installs the idioms instead of rediscovering
 them. Cheapest item on this list; also the only marketing Juice has ever
 needed ("a personal toolkit" — but the skill travels with the code).
+
+## Teed up from the ecosystem comparison (2026-09-16)
+
+Five independent deep-dives — bloc, Riverpod, signals, the rest (MobX / redux
+/ stacked / rearch / get_it / commands), and developer experience — against
+the same baseline; every "Juice lacks" claim adjudicated against source.
+Full synthesis, rejections, and the calibration of where Juice is ahead:
+`doc/ECOSYSTEM_COMPARISON_2026_09.md`; raw reports with versions and URLs in
+`doc/comparison/2026-09/`. The verdict in one line: the model is not behind;
+the gaps are things re-derived per package, enforcement still in prose,
+tooling hosts that moved, and explanation. Kevin picks; nothing below is
+built without its gate.
+
+**Corrections to this file, free:** (1) teed-up #2 below is ALREADY BUILT as
+`JuiceSelector` / `selectWith` / `bloc.select` — untested, absent from
+AGENTS.md, and outside the groups vocabulary (it maps the raw stream);
+keep-and-fix or deprecate. (2) "an event that returns a value" exists four
+ways in the family (core `ResultEvent` with no helper; storage's
+`sendForResult`/`OperationResult`; forms' and permissions' completers) — a
+no-parallel-paths violation; promote storage's trio to core. (3) AGENTS
+gotcha to add: builders register once at construction, so a NEW
+`UseCaseBuilder` needs hot restart. (4) `JuiceExceptionWidget` has no
+release-mode gate — a doctrine call.
+
+| # | Candidate | Cost | Gate | Raised by |
+|---|---|---|---|---|
+| A | Skill via pub's package-skills channel (`packages/juice/skills/juice-framework/`, emitted by sync_skill.sh; installs with `dart run skills@ get` into Claude Code / Cursor / Gemini / Cline / Copilot — verified on dart.dev) | S | `skills@ get` accepts the name on a scratch consumer | dx |
+| B | Port `juice_lint` to Dart's official `analysis_server_plugin` (reports via `flutter analyze`; quick fixes) — closes the CLI limitation found dogfooding | M | docket-5 sentinel proof under the new host | dx |
+| C | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
+| D | `fix_data.yaml` for the three `@Deprecated` members | S | confirm the v2.0.0 removal list | dx |
+| E | State hydration seam (`StatePersistence<TState>` + `hydrate`; storage default + fake; versioned FAIL-LOUD migration) | M | migrating theme + i18n must net-delete code | bloc, riverpod |
+| F | `bindStream` on `BlocUseCase` (bloc's `emit.forEach`; five packages hand-roll listen+cancel; enabler for `restartable`) | M | migrate location + llm; `close()` bodies shrink under LeakDetector | bloc |
+| G | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
+| H | `WaitingStatus.progress`; `isWaitingFor<TEvent>()` / `isRunning(Type)` / `lastFailure(Type)` | S | llm model acquire; permissions' `requestsInFlight` map deletable | riverpod, others |
+| I | DevTools rebuild inspector + state diff + emission rate (`widget_rebuild` event from the accept path) | M | approve the event schema, measure overhead; build with the select measurement | riverpod, signals, dx, others |
+| J | Stop re-subscribing on every parent rebuild (`JuiceWidgetState` builds the filtered stream in `build`) | S | widget test counting `listen()` | signals |
+| K | Lease `linger` window on `register` | S | a measured cold re-entry in Amoli | riverpod |
+| L | `BlocScope.whenReady/allReady` + test-only `override<T>()` | S | count ordered init awaits in the example apps first | others |
+| M | `juice_feature` mason brick | M | regenerate notes_app's feature to zero diff; delete on first drift | others, dx |
+
+`restartable` (#3) stays parked but is now validated by two external
+implementations (bloc_concurrency's switchMap fence; BlocSignal 1.3.0's
+generation token) — build to the text below when a consumer appears; F is
+the enabler. A `lane` key for cross-type FIFO waits on a juice_sync
+consumer (its Retry↔Discard window is the waiting defect).
 
 ## Work docket — cleanup while #2 and #3 wait (2026-09-02)
 

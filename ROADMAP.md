@@ -413,7 +413,24 @@ juice_behavior_in_state — scoped to package:juice base types, verified by
 an expect_lint fixture suite (example/). The const-widget gotcha is
 already a compile error, so no rule for it.
 
-### 2 · Opt-in select-style rebuilds alongside groups  📋 → ALREADY BUILT as `JuiceSelector` (see the 2026-09-16 comparison: untested, outside groups; keep-and-fix or deprecate)
+### 2 · Opt-in select-style rebuilds alongside groups  ✅ 2026-09-21 (juice 1.8.0)
+Turned out to ALREADY EXIST as `JuiceSelector` / `selectWith` / `bloc.select`
+(found by the 2026-09-16 comparison) — exported, documented under
+doc/widgets/, used once in the root example, zero tests, absent from
+AGENTS.md, and listening to the RAW stream so every emission on a bloc woke
+every selector regardless of group. Kevin chose keep-and-fix (option 2 of
+four). Now: a `groups` parameter on both widgets and both stream forms,
+filtering through the same `denyRebuild` as every Juice widget BEFORE the
+value comparison — exactly the positioning written below (groups = the
+vocabulary; select = a leaf optimization inside a group's blast radius).
+Two latent bugs fixed on the way: the first emission was passed
+unconditionally (an equal first emission rebuilt once for nothing) and the
+doc claimed a replay that `bloc.stream` never does; `selectWith` skipped the
+comparison whenever `previous` was null (nullable projections re-emitted
+every time). Pinned by stream + widget tests; AGENTS §3 gained the bullet.
+The measurement gate below still stands for PROMOTING the selector in
+doctrine beyond "hot cell" — this change only made the existing widget
+stricter and honest.
 Signals' headline: per-value rebuild precision, auto-tracked. The honest
 Juice version is selector + equality, no dependency-graph magic: a
 `SelectJuiceWidget<TBloc, T>` / `.select<T>((state) => value)` that

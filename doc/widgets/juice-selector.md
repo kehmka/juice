@@ -1,6 +1,6 @@
 # JuiceSelector - Optimized State Selection
 
-`JuiceSelector` is a widget that rebuilds only when a specific portion of state changes. This provides more granular control than rebuild groups and eliminates unnecessary widget rebuilds.
+`JuiceSelector` is a widget that rebuilds only when a specific portion of state changes. Since juice 1.8.0 it is a leaf optimization **inside** rebuild groups, not an alternative to them: pass `groups`, and the widget rebuilds when an emission targets one of its groups *and* the selected value changed. Groups stay the cross-widget vocabulary; the selector handles the one hot cell under them.
 
 ## Overview
 
@@ -16,15 +16,27 @@ class CounterDisplay extends StatelessJuiceWidget<CounterBloc> {
 }
 ```
 
-With `JuiceSelector`, you specify exactly what to watch:
+With `JuiceSelector`, you specify exactly what to watch, and where:
 
 ```dart
-// Only rebuilds when count changes
+// In the `counter` group's blast radius, only when count changes
 JuiceSelector<CounterBloc, CounterState, int>(
+  groups: {CounterGroups.counter},
   selector: (state) => state.count,
   builder: (context, count) => Text('Count: $count'),
 )
 ```
+
+## Groups: where the selector listens
+
+`groups` is optional but you should always pass it. With `groups`, an emission whose `groupsToRebuild` do not intersect them is ignored entirely — the selector does not even run, and the ignored emission does not become the "previous" value. The filter is the same `denyRebuild` every Juice widget uses, so `rebuildAlways` passes it. Only emissions that pass the group filter have their selected value compared.
+
+Without `groups`, every emission on the bloc is projected and compared. That works, and it is how the widget behaved before 1.8.0, but the rebuild is then explained only by a value comparison rather than by a named group — which is the thing groups exist to make readable.
+
+Two more rules:
+
+- **Value equality.** The selected type must implement `==` (the same precondition as `emitUpdate(skipIfSame:)`). A `List` with identity `==` never dedupes; use `JuiceSelectorWith` with `listEquals`.
+- **No replay.** The stream forms (`bloc.select`, `selectWith`) do not emit the current value on subscription; the first emission is compared against the state at subscription time. The widgets seed their first frame from `bloc.state`, so they always render the current value.
 
 ## Basic Usage
 
@@ -260,22 +272,14 @@ JuiceSelector<DataBloc, DataState, bool>(
 
 ### vs Rebuild Groups
 
-| Feature | JuiceSelector | Rebuild Groups |
+| Feature | JuiceSelector (with `groups`) | Rebuild Groups |
 |---------|---------------|----------------|
-| Granularity | Per-property | Per-group |
-| Setup | Inline | Define groups + emit |
-| Equality | Automatic | N/A |
-| Use case | Fine-grained | Coarse-grained |
+| Granularity | Per-group, then per-value | Per-group |
+| Setup | Groups + a selector | Define groups + emit |
+| Equality | Automatic (`==` / custom) | N/A |
+| Use case | One hot cell inside a section | The section |
 
-Use `JuiceSelector` when:
-- You need per-property rebuild control
-- You want automatic equality checking
-- You're selecting computed values
-
-Use rebuild groups when:
-- Multiple widgets should update together
-- You have well-defined UI sections
-- You need to coordinate updates
+These are not alternatives. Groups decide **which emissions reach** a widget; the selector decides, among those, **whether the value actually moved**. Use a plain `StatelessJuiceWidget` for a section, and a `JuiceSelector` with the same groups for a cell inside it that would otherwise rebuild on every emission to the section.
 
 ### vs StatelessJuiceWidget with Groups
 
@@ -367,6 +371,7 @@ JuiceSelectorWith<TodoBloc, TodoState, List<Todo>>(
 | `selector` | `T Function(TState)` | Extracts value from state |
 | `builder` | `Widget Function(BuildContext, T)` | Builds widget with selected value |
 | `bloc` | `TBloc?` | Optional bloc instance |
+| `groups` | `Set<String>?` | Rebuild groups to listen in (pass it; null = every emission) |
 
 ### JuiceSelectorWith
 
@@ -376,15 +381,17 @@ JuiceSelectorWith<TodoBloc, TodoState, List<Todo>>(
 | `equals` | `bool Function(T, T)` | Custom equality function |
 | `builder` | `Widget Function(BuildContext, T)` | Builds widget with selected value |
 | `bloc` | `TBloc?` | Optional bloc instance |
+| `groups` | `Set<String>?` | Rebuild groups to listen in (pass it; null = every emission) |
 
 ### Stream Extensions
 
 ```dart
 // On JuiceBloc
-Stream<T> select<T>(T Function(TState) selector)
+Stream<T> select<T>(T Function(TState) selector, {Set<String>? groups})
 
 Stream<T> selectWith<T>(
   T Function(TState) selector, {
   required bool Function(T, T) equals,
+  Set<String>? groups,
 })
 ```

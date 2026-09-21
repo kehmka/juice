@@ -2,89 +2,86 @@ import 'package:flutter/widgets.dart';
 
 import 'bloc_state.dart';
 import 'juice_bloc.dart';
+import 'stream_status.dart';
 import '../bloc.dart' show BlocScope;
+import '../../ui/src/widget_support.dart' show denyRebuild;
 
 /// Extension that adds state selection capabilities to JuiceBloc.
 ///
-/// State selection allows you to observe only parts of state, avoiding
-/// unnecessary widget rebuilds when unrelated state changes.
+/// State selection observes one projection of state and emits only when that
+/// projection changes. It is a LEAF optimization that lives INSIDE the rebuild
+/// groups vocabulary, not beside it: pass [groups] and only emissions whose
+/// `groupsToRebuild` intersect them are even considered (the same
+/// [denyRebuild] filter every Juice widget uses), THEN the projected value is
+/// compared. Without [groups] every emission is considered — correct, but the
+/// invalidation is no longer named, so prefer naming the group.
+///
+/// Precondition: the selected type needs VALUE equality (`==`), exactly like
+/// `emitUpdate(skipIfSame:)`. A projection to a `List` with identity `==`
+/// never dedupes — use [selectWith] with `listEquals`.
 ///
 /// Example:
 /// ```dart
-/// // Only emits when count changes
-/// bloc.select((state) => state.count).listen((count) {
-///   print('Count changed to $count');
-/// });
-///
-/// // Combine multiple selectors
-/// bloc.select((state) => state.user.name).listen((name) {
-///   print('User name: $name');
-/// });
+/// // In the status group's blast radius, only when count changes
+/// bloc.select((state) => state.count, groups: {FooGroups.status}).listen(print);
 /// ```
 extension StateSelection<TState extends BlocState> on JuiceBloc<TState> {
   /// Returns a stream that only emits when the selected value changes.
   ///
   /// [selector] - Function that extracts the value to observe from state.
+  /// [groups] - Rebuild groups to listen in. When given, an emission whose
+  /// groups do not intersect these is ignored entirely (its value is not
+  /// compared and does not become the new "previous"). When null, every
+  /// emission is considered.
   ///
-  /// The stream will:
-  /// - Emit immediately with the current selected value
-  /// - Only emit subsequent values when they differ from the previous value
-  /// - Use `==` for equality comparison
-  ///
-  /// Example:
-  /// ```dart
-  /// final countStream = bloc.select((state) => state.count);
-  /// countStream.listen((count) {
-  ///   // Only called when count actually changes
-  ///   print('New count: $count');
-  /// });
-  /// ```
-  Stream<T> select<T>(T Function(TState state) selector) {
-    T? previous;
-    bool isFirst = true;
-
-    return stream.map((status) => selector(status.state)).where((value) {
-      if (isFirst) {
-        isFirst = false;
-        previous = value;
-        return true;
-      }
-      if (value == previous) return false;
-      previous = value;
-      return true;
-    });
-  }
+  /// The stream does NOT replay the current value — read `bloc.state` for
+  /// that (the widgets seed their `initialData` from it). It emits when a
+  /// considered emission's projection differs from the previous one, the
+  /// first comparison being against the state at subscription time. `==`
+  /// equality.
+  Stream<T> select<T>(
+    T Function(TState state) selector, {
+    Set<String>? groups,
+  }) =>
+      selectWith(selector, equals: (a, b) => a == b, groups: groups);
 
   /// Returns a stream that only emits when the selected value changes,
   /// using a custom equality function.
   ///
   /// [selector] - Function that extracts the value to observe from state.
   /// [equals] - Custom equality function for comparing values.
+  /// [groups] - See [select].
   ///
   /// Example:
   /// ```dart
-  /// // Use deep equality for list comparison
   /// bloc.selectWith(
   ///   (state) => state.items,
   ///   equals: (a, b) => listEquals(a, b),
-  /// ).listen((items) {
-  ///   print('Items changed: $items');
-  /// });
+  ///   groups: {TodoGroups.list},
+  /// ).listen((items) => print('Items changed: $items'));
   /// ```
   Stream<T> selectWith<T>(
     T Function(TState state) selector, {
     required bool Function(T previous, T current) equals,
+    Set<String>? groups,
   }) {
-    T? previous;
-    bool isFirst = true;
+    // Seeded from the CURRENT state, so the first emission is compared like
+    // every other one (the old `isFirst` branch passed it unconditionally —
+    // an equal first emission rebuilt the widget once for nothing). Typed
+    // `T`, not `T?`, so a legitimately-null projection participates in the
+    // comparison (the old `previous != null &&` guard re-emitted on every
+    // emission for nullable projections).
+    T previous = selector(state);
 
-    return stream.map((status) => selector(status.state)).where((value) {
-      if (isFirst) {
-        isFirst = false;
-        previous = value;
-        return true;
-      }
-      if (previous != null && equals(previous as T, value)) return false;
+    Stream<StreamStatus<TState>> source = stream;
+    if (groups != null) {
+      final g = groups;
+      source = source.where(
+          (status) => !denyRebuild(event: status.event, rebuildGroups: g));
+    }
+
+    return source.map((status) => selector(status.state)).where((value) {
+      if (equals(previous, value)) return false;
       previous = value;
       return true;
     });
@@ -93,18 +90,24 @@ extension StateSelection<TState extends BlocState> on JuiceBloc<TState> {
 
 /// A widget that rebuilds only when a selected portion of state changes.
 ///
-/// [JuiceSelector] is more efficient than rebuilding on every state change
-/// when you only care about specific parts of the state.
+/// A leaf optimization inside the rebuild-groups vocabulary: with [groups],
+/// the widget rebuilds when an emission targets one of its groups AND the
+/// selected value changed — "in this group's blast radius, only if this cell
+/// moved". That is the shape for a hot cell (a list row's one field, a ticker)
+/// under a group that covers a whole section. Without [groups] every emission
+/// is compared, which works but leaves the invalidation unnamed.
+///
+/// Precondition: `T` needs value equality; see [JuiceSelectorWith] for
+/// collections.
 ///
 /// Example:
 /// ```dart
 /// JuiceSelector<CounterBloc, CounterState, int>(
+///   groups: {CounterGroups.display},
 ///   selector: (state) => state.count,
 ///   builder: (context, count) => Text('Count: $count'),
 /// )
 /// ```
-///
-/// For more complex selections, use [selectWith] on the bloc stream directly.
 class JuiceSelector<TBloc extends JuiceBloc<TState>, TState extends BlocState,
     T> extends StatefulWidget {
   /// Creates a JuiceSelector.
@@ -117,6 +120,7 @@ class JuiceSelector<TBloc extends JuiceBloc<TState>, TState extends BlocState,
     required this.selector,
     required this.builder,
     this.bloc,
+    this.groups,
   });
 
   /// Function that extracts the value of interest from state.
@@ -127,6 +131,11 @@ class JuiceSelector<TBloc extends JuiceBloc<TState>, TState extends BlocState,
 
   /// Optional bloc instance. If not provided, looks up from BlocScope.
   final TBloc? bloc;
+
+  /// Rebuild groups to listen in. When given, only emissions targeting one of
+  /// these groups are considered (then the selected value is compared). When
+  /// null, every emission is considered.
+  final Set<String>? groups;
 
   @override
   State<JuiceSelector<TBloc, TState, T>> createState() =>
@@ -156,7 +165,7 @@ class _JuiceSelectorState<
   @override
   void didUpdateWidget(JuiceSelector<TBloc, TState, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.bloc != oldWidget.bloc) {
+    if (widget.bloc != oldWidget.bloc || widget.groups != oldWidget.groups) {
       _initBloc();
     }
   }
@@ -164,7 +173,7 @@ class _JuiceSelectorState<
   void _initBloc() {
     _bloc = widget.bloc ?? BlocScope.get<TBloc>();
     _selectedValue = widget.selector(_bloc.state);
-    _selectedStream = _bloc.select(widget.selector);
+    _selectedStream = _bloc.select(widget.selector, groups: widget.groups);
   }
 
   @override
@@ -200,6 +209,7 @@ class JuiceSelectorWith<TBloc extends JuiceBloc<TState>,
     required this.equals,
     required this.builder,
     this.bloc,
+    this.groups,
   });
 
   /// Function that extracts the value of interest from state.
@@ -213,6 +223,11 @@ class JuiceSelectorWith<TBloc extends JuiceBloc<TState>,
 
   /// Optional bloc instance. If not provided, looks up from BlocScope.
   final TBloc? bloc;
+
+  /// Rebuild groups to listen in. When given, only emissions targeting one of
+  /// these groups are considered (then the selected value is compared). When
+  /// null, every emission is considered.
+  final Set<String>? groups;
 
   @override
   State<JuiceSelectorWith<TBloc, TState, T>> createState() =>
@@ -242,7 +257,7 @@ class _JuiceSelectorWithState<
   @override
   void didUpdateWidget(JuiceSelectorWith<TBloc, TState, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.bloc != oldWidget.bloc) {
+    if (widget.bloc != oldWidget.bloc || widget.groups != oldWidget.groups) {
       _initBloc();
     }
   }
@@ -253,6 +268,7 @@ class _JuiceSelectorWithState<
     _selectedStream = _bloc.selectWith(
       widget.selector,
       equals: widget.equals,
+      groups: widget.groups,
     );
   }
 

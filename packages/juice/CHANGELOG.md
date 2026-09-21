@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.8.0] - 2026-09-21
+
+### Added
+- **`JuiceSelector` / `JuiceSelectorWith` / `bloc.select` / `bloc.selectWith`
+  take `groups`.** Select-style rebuilds now live INSIDE the rebuild-groups
+  vocabulary instead of beside it: with `groups`, an emission whose
+  `groupsToRebuild` do not intersect them is ignored entirely (not projected,
+  not remembered — the same `denyRebuild` filter every Juice widget uses),
+  and only then is the selected value compared. "In this group's blast
+  radius, only if this cell moved" — the shape for a hot cell (a list row's
+  one field, a ticker) under a group that covers a whole section. Without
+  `groups` the previous behavior stands: every emission is compared.
+  `rebuildAlways` passes the group filter as it does everywhere.
+
+### Fixed
+- **A selector's first emission is now compared, not passed.** `previous` is
+  seeded from `bloc.state` at subscription, so an emission equal to the
+  current value no longer rebuilds the widget once for nothing. The old
+  doc claimed the stream "emits immediately with the current value"; it
+  never did (`bloc.stream` does not replay) — the doc now says so, and the
+  widgets keep seeding `initialData` from state.
+- **`selectWith` with a nullable projection dedupes.** The old
+  `previous != null &&` guard skipped the comparison whenever the previous
+  value was `null`, re-emitting on every emission. `previous` is now typed
+  `T`, so `null` participates.
+
+### Tests
+- `test/bloc/state_selector_test.dart` (stream) and
+  `test/ui/juice_selector_test.dart` (widget): the selector had shipped with
+  zero tests. Pins: no replay; `==` dedup; ungrouped projects every emission;
+  grouped ignores other groups entirely; `rebuildAlways` reaches a grouped
+  selector; nullable dedup; the widget rebuilds on its group when the value
+  changes, and not on another group, and not on an equal value.
+
 ## [1.7.2] - 2026-09-16
 
 ### Changed

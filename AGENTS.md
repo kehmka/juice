@@ -128,6 +128,19 @@ final foo = BlocScope.get<FooBloc>();    // imperative access outside a widget
 // lifecycles: BlocLifecycle.permanent | feature | leased (use BlocScope.lease for leased)
 ```
 
+**Hot cells: `JuiceSelector` inside groups (juice ≥ 1.8.0).** Groups remain
+the invalidation vocabulary — cross-widget, intent-named. For a LEAF that
+rebuilds too often inside a group's blast radius (one field of a list row,
+a ticker), select it: `JuiceSelector<FooBloc, FooState, int>(groups:
+{FooGroups.status}, selector: (s) => s.count, builder: …)` rebuilds only when
+an emission targets `status` AND `count` changed by `==`. Always pass
+`groups` — without them every emission is projected and the invalidation is
+unnamed. The selected type needs VALUE equality (same precondition as
+`skipIfSame`); for collections use `JuiceSelectorWith(equals: listEquals)`.
+The stream forms `bloc.select` / `selectWith` take the same `groups`. Not a
+dependency graph: nothing is auto-tracked, and a rebuild is still explained
+by two constants plus one comparison.
+
 **Per-item async state.** `StreamStatus` is bloc-wide — it can't say "row 7 is
 loading while the rest are fine." For a *collection* whose items each have their
 own async life (a row uploading, deleting, retrying), do **not** reach for a

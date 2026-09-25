@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/widgets.dart';
 
 import 'bloc_state.dart';
@@ -65,14 +68,6 @@ extension StateSelection<TState extends BlocState> on JuiceBloc<TState> {
     required bool Function(T previous, T current) equals,
     Set<String>? groups,
   }) {
-    // Seeded from the CURRENT state, so the first emission is compared like
-    // every other one (the old `isFirst` branch passed it unconditionally —
-    // an equal first emission rebuilt the widget once for nothing). Typed
-    // `T`, not `T?`, so a legitimately-null projection participates in the
-    // comparison (the old `previous != null &&` guard re-emitted on every
-    // emission for nullable projections).
-    T previous = selector(state);
-
     Stream<StreamStatus<TState>> source = stream;
     if (groups != null) {
       final g = groups;
@@ -80,11 +75,25 @@ extension StateSelection<TState extends BlocState> on JuiceBloc<TState> {
           (status) => !denyRebuild(event: status.event, rebuildGroups: g));
     }
 
-    return source.map((status) => selector(status.state)).where((value) {
-      if (equals(previous, value)) return false;
-      previous = value;
-      return true;
-    });
+    // `previous` is PER SUBSCRIPTION, seeded from the state at the moment
+    // that listener subscribes. A single closure shared by every listener
+    // (1.8.0) let the first listener advance it, so a second listener on the
+    // same returned stream saw "equal" and never fired. Typed `T`, not `T?`,
+    // so a legitimately-null projection participates in the comparison.
+    return Stream<T>.multi((controller) {
+      T previous = selector(state);
+      final sub = source.listen(
+        (status) {
+          final value = selector(status.state);
+          if (equals(previous, value)) return;
+          previous = value;
+          controller.add(value);
+        },
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = sub.cancel;
+    }, isBroadcast: true);
   }
 }
 
@@ -142,51 +151,21 @@ class JuiceSelector<TBloc extends JuiceBloc<TState>, TState extends BlocState,
       _JuiceSelectorState<TBloc, TState, T>();
 }
 
-class _JuiceSelectorState<
-    TBloc extends JuiceBloc<TState>,
-    TState extends BlocState,
-    T> extends State<JuiceSelector<TBloc, TState, T>> {
-  late TBloc _bloc;
-  late T _selectedValue;
-  late Stream<T> _selectedStream;
-
+class _JuiceSelectorState<TBloc extends JuiceBloc<TState>,
+        TState extends BlocState, T>
+    extends _SelectorStateBase<JuiceSelector<TBloc, TState, T>, TBloc, TState,
+        T> {
   @override
-  void initState() {
-    super.initState();
-    _initBloc();
-  }
-
+  T select(TState state) => widget.selector(state);
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _initBloc();
-  }
-
+  bool same(T previous, T current) => previous == current;
   @override
-  void didUpdateWidget(JuiceSelector<TBloc, TState, T> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.bloc != oldWidget.bloc || widget.groups != oldWidget.groups) {
-      _initBloc();
-    }
-  }
-
-  void _initBloc() {
-    _bloc = widget.bloc ?? BlocScope.get<TBloc>();
-    _selectedValue = widget.selector(_bloc.state);
-    _selectedStream = _bloc.select(widget.selector, groups: widget.groups);
-  }
-
+  TBloc? blocOf(JuiceSelector<TBloc, TState, T> w) => w.bloc;
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<T>(
-      stream: _selectedStream,
-      initialData: _selectedValue,
-      builder: (context, snapshot) {
-        final value = snapshot.data as T;
-        return widget.builder(context, value);
-      },
-    );
-  }
+  Set<String>? groupsOf(JuiceSelector<TBloc, TState, T> w) => w.groups;
+  @override
+  Widget buildValue(BuildContext context, T value) =>
+      widget.builder(context, value);
 }
 
 /// A widget that rebuilds only when a selected portion of state changes,
@@ -234,53 +213,87 @@ class JuiceSelectorWith<TBloc extends JuiceBloc<TState>,
       _JuiceSelectorWithState<TBloc, TState, T>();
 }
 
-class _JuiceSelectorWithState<
+class _JuiceSelectorWithState<TBloc extends JuiceBloc<TState>,
+        TState extends BlocState, T>
+    extends _SelectorStateBase<JuiceSelectorWith<TBloc, TState, T>, TBloc,
+        TState, T> {
+  @override
+  T select(TState state) => widget.selector(state);
+  @override
+  bool same(T previous, T current) => widget.equals(previous, current);
+  @override
+  TBloc? blocOf(JuiceSelectorWith<TBloc, TState, T> w) => w.bloc;
+  @override
+  Set<String>? groupsOf(JuiceSelectorWith<TBloc, TState, T> w) => w.groups;
+  @override
+  Widget buildValue(BuildContext context, T value) =>
+      widget.builder(context, value);
+}
+
+/// Shared subscription logic for [JuiceSelector] and [JuiceSelectorWith].
+///
+/// Holds the DISPLAYED value and compares each considered emission against
+/// it, reading the CURRENT widget's selector and equality on every emission.
+/// (1.8.0 used a StreamBuilder over `bloc.select`, which kept the old bloc's
+/// value after a `bloc:` swap — StreamBuilder only applies `initialData`
+/// once — and kept projecting with the first build's selector closure.)
+abstract class _SelectorStateBase<
+    W extends StatefulWidget,
     TBloc extends JuiceBloc<TState>,
     TState extends BlocState,
-    T> extends State<JuiceSelectorWith<TBloc, TState, T>> {
+    T> extends State<W> {
+  T select(TState state);
+  bool same(T previous, T current);
+  TBloc? blocOf(W w);
+  Set<String>? groupsOf(W w);
+  Widget buildValue(BuildContext context, T value);
+
   late TBloc _bloc;
-  late T _selectedValue;
-  late Stream<T> _selectedStream;
+  late T _value;
+  StreamSubscription<StreamStatus<TState>>? _sub;
 
   @override
   void initState() {
     super.initState();
-    _initBloc();
+    _subscribe();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _initBloc();
-  }
-
-  @override
-  void didUpdateWidget(JuiceSelectorWith<TBloc, TState, T> oldWidget) {
+  void didUpdateWidget(W oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.bloc != oldWidget.bloc || widget.groups != oldWidget.groups) {
-      _initBloc();
+    final bloc = blocOf(widget) ?? BlocScope.get<TBloc>();
+    // Value comparison: an inline `{Group.x}` literal is a new Set every
+    // parent build and must not resubscribe each time.
+    if (!identical(bloc, _bloc) ||
+        !setEquals(groupsOf(widget), groupsOf(oldWidget))) {
+      _sub?.cancel();
+      _subscribe(bloc);
+    } else {
+      // The selector may be a new closure over new inputs (e.g. a row id).
+      _value = select(_bloc.state);
     }
   }
 
-  void _initBloc() {
-    _bloc = widget.bloc ?? BlocScope.get<TBloc>();
-    _selectedValue = widget.selector(_bloc.state);
-    _selectedStream = _bloc.selectWith(
-      widget.selector,
-      equals: widget.equals,
-      groups: widget.groups,
-    );
+  void _subscribe([TBloc? bloc]) {
+    _bloc = bloc ?? blocOf(widget) ?? BlocScope.get<TBloc>();
+    _value = select(_bloc.state);
+    final g = groupsOf(widget);
+    _sub = _bloc.stream.listen((status) {
+      if (g != null && denyRebuild(event: status.event, rebuildGroups: g)) {
+        return;
+      }
+      final next = select(status.state);
+      if (same(_value, next)) return;
+      setState(() => _value = next);
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<T>(
-      stream: _selectedStream,
-      initialData: _selectedValue,
-      builder: (context, snapshot) {
-        final value = snapshot.data as T;
-        return widget.builder(context, value);
-      },
-    );
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => buildValue(context, _value);
 }

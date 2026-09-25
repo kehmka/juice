@@ -1,6 +1,6 @@
 name: juice
 description: "Lifecycle-aware Flutter application framework built around use-case driven blocs, scoped ownership, and targeted rebuilds."
-version: 1.8.0
+version: 1.8.1
 
 repository: https://github.com/kehmka/juice
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -22,15 +22,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   rxdart: ^0.28.0
   logger: ^2.5.0
-  flutter_test:
-    sdk: flutter
+  # For `package:juice/testing.dart` (BlocTester's assertions). The pure-Dart
+  # matcher, not flutter_test: a runtime dep on flutter_test forced the test
+  # framework into every consumer app's dependency graph.
+  matcher: ^0.12.16
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

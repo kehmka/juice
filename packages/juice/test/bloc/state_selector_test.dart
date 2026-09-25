@@ -192,4 +192,70 @@ void main() {
       await b.close();
     });
   });
+
+  group('1.8.1 fixes', () {
+    test(
+        'two listeners on the SAME selected stream each get every change '
+        '(previous is per subscription, not shared)', () async {
+      final b = _B();
+      final selected = b.select((s) => s.count);
+      final first = <int>[], second = <int>[];
+      final s1 = selected.listen(first.add);
+      final s2 = selected.listen(second.add);
+      b.send(_SetCount(1));
+      b.send(_SetCount(2));
+      await settle();
+      expect(first, [1, 2]);
+      expect(second, [1, 2]);
+      await s1.cancel();
+      await s2.cancel();
+      await b.close();
+    });
+
+    test('a late listener is seeded from the state when IT subscribes',
+        () async {
+      final b = _B();
+      final selected = b.select((s) => s.count);
+      b.send(_SetCount(5));
+      await settle();
+      final seen = <int>[];
+      final sub = selected.listen(seen.add);
+      b.send(_SetCount(5)); // equal to the state at subscription → suppressed
+      b.send(_SetCount(6));
+      await settle();
+      expect(seen, [6]);
+      await sub.cancel();
+      await b.close();
+    });
+
+    test('the selected stream stays broadcast', () {
+      final b = _B();
+      expect(b.select((s) => s.count).isBroadcast, isTrue);
+      b.close();
+    });
+  });
+
+  group('sendAndWait', () {
+    test('returns the event\'s own terminal status (was: always timed out)',
+        () async {
+      final b = _B();
+      final event = _SetCount(4);
+      final status =
+          await b.sendAndWait(event, timeout: const Duration(seconds: 2));
+      expect(status, isA<UpdatingStatus<_S>>());
+      expect(identical(status.event, event), isTrue);
+      expect(b.state.count, 4);
+      await b.close();
+    });
+
+    test('ignores emissions caused by other events', () async {
+      final b = _B();
+      final other = b.send(_SetLabel('x'));
+      final status = await b.sendAndWait(_SetCount(9),
+          timeout: const Duration(seconds: 2));
+      await other;
+      expect(status.event, isA<_SetCount>());
+      await b.close();
+    });
+  });
 }

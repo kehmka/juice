@@ -94,8 +94,13 @@ class FeatureScope {
   /// Track all active feature scopes for leak detection (debug only).
   static final Set<FeatureScope> _activeScopes = {};
 
-  static String _generateId() =>
-      DateTime.now().microsecondsSinceEpoch.toString();
+  /// Monotonic id source. Was `DateTime.now().microsecondsSinceEpoch`, which
+  /// collides for scopes created in the same clock tick (routinely on web,
+  /// where the clock is millisecond-grained) — and since equality is by id,
+  /// two colliding scopes shared blocs and ending one closed the other's.
+  static int _nextId = 0;
+
+  static String _generateId() => (_nextId++).toString();
 
   /// Track a bloc type as managed by this scope.
   ///

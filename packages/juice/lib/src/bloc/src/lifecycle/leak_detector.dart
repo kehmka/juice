@@ -45,6 +45,7 @@ class LeakDetector {
 
   /// Tracked lease information.
   static final Map<_LeakKey, _LeakInfo> _trackedLeases = {};
+  static int _nextLeaseSeq = 0;
 
   /// Tracked bloc creations.
   static final Map<BlocId, _BlocCreationInfo> _trackedBlocs = {};
@@ -89,7 +90,7 @@ class LeakDetector {
     if (!_enabled) return;
 
     assert(() {
-      final key = _LeakKey(id, DateTime.now().microsecondsSinceEpoch);
+      final key = _LeakKey(id, _nextLeaseSeq++);
       _trackedLeases[key] = _LeakInfo(
         blocId: id,
         acquiredAt: DateTime.now(),
@@ -111,7 +112,7 @@ class LeakDetector {
       final keysForBloc = _trackedLeases.keys
           .where((k) => k.blocId == id)
           .toList()
-        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        ..sort((a, b) => a.sequence.compareTo(b.sequence));
 
       if (keysForBloc.isNotEmpty) {
         _trackedLeases.remove(keysForBloc.first);
@@ -267,20 +268,22 @@ class LeakDetector {
 }
 
 /// Key for tracking individual leases.
+///
+/// Keyed by a monotonic [sequence], not a timestamp: two leases acquired in
+/// the same clock tick used to share a key, the second overwrote the first,
+/// and a real leak went unreported.
 class _LeakKey {
   final BlocId blocId;
-  final int timestamp;
+  final int sequence;
 
-  _LeakKey(this.blocId, this.timestamp);
+  _LeakKey(this.blocId, this.sequence);
 
   @override
   bool operator ==(Object other) =>
-      other is _LeakKey &&
-      blocId == other.blocId &&
-      timestamp == other.timestamp;
+      other is _LeakKey && blocId == other.blocId && sequence == other.sequence;
 
   @override
-  int get hashCode => Object.hash(blocId, timestamp);
+  int get hashCode => Object.hash(blocId, sequence);
 }
 
 /// Information about a tracked lease.

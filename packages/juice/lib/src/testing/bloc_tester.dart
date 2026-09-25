@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:matcher/expect.dart';
 import '../bloc/bloc.dart';
 
 /// A test utility class for testing Juice blocs.

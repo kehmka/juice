@@ -157,9 +157,10 @@ class JuiceBloc<TState extends BlocState>
 
   /// Sends an event and waits for processing to complete.
   ///
-  /// This method sends the event and returns when the status changes from
-  /// [WaitingStatus] to either [UpdatingStatus], [FailureStatus], or
-  /// [CancelingStatus].
+  /// This method sends the event and returns the first status emitted FOR
+  /// THIS EVENT that is not a [WaitingStatus] — an [UpdatingStatus],
+  /// [FailureStatus], or [CancelingStatus]. Emissions caused by other events
+  /// are ignored.
   ///
   /// [event] - The event to send.
   /// [timeout] - Maximum time to wait for completion (default: 30 seconds).
@@ -180,10 +181,15 @@ class JuiceBloc<TState extends BlocState>
     EventBase event, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    await send(event);
-    return stream
+    // Listen BEFORE sending: `send` completes only after the use case has
+    // finished emitting, and the stream does not replay, so subscribing
+    // afterwards missed the event's own result and always timed out.
+    final result = stream
+        .where((s) => identical(s.event, event))
         .firstWhere((s) => s is! WaitingStatus<TState>)
         .timeout(timeout);
+    send(event);
+    return result;
   }
 
   /// Triggers an update with the current state.

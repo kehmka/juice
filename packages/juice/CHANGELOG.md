@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.8.1] - 2026-09-25
+
+### Fixed
+- **`sendAndWait` returns instead of timing out.** It awaited `send()` —
+  which completes only after the use case has finished emitting — and only
+  then subscribed to the non-replaying `stream`, so it had already missed its
+  own result and threw `TimeoutException` unless some unrelated emission
+  followed. It now subscribes before sending, and matches only statuses
+  caused by the event it sent (the pattern `juice_storage`'s
+  `sendAndWaitResult` already used).
+- **Two listeners on one `select()` / `selectWith()` stream both fire.** The
+  1.8.0 `previous` lived in one closure shared by every subscription, so the
+  first listener advanced it and the second saw "equal" and never emitted.
+  `previous` is now per subscription, seeded from the state when THAT
+  listener subscribes (what the 1.8.0 doc already claimed). Still broadcast.
+- **`JuiceSelector` / `JuiceSelectorWith`:**
+  - swapping the `bloc:` prop shows the new bloc's value at once — it stayed
+    on the old bloc's value until the projection next changed
+    (`StreamBuilder` applies `initialData` only once);
+  - a new `selector` closure (e.g. over a changed row id) takes effect on
+    rebuild — the first build's closure was used forever;
+  - `groups` are compared by value, so an inline `{Group.x}` literal no
+    longer resubscribes on every parent rebuild, and a changed set takes
+    effect.
+  The widgets hold the displayed value and compare each considered emission
+  against it directly (no `StreamBuilder`).
+- **`FeatureScope` ids are a monotonic counter.** They were
+  `DateTime.now().microsecondsSinceEpoch`, and equality is by id: two scopes
+  created in the same clock tick (routine on web's millisecond clock) were
+  EQUAL, so their `BlocId`s collided — they shared blocs, and ending one
+  closed the other's.
+- **`LeakDetector` keys leases by a sequence number**, not a timestamp: two
+  leases acquired in the same tick shared a key, the second overwrote the
+  first, and a real leak went unreported.
+
+### Changed
+- **`flutter_test` is no longer a runtime dependency** (it is a dev
+  dependency). It was only used by `package:juice/testing.dart`'s
+  `BlocTester`, which now asserts through the pure-Dart `package:matcher`
+  (`matcher/expect.dart`) — the same `expect` `flutter_test` re-exports, so
+  `BlocTester` behaves identically inside `test` and `testWidgets`. Consumer
+  apps no longer get the test framework in their dependency graph.
+- Dropped the unused `cupertino_icons` dependency (template leftover).
+- `unused_catch_stack` in `emitter.dart` (flagged by current analyzers).
+
+### Tests
+- `test/bloc/state_selector_test.dart`: two listeners on one stream; a late
+  listener is seeded at ITS subscription; broadcast preserved;
+  `sendAndWait` returns its own event's status and ignores others'.
+- `test/ui/juice_selector_test.dart`: bloc swap (both widgets), selector
+  change, value-equal vs changed inline groups.
+- `test/bloc/lifecycle_ids_test.dart`: 1000 back-to-back scopes are
+  distinct; two same-tick leases are both tracked.
+
 ## [1.8.0] - 2026-09-21
 
 ### Added

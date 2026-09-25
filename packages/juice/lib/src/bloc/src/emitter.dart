@@ -76,7 +76,7 @@ class _Emitter<State> implements Emitter<State> {
         cancelOnError: onError == null,
       );
       _disposables.add(subscription.cancel);
-    } catch (e, _) {
+    } catch (_) {
       await subscription?.cancel();
       rethrow;
     }

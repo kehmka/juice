@@ -8,7 +8,7 @@
 /// - emitUpdate with skipIfSame for state deduplication
 /// - JuiceSelector for optimized widget rebuilds
 /// - Memory leak detection with LeakDetector
-library features_showcase;
+library;
 
 export 'features_showcase_bloc.dart';
 export 'features_showcase_state.dart';

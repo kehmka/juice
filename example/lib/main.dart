@@ -206,7 +206,7 @@ class MyHomePage extends StatelessWidget {
             ),
           ),
           ...examples.map((example) {
-            final subtitle = example['subtitle'] as String?;
+            final subtitle = example['subtitle'];
             return ListTile(
               title: Text(example['title'] as String),
               subtitle: subtitle != null ? Text(subtitle) : null,

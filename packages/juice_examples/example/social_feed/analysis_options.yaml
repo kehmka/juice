@@ -7,3 +7,10 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   plugins:
     - custom_lint
+  errors:
+    # custom_lint uses the legacy analyzer-plugin API, which current Dart SDKs
+    # flag as deprecated. Silenced so `flutter analyze` stays a zero-issue CI
+    # gate; juice_lint still needs migrating to the new plugin system.
+    analysis_options_deprecated_plugins: ignore
+  exclude:
+    - build/**

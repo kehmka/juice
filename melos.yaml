@@ -34,12 +34,12 @@ scripts:
     description: Fail if any AI card's front matter (version, requires) has drifted from its pubspec (ISSUES #23) — run before every publish
 
   format:
-    run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format "${targets[@]}"; fi'
+    run: dart run melos exec -- sh $MELOS_ROOT_PATH/tool/format.sh
     description: Format all packages
 
   format:check:
-    run: dart run melos exec -- /bin/bash -lc 'targets=(); [ -d lib ] && targets+=(lib); [ -d test ] && targets+=(test); [ -d example ] && targets+=(example); if [ ${#targets[@]} -gt 0 ]; then dart format --set-exit-if-changed "${targets[@]}"; fi'
-    description: Check formatting in all packages
+    run: dart run melos exec -- sh $MELOS_ROOT_PATH/tool/format.sh --check
+    description: Check formatting in all packages (writes nothing)
 
   ci:
     run: dart run melos run format:check && dart run melos run analyze && dart run melos run test

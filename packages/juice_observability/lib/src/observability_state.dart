@@ -50,7 +50,8 @@ class ObservabilityState extends BlocState {
       errorCount: errorCount ?? this.errorCount,
       breadcrumbs: breadcrumbs ?? this.breadcrumbs,
       userId: identical(userId, _unset) ? this.userId : userId as String?,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError:
+          identical(lastError, _unset) ? this.lastError : lastError as String?,
     );
   }
 

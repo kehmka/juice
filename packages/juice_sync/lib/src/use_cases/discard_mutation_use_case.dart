@@ -7,7 +7,8 @@ import '../sync_state.dart';
 
 /// Handles [DiscardMutationEvent] — permanently remove a mutation (pending or
 /// failed). Durable delete completes before the state update.
-class DiscardMutationUseCase extends BlocUseCase<SyncBloc, DiscardMutationEvent> {
+class DiscardMutationUseCase
+    extends BlocUseCase<SyncBloc, DiscardMutationEvent> {
   @override
   Future<void> execute(DiscardMutationEvent event) async {
     final id = event.id;

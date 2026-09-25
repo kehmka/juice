@@ -97,8 +97,7 @@ class _TrashScreenState extends State<TrashScreen> {
               // sendCancellable returns the event — keep a reference
               // so we can cancel it from the AppBar button
               setState(() {
-                _activeEmptyTrash =
-                    bloc.sendCancellable(EmptyTrashEvent());
+                _activeEmptyTrash = bloc.sendCancellable(EmptyTrashEvent());
               });
             },
             child: const Text('Delete All'),

@@ -9,7 +9,8 @@ import 'package:juice_llm_example/lease_demo.dart';
 void main() {
   test('runLeaseDemo transcript matches real engine behavior', () async {
     final llm = LlmBloc.withConfig(LlmConfig(
-      provider: EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 40)),
+      provider:
+          EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 40)),
     ));
     llm.loadModel(LlmModel(
       id: 'echo',

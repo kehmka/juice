@@ -81,11 +81,10 @@ void main() {
     });
 
     test('isOnBattery is discharging only', () {
-      expect(
-          const PowerState(status: BatteryStatus.discharging).isOnBattery,
+      expect(const PowerState(status: BatteryStatus.discharging).isOnBattery,
           isTrue);
-      expect(const PowerState(status: BatteryStatus.unknown).isOnBattery,
-          isFalse);
+      expect(
+          const PowerState(status: BatteryStatus.unknown).isOnBattery, isFalse);
     });
 
     group('isAtOrBelow', () {
@@ -160,8 +159,7 @@ void main() {
       await settle();
       expect(bloc.state.isPluggedIn, isFalse);
 
-      p.emit(const PowerSnapshot(
-          status: BatteryStatus.charging, percent: 81));
+      p.emit(const PowerSnapshot(status: BatteryStatus.charging, percent: 81));
       await settle();
 
       expect(bloc.state.isPluggedIn, isTrue);
@@ -180,8 +178,8 @@ void main() {
       // The level poll re-reads every minute; most reads find nothing new.
       // Emitting anyway would wake every consumer for a number that did not
       // move.
-      p.emit(const PowerSnapshot(
-          status: BatteryStatus.discharging, percent: 80));
+      p.emit(
+          const PowerSnapshot(status: BatteryStatus.discharging, percent: 80));
       await settle();
 
       expect(seen, isEmpty);
@@ -249,8 +247,8 @@ void main() {
       // This is the whole reason polling exists: platforms broadcast
       // plugged/unplugged but not the percentage, so a level gate would
       // otherwise act on a number frozen at the last cable event.
-      p.setSilently(const PowerSnapshot(
-          status: BatteryStatus.discharging, percent: 60));
+      p.setSilently(
+          const PowerSnapshot(status: BatteryStatus.discharging, percent: 60));
       await settle(120);
 
       expect(bloc.state.percent, 60);
@@ -263,8 +261,8 @@ void main() {
       await settle();
       final after = p.checks;
 
-      p.setSilently(const PowerSnapshot(
-          status: BatteryStatus.discharging, percent: 60));
+      p.setSilently(
+          const PowerSnapshot(status: BatteryStatus.discharging, percent: 60));
       await settle(120);
 
       expect(p.checks, after, reason: 'no further reads');
@@ -277,8 +275,8 @@ void main() {
       final bloc = PowerBloc.withConfig(cfg(p));
       await settle();
 
-      p.setSilently(const PowerSnapshot(
-          status: BatteryStatus.charging, percent: 95));
+      p.setSilently(
+          const PowerSnapshot(status: BatteryStatus.charging, percent: 95));
       bloc.check();
       await settle();
 

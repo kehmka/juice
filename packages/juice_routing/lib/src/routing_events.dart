@@ -33,7 +33,8 @@ class InitializeRoutingEvent extends RoutingEvent {
   });
 
   @override
-  String toString() => 'InitializeRoutingEvent(initialPath: ${initialPath ?? config.initialPath})';
+  String toString() =>
+      'InitializeRoutingEvent(initialPath: ${initialPath ?? config.initialPath})';
 }
 
 /// Navigate to a new path.

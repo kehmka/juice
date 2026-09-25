@@ -21,8 +21,7 @@ class ReceiveMessageUseCase extends UseCase<ChatBloc, ReceiveMessageEvent> {
         ? event.message.receiverId
         : event.message.senderId;
     final key = 'messages_$contactId';
-    final json = jsonEncode(
-        updatedMessages.map((m) => m.toJson()).toList());
+    final json = jsonEncode(updatedMessages.map((m) => m.toJson()).toList());
     await storageBloc.hiveWrite<String>('chat', key, json);
   }
 }

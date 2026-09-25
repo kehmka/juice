@@ -20,10 +20,9 @@ void main() {
     mockStorageBloc = MockStorageBloc();
 
     // Mock all storage operations
-    when(() => mockStorageBloc.hiveOpenBox(any()))
-        .thenAnswer((_) async {});
-    when(() => mockStorageBloc.hiveWrite(any(), any(), any(), ttl: any(named: 'ttl')))
-        .thenAnswer((_) async {});
+    when(() => mockStorageBloc.hiveOpenBox(any())).thenAnswer((_) async {});
+    when(() => mockStorageBloc.hiveWrite(any(), any(), any(),
+        ttl: any(named: 'ttl'))).thenAnswer((_) async {});
     when(() => mockStorageBloc.hiveRead(any(), any()))
         .thenAnswer((_) async => null);
     when(() => mockStorageBloc.hiveDelete(any(), any()))

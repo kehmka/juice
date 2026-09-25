@@ -76,7 +76,7 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
             ),
           ),
         ],
-        onDidRemovePage: (_) {},  // No-op while loading
+        onDidRemovePage: (_) {}, // No-op while loading
       );
     }
 
@@ -103,7 +103,8 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
     final child = route.builder(buildContext);
 
     // Handle custom transitions
-    if (route.transition == RouteTransition.custom && route.pageBuilder != null) {
+    if (route.transition == RouteTransition.custom &&
+        route.pageBuilder != null) {
       return route.pageBuilder!(buildContext, child);
     }
 
@@ -212,7 +213,8 @@ class _SlideRightAnimationPage extends Page<void> {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
-        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         return SlideTransition(position: animation.drive(tween), child: child);
       },
     );
@@ -237,7 +239,8 @@ class _SlideBottomAnimationPage extends Page<void> {
         const begin = Offset(0.0, 1.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
-        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         return SlideTransition(position: animation.drive(tween), child: child);
       },
     );
@@ -260,7 +263,8 @@ class _ScaleAnimationPage extends Page<void> {
       pageBuilder: (context, animation, secondaryAnimation) => child,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const curve = Curves.easeInOut;
-        final tween = Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+        final tween =
+            Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
         return ScaleTransition(scale: animation.drive(tween), child: child);
       },
     );

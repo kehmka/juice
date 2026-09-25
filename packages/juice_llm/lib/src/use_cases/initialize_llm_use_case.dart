@@ -28,8 +28,7 @@ class InitializeLlmUseCase extends BlocUseCase<LlmBloc, InitializeLlmEvent> {
     final present = await source.isPresent(model, resolve(model));
     emitUpdate(
       newState: bloc.state.copyWith(
-        modelStatus:
-            present ? LlmModelStatus.fetched : LlmModelStatus.absent,
+        modelStatus: present ? LlmModelStatus.fetched : LlmModelStatus.absent,
         activeModelId: present ? model.id : null,
       ),
       groupsToRebuild: {LlmGroups.model},

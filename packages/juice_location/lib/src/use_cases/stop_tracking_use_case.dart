@@ -5,8 +5,7 @@ import '../location_events.dart';
 import '../location_state.dart';
 
 /// Handles [StopTrackingEvent] — cancel the position subscription.
-class StopTrackingUseCase
-    extends BlocUseCase<LocationBloc, StopTrackingEvent> {
+class StopTrackingUseCase extends BlocUseCase<LocationBloc, StopTrackingEvent> {
   @override
   Future<void> execute(StopTrackingEvent event) async {
     if (!bloc.state.tracking) return;

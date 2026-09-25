@@ -34,8 +34,11 @@ class BehaviorInState extends DartLintRule {
   };
 
   @override
-  void run(CustomLintResolver resolver, ErrorReporter reporter,
-      CustomLintContext context) {
+  void run(
+    CustomLintResolver resolver,
+    ErrorReporter reporter,
+    CustomLintContext context,
+  ) {
     context.registry.addFieldDeclaration((node) {
       if (node.isStatic) return;
       final classNode = node.thisOrAncestorOfType<ClassDeclaration>();

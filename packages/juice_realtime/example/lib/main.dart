@@ -72,8 +72,10 @@ class StatusChip extends StatelessJuiceWidget<RealtimeBloc> {
     final (label, color) = switch (s) {
       RealtimeStatus.connected => ('connected', Colors.green),
       RealtimeStatus.connecting => ('connecting…', Colors.orange),
-      RealtimeStatus.reconnecting =>
-        ('reconnecting (#${bloc.state.reconnectAttempts})', Colors.orange),
+      RealtimeStatus.reconnecting => (
+          'reconnecting (#${bloc.state.reconnectAttempts})',
+          Colors.orange
+        ),
       RealtimeStatus.disconnected => ('disconnected', Colors.red),
     };
     return Container(
@@ -123,7 +125,8 @@ class SendBar extends StatelessJuiceWidget<RealtimeBloc> {
         connected
             ? FilledButton.tonal(
                 onPressed: bloc.disconnect, child: const Text('Disconnect'))
-            : FilledButton(onPressed: bloc.connect, child: const Text('Connect')),
+            : FilledButton(
+                onPressed: bloc.connect, child: const Text('Connect')),
       ],
     );
   }

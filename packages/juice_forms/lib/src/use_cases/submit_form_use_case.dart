@@ -67,8 +67,8 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
       event.completion?.complete(true);
     } catch (e) {
       emitFailure(
-        newState: bloc.state
-            .copyWith(submitting: false, submitError: e.toString()),
+        newState:
+            bloc.state.copyWith(submitting: false, submitError: e.toString()),
         groupsToRebuild: {FormsGroups.status},
         error: e,
       );

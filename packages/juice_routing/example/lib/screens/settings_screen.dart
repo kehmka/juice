@@ -17,7 +17,9 @@ class SettingsScreen extends StatelessJuiceWidget2<RoutingBloc, AuthBloc> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(section != null ? '${section!.toUpperCase()} Settings' : 'Settings'),
+        title: Text(section != null
+            ? '${section!.toUpperCase()} Settings'
+            : 'Settings'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

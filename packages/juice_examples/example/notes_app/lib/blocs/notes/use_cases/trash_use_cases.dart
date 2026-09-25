@@ -17,8 +17,7 @@ class MoveToTrashUseCase extends BlocUseCase<NotesBloc, MoveToTrashEvent> {
   Future<void> execute(MoveToTrashEvent event) async {
     try {
       final storage = BlocScope.get<StorageBloc>();
-      final note =
-          bloc.state.notes.firstWhere((n) => n.id == event.noteId);
+      final note = bloc.state.notes.firstWhere((n) => n.id == event.noteId);
       final trashedNote = note.copyWith(isTrashed: true);
 
       // Move: delete from 'notes', write to 'trash' with 30-day TTL
@@ -38,8 +37,7 @@ class MoveToTrashUseCase extends BlocUseCase<NotesBloc, MoveToTrashEvent> {
 
       emitUpdate(
         newState: bloc.state.copyWith(notes: updatedNotes),
-        groupsToRebuild:
-            {NotesGroups.list, NotesGroups.trash}.toStringSet(),
+        groupsToRebuild: {NotesGroups.list, NotesGroups.trash}.toStringSet(),
       );
     } catch (e, stackTrace) {
       logError(e, stackTrace);
@@ -55,8 +53,7 @@ class RestoreFromTrashUseCase
   Future<void> execute(RestoreFromTrashEvent event) async {
     try {
       final storage = BlocScope.get<StorageBloc>();
-      final note =
-          bloc.state.notes.firstWhere((n) => n.id == event.noteId);
+      final note = bloc.state.notes.firstWhere((n) => n.id == event.noteId);
       final restoredNote = note.copyWith(isTrashed: false);
 
       // Move: delete from 'trash', write to 'notes' (no TTL)
@@ -72,8 +69,7 @@ class RestoreFromTrashUseCase
 
       emitUpdate(
         newState: bloc.state.copyWith(notes: updatedNotes),
-        groupsToRebuild:
-            {NotesGroups.trash, NotesGroups.list}.toStringSet(),
+        groupsToRebuild: {NotesGroups.trash, NotesGroups.list}.toStringSet(),
       );
     } catch (e, stackTrace) {
       logError(e, stackTrace);
@@ -117,15 +113,13 @@ class EmptyTrashUseCase extends BlocUseCase<NotesBloc, EmptyTrashEvent> {
         deleted++;
       }
 
-      final updatedNotes =
-          bloc.state.notes.where((n) => !n.isTrashed).toList();
+      final updatedNotes = bloc.state.notes.where((n) => !n.isTrashed).toList();
 
       log('Emptied trash ($deleted notes permanently deleted)');
 
       emitUpdate(
         newState: bloc.state.copyWith(notes: updatedNotes),
-        groupsToRebuild:
-            {NotesGroups.trash, NotesGroups.list}.toStringSet(),
+        groupsToRebuild: {NotesGroups.trash, NotesGroups.list}.toStringSet(),
       );
     } catch (e, stackTrace) {
       logError(e, stackTrace);

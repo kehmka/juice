@@ -96,8 +96,7 @@ class Feed extends StatelessJuiceWidget<PagingBloc<int>> {
               padding: const EdgeInsets.all(16),
               child: Center(
                 child: switch (s.status) {
-                  PagingStatus.loadingMore =>
-                    const CircularProgressIndicator(),
+                  PagingStatus.loadingMore => const CircularProgressIndicator(),
                   PagingStatus.end => const Text('— end —'),
                   PagingStatus.error => TextButton(
                       onPressed: bloc.retry, child: const Text('Retry')),

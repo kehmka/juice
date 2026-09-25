@@ -16,7 +16,8 @@ void main() {
     // Echo runtime: streams a reflective reply word-by-word, no downloads,
     // runs on any platform. Swap in OllamaLlmProvider for a real model.
     () => LlmBloc.withConfig(LlmConfig(
-      provider: EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 60)),
+      provider:
+          EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 60)),
     )),
     lifecycle: BlocLifecycle.permanent,
   );
@@ -137,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             Expanded(
               child: _currentId == null
-                  ? const Center(child: Text('Generate to see streaming output'))
+                  ? const Center(
+                      child: Text('Generate to see streaming output'))
                   : GenerationView(requestId: _currentId!),
             ),
           ],

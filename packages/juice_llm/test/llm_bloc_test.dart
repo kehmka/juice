@@ -97,7 +97,6 @@ class _FakeModelSource implements ModelSource {
   Future<void> delete(LlmModel model, String path) async {}
 }
 
-
 /// A provider stuck in "prefill": generate never yields a chunk, and — like
 /// a native runtime wedged mid-call — its cancel can never reach a yield
 /// boundary, so the subscription's cancel future never completes.
@@ -227,8 +226,8 @@ void main() {
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle(120);
 
       final s = bloc.state.sessions['r1']!;
@@ -239,14 +238,13 @@ void main() {
       await bloc.close();
     });
 
-    test('generate with no model loaded fails loud (no silent wait)',
-        () async {
+    test('generate with no model loaded fails loud (no silent wait)', () async {
       final fake = FakeLlmProvider();
       final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
       await settle(); // not loaded
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle();
 
       final s = bloc.state.sessions['r1']!;
@@ -257,17 +255,16 @@ void main() {
       await bloc.close();
     });
 
-    test('sequential: two generations run in order, not interleaved',
-        () async {
+    test('sequential: two generations run in order, not interleaved', () async {
       final fake = FakeLlmProvider(scriptedWords: ['x', 'y']);
       final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('1')]));
-      bloc.generate(const LlmRequest(
-          requestId: 'r2', messages: [LlmMessage.user('2')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('1')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r2', messages: [LlmMessage.user('2')]));
       await settle(150);
 
       // Both completed; r1 finished before r2 started (cancel/finish order).
@@ -285,8 +282,8 @@ void main() {
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle(120);
 
       final s = bloc.state.sessions['r1']!;
@@ -306,8 +303,8 @@ void main() {
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle(40); // a couple tokens in
       expect(bloc.isGenerating, isTrue);
 
@@ -347,8 +344,8 @@ void main() {
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle(30);
       expect(bloc.isGenerating, isTrue);
 
@@ -369,8 +366,7 @@ void main() {
       final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
       await settle();
       await ready(bloc,
-          model: _model(
-              caps: {LlmCapability.text, LlmCapability.embeddings}));
+          model: _model(caps: {LlmCapability.text, LlmCapability.embeddings}));
 
       final v = await bloc.embed('hello');
       expect(v, isNotEmpty);
@@ -405,14 +401,14 @@ void main() {
     test('terminal sessions evict beyond the cap (oldest first)', () async {
       final fake = FakeLlmProvider(
           scriptedWords: ['a'], perToken: const Duration(milliseconds: 2));
-      final bloc = LlmBloc.withConfig(
-          LlmConfig(provider: fake, maxRetainedSessions: 2));
+      final bloc =
+          LlmBloc.withConfig(LlmConfig(provider: fake, maxRetainedSessions: 2));
       await settle();
       await ready(bloc);
 
       for (final id in ['r1', 'r2', 'r3']) {
-        bloc.generate(LlmRequest(
-            requestId: id, messages: const [LlmMessage.user('x')]));
+        bloc.generate(
+            LlmRequest(requestId: id, messages: const [LlmMessage.user('x')]));
         await settle(20);
       }
       await settle(40);
@@ -429,8 +425,8 @@ void main() {
       await settle();
       await ready(bloc);
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('x')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('x')]));
       await settle(40);
       expect(bloc.state.sessions.containsKey('r1'), isTrue);
 
@@ -463,8 +459,8 @@ void main() {
         if (g != null && g.contains(LlmGroups.gen('r1'))) genEmissions++;
       });
 
-      bloc.generate(const LlmRequest(
-          requestId: 'r1', messages: [LlmMessage.user('hi')]));
+      bloc.generate(
+          const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('hi')]));
       await settle(250);
 
       // Full text still intact despite coalescing.
@@ -480,7 +476,6 @@ void main() {
       await bloc.close();
     });
   });
-
 
   group('beginGeneration serialization (0.2.1)', () {
     test('two direct awaiters take FIFO turns, never interleaved', () async {
@@ -551,11 +546,10 @@ void main() {
       var completed = false;
       final gen = llm
           .beginGeneration(
-            const LlmRequest(
-                requestId: 'lease-t1',
-                messages: [LlmMessage.user('hello')]),
-            onChunk: (_) {},
-          )
+        const LlmRequest(
+            requestId: 'lease-t1', messages: [LlmMessage.user('hello')]),
+        onChunk: (_) {},
+      )
           .then((o) {
         completed = true;
         return o;
@@ -606,8 +600,8 @@ void main() {
 
       // The old form awaited the generator teardown — with a wedged native
       // call that await NEVER completed and the caller hung forever.
-      final id = await bloc.stopGeneration()
-          .timeout(const Duration(seconds: 2));
+      final id =
+          await bloc.stopGeneration().timeout(const Duration(seconds: 2));
       expect(id, 'well-1');
       expect((await outcome).kind, GenOutcomeKind.cancelled);
     });
@@ -628,8 +622,8 @@ void main() {
       await settle(1); // let the queue start it (registration is chained)
       // The first chunk is still ~30ms away ("prefill") — the preempt
       // must WAIT for it, then cancel.
-      final freed = await bloc.preemptAtSafePoint(
-          where: (id) => id.startsWith('well-'));
+      final freed =
+          await bloc.preemptAtSafePoint(where: (id) => id.startsWith('well-'));
       expect(freed, isTrue);
       expect(chunks, isNotEmpty, reason: 'never cancels before a chunk');
       expect((await outcome).kind, GenOutcomeKind.cancelled);
@@ -637,7 +631,8 @@ void main() {
           reason: 'cancelled mid-decode, not run to completion');
     });
 
-    test('preemptAtSafePoint leaves a still-prefilling generation past '
+    test(
+        'preemptAtSafePoint leaves a still-prefilling generation past '
         'patience (never a wedge-window cancel)', () async {
       final fake = WedgedProvider();
       final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
@@ -669,8 +664,8 @@ void main() {
           const LlmRequest(requestId: 'read:now', messages: []),
           onChunk: (_) {}));
       await settle(1); // let the queue start it
-      final freed = await bloc.preemptAtSafePoint(
-          where: (id) => id.startsWith('well-'));
+      final freed =
+          await bloc.preemptAtSafePoint(where: (id) => id.startsWith('well-'));
       expect(freed, isFalse);
       expect(bloc.activeRequestId, 'read:now');
     });
@@ -718,7 +713,8 @@ void main() {
       expect(await bloc.preemptAtSafePoint(), isTrue);
     });
 
-    test('the incident replay: work arriving DURING the hung teardown '
+    test(
+        'the incident replay: work arriving DURING the hung teardown '
         'fails fast once the ceiling passes', () async {
       // 2026-08-01, from the engine journal: stop at 11:16 (teardown never
       // returned), a tag re-queue at 11:32 and a colloquy lease at 11:32:54

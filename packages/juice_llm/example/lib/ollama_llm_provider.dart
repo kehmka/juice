@@ -70,9 +70,8 @@ class OllamaLlmProvider implements LlmProvider {
       if (resp.statusCode != 200) {
         throw LlmProviderException('Ollama HTTP ${resp.statusCode}');
       }
-      final lines = resp.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter());
+      final lines =
+          resp.stream.transform(utf8.decoder).transform(const LineSplitter());
       await for (final line in lines) {
         if (line.trim().isEmpty) continue;
         final obj = jsonDecode(line) as Map<String, dynamic>;
@@ -102,7 +101,10 @@ class OllamaLlmProvider implements LlmProvider {
       throw LlmProviderException('Ollama embeddings HTTP ${resp.statusCode}');
     }
     final obj = jsonDecode(resp.body) as Map<String, dynamic>;
-    return (obj['embedding'] as List).cast<num>().map((n) => n.toDouble()).toList();
+    return (obj['embedding'] as List)
+        .cast<num>()
+        .map((n) => n.toDouble())
+        .toList();
   }
 
   @override

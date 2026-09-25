@@ -35,7 +35,8 @@ void main() {
 }
 
 /// Demo async check: 'admin' is "taken". Stands in for a server round-trip.
-Future<String?> _checkUsername(Object? value, Map<String, Object?> values) async {
+Future<String?> _checkUsername(
+    Object? value, Map<String, Object?> values) async {
   await Future<void>.delayed(const Duration(milliseconds: 350));
   return value == 'admin' ? 'That username is taken' : null;
 }
@@ -84,7 +85,11 @@ class SignUpScreen extends StatelessWidget {
 
 /// One field, rebuilding only on its own group.
 class FieldInput extends StatelessJuiceWidget<FormsBloc> {
-  FieldInput({super.key, required this.name, required this.label, this.obscure = false})
+  FieldInput(
+      {super.key,
+      required this.name,
+      required this.label,
+      this.obscure = false})
       : super(groups: {FormsGroups.field(name)});
 
   final String name;
@@ -122,7 +127,8 @@ class FieldInput extends StatelessJuiceWidget<FormsBloc> {
 
 /// Submit button, rebuilding only on validity/status changes.
 class SubmitButton extends StatelessJuiceWidget<FormsBloc> {
-  SubmitButton({super.key}) : super(groups: {FormsGroups.valid, FormsGroups.status});
+  SubmitButton({super.key})
+      : super(groups: {FormsGroups.valid, FormsGroups.status});
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
@@ -134,7 +140,9 @@ class SubmitButton extends StatelessJuiceWidget<FormsBloc> {
       onPressed: (s.submitting || !s.isValid) ? null : bloc.submit,
       child: s.submitting
           ? const SizedBox(
-              width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2))
           : const Text('Create account'),
     );
   }

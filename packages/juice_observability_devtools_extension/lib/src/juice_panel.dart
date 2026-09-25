@@ -41,58 +41,69 @@ class _JuicePanelState extends State<JuicePanel> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: Row(children: [
-                  Icon(store.connected ? Icons.link : Icons.link_off,
+                child: Row(
+                  children: [
+                    Icon(
+                      store.connected ? Icons.link : Icons.link_off,
                       size: 16,
                       color: store.connected
                           ? theme.colorScheme.primary
-                          : theme.disabledColor),
-                  const SizedBox(width: 8),
-                  Text(store.connected
-                      ? '${store.events.length} events · '
-                          '${store.spans.length} spans · '
-                          '${store.blocs.length} blocs'
-                          '${store.problemCount > 0 ? ' · ${store.problemCount} problems' : ''}'
-                      : 'no connected app — events appear when a Juice app '
-                          'with DevtoolsJuiceLogger connects'),
-                  const Spacer(),
-                  SizedBox(
-                    width: 220,
-                    child: TextField(
-                      controller: filter,
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        prefixIcon: Icon(Icons.filter_alt_outlined, size: 16),
-                        hintText: 'filter (bloc, use case, kind)',
-                        border: OutlineInputBorder(),
-                      ),
-                      style: theme.textTheme.bodySmall,
+                          : theme.disabledColor,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: store.clear,
-                    icon: const Icon(Icons.clear_all, size: 16),
-                    label: const Text('clear'),
-                  ),
-                ]),
+                    const SizedBox(width: 8),
+                    Text(
+                      store.connected
+                          ? '${store.events.length} events · '
+                                '${store.spans.length} spans · '
+                                '${store.blocs.length} blocs'
+                                '${store.problemCount > 0 ? ' · ${store.problemCount} problems' : ''}'
+                          : 'no connected app — events appear when a Juice app '
+                                'with DevtoolsJuiceLogger connects',
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: filter,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          prefixIcon: Icon(Icons.filter_alt_outlined, size: 16),
+                          hintText: 'filter (bloc, use case, kind)',
+                          border: OutlineInputBorder(),
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: store.clear,
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: const Text('clear'),
+                    ),
+                  ],
+                ),
               ),
-              TabBar(tabs: [
-                const Tab(text: 'Timeline'),
-                const Tab(text: 'Spans'),
-                const Tab(text: 'Blocs'),
-                Tab(
+              TabBar(
+                tabs: [
+                  const Tab(text: 'Timeline'),
+                  const Tab(text: 'Spans'),
+                  const Tab(text: 'Blocs'),
+                  Tab(
                     text: store.problemCount > 0
                         ? 'Problems (${store.problemCount})'
-                        : 'Problems'),
-              ]),
+                        : 'Problems',
+                  ),
+                ],
+              ),
               Expanded(
-                child: TabBarView(children: [
-                  TimelineView(store: store, filter: filter.text),
-                  SpansView(store: store, filter: filter.text),
-                  BlocsView(store: store, filter: filter.text),
-                  ProblemsView(store: store, filter: filter.text),
-                ]),
+                child: TabBarView(
+                  children: [
+                    TimelineView(store: store, filter: filter.text),
+                    SpansView(store: store, filter: filter.text),
+                    BlocsView(store: store, filter: filter.text),
+                    ProblemsView(store: store, filter: filter.text),
+                  ],
+                ),
               ),
             ],
           );

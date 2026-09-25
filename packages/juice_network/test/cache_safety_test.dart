@@ -60,14 +60,16 @@ void main() {
   }
 
   /// Whether anything was written to the cache for [url].
-  Future<bool> isCached(String url, {Map<String, String>? authScopeHeaders}) async {
+  Future<bool> isCached(String url,
+      {Map<String, String>? authScopeHeaders}) async {
     final key = RequestKey.from(
       method: 'GET',
       url: url,
       // Auth requests carry an authScope derived from the Authorization header.
-      authScope: authScopeHeaders?['Authorization']?.startsWith('Bearer ') ?? false
-          ? 'bearer'
-          : null,
+      authScope:
+          authScopeHeaders?['Authorization']?.startsWith('Bearer ') ?? false
+              ? 'bearer'
+              : null,
     );
     final record = await fetchBloc.cacheManager.get(key);
     return record != null;
@@ -138,7 +140,9 @@ void main() {
 
   group('Cache-Control', () {
     test('no-store response is not cached', () async {
-      onGet('/data', {'v': 1}, headers: {
+      onGet('/data', {
+        'v': 1
+      }, headers: {
         'cache-control': ['no-store'],
       });
       await sendAndSettle(InitializeFetchEvent());
@@ -153,7 +157,9 @@ void main() {
     });
 
     test('forceCache overrides no-store', () async {
-      onGet('/data', {'v': 1}, headers: {
+      onGet('/data', {
+        'v': 1
+      }, headers: {
         'cache-control': ['no-store'],
       });
       await sendAndSettle(InitializeFetchEvent());

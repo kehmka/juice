@@ -77,7 +77,8 @@ class CacheManager {
     }
 
     // Check disk cache
-    final bytes = await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
+    final bytes =
+        await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
     if (bytes == null) return null;
 
     try {
@@ -105,7 +106,8 @@ class CacheManager {
     if (memoryHit != null) return memoryHit;
 
     // Check disk cache
-    final bytes = await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
+    final bytes =
+        await storageBloc.hiveRead<Uint8List>(cacheBoxName, canonical);
     if (bytes == null) return null;
 
     try {
@@ -150,7 +152,8 @@ class CacheManager {
 
     // Update tracked disk size
     final entrySize = _diskEntrySizes.remove(canonical) ?? 0;
-    _trackedDiskSize = (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
+    _trackedDiskSize =
+        (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
 
     await storageBloc.hiveDelete(cacheBoxName, canonical);
   }
@@ -181,7 +184,8 @@ class CacheManager {
     for (final key in toRemove) {
       _memoryCache.remove(key);
       final entrySize = _diskEntrySizes.remove(key) ?? 0;
-      _trackedDiskSize = (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
+      _trackedDiskSize =
+          (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
       await storageBloc.hiveDelete(cacheBoxName, key);
     }
 
@@ -214,7 +218,8 @@ class CacheManager {
     for (final key in toRemove) {
       _memoryCache.remove(key);
       final entrySize = _diskEntrySizes.remove(key) ?? 0;
-      _trackedDiskSize = (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
+      _trackedDiskSize =
+          (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
       await storageBloc.hiveDelete(cacheBoxName, key);
     }
 
@@ -266,7 +271,8 @@ class CacheManager {
       // Delete the entry
       _memoryCache.remove(key);
       final entrySize = _diskEntrySizes.remove(key) ?? 0;
-      _trackedDiskSize = (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
+      _trackedDiskSize =
+          (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
       await storageBloc.hiveDelete(cacheBoxName, key);
       deleted++;
     }
@@ -309,7 +315,8 @@ class CacheManager {
       // Delete the entry
       _memoryCache.remove(key);
       final entrySize = _diskEntrySizes.remove(key) ?? 0;
-      _trackedDiskSize = (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
+      _trackedDiskSize =
+          (_trackedDiskSize - entrySize).clamp(0, maxCacheSize * 2);
       await storageBloc.hiveDelete(cacheBoxName, key);
       deleted++;
     }

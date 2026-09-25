@@ -46,8 +46,7 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     }
 
     // Fallback: detect from explicit headers (only safe if auth is passed directly)
-    final authHeader =
-        headers?['Authorization'] ?? headers?['authorization'];
+    final authHeader = headers?['Authorization'] ?? headers?['authorization'];
     if (authHeader == null) return null;
 
     // Return generic type indicator - NOT user-specific
@@ -85,8 +84,7 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
   }) async {
     // Resolve config defaults
     final config = bloc.state.config;
-    final effectiveCachePolicy =
-        cachePolicy ?? methodDefaultCachePolicy;
+    final effectiveCachePolicy = cachePolicy ?? methodDefaultCachePolicy;
     final effectiveTtl = ttl ?? config.defaultTtl;
     final effectiveMaxAttempts = maxAttempts ?? config.defaultMaxRetries;
     // Validate
@@ -201,7 +199,8 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
       }
     } catch (e, stackTrace) {
       // Try stale cache on error
-      if (allowStaleOnError && effectiveCachePolicy != CachePolicy.networkOnly) {
+      if (allowStaleOnError &&
+          effectiveCachePolicy != CachePolicy.networkOnly) {
         final stale = await bloc.cacheManager.getStale(key);
         if (stale != null) {
           try {
@@ -542,7 +541,8 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     final vary = response.headers.value('vary');
     if (vary == '*') return;
 
-    final record = WireCacheRecord.fromResponse(response, key.canonical, ttl: ttl);
+    final record =
+        WireCacheRecord.fromResponse(response, key.canonical, ttl: ttl);
     await bloc.cacheManager.put(key, record);
   }
 
@@ -637,7 +637,11 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
         inflightCount: (bloc.state.inflightCount - 1).clamp(0, 999999),
         stats: stats,
       ),
-      groupsToRebuild: {FetchGroups.inflight, FetchGroups.statsGroup, ...groups},
+      groupsToRebuild: {
+        FetchGroups.inflight,
+        FetchGroups.statsGroup,
+        ...groups
+      },
     );
   }
 
@@ -683,7 +687,8 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     );
   }
 
-  FetchError _transformDioError(DioException e, RequestKey key, StackTrace stack) {
+  FetchError _transformDioError(
+      DioException e, RequestKey key, StackTrace stack) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
         return TimeoutError.connect(
@@ -771,26 +776,26 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
   }) {
     bloc.coalescer
         .coalesce(
-          key,
-          () => bloc.dio.request<dynamic>(
-            key.url,
-            data: body,
-            options: Options(method: method, headers: headers),
-          ),
-        )
+      key,
+      () => bloc.dio.request<dynamic>(
+        key.url,
+        data: body,
+        options: Options(method: method, headers: headers),
+      ),
+    )
         .then((result) async {
-          final record =
-              WireCacheRecord.fromResponse(result.response, key.canonical, ttl: ttl);
-          await bloc.cacheManager.put(key, record);
+      final record = WireCacheRecord.fromResponse(
+          result.response, key.canonical,
+          ttl: ttl);
+      await bloc.cacheManager.put(key, record);
 
-          emitUpdate(
-            newState: bloc.state,
-            groupsToRebuild: groups,
-          );
-        })
-        .catchError((_) {
-          // Background refresh failure is silent
-        });
+      emitUpdate(
+        newState: bloc.state,
+        groupsToRebuild: groups,
+      );
+    }).catchError((_) {
+      // Background refresh failure is silent
+    });
   }
 }
 
@@ -832,7 +837,8 @@ class PostUseCase extends BlocUseCase<FetchBloc, PostEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
-        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
+        methodDefaultCachePolicy:
+            CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -859,7 +865,8 @@ class PutUseCase extends BlocUseCase<FetchBloc, PutEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
-        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
+        methodDefaultCachePolicy:
+            CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -886,7 +893,8 @@ class PatchUseCase extends BlocUseCase<FetchBloc, PatchEvent>
         headers: event.headers,
         body: event.body,
         cachePolicy: event.cachePolicy,
-        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
+        methodDefaultCachePolicy:
+            CachePolicy.networkOnly, // Mutations don't cache
         ttl: event.ttl,
         cacheAuthResponses: event.cacheAuthResponses,
         forceCache: event.forceCache,
@@ -913,7 +921,8 @@ class DeleteUseCase extends BlocUseCase<FetchBloc, DeleteEvent>
         headers: event.headers,
         body: null,
         cachePolicy: event.cachePolicy,
-        methodDefaultCachePolicy: CachePolicy.networkOnly, // Mutations don't cache
+        methodDefaultCachePolicy:
+            CachePolicy.networkOnly, // Mutations don't cache
         ttl: null,
         cacheAuthResponses: false,
         forceCache: false,

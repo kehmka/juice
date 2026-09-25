@@ -6,7 +6,8 @@ import '../flags_state.dart';
 
 /// Handles [InitializeFlagsEvent] — seed defaults, subscribe to live updates,
 /// optionally kick off the first fetch.
-class InitializeFlagsUseCase extends BlocUseCase<FlagsBloc, InitializeFlagsEvent> {
+class InitializeFlagsUseCase
+    extends BlocUseCase<FlagsBloc, InitializeFlagsEvent> {
   @override
   Future<void> execute(InitializeFlagsEvent event) async {
     bloc.configure(event.config);

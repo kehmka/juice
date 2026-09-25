@@ -63,8 +63,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     .map((u) => DataRow(cells: [
                           DataCell(Row(
                             children: [
-                              CircleAvatar(
-                                  radius: 14, child: Text(u.name[0])),
+                              CircleAvatar(radius: 14, child: Text(u.name[0])),
                               const SizedBox(width: 8),
                               Text(u.name),
                             ],
@@ -106,7 +105,8 @@ class _RoleBadge extends StatelessWidget {
       ),
       child: Text(
         role,
-        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+        style:
+            TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }

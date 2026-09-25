@@ -44,7 +44,8 @@ class RoutePath {
           _mapEquals(queryParameters, other.queryParameters);
 
   @override
-  int get hashCode => Object.hash(path, Object.hashAll(queryParameters.entries));
+  int get hashCode =>
+      Object.hash(path, Object.hashAll(queryParameters.entries));
 
   bool _mapEquals(Map<String, String> a, Map<String, String> b) {
     if (a.length != b.length) return false;
@@ -55,5 +56,6 @@ class RoutePath {
   }
 
   @override
-  String toString() => 'RoutePath($path${queryParameters.isNotEmpty ? '?${queryParameters.entries.map((e) => '${e.key}=${e.value}').join('&')}' : ''})';
+  String toString() =>
+      'RoutePath($path${queryParameters.isNotEmpty ? '?${queryParameters.entries.map((e) => '${e.key}=${e.value}').join('&')}' : ''})';
 }

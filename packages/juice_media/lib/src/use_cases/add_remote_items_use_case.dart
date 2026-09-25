@@ -8,7 +8,8 @@ import '../upload_state.dart';
 /// Handles [AddRemoteItemsEvent] — append remote-origin items, each seeded as a
 /// `completed` upload so the gallery treats them uniformly (rendered, counted in
 /// `allUploaded`, skipped by `uploadAll`).
-class AddRemoteItemsUseCase extends BlocUseCase<MediaBloc, AddRemoteItemsEvent> {
+class AddRemoteItemsUseCase
+    extends BlocUseCase<MediaBloc, AddRemoteItemsEvent> {
   @override
   Future<void> execute(AddRemoteItemsEvent event) async {
     if (event.items.isEmpty) return;

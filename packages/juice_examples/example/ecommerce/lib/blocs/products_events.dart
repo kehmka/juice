@@ -19,8 +19,7 @@ class LoadProductDetailEvent extends EventBase {
 }
 
 class LoadMoreProductsEvent extends EventBase {
-  LoadMoreProductsEvent()
-      : super(groupsToRebuild: {'products:list'});
+  LoadMoreProductsEvent() : super(groupsToRebuild: {'products:list'});
 }
 
 class LoadCategoriesEvent extends EventBase {

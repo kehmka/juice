@@ -57,7 +57,12 @@ class WireCacheRecord {
     final headers = <String, String>{};
     final responseHeaders = response.headers.map;
 
-    for (final key in ['content-type', 'etag', 'last-modified', 'cache-control']) {
+    for (final key in [
+      'content-type',
+      'etag',
+      'last-modified',
+      'cache-control'
+    ]) {
       final values = responseHeaders[key];
       if (values != null && values.isNotEmpty) {
         headers[key] = values.first;

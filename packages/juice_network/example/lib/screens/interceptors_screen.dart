@@ -32,8 +32,8 @@ class InterceptorsScreen extends StatelessJuiceWidget<InterceptorsBloc> {
                   Text(
                     'Active Interceptors',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile(
@@ -59,7 +59,8 @@ class InterceptorsScreen extends StatelessJuiceWidget<InterceptorsBloc> {
                   SwitchListTile(
                     title: const Text('AuthInterceptor'),
                     subtitle: Text(
-                        'Adds Bearer token: ${state.fakeToken.substring(0, 15)}...'),
+                      'Adds Bearer token: ${state.fakeToken.substring(0, 15)}...',
+                    ),
                     value: state.authEnabled,
                     dense: true,
                     onChanged: (v) {
@@ -135,7 +136,10 @@ class InterceptorsScreen extends StatelessJuiceWidget<InterceptorsBloc> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                log.timestamp.toIso8601String().substring(11, 23),
+                                log.timestamp.toIso8601String().substring(
+                                  11,
+                                  23,
+                                ),
                                 style: const TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 10,

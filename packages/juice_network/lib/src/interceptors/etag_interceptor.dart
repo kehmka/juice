@@ -27,7 +27,8 @@ class ETagInterceptor extends FetchInterceptor {
   final Future<void> Function(String url, String etag)? saveETag;
 
   /// Function to save Last-Modified from response.
-  final Future<void> Function(String url, String lastModified)? saveLastModified;
+  final Future<void> Function(String url, String lastModified)?
+      saveLastModified;
 
   /// Callback when 304 Not Modified is received.
   final Future<void> Function(String url)? onNotModified;

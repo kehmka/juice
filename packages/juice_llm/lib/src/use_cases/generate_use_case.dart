@@ -82,8 +82,7 @@ class GenerateUseCase extends BlocUseCase<LlmBloc, GenerateEvent> {
         terminal = SessionStatus.failed;
         error = outcome.error?.toString();
     }
-    final finalSession =
-        current.copyWith(status: terminal, error: error);
+    final finalSession = current.copyWith(status: terminal, error: error);
     bloc.flushStreamEmit(() {
       emitUpdate(
         newState:

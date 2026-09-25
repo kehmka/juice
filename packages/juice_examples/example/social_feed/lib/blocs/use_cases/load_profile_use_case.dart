@@ -17,8 +17,7 @@ class LoadProfileUseCase extends UseCase<ProfileBloc, LoadProfileEvent> {
         cachePolicy: CachePolicy.cacheFirst,
         ttl: const Duration(minutes: 30),
         decode: (raw) {
-          final profile =
-              UserProfile.fromJson(raw as Map<String, dynamic>);
+          final profile = UserProfile.fromJson(raw as Map<String, dynamic>);
           emitUpdate(
             newState: bloc.state.copyWith(profile: profile),
           );

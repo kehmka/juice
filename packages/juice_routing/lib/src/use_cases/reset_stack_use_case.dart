@@ -144,7 +144,8 @@ class ResetStackUseCase extends BlocUseCase<RoutingBloc, ResetStackEvent> {
     // Trim history if needed
     var newHistory = [...bloc.state.history, historyEntry];
     if (newHistory.length > config.maxHistorySize) {
-      newHistory = newHistory.sublist(newHistory.length - config.maxHistorySize);
+      newHistory =
+          newHistory.sublist(newHistory.length - config.maxHistorySize);
     }
 
     emitUpdate(

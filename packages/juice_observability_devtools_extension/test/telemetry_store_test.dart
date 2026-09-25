@@ -8,11 +8,17 @@ void main() {
   setUp(() => store = TelemetryModel());
 
   test('a start/completed pair becomes one closed span with its duration', () {
-    store.ingest('use_case_execution',
-        {'useCase': 'LoadFoo', 'event': 'LoadFooEvent', 'executionId': 3});
+    store.ingest('use_case_execution', {
+      'useCase': 'LoadFoo',
+      'event': 'LoadFooEvent',
+      'executionId': 3,
+    });
     expect(store.spans[3]!.open, isTrue);
-    store.ingest('use_case_completed',
-        {'useCase': 'LoadFoo', 'executionId': 3, 'elapsedMicros': 4200});
+    store.ingest('use_case_completed', {
+      'useCase': 'LoadFoo',
+      'executionId': 3,
+      'elapsedMicros': 4200,
+    });
     final s = store.spans[3]!;
     expect(s.open, isFalse);
     expect(s.failed, isFalse);
@@ -21,17 +27,37 @@ void main() {
 
   test('the executor use_case_error closes a span as failed; the handler '
       'summary (no executionId) does not disturb spans', () {
-    store.ingest('use_case_execution', {'useCase': 'Save', 'event': 'SaveEvent', 'executionId': 9});
-    store.ingest('use_case_error', {'useCase': 'Save', 'executionId': 9, 'elapsedMicros': 10});
-    store.ingest('use_case_error', {'bloc': 'SaveBloc', 'event': 'SaveEvent', 'state': 'S'});
+    store.ingest('use_case_execution', {
+      'useCase': 'Save',
+      'event': 'SaveEvent',
+      'executionId': 9,
+    });
+    store.ingest('use_case_error', {
+      'useCase': 'Save',
+      'executionId': 9,
+      'elapsedMicros': 10,
+    });
+    store.ingest('use_case_error', {
+      'bloc': 'SaveBloc',
+      'event': 'SaveEvent',
+      'state': 'S',
+    });
     expect(store.spans[9]!.failed, isTrue);
     expect(store.spans, hasLength(1));
     expect(store.problemCount, 2, reason: 'both error entries are problems');
   });
 
   test('overlapping same-type executions stay distinct spans', () {
-    store.ingest('use_case_execution', {'useCase': 'A', 'event': 'E', 'executionId': 1});
-    store.ingest('use_case_execution', {'useCase': 'A', 'event': 'E', 'executionId': 2});
+    store.ingest('use_case_execution', {
+      'useCase': 'A',
+      'event': 'E',
+      'executionId': 1,
+    });
+    store.ingest('use_case_execution', {
+      'useCase': 'A',
+      'event': 'E',
+      'executionId': 2,
+    });
     store.ingest('use_case_completed', {'executionId': 2, 'elapsedMicros': 5});
     expect(store.spans[1]!.open, isTrue);
     expect(store.spans[2]!.open, isFalse);
@@ -39,12 +65,18 @@ void main() {
 
   test('emissions build the per-bloc view with groups, status, and state', () {
     store.ingest('state_emission', {
-      'bloc': 'FooBloc', 'status': 'update', 'state': 'FooState(1)',
-      'groups': '{foo:status}', 'event': 'LoadFooEvent',
+      'bloc': 'FooBloc',
+      'status': 'update',
+      'state': 'FooState(1)',
+      'groups': '{foo:status}',
+      'event': 'LoadFooEvent',
     });
     store.ingest('state_emission', {
-      'bloc': 'FooBloc', 'status': 'update', 'state': 'FooState(2)',
-      'groups': '{foo:status, foo:list}', 'event': 'LoadFooEvent',
+      'bloc': 'FooBloc',
+      'status': 'update',
+      'state': 'FooState(2)',
+      'groups': '{foo:status, foo:list}',
+      'event': 'LoadFooEvent',
     });
     store.ingest('bloc_lifecycle', {'bloc': 'FooBloc', 'action': 'close'});
     final b = store.blocs['FooBloc']!;
@@ -55,7 +87,12 @@ void main() {
   });
 
   test('problems are the error kinds, unhandled events, and leaks', () {
-    for (final k in ['leak_detection', 'unhandled_event', 'error', 'bloc_error']) {
+    for (final k in [
+      'leak_detection',
+      'unhandled_event',
+      'error',
+      'bloc_error',
+    ]) {
       store.ingest(k, {'message': k});
     }
     store.ingest('state_emission', {'bloc': 'X'});
@@ -70,7 +107,11 @@ void main() {
   });
 
   test('clear empties everything', () {
-    store.ingest('use_case_execution', {'executionId': 1, 'useCase': 'A', 'event': 'E'});
+    store.ingest('use_case_execution', {
+      'executionId': 1,
+      'useCase': 'A',
+      'event': 'E',
+    });
     store.ingest('state_emission', {'bloc': 'B'});
     store.clear();
     expect(store.events, isEmpty);

@@ -17,9 +17,8 @@ class SaveNoteUseCase extends BlocUseCase<NotesBloc, SaveNoteEvent> {
       bool existingPinned = false;
       NoteColor existingColor = NoteColor.none;
       if (!isNew) {
-        final existing = bloc.state.notes
-            .where((n) => n.id == event.id)
-            .firstOrNull;
+        final existing =
+            bloc.state.notes.where((n) => n.id == event.id).firstOrNull;
         if (existing != null) {
           createdAt = existing.createdAt;
           existingPinned = existing.isPinned;
@@ -42,8 +41,7 @@ class SaveNoteUseCase extends BlocUseCase<NotesBloc, SaveNoteEvent> {
           'notes', note.id, jsonEncode(note.toJson()));
 
       final updatedNotes = List<Note>.from(bloc.state.notes);
-      final existingIndex =
-          updatedNotes.indexWhere((n) => n.id == note.id);
+      final existingIndex = updatedNotes.indexWhere((n) => n.id == note.id);
       if (existingIndex >= 0) {
         updatedNotes[existingIndex] = note;
       } else {

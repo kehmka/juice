@@ -104,7 +104,8 @@ class LoggingInterceptor extends FetchInterceptor {
 
     final buffer = StringBuffer();
     final elapsed = _getElapsed(error.requestOptions);
-    buffer.writeln('✗ ${error.type.name} ${error.requestOptions.uri} ($elapsed)');
+    buffer
+        .writeln('✗ ${error.type.name} ${error.requestOptions.uri} ($elapsed)');
 
     if (error.response != null) {
       buffer.writeln('  Status: ${error.response!.statusCode}');

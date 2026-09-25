@@ -1,7 +1,8 @@
 import 'package:juice/juice.dart';
 
 class LoadDashboardEvent extends EventBase {
-  LoadDashboardEvent() : super(groupsToRebuild: {'dashboard:stats', 'dashboard:activity'});
+  LoadDashboardEvent()
+      : super(groupsToRebuild: {'dashboard:stats', 'dashboard:activity'});
 }
 
 class RefreshStatsEvent extends EventBase {

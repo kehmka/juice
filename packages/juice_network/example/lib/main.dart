@@ -36,14 +36,16 @@ Future<void> main() async {
   // Initialize FetchBloc with DummyJSON config
   // Note: jsonplaceholder.typicode.com is blocked by Cloudflare for Dart clients
   final fetchBloc = BlocScope.get<FetchBloc>();
-  await fetchBloc.send(InitializeFetchEvent(
-    config: FetchConfig(
-      baseUrl: 'https://dummyjson.com',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      defaultTtl: const Duration(minutes: 5),
+  await fetchBloc.send(
+    InitializeFetchEvent(
+      config: FetchConfig(
+        baseUrl: 'https://dummyjson.com',
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        defaultTtl: const Duration(minutes: 5),
+      ),
     ),
-  ));
+  );
 
   // Register feature blocs
   // PostsBloc uses leased (fetches fresh on each visit)

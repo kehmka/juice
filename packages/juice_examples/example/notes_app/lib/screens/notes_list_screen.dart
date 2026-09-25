@@ -17,8 +17,7 @@ import '../models/note.dart';
 import 'note_editor_screen.dart';
 import 'trash_screen.dart';
 
-class NotesListScreen
-    extends StatelessJuiceWidget2<NotesBloc, SettingsBloc> {
+class NotesListScreen extends StatelessJuiceWidget2<NotesBloc, SettingsBloc> {
   NotesListScreen({super.key})
       : super(
           groups: {
@@ -78,8 +77,7 @@ class NotesListScreen
                 ),
                 filled: true,
               ),
-              onChanged: (query) =>
-                  bloc1.send(SearchNotesEvent(query: query)),
+              onChanged: (query) => bloc1.send(SearchNotesEvent(query: query)),
             ),
           ),
           Expanded(
@@ -90,8 +88,7 @@ class NotesListScreen
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline,
-                        size: 48, color: Colors.red[300]),
+                    Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
                     const SizedBox(height: 12),
                     const Text('Failed to load notes'),
                     const SizedBox(height: 8),
@@ -266,8 +263,7 @@ class NotesListScreen
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Note color',
-                    style: Theme.of(ctx).textTheme.titleMedium),
+                Text('Note color', style: Theme.of(ctx).textTheme.titleMedium),
                 TextButton(
                   onPressed: () {
                     bloc1.send(TogglePinEvent(noteId: note.id));

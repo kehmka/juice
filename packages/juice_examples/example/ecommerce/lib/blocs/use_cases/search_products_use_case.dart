@@ -4,8 +4,7 @@ import '../products_bloc.dart';
 import '../products_events.dart';
 import '../../models/product.dart';
 
-class SearchProductsUseCase
-    extends UseCase<ProductsBloc, SearchProductsEvent> {
+class SearchProductsUseCase extends UseCase<ProductsBloc, SearchProductsEvent> {
   @override
   Future<void> execute(SearchProductsEvent event) async {
     if (event.query.isEmpty) {

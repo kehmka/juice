@@ -35,8 +35,7 @@ class FeedState extends BlocState {
       hasReachedEnd: hasReachedEnd ?? this.hasReachedEnd,
       selectedPost:
           clearSelectedPost ? null : (selectedPost ?? this.selectedPost),
-      selectedPostComments:
-          selectedPostComments ?? this.selectedPostComments,
+      selectedPostComments: selectedPostComments ?? this.selectedPostComments,
     );
   }
 }

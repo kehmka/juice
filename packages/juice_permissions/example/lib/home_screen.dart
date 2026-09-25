@@ -46,7 +46,9 @@ class _PermissionTile extends StatelessJuiceWidget<PermissionsBloc> {
       subtitle: Text(state.statusOf(permission).name),
       trailing: requesting
           ? const SizedBox(
-              width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2))
           : state.isPermanentlyDenied(permission)
               ? TextButton(
                   onPressed: bloc.openAppSettings,

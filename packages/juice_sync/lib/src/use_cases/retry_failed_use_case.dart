@@ -21,7 +21,8 @@ class RetryFailedUseCase extends BlocUseCase<SyncBloc, RetryFailedEvent> {
 
     final revived = <Mutation>[];
     for (final m in toRetry) {
-      final r = m.copyWith(status: MutationStatus.pending, attempts: 0, lastError: null);
+      final r = m.copyWith(
+          status: MutationStatus.pending, attempts: 0, lastError: null);
       try {
         await bloc.store.put(r);
       } catch (e) {
@@ -40,7 +41,8 @@ class RetryFailedUseCase extends BlocUseCase<SyncBloc, RetryFailedEvent> {
     final revivedIds = revived.map((m) => m.id).toSet();
     emitUpdate(
       newState: bloc.state.copyWith(
-        failed: bloc.state.failed.where((m) => !revivedIds.contains(m.id)).toList(),
+        failed:
+            bloc.state.failed.where((m) => !revivedIds.contains(m.id)).toList(),
         pending: [...bloc.state.pending, ...revived],
       ),
       groupsToRebuild: {

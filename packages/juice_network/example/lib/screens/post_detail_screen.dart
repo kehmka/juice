@@ -122,10 +122,7 @@ class PostDetailScreen extends StatelessJuiceWidget<PostsBloc> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    post.body,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                  Text(post.body, style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
             ),

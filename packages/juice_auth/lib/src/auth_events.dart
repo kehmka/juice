@@ -20,7 +20,8 @@ class InitializeAuthEvent extends AuthEvent {
   InitializeAuthEvent({required this.config});
 
   @override
-  String toString() => 'InitializeAuthEvent(restore: ${config.restoreSessionOnInit})';
+  String toString() =>
+      'InitializeAuthEvent(restore: ${config.restoreSessionOnInit})';
 }
 
 /// Login with a specific provider and credentials.

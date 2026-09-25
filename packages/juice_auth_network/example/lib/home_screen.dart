@@ -94,7 +94,8 @@ class _ProfilePanel extends StatelessJuiceWidget<ProfileBloc> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Authenticated request', style: Theme.of(context).textTheme.titleSmall),
+        Text('Authenticated request',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Text(
           'Injected token: ${state.injectedToken ?? '— (tap Fetch)'}',

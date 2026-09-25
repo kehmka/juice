@@ -190,8 +190,10 @@ Aviator(
                       ),
                       const SizedBox(height: 8),
                       const Text('Intent: viewProduct'),
-                      Text('Args: {productId: ${productState.selectedProduct!.id}}'),
-                      Text('Would navigate to: /product/${productState.selectedProduct!.id}'),
+                      Text(
+                          'Args: {productId: ${productState.selectedProduct!.id}}'),
+                      Text(
+                          'Would navigate to: /product/${productState.selectedProduct!.id}'),
                     ],
                   ),
                 ),

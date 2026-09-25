@@ -94,7 +94,8 @@ class RequestStatus {
   }
 
   /// Whether the request is still active (queued or inflight).
-  bool get isActive => phase == RequestPhase.queued || phase == RequestPhase.inflight;
+  bool get isActive =>
+      phase == RequestPhase.queued || phase == RequestPhase.inflight;
 
   /// Duration since request started.
   Duration get elapsed => DateTime.now().difference(startedAt);
@@ -150,5 +151,6 @@ class RequestStatus {
   }
 
   @override
-  String toString() => 'RequestStatus(${key.canonical}, $phase, attempt: $attempt)';
+  String toString() =>
+      'RequestStatus(${key.canonical}, $phase, attempt: $attempt)';
 }

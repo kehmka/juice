@@ -82,7 +82,8 @@ class MediaState extends BlocState {
       uploads: uploads ?? this.uploads,
       picking: picking ?? this.picking,
       permissionGranted: permissionGranted ?? this.permissionGranted,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError:
+          identical(lastError, _unset) ? this.lastError : lastError as String?,
     );
   }
 

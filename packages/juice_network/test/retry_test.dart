@@ -119,7 +119,8 @@ void main() {
 
   group('client errors are not retried', () {
     test('GET does not retry on 404', () async {
-      dioAdapter.onGet('/missing', (server) => server.reply(404, {'e': 'nope'}));
+      dioAdapter.onGet(
+          '/missing', (server) => server.reply(404, {'e': 'nope'}));
       await sendAndCaptureError(InitializeFetchEvent());
 
       final error = await sendAndCaptureError(GetEvent(

@@ -29,7 +29,8 @@ void main() {
     await cacheIndex.init();
     // Default config: deliberately does NOT open the sync boxes (reproduces an
     // app that can't, since the meta box name is private to the store).
-    storage = StorageBloc(config: const StorageConfig(), cacheIndex: cacheIndex);
+    storage =
+        StorageBloc(config: const StorageConfig(), cacheIndex: cacheIndex);
     store = StorageSyncStore(storage);
   });
 

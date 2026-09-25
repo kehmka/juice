@@ -8,7 +8,8 @@ import '../observability_state.dart';
 /// existed at error time) to the reporters, unless capture is disabled.
 ///
 /// Registered `sequential`, so the `errorCount` read-modify-write is race-free.
-class RecordErrorUseCase extends BlocUseCase<ObservabilityBloc, RecordErrorEvent> {
+class RecordErrorUseCase
+    extends BlocUseCase<ObservabilityBloc, RecordErrorEvent> {
   @override
   Future<void> execute(RecordErrorEvent event) async {
     if (!bloc.state.enabled) return;

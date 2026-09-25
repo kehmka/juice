@@ -8,7 +8,8 @@ import '../upload_state.dart';
 /// Handles [UploadProgressEvent] — record progress for one item.
 ///
 /// Emits only that item's group, so other items' progress widgets don't rebuild.
-class UploadProgressUseCase extends BlocUseCase<MediaBloc, UploadProgressEvent> {
+class UploadProgressUseCase
+    extends BlocUseCase<MediaBloc, UploadProgressEvent> {
   @override
   Future<void> execute(UploadProgressEvent event) async {
     final upload = bloc.state.uploads[event.id];

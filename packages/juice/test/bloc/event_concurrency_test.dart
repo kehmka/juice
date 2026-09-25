@@ -117,7 +117,8 @@ void main() {
     bloc.send(SeqEvent(1));
     bloc.send(SeqEvent(2));
     bloc.send(SeqEvent(3));
-    await Future<void>.delayed(const Duration(milliseconds: 10)); // mid first run
+    await Future<void>.delayed(
+        const Duration(milliseconds: 10)); // mid first run
     await bloc.close(); // should not throw
 
     await Future<void>.delayed(const Duration(milliseconds: 120));

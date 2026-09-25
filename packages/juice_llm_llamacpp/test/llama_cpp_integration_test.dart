@@ -17,8 +17,7 @@ void main() {
   final modelPath = Platform.environment['LLAMA_MODEL'] ??
       '/tmp/llama_spike/models/SmolLM2-360M-Instruct-Q4_K_M.gguf';
 
-  final available =
-      File(libPath).existsSync() && File(modelPath).existsSync();
+  final available = File(libPath).existsSync() && File(modelPath).existsSync();
 
   LlmModel model() => LlmModel(
         id: 'spike',
@@ -33,8 +32,9 @@ void main() {
         provider: LlamaCppProvider(
           libraryPath: libPath,
           // Gemma's embedded template is unparseable — build the prompt here.
-          chatFormat:
-              modelPath.toLowerCase().contains('gemma') ? gemmaChatFormat : null,
+          chatFormat: modelPath.toLowerCase().contains('gemma')
+              ? gemmaChatFormat
+              : null,
         ),
         resolvePath: (_) => modelPath,
       ));
@@ -51,7 +51,8 @@ void main() {
   }
 
   group('LlamaCppProvider + LlmBloc (real model)', () {
-    test('streams a real reflection, twice in a row (KV reuse holds)', () async {
+    test('streams a real reflection, twice in a row (KV reuse holds)',
+        () async {
       final bloc = build();
       await settle();
       await ready(bloc);
@@ -60,7 +61,8 @@ void main() {
         bloc.generate(LlmRequest(
           requestId: id,
           messages: const [
-            LlmMessage.system('You are the Almanac. Reply in one short sentence.'),
+            LlmMessage.system(
+                'You are the Almanac. Reply in one short sentence.'),
             LlmMessage.user('Name one thing to glean from a quiet morning.'),
           ],
           params: const LlmSamplingParams(temperature: 0.7, maxTokens: 48),
@@ -113,7 +115,10 @@ void main() {
 
       await bloc.close();
     }, timeout: const Timeout(Duration(minutes: 3)));
-  }, skip: available ? false : 'native lib + GGUF not present (set LLAMA_LIB / LLAMA_MODEL)');
+  },
+      skip: available
+          ? false
+          : 'native lib + GGUF not present (set LLAMA_LIB / LLAMA_MODEL)');
 
   // --- Multimodal (vision) ---
   // Needs a vision-capable model (Gemma 4) + its mmproj projector + an image.
@@ -184,16 +189,19 @@ void main() {
       ));
       await settle();
       await ready(bloc);
-      expect(
-          bloc.provider.capabilities, isNot(contains(LlmCapability.vision)));
+      expect(bloc.provider.capabilities, isNot(contains(LlmCapability.vision)));
 
       final image = Uint8List.fromList(File(imagePath).readAsBytesSync());
       var threw = false;
       try {
-        await bloc.provider.generate(LlmRequest(
-          requestId: 'nomm',
-          messages: [LlmMessage.user('What is this?', images: [image])],
-        )).toList();
+        await bloc.provider
+            .generate(LlmRequest(
+              requestId: 'nomm',
+              messages: [
+                LlmMessage.user('What is this?', images: [image])
+              ],
+            ))
+            .toList();
       } on LlmProviderException {
         threw = true;
       }

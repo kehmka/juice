@@ -48,8 +48,7 @@ class NotesState extends BlocState {
   }
 
   /// Trashed notes only.
-  List<Note> get trashedNotes =>
-      notes.where((n) => n.isTrashed).toList();
+  List<Note> get trashedNotes => notes.where((n) => n.isTrashed).toList();
 
   NotesState copyWith({
     List<Note>? notes,

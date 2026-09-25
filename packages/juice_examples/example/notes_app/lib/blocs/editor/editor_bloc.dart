@@ -23,16 +23,15 @@ class EditorBloc extends JuiceBloc<EditorState> {
           const EditorState(),
           [
             // Initialize editor with existing note data or blank state
-            () => InlineUseCaseBuilder<EditorBloc, EditorState,
-                    InitEditorEvent>(
+            () =>
+                InlineUseCaseBuilder<EditorBloc, EditorState, InitEditorEvent>(
                   typeOfEvent: InitEditorEvent,
                   handler: (ctx, event) async {
                     final note = event.existingNote;
                     if (note != null) {
                       final text = '${note.title} ${note.body}'.trim();
-                      final words = text.isEmpty
-                          ? 0
-                          : text.split(RegExp(r'\s+')).length;
+                      final words =
+                          text.isEmpty ? 0 : text.split(RegExp(r'\s+')).length;
                       ctx.emit.update(
                         newState: ctx.state.copyWith(
                           noteId: note.id,
@@ -57,9 +56,8 @@ class EditorBloc extends JuiceBloc<EditorState> {
                     final title = event.title ?? ctx.state.title;
                     final body = event.body ?? ctx.state.body;
                     final text = '$title $body'.trim();
-                    final words = text.isEmpty
-                        ? 0
-                        : text.split(RegExp(r'\s+')).length;
+                    final words =
+                        text.isEmpty ? 0 : text.split(RegExp(r'\s+')).length;
                     ctx.emit.update(
                       newState: ctx.state.copyWith(
                         title: event.title,

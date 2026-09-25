@@ -16,7 +16,8 @@ class FlagsUpdatedUseCase extends BlocUseCase<FlagsBloc, FlagsUpdatedEvent> {
     if (changed.isEmpty) return;
 
     emitUpdate(
-      newState: bloc.state.copyWith(values: resolved, fetched: true, error: null),
+      newState:
+          bloc.state.copyWith(values: resolved, fetched: true, error: null),
       groupsToRebuild: {
         FlagsGroups.any,
         ...changed.map(FlagsGroups.flag),

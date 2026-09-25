@@ -103,7 +103,8 @@ void main() {
     await b.close();
   });
 
-  test('THE STALE-LOCK CLASS: one transient failure heals on the single '
+  test(
+      'THE STALE-LOCK CLASS: one transient failure heals on the single '
       'retry — hive ready, boxes open, retry noted in the log', () async {
     final gw = _FlakyGateway(failuresBeforeSuccess: 1);
     final b = bloc(gw);
@@ -118,7 +119,8 @@ void main() {
     await b.close();
   });
 
-  test('a PERSISTENT failure is loud: error state, StorageError, and a '
+  test(
+      'a PERSISTENT failure is loud: error state, StorageError, and a '
       'logged error — never a silently dead cache', () async {
     final gw = _FlakyGateway(failuresBeforeSuccess: 99);
     final b = bloc(gw);

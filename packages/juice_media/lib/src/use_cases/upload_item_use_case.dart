@@ -11,8 +11,7 @@ import '../upload_state.dart';
 class UploadItemUseCase extends BlocUseCase<MediaBloc, UploadItemEvent> {
   @override
   Future<void> execute(UploadItemEvent event) async {
-    final item =
-        bloc.state.items.where((i) => i.id == event.id).firstOrNull;
+    final item = bloc.state.items.where((i) => i.id == event.id).firstOrNull;
     if (item == null) return;
 
     // Already uploading or done — don't restart.

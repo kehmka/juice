@@ -39,7 +39,8 @@ Future<void> main() async {
     ),
   );
 
-  BlocScope.register<AuthBloc>(() => authBloc, lifecycle: BlocLifecycle.permanent);
+  BlocScope.register<AuthBloc>(() => authBloc,
+      lifecycle: BlocLifecycle.permanent);
   BlocScope.register<RoutingBloc>(() => routingBloc,
       lifecycle: BlocLifecycle.permanent);
 

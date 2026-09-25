@@ -90,9 +90,8 @@ class StorageBloc extends JuiceBloc<StorageState> {
       // Initialize
       () => UseCaseBuilder(
             typeOfEvent: InitializeStorageEvent,
-            useCaseGenerator: () =>
-                InitializeUseCase(
-                    config: config, cacheIndex: cacheIndex, hive: hive),
+            useCaseGenerator: () => InitializeUseCase(
+                config: config, cacheIndex: cacheIndex, hive: hive),
             concurrency: EventConcurrency.concurrent,
           ),
 

@@ -17,8 +17,7 @@ class EmbedUseCase extends BlocUseCase<LlmBloc, EmbedEvent> {
       return;
     }
     if (!bloc.provider.capabilities.contains(LlmCapability.embeddings)) {
-      event.fail(UnsupportedError(
-          'Loaded model does not support embeddings'));
+      event.fail(UnsupportedError('Loaded model does not support embeddings'));
       return;
     }
     try {

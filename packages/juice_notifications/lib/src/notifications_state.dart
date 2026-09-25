@@ -47,7 +47,9 @@ class NotificationsState extends BlocState {
   }) {
     return NotificationsState(
       scheduled: scheduled ?? this.scheduled,
-      lastTap: identical(lastTap, _unset) ? this.lastTap : lastTap as NotificationTap?,
+      lastTap: identical(lastTap, _unset)
+          ? this.lastTap
+          : lastTap as NotificationTap?,
       permissionGranted: permissionGranted ?? this.permissionGranted,
     );
   }

@@ -11,7 +11,8 @@ class FlagsFetchFailedUseCase
   @override
   Future<void> execute(FlagsFetchFailedEvent event) async {
     emitFailure(
-      newState: bloc.state.copyWith(loading: false, error: event.error.toString()),
+      newState:
+          bloc.state.copyWith(loading: false, error: event.error.toString()),
       groupsToRebuild: {FlagsGroups.status},
       error: event.error,
     );

@@ -53,75 +53,73 @@ class _LoginScreenState
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            const Icon(
-              Icons.lock_outline,
-              size: 64,
-              color: Colors.deepPurple,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Welcome Back',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Sign in to access protected routes',
-              style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _usernameController,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+              const Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: Colors.deepPurple,
               ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: isLoading ? null : _login,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Sign In'),
+              const SizedBox(height: 24),
+              const Text(
+                'Welcome Back',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: isLoading
-                  ? null
-                  : () => _login(asAdmin: true),
-              child: const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text('Sign In as Admin'),
+              const SizedBox(height: 8),
+              const Text(
+                'Sign in to access protected routes',
+                style: TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 24),
-            Card(
-              color: Colors.blue[50],
-              child: const Padding(
-                padding: EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'This demonstrates the GuestGuard - if you\'re already logged in, you\'ll be redirected away from this page.',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 32),
+              TextField(
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
                 ),
               ),
-            ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: isLoading ? null : _login,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Sign In'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: isLoading ? null : () => _login(asAdmin: true),
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('Sign In as Admin'),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Card(
+                color: Colors.blue[50],
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'This demonstrates the GuestGuard - if you\'re already logged in, you\'ll be redirected away from this page.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

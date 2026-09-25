@@ -98,23 +98,27 @@ class ConfigureInterceptorsUseCase
     }
 
     if (bloc.state.loggingEnabled) {
-      interceptors.add(LoggingInterceptor(
-        logger: (msg) => bloc.addLog(msg, LogType.info),
-        logBody: true,
-        logHeaders: bloc.state.authEnabled,
-      ));
+      interceptors.add(
+        LoggingInterceptor(
+          logger: (msg) => bloc.addLog(msg, LogType.info),
+          logBody: true,
+          logHeaders: bloc.state.authEnabled,
+        ),
+      );
     }
 
     if (bloc.state.authEnabled) {
-      interceptors.add(AuthInterceptor(
-        tokenProvider: () async => bloc.state.fakeToken,
-        prefix: 'Bearer ',
-      ));
+      interceptors.add(
+        AuthInterceptor(
+          tokenProvider: () async => bloc.state.fakeToken,
+          prefix: 'Bearer ',
+        ),
+      );
     }
 
-    await bloc.fetchBloc.send(ReconfigureInterceptorsEvent(
-      interceptors: interceptors,
-    ));
+    await bloc.fetchBloc.send(
+      ReconfigureInterceptorsEvent(interceptors: interceptors),
+    );
 
     bloc.addLog(
       'Interceptors configured: ${interceptors.map((i) => i.runtimeType.toString()).join(', ')}',
@@ -123,7 +127,8 @@ class ConfigureInterceptorsUseCase
   }
 }
 
-class ToggleLoggingUseCase extends BlocUseCase<InterceptorsBloc, ToggleLoggingEvent> {
+class ToggleLoggingUseCase
+    extends BlocUseCase<InterceptorsBloc, ToggleLoggingEvent> {
   @override
   Future<void> execute(ToggleLoggingEvent event) async {
     emitUpdate(newState: bloc.state.copyWith(loggingEnabled: event.enabled));
@@ -137,21 +142,25 @@ class ToggleAuthUseCase extends BlocUseCase<InterceptorsBloc, ToggleAuthEvent> {
   }
 }
 
-class ToggleTimingUseCase extends BlocUseCase<InterceptorsBloc, ToggleTimingEvent> {
+class ToggleTimingUseCase
+    extends BlocUseCase<InterceptorsBloc, ToggleTimingEvent> {
   @override
   Future<void> execute(ToggleTimingEvent event) async {
     emitUpdate(newState: bloc.state.copyWith(timingEnabled: event.enabled));
   }
 }
 
-class MakeRequestUseCase extends BlocUseCase<InterceptorsBloc, MakeRequestEvent> {
+class MakeRequestUseCase
+    extends BlocUseCase<InterceptorsBloc, MakeRequestEvent> {
   @override
   Future<void> execute(MakeRequestEvent event) async {
-    await bloc.fetchBloc.send(GetEvent(
-      url: '/posts/1',
-      cachePolicy: CachePolicy.networkOnly,
-      decode: (raw) => raw,
-    ));
+    await bloc.fetchBloc.send(
+      GetEvent(
+        url: '/posts/1',
+        cachePolicy: CachePolicy.networkOnly,
+        decode: (raw) => raw,
+      ),
+    );
   }
 }
 
@@ -159,11 +168,13 @@ class MakeFailingRequestUseCase
     extends BlocUseCase<InterceptorsBloc, MakeFailingRequestEvent> {
   @override
   Future<void> execute(MakeFailingRequestEvent event) async {
-    await bloc.fetchBloc.send(GetEvent(
-      url: '/nonexistent/endpoint/404',
-      cachePolicy: CachePolicy.networkOnly,
-      decode: (raw) => raw,
-    ));
+    await bloc.fetchBloc.send(
+      GetEvent(
+        url: '/nonexistent/endpoint/404',
+        cachePolicy: CachePolicy.networkOnly,
+        decode: (raw) => raw,
+      ),
+    );
   }
 }
 
@@ -196,44 +207,41 @@ class InterceptorsBloc extends JuiceBloc<InterceptorsState> {
   final FetchBloc fetchBloc;
 
   InterceptorsBloc({required this.fetchBloc})
-      : super(
-          const InterceptorsState(),
-          [
-            () => UseCaseBuilder(
-                  typeOfEvent: ConfigureInterceptorsEvent,
-                  useCaseGenerator: () => ConfigureInterceptorsUseCase(),
-                  initialEventBuilder: () => ConfigureInterceptorsEvent(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ToggleLoggingEvent,
-                  useCaseGenerator: () => ToggleLoggingUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ToggleAuthEvent,
-                  useCaseGenerator: () => ToggleAuthUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ToggleTimingEvent,
-                  useCaseGenerator: () => ToggleTimingUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: MakeRequestEvent,
-                  useCaseGenerator: () => MakeRequestUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: MakeFailingRequestEvent,
-                  useCaseGenerator: () => MakeFailingRequestUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ClearLogsEvent,
-                  useCaseGenerator: () => ClearLogsUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: AddLogEvent,
-                  useCaseGenerator: () => AddLogUseCase(),
-                ),
-          ],
-        );
+    : super(const InterceptorsState(), [
+        () => UseCaseBuilder(
+          typeOfEvent: ConfigureInterceptorsEvent,
+          useCaseGenerator: () => ConfigureInterceptorsUseCase(),
+          initialEventBuilder: () => ConfigureInterceptorsEvent(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ToggleLoggingEvent,
+          useCaseGenerator: () => ToggleLoggingUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ToggleAuthEvent,
+          useCaseGenerator: () => ToggleAuthUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ToggleTimingEvent,
+          useCaseGenerator: () => ToggleTimingUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: MakeRequestEvent,
+          useCaseGenerator: () => MakeRequestUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: MakeFailingRequestEvent,
+          useCaseGenerator: () => MakeFailingRequestUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ClearLogsEvent,
+          useCaseGenerator: () => ClearLogsUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: AddLogEvent,
+          useCaseGenerator: () => AddLogUseCase(),
+        ),
+      ]);
 
   void addLog(String message, LogType type) {
     send(AddLogEvent(message, type));

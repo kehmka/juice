@@ -18,9 +18,9 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
             icon: const Icon(Icons.delete_sweep),
             onPressed: () {
               bloc.send(ResetStatsEvent());
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Stats reset')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Stats reset')));
             },
             tooltip: 'Reset Stats',
           ),
@@ -28,9 +28,9 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
             icon: const Icon(Icons.cleaning_services),
             onPressed: () {
               bloc.send(ClearCacheEvent());
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cache cleared')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
             },
             tooltip: 'Clear Cache',
           ),
@@ -43,11 +43,22 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
           _StatsCard(
             children: [
               _StatRow('Total Requests', '${stats.totalRequests}'),
-              _StatRow('Successful', '${stats.successCount}', color: Colors.green),
+              _StatRow(
+                'Successful',
+                '${stats.successCount}',
+                color: Colors.green,
+              ),
               _StatRow('Failed', '${stats.failureCount}', color: Colors.red),
-              _StatRow('Success Rate', '${stats.successRate.toStringAsFixed(1)}%'),
+              _StatRow(
+                'Success Rate',
+                '${stats.successRate.toStringAsFixed(1)}%',
+              ),
               _StatRow('Retries', '${stats.retryCount}'),
-              _StatRow('Coalesced', '${stats.coalescedCount}', color: Colors.orange),
+              _StatRow(
+                'Coalesced',
+                '${stats.coalescedCount}',
+                color: Colors.orange,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -55,7 +66,11 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
           _StatsCard(
             children: [
               _StatRow('Cache Hits', '${stats.cacheHits}', color: Colors.green),
-              _StatRow('Cache Misses', '${stats.cacheMisses}', color: Colors.orange),
+              _StatRow(
+                'Cache Misses',
+                '${stats.cacheMisses}',
+                color: Colors.orange,
+              ),
               _StatRow('Hit Rate', '${stats.hitRate.toStringAsFixed(1)}%'),
               _StatRow('Entries', '${cacheStats.entryCount}'),
               _StatRow('Size', _formatBytes(cacheStats.totalBytes)),
@@ -65,7 +80,10 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
           _SectionHeader(title: 'Performance'),
           _StatsCard(
             children: [
-              _StatRow('Avg Response Time', '${stats.avgResponseTimeMs.toStringAsFixed(0)} ms'),
+              _StatRow(
+                'Avg Response Time',
+                '${stats.avgResponseTimeMs.toStringAsFixed(0)} ms',
+              ),
               _StatRow('Bytes Received', _formatBytes(stats.bytesReceived)),
               _StatRow('Bytes Sent', _formatBytes(stats.bytesSent)),
             ],
@@ -101,7 +119,10 @@ class StatsScreen extends StatelessJuiceWidget<FetchBloc> {
                   ),
                   title: Text(
                     entry.key,
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                   subtitle: Text(
                     'Phase: ${reqStatus.phase.name} | Attempt: ${reqStatus.attempt}',
@@ -133,9 +154,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -174,10 +195,7 @@ class _StatRow extends StatelessWidget {
           Text(label),
           Text(
             value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),

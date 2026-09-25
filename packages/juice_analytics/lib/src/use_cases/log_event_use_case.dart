@@ -11,7 +11,8 @@ class LogEventUseCase extends BlocUseCase<AnalyticsBloc, LogEventEvent> {
   Future<void> execute(LogEventEvent event) async {
     if (!bloc.state.enabled) {
       emitUpdate(
-        newState: bloc.state.copyWith(droppedCount: bloc.state.droppedCount + 1),
+        newState:
+            bloc.state.copyWith(droppedCount: bloc.state.droppedCount + 1),
         groupsToRebuild: {AnalyticsGroups.status},
       );
       return;

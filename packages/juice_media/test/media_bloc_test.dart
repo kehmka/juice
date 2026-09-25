@@ -68,8 +68,7 @@ class FakeMediaUploader implements MediaUploader {
   bool disposed = false;
 
   @override
-  MediaUpload upload(MediaItem item) =>
-      uploads[item.id] = FakeMediaUpload();
+  MediaUpload upload(MediaItem item) => uploads[item.id] = FakeMediaUpload();
 
   @override
   Future<void> dispose() async => disposed = true;
@@ -172,7 +171,8 @@ void main() {
       await bloc.close();
     });
 
-    test('per-item selective refresh: progress on A does not touch B', () async {
+    test('per-item selective refresh: progress on A does not touch B',
+        () async {
       final src = FakeMediaSource([img('a'), img('b')]);
       final up = FakeMediaUploader();
       final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
@@ -232,7 +232,8 @@ void main() {
 
     test('no uploader configured fails loudly', () async {
       final src = FakeMediaSource([img('a')]);
-      final bloc = MediaBloc.withConfig(MediaConfig(source: src)); // no uploader
+      final bloc =
+          MediaBloc.withConfig(MediaConfig(source: src)); // no uploader
       await settle();
       bloc.pickFromGallery();
       await settle();
@@ -267,7 +268,8 @@ void main() {
       await settle();
 
       bloc.addRemoteItems([
-        const MediaItem.remote(id: 'r1', uri: 'https://cdn/r1.jpg', name: 'r1.jpg'),
+        const MediaItem.remote(
+            id: 'r1', uri: 'https://cdn/r1.jpg', name: 'r1.jpg'),
       ]);
       await settle();
 
@@ -302,7 +304,8 @@ void main() {
         source: src,
         uploader: up,
         initialItems: const [
-          MediaItem.remote(id: 'remote', uri: 'https://cdn/x.jpg', name: 'x.jpg'),
+          MediaItem.remote(
+              id: 'remote', uri: 'https://cdn/x.jpg', name: 'x.jpg'),
         ],
       ));
       await settle();
@@ -375,8 +378,7 @@ void main() {
     });
 
     test('addLocalItems rejects a remote-origin item loudly', () async {
-      final bloc =
-          MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));
+      final bloc = MediaBloc.withConfig(MediaConfig(source: FakeMediaSource()));
       await settle();
 
       bloc.addLocalItems([

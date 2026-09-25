@@ -61,7 +61,8 @@ class Mutation {
       orderingKey: orderingKey,
       createdAt: createdAt,
       attempts: attempts ?? this.attempts,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError:
+          identical(lastError, _unset) ? this.lastError : lastError as String?,
       status: status ?? this.status,
     );
   }
@@ -87,11 +88,13 @@ class Mutation {
         createdAt: DateTime.parse(json['createdAt'] as String),
         attempts: json['attempts'] as int? ?? 0,
         lastError: json['lastError'] as String?,
-        status: MutationStatus.values.byName(json['status'] as String? ?? 'pending'),
+        status: MutationStatus.values
+            .byName(json['status'] as String? ?? 'pending'),
       );
 
   @override
-  String toString() => 'Mutation($id, seq:$seq, $type, $status, attempts:$attempts)';
+  String toString() =>
+      'Mutation($id, seq:$seq, $type, $status, attempts:$attempts)';
 }
 
 const Object _unset = Object();

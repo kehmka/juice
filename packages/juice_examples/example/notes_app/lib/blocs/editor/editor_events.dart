@@ -21,8 +21,7 @@ class UpdateContentEvent extends EventBase {
 }
 
 class AutoSaveEvent extends EventBase {
-  AutoSaveEvent()
-      : super(groupsToRebuild: {EditorGroups.status}.toStringSet());
+  AutoSaveEvent() : super(groupsToRebuild: {EditorGroups.status}.toStringSet());
   // Only rebuilds save status indicator
 }
 

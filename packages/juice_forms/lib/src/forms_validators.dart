@@ -2,7 +2,8 @@
 ///
 /// [values] is a snapshot of every field's value, enabling cross-field rules
 /// (e.g. confirm-password checking against `values['password']`).
-typedef Validator = String? Function(Object? value, Map<String, Object?> values);
+typedef Validator = String? Function(
+    Object? value, Map<String, Object?> values);
 
 /// An asynchronous field validator (e.g. "is this username taken?").
 /// Runs only after sync validators pass, debounced, with stale results dropped.
@@ -28,7 +29,9 @@ abstract final class Validators {
   static Validator minLength(int n, [String? message]) {
     return (value, _) {
       final s = value is String ? value : '';
-      return s.length < n ? (message ?? 'Must be at least $n characters') : null;
+      return s.length < n
+          ? (message ?? 'Must be at least $n characters')
+          : null;
     };
   }
 
@@ -50,7 +53,8 @@ abstract final class Validators {
   }
 
   /// Field must equal the value of [otherField] (e.g. confirm-password).
-  static Validator matches(String otherField, [String message = 'Does not match']) {
+  static Validator matches(String otherField,
+      [String message = 'Does not match']) {
     return (value, values) => value == values[otherField] ? null : message;
   }
 

@@ -41,7 +41,8 @@ class UpdateContactLastMessageUseCase
         return c.copyWith(
           lastMessage: event.lastMessage,
           lastMessageTime: event.lastMessageTime,
-          unreadCount: event.incrementUnread ? c.unreadCount + 1 : c.unreadCount,
+          unreadCount:
+              event.incrementUnread ? c.unreadCount + 1 : c.unreadCount,
         );
       }
       return c;

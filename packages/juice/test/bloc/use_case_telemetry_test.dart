@@ -100,8 +100,7 @@ void main() {
     await bloc.close();
   });
 
-  test('overlapping same-type executions keep distinct executionIds',
-      () async {
+  test('overlapping same-type executions keep distinct executionIds', () async {
     final bloc = TestBloc(initialState: TestState(value: 0));
     bloc.send(IncrementEvent());
     bloc.send(IncrementEvent());

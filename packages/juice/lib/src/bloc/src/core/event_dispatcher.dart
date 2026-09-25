@@ -74,13 +74,16 @@ class EventDispatcher<Event> {
     Future<void> raw(Event event) => handler(event as E);
     _handlers[eventType] = switch (concurrency) {
       EventConcurrency.concurrent => raw,
-      EventConcurrency.sequential => (event) => _sequential(eventType, raw, event),
-      EventConcurrency.droppable => (event) => _droppable(eventType, raw, event),
+      EventConcurrency.sequential => (event) =>
+          _sequential(eventType, raw, event),
+      EventConcurrency.droppable => (event) =>
+          _droppable(eventType, raw, event),
     };
   }
 
   /// Queue [event] behind any in-flight/queued same-type runs; one at a time.
-  Future<void> _sequential(Type type, EventHandler<Event> handler, Event event) {
+  Future<void> _sequential(
+      Type type, EventHandler<Event> handler, Event event) {
     final run = (_tails[type] ?? Future<void>.value()).then((_) async {
       if (_disposed) return; // queued after close → skip (no emit-after-close)
       try {
@@ -94,7 +97,8 @@ class EventDispatcher<Event> {
   }
 
   /// Drop [event] if a same-type run is already in flight.
-  Future<void> _droppable(Type type, EventHandler<Event> handler, Event event) async {
+  Future<void> _droppable(
+      Type type, EventHandler<Event> handler, Event event) async {
     if (_running[type] == true) return;
     _running[type] = true;
     try {

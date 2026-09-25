@@ -29,8 +29,8 @@ class AddLocalItemsUseCase extends BlocUseCase<MediaBloc, AddLocalItemsEvent> {
     }
 
     emitUpdate(
-      newState: bloc.state
-          .copyWith(items: [...bloc.state.items, ...event.items]),
+      newState:
+          bloc.state.copyWith(items: [...bloc.state.items, ...event.items]),
       groupsToRebuild: {
         MediaGroups.any,
         ...event.items.map((i) => MediaGroups.item(i.id)),

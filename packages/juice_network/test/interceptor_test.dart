@@ -6,16 +6,13 @@ import 'package:juice_network/juice_network.dart';
 void main() {
   group('AuthInterceptor', () {
     test('adds Bearer authorization header', () async {
-      final interceptor =
-          AuthInterceptor(tokenProvider: () async => 'tok123');
-      final result =
-          await interceptor.onRequest(RequestOptions(path: '/x'));
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok123');
+      final result = await interceptor.onRequest(RequestOptions(path: '/x'));
       expect(result.headers['Authorization'], 'Bearer tok123');
     });
 
     test('does not override an existing authorization header', () async {
-      final interceptor =
-          AuthInterceptor(tokenProvider: () async => 'tok123');
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok123');
       final options = RequestOptions(
         path: '/x',
         headers: {'Authorization': 'Bearer preset'},
@@ -36,8 +33,7 @@ void main() {
 
     test('adds no header when token is null', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
-      final result =
-          await interceptor.onRequest(RequestOptions(path: '/x'));
+      final result = await interceptor.onRequest(RequestOptions(path: '/x'));
       expect(result.headers.containsKey('Authorization'), isFalse);
     });
   });
@@ -46,8 +42,7 @@ void main() {
     test('adds API key header by default', () async {
       final interceptor =
           ApiKeyInterceptor(apiKey: 'secret', headerName: 'X-API-Key');
-      final result =
-          await interceptor.onRequest(RequestOptions(path: '/x'));
+      final result = await interceptor.onRequest(RequestOptions(path: '/x'));
       expect(result.headers['X-API-Key'], 'secret');
     });
 
@@ -57,8 +52,7 @@ void main() {
         asQueryParam: true,
         queryParamName: 'api_key',
       );
-      final result =
-          await interceptor.onRequest(RequestOptions(path: '/x'));
+      final result = await interceptor.onRequest(RequestOptions(path: '/x'));
       expect(result.queryParameters['api_key'], 'secret');
     });
   });

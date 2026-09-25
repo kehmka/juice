@@ -18,8 +18,7 @@ class ChatState extends BlocState {
     if (activeContactId == null) return [];
     return messages
         .where((m) =>
-            m.senderId == activeContactId ||
-            m.receiverId == activeContactId)
+            m.senderId == activeContactId || m.receiverId == activeContactId)
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }

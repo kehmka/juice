@@ -2,7 +2,12 @@ import 'package:flutter/foundation.dart';
 
 /// One `juice:<type>` event as received from the VM.
 class JuiceEvent {
-  JuiceEvent({required this.seq, required this.at, required this.kind, required this.data});
+  JuiceEvent({
+    required this.seq,
+    required this.at,
+    required this.kind,
+    required this.data,
+  });
 
   /// Arrival order — the timeline key (VM timestamps are coarse and can tie).
   final int seq;
@@ -15,22 +20,29 @@ class JuiceEvent {
   String get who =>
       (data['useCase'] ?? data['bloc'] ?? data['event'] ?? '').toString();
   String get message => (data['message'] ?? '').toString();
-  int? get executionId => data['executionId'] is int ? data['executionId'] as int : null;
-  int? get elapsedMicros => data['elapsedMicros'] is int ? data['elapsedMicros'] as int : null;
+  int? get executionId =>
+      data['executionId'] is int ? data['executionId'] as int : null;
+  int? get elapsedMicros =>
+      data['elapsedMicros'] is int ? data['elapsedMicros'] as int : null;
 
   bool get isProblem => const {
-        'use_case_error',
-        'bloc_error',
-        'error_handler_error',
-        'error',
-        'unhandled_event',
-        'leak_detection',
-      }.contains(kind);
+    'use_case_error',
+    'bloc_error',
+    'error_handler_error',
+    'error',
+    'unhandled_event',
+    'leak_detection',
+  }.contains(kind);
 }
 
 /// A use-case execution paired by `executionId`: start → completed|error.
 class JuiceSpan {
-  JuiceSpan({required this.executionId, required this.useCase, required this.event, required this.startedAt});
+  JuiceSpan({
+    required this.executionId,
+    required this.useCase,
+    required this.event,
+    required this.startedAt,
+  });
   final int executionId;
   final String useCase;
   final String event;
@@ -69,7 +81,12 @@ class TelemetryModel extends ChangeNotifier {
 
   /// Pure ingestion — the whole model derives from here.
   void ingest(String kind, Map<String, Object?> data, {DateTime? at}) {
-    final ev = JuiceEvent(seq: _seq++, at: at ?? DateTime.now(), kind: kind, data: data);
+    final ev = JuiceEvent(
+      seq: _seq++,
+      at: at ?? DateTime.now(),
+      kind: kind,
+      data: data,
+    );
     events.add(ev);
     if (events.length > maxEvents) events.removeAt(0);
 

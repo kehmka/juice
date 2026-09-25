@@ -133,7 +133,9 @@ void main() {
       final dioAdapter = DioAdapter(dio: dio);
       dioAdapter.onGet(
         '/me',
-        (server) => server.reply(200, {'ok': true}, headers: {
+        (server) => server.reply(200, {
+          'ok': true
+        }, headers: {
           'content-type': ['application/json'],
         }),
       );

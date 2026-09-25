@@ -50,8 +50,9 @@ class AnalyticsState extends BlocState {
     return AnalyticsState(
       enabled: enabled ?? this.enabled,
       userId: identical(userId, _unset) ? this.userId : userId as String?,
-      screenName:
-          identical(screenName, _unset) ? this.screenName : screenName as String?,
+      screenName: identical(screenName, _unset)
+          ? this.screenName
+          : screenName as String?,
       eventCount: eventCount ?? this.eventCount,
       droppedCount: droppedCount ?? this.droppedCount,
     );

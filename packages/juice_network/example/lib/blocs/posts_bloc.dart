@@ -46,7 +46,9 @@ class PostsState extends BlocState {
   }) {
     return PostsState(
       posts: posts ?? this.posts,
-      selectedPost: clearSelectedPost ? null : (selectedPost ?? this.selectedPost),
+      selectedPost: clearSelectedPost
+          ? null
+          : (selectedPost ?? this.selectedPost),
       selectedPostId: selectedPostId ?? this.selectedPostId,
       isListLoading: isListLoading ?? this.isListLoading,
       isDetailLoading: isDetailLoading ?? this.isDetailLoading,
@@ -85,68 +87,98 @@ class ClearPostDetailEvent extends EventBase {}
 class LoadPostsUseCase extends BlocUseCase<PostsBloc, LoadPostsEvent> {
   @override
   Future<void> execute(LoadPostsEvent event) async {
-    emitUpdate(newState: bloc.state.copyWith(isListLoading: true, clearListError: true));
+    emitUpdate(
+      newState: bloc.state.copyWith(isListLoading: true, clearListError: true),
+    );
 
     try {
-      await bloc.fetchBloc.send(GetEvent(
-        url: '/posts',
-        cachePolicy: bloc.state.cachePolicy,
-        ttl: const Duration(minutes: 5),
-        decode: (raw) {
-          // dummyjson.com returns {posts: [...], total, skip, limit}
-          final postsData = raw is Map ? raw['posts'] as List : raw as List;
-          final posts = Post.fromJsonList(postsData);
-          emitUpdate(newState: bloc.state.copyWith(posts: posts, isListLoading: false));
-          return posts;
-        },
-      ));
+      await bloc.fetchBloc.send(
+        GetEvent(
+          url: '/posts',
+          cachePolicy: bloc.state.cachePolicy,
+          ttl: const Duration(minutes: 5),
+          decode: (raw) {
+            // dummyjson.com returns {posts: [...], total, skip, limit}
+            final postsData = raw is Map ? raw['posts'] as List : raw as List;
+            final posts = Post.fromJsonList(postsData);
+            emitUpdate(
+              newState: bloc.state.copyWith(posts: posts, isListLoading: false),
+            );
+            return posts;
+          },
+        ),
+      );
     } catch (e) {
       emitFailure(
-        newState: bloc.state.copyWith(isListLoading: false, listError: e.toString()),
+        newState: bloc.state.copyWith(
+          isListLoading: false,
+          listError: e.toString(),
+        ),
       );
     }
   }
 }
 
-class SetCachePolicyUseCase extends BlocUseCase<PostsBloc, SetCachePolicyEvent> {
+class SetCachePolicyUseCase
+    extends BlocUseCase<PostsBloc, SetCachePolicyEvent> {
   @override
   Future<void> execute(SetCachePolicyEvent event) async {
     emitUpdate(newState: bloc.state.copyWith(cachePolicy: event.policy));
   }
 }
 
-class LoadPostDetailUseCase extends BlocUseCase<PostsBloc, LoadPostDetailEvent> {
+class LoadPostDetailUseCase
+    extends BlocUseCase<PostsBloc, LoadPostDetailEvent> {
   @override
   Future<void> execute(LoadPostDetailEvent event) async {
-    emitUpdate(newState: bloc.state.copyWith(
-      selectedPostId: event.postId,
-      isDetailLoading: true,
-      clearDetailError: true,
-      clearSelectedPost: true,
-      postDeleted: false,
-    ));
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        selectedPostId: event.postId,
+        isDetailLoading: true,
+        clearDetailError: true,
+        clearSelectedPost: true,
+        postDeleted: false,
+      ),
+    );
 
     // Check if we already have this post in the list
-    final cached = bloc.state.posts.where((p) => p.id == event.postId).firstOrNull;
+    final cached = bloc.state.posts
+        .where((p) => p.id == event.postId)
+        .firstOrNull;
     if (cached != null) {
-      emitUpdate(newState: bloc.state.copyWith(selectedPost: cached, isDetailLoading: false));
+      emitUpdate(
+        newState: bloc.state.copyWith(
+          selectedPost: cached,
+          isDetailLoading: false,
+        ),
+      );
       return;
     }
 
     try {
-      await bloc.fetchBloc.send(GetEvent(
-        url: '/posts/${event.postId}',
-        cachePolicy: CachePolicy.cacheFirst,
-        ttl: const Duration(minutes: 5),
-        decode: (raw) {
-          final post = Post.fromJson(raw as Map<String, dynamic>);
-          emitUpdate(newState: bloc.state.copyWith(selectedPost: post, isDetailLoading: false));
-          return post;
-        },
-      ));
+      await bloc.fetchBloc.send(
+        GetEvent(
+          url: '/posts/${event.postId}',
+          cachePolicy: CachePolicy.cacheFirst,
+          ttl: const Duration(minutes: 5),
+          decode: (raw) {
+            final post = Post.fromJson(raw as Map<String, dynamic>);
+            emitUpdate(
+              newState: bloc.state.copyWith(
+                selectedPost: post,
+                isDetailLoading: false,
+              ),
+            );
+            return post;
+          },
+        ),
+      );
     } catch (e) {
       emitFailure(
-        newState: bloc.state.copyWith(isDetailLoading: false, detailError: e.toString()),
+        newState: bloc.state.copyWith(
+          isDetailLoading: false,
+          detailError: e.toString(),
+        ),
       );
     }
   }
@@ -162,24 +194,35 @@ class DeletePostUseCase extends BlocUseCase<PostsBloc, DeletePostEvent> {
 
     try {
       await bloc.fetchBloc.send(DeleteEvent(url: '/posts/$postId'));
-      emitUpdate(newState: bloc.state.copyWith(isDetailLoading: false, postDeleted: true));
+      emitUpdate(
+        newState: bloc.state.copyWith(
+          isDetailLoading: false,
+          postDeleted: true,
+        ),
+      );
     } catch (e) {
       emitFailure(
-        newState: bloc.state.copyWith(isDetailLoading: false, detailError: e.toString()),
+        newState: bloc.state.copyWith(
+          isDetailLoading: false,
+          detailError: e.toString(),
+        ),
       );
     }
   }
 }
 
-class ClearPostDetailUseCase extends BlocUseCase<PostsBloc, ClearPostDetailEvent> {
+class ClearPostDetailUseCase
+    extends BlocUseCase<PostsBloc, ClearPostDetailEvent> {
   @override
   Future<void> execute(ClearPostDetailEvent event) async {
-    emitUpdate(newState: bloc.state.copyWith(
-      clearSelectedPost: true,
-      selectedPostId: null,
-      clearDetailError: true,
-      postDeleted: false,
-    ));
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        clearSelectedPost: true,
+        selectedPostId: null,
+        clearDetailError: true,
+        postDeleted: false,
+      ),
+    );
   }
 }
 
@@ -191,30 +234,27 @@ class PostsBloc extends JuiceBloc<PostsState> {
   final FetchBloc fetchBloc;
 
   PostsBloc({required this.fetchBloc})
-      : super(
-          const PostsState(),
-          [
-            () => UseCaseBuilder(
-                  typeOfEvent: LoadPostsEvent,
-                  useCaseGenerator: () => LoadPostsUseCase(),
-                  initialEventBuilder: () => LoadPostsEvent(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: SetCachePolicyEvent,
-                  useCaseGenerator: () => SetCachePolicyUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: LoadPostDetailEvent,
-                  useCaseGenerator: () => LoadPostDetailUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: DeletePostEvent,
-                  useCaseGenerator: () => DeletePostUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ClearPostDetailEvent,
-                  useCaseGenerator: () => ClearPostDetailUseCase(),
-                ),
-          ],
-        );
+    : super(const PostsState(), [
+        () => UseCaseBuilder(
+          typeOfEvent: LoadPostsEvent,
+          useCaseGenerator: () => LoadPostsUseCase(),
+          initialEventBuilder: () => LoadPostsEvent(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: SetCachePolicyEvent,
+          useCaseGenerator: () => SetCachePolicyUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: LoadPostDetailEvent,
+          useCaseGenerator: () => LoadPostDetailUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: DeletePostEvent,
+          useCaseGenerator: () => DeletePostUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ClearPostDetailEvent,
+          useCaseGenerator: () => ClearPostDetailUseCase(),
+        ),
+      ]);
 }

@@ -17,9 +17,8 @@ class LoadMessagesUseCase extends UseCase<ChatBloc, LoadMessagesEvent> {
     List<Message> messages = [];
     if (json != null) {
       final list = jsonDecode(json) as List<dynamic>;
-      messages = list
-          .map((e) => Message.fromJson(e as Map<String, dynamic>))
-          .toList();
+      messages =
+          list.map((e) => Message.fromJson(e as Map<String, dynamic>)).toList();
     }
 
     emitUpdate(

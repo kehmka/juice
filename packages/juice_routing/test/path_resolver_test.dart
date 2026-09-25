@@ -92,7 +92,8 @@ void main() {
       test('decodes URL-encoded parameters', () {
         final config = RoutingConfig(
           routes: [
-            RouteConfig(path: '/search/:query', builder: (_) => const SizedBox()),
+            RouteConfig(
+                path: '/search/:query', builder: (_) => const SizedBox()),
           ],
         );
         final resolver = PathResolver(config);

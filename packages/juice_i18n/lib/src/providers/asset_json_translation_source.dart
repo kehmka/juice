@@ -31,7 +31,8 @@ class AssetJsonTranslationSource implements TranslationSource {
 
   @override
   Future<Map<String, String>> load(Locale locale) async {
-    final raw = await bundle.loadString('$basePath/${locale.toLanguageTag()}.json');
+    final raw =
+        await bundle.loadString('$basePath/${locale.toLanguageTag()}.json');
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     return decoded.map((k, v) => MapEntry(k, '$v'));
   }

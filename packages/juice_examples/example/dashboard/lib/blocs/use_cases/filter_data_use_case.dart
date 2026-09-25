@@ -8,7 +8,8 @@ import '../../models/chart_data.dart';
 class FilterDataUseCase extends UseCase<AnalyticsBloc, FilterDataEvent> {
   @override
   Future<void> execute(FilterDataEvent event) async {
-    emitWaiting(newState: bloc.state.copyWith(
+    emitWaiting(
+        newState: bloc.state.copyWith(
       dateRange: event.dateRange,
       isLoading: true,
     ));

@@ -23,8 +23,7 @@ class BatteryPlusProvider implements PowerProvider {
       _battery.onBatteryStateChanged.asyncMap(_enrich);
 
   @override
-  Future<PowerSnapshot> check() async =>
-      _enrich(await _battery.batteryState);
+  Future<PowerSnapshot> check() async => _enrich(await _battery.batteryState);
 
   @override
   Future<void> dispose() async {}
@@ -47,9 +46,9 @@ class BatteryPlusProvider implements PowerProvider {
       final level = await _battery.batteryLevel;
       if (level < 0 || level > 100) {
         // -1 on the Simulator. Not an error, but not a level either.
-        JuiceLoggerConfig.logger.log(
-            'BatteryPlusProvider: battery level out of range ($level) — '
-            'reporting unknown');
+        JuiceLoggerConfig.logger
+            .log('BatteryPlusProvider: battery level out of range ($level) — '
+                'reporting unknown');
         return null;
       }
       return level;
@@ -87,8 +86,7 @@ class BatteryPlusProvider implements PowerProvider {
         BatteryState.charging => BatteryStatus.charging,
         BatteryState.discharging => BatteryStatus.discharging,
         BatteryState.full => BatteryStatus.full,
-        BatteryState.connectedNotCharging =>
-          BatteryStatus.connectedNotCharging,
+        BatteryState.connectedNotCharging => BatteryStatus.connectedNotCharging,
         BatteryState.unknown => BatteryStatus.unknown,
       };
 }

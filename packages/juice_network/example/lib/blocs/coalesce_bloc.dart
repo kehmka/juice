@@ -59,19 +59,27 @@ class FireRequestUseCase extends BlocUseCase<CoalesceBloc, FireRequestEvent> {
 
     final coalescedBefore = bloc.fetchBloc.state.stats.coalescedCount;
 
-    await bloc.fetchBloc.send(GetEvent(
-      url: '/posts/1',
-      cachePolicy: CachePolicy.networkOnly,
-      decode: (raw) => raw,
-    ));
+    await bloc.fetchBloc.send(
+      GetEvent(
+        url: '/posts/1',
+        cachePolicy: CachePolicy.networkOnly,
+        decode: (raw) => raw,
+      ),
+    );
 
     final stats = bloc.fetchBloc.state.stats;
     if (stats.coalescedCount > coalescedBefore) {
       _addLog('Request was COALESCED (shared existing call)');
-      emitUpdate(newState: bloc.state.copyWith(coalescedCount: stats.coalescedCount));
+      emitUpdate(
+        newState: bloc.state.copyWith(coalescedCount: stats.coalescedCount),
+      );
     } else {
       _addLog('Network call completed');
-      emitUpdate(newState: bloc.state.copyWith(networkCalls: bloc.state.networkCalls + 1));
+      emitUpdate(
+        newState: bloc.state.copyWith(
+          networkCalls: bloc.state.networkCalls + 1,
+        ),
+      );
     }
   }
 
@@ -92,16 +100,24 @@ class FireBurstUseCase extends BlocUseCase<CoalesceBloc, FireBurstEvent> {
     final successBefore = bloc.fetchBloc.state.stats.successCount;
 
     // Update tap count for all requests
-    emitUpdate(newState: bloc.state.copyWith(tapCount: bloc.state.tapCount + event.count));
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        tapCount: bloc.state.tapCount + event.count,
+      ),
+    );
 
     // Fire all requests simultaneously
     final futures = <Future>[];
     for (var i = 0; i < event.count; i++) {
-      futures.add(bloc.fetchBloc.send(GetEvent(
-        url: '/posts/1',
-        cachePolicy: CachePolicy.networkOnly,
-        decode: (raw) => raw,
-      )));
+      futures.add(
+        bloc.fetchBloc.send(
+          GetEvent(
+            url: '/posts/1',
+            cachePolicy: CachePolicy.networkOnly,
+            decode: (raw) => raw,
+          ),
+        ),
+      );
     }
 
     await Future.wait(futures);
@@ -110,11 +126,15 @@ class FireBurstUseCase extends BlocUseCase<CoalesceBloc, FireBurstEvent> {
     final newCoalesced = stats.coalescedCount - coalescedBefore;
     final newSuccess = stats.successCount - successBefore;
 
-    _addLog('Burst complete: $newSuccess network calls, $newCoalesced coalesced');
-    emitUpdate(newState: bloc.state.copyWith(
-      coalescedCount: stats.coalescedCount,
-      networkCalls: bloc.state.networkCalls + newSuccess,
-    ));
+    _addLog(
+      'Burst complete: $newSuccess network calls, $newCoalesced coalesced',
+    );
+    emitUpdate(
+      newState: bloc.state.copyWith(
+        coalescedCount: stats.coalescedCount,
+        networkCalls: bloc.state.networkCalls + newSuccess,
+      ),
+    );
   }
 
   void _addLog(String message) {
@@ -125,14 +145,17 @@ class FireBurstUseCase extends BlocUseCase<CoalesceBloc, FireBurstEvent> {
   }
 }
 
-class ResetCoalesceUseCase extends BlocUseCase<CoalesceBloc, ResetCoalesceEvent> {
+class ResetCoalesceUseCase
+    extends BlocUseCase<CoalesceBloc, ResetCoalesceEvent> {
   @override
   Future<void> execute(ResetCoalesceEvent event) async {
     bloc.fetchBloc.send(ResetStatsEvent());
     final timestamp = DateTime.now().toIso8601String().substring(11, 23);
-    emitUpdate(newState: const CoalesceState().copyWith(
-      logs: ['$timestamp Stats reset'],
-    ));
+    emitUpdate(
+      newState: const CoalesceState().copyWith(
+        logs: ['$timestamp Stats reset'],
+      ),
+    );
   }
 }
 
@@ -144,21 +167,18 @@ class CoalesceBloc extends JuiceBloc<CoalesceState> {
   final FetchBloc fetchBloc;
 
   CoalesceBloc({required this.fetchBloc})
-      : super(
-          const CoalesceState(),
-          [
-            () => UseCaseBuilder(
-                  typeOfEvent: FireRequestEvent,
-                  useCaseGenerator: () => FireRequestUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: FireBurstEvent,
-                  useCaseGenerator: () => FireBurstUseCase(),
-                ),
-            () => UseCaseBuilder(
-                  typeOfEvent: ResetCoalesceEvent,
-                  useCaseGenerator: () => ResetCoalesceUseCase(),
-                ),
-          ],
-        );
+    : super(const CoalesceState(), [
+        () => UseCaseBuilder(
+          typeOfEvent: FireRequestEvent,
+          useCaseGenerator: () => FireRequestUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: FireBurstEvent,
+          useCaseGenerator: () => FireBurstUseCase(),
+        ),
+        () => UseCaseBuilder(
+          typeOfEvent: ResetCoalesceEvent,
+          useCaseGenerator: () => ResetCoalesceUseCase(),
+        ),
+      ]);
 }

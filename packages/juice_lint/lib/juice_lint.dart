@@ -11,8 +11,8 @@ PluginBase createPlugin() => _JuiceLint();
 class _JuiceLint extends PluginBase {
   @override
   List<LintRule> getLintRules(CustomLintConfigs configs) => [
-        const GenericEvent(),
-        const MutableStateField(),
-        const BehaviorInState(),
-      ];
+    const GenericEvent(),
+    const MutableStateField(),
+    const BehaviorInState(),
+  ];
 }

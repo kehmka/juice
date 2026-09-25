@@ -30,8 +30,7 @@ class ConnectivityPlusProvider implements ConnectivityProvider {
       ConnectivitySnapshot(type: _toType(results));
 
   ConnectionType _toType(List<ConnectivityResult> results) {
-    if (results.isEmpty ||
-        results.every((r) => r == ConnectivityResult.none)) {
+    if (results.isEmpty || results.every((r) => r == ConnectivityResult.none)) {
       return ConnectionType.none;
     }
     if (results.contains(ConnectivityResult.wifi)) return ConnectionType.wifi;

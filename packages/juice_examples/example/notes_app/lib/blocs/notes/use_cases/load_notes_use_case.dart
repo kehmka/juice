@@ -24,8 +24,7 @@ class LoadNotesUseCase extends BlocUseCase<NotesBloc, LoadNotesEvent> {
       for (final key in noteKeys) {
         final json = await storage.hiveRead<String>('notes', key);
         if (json != null) {
-          notes.add(
-              Note.fromJson(jsonDecode(json) as Map<String, dynamic>));
+          notes.add(Note.fromJson(jsonDecode(json) as Map<String, dynamic>));
         }
       }
 
@@ -34,8 +33,7 @@ class LoadNotesUseCase extends BlocUseCase<NotesBloc, LoadNotesEvent> {
       for (final key in trashKeys) {
         final json = await storage.hiveRead<String>('trash', key);
         if (json != null) {
-          notes.add(
-              Note.fromJson(jsonDecode(json) as Map<String, dynamic>));
+          notes.add(Note.fromJson(jsonDecode(json) as Map<String, dynamic>));
         }
       }
 
@@ -43,8 +41,7 @@ class LoadNotesUseCase extends BlocUseCase<NotesBloc, LoadNotesEvent> {
 
       emitUpdate(
         newState: bloc.state.copyWith(notes: notes),
-        groupsToRebuild:
-            {NotesGroups.list, NotesGroups.trash}.toStringSet(),
+        groupsToRebuild: {NotesGroups.list, NotesGroups.trash}.toStringSet(),
       );
     } catch (e, stackTrace) {
       logError(e, stackTrace);

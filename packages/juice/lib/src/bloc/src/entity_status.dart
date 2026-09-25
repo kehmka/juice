@@ -127,8 +127,7 @@ class EntityStatuses<K> {
   /// Clear [key] back to idle (removes it — idle is the absence of an entry).
   EntityStatuses<K> idle(K key) {
     if (!_statuses.containsKey(key)) return this;
-    return EntityStatuses<K>(
-        Map<K, EntityStatus>.from(_statuses)..remove(key));
+    return EntityStatuses<K>(Map<K, EntityStatus>.from(_statuses)..remove(key));
   }
 
   /// Clear every tracked entity.

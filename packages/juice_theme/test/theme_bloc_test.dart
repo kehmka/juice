@@ -175,8 +175,10 @@ void concurrencyModeTests() {
       await bloc.close();
     });
 
-    test('a second mode change does not START its save until the first '
-        'completes (sequential) — and persistence ends on the newest', () async {
+    test(
+        'a second mode change does not START its save until the first '
+        'completes (sequential) — and persistence ends on the newest',
+        () async {
       final p = GatedThemePersistence();
       final bloc = ThemeBloc.withConfig(ThemeConfig(persistence: p));
       await settle();

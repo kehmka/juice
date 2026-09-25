@@ -51,7 +51,8 @@ class HomeScreen extends StatelessJuiceWidget<AnalyticsBloc> {
               onChanged: bloc.setConsent,
             ),
             const SizedBox(height: 12),
-            Text('${s.eventCount} sent · ${s.droppedCount} dropped (no consent)'),
+            Text(
+                '${s.eventCount} sent · ${s.droppedCount} dropped (no consent)'),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: () => bloc.log('button_tapped', {'at': 'demo'}),

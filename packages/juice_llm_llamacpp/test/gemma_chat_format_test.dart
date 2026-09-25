@@ -15,7 +15,10 @@ void main() {
       ]);
       expect(p, isNot(contains(kMediaMarker)));
       // System folds into the first user turn.
-      expect(p, contains('<start_of_turn>user\nYou are the Almanac.\n\nA quiet morning.<end_of_turn>'));
+      expect(
+          p,
+          contains(
+              '<start_of_turn>user\nYou are the Almanac.\n\nA quiet morning.<end_of_turn>'));
       expect(p, endsWith('<start_of_turn>model\n'));
     });
 
@@ -25,12 +28,16 @@ void main() {
       ]);
       expect(kMediaMarker.allMatches(p).length, 1);
       // Marker comes before the user's text.
-      expect(p, contains('<start_of_turn>user\n$kMediaMarker\nWhat is this?<end_of_turn>'));
+      expect(
+          p,
+          contains(
+              '<start_of_turn>user\n$kMediaMarker\nWhat is this?<end_of_turn>'));
     });
 
     test('markers count images + audio, images first', () {
       final p = gemmaChatFormat([
-        LlmMessage.user('Describe.', images: [_bytes(4), _bytes(4)], audio: [_bytes(4)]),
+        LlmMessage.user('Describe.',
+            images: [_bytes(4), _bytes(4)], audio: [_bytes(4)]),
       ]);
       // 2 images + 1 audio = 3 markers.
       expect(kMediaMarker.allMatches(p).length, 3);
@@ -43,8 +50,10 @@ void main() {
         LlmMessage.user('second', audio: [_bytes(4)]),
       ]);
       expect(kMediaMarker.allMatches(p).length, 2);
-      expect(p, contains('<start_of_turn>user\n$kMediaMarker\nfirst<end_of_turn>'));
-      expect(p, contains('<start_of_turn>user\n$kMediaMarker\nsecond<end_of_turn>'));
+      expect(p,
+          contains('<start_of_turn>user\n$kMediaMarker\nfirst<end_of_turn>'));
+      expect(p,
+          contains('<start_of_turn>user\n$kMediaMarker\nsecond<end_of_turn>'));
       // The assistant turn has no marker.
       expect(p, contains('<start_of_turn>model\nok<end_of_turn>'));
     });
@@ -56,7 +65,8 @@ void main() {
       expect(p, contains('<start_of_turn>user\n$kMediaMarker<end_of_turn>'));
     });
 
-    test('system folds into the first USER turn even after a leading assistant '
+    test(
+        'system folds into the first USER turn even after a leading assistant '
         'turn (regression: was silently dropped)', () {
       final p = gemmaChatFormat(const [
         LlmMessage.system('You are the Almanac.'),
@@ -81,7 +91,8 @@ void main() {
         LlmMessage.system('You are the Almanac.'),
         LlmMessage.assistant('A greeting.'),
       ]);
-      expect(p, startsWith('<start_of_turn>user\nYou are the Almanac.<end_of_turn>'));
+      expect(p,
+          startsWith('<start_of_turn>user\nYou are the Almanac.<end_of_turn>'));
       expect(p, contains('<start_of_turn>model\nA greeting.<end_of_turn>'));
     });
 

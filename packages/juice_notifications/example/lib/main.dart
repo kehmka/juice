@@ -52,7 +52,8 @@ class HomeScreen extends StatelessJuiceWidget<NotificationsBloc> {
           children: [
             SwitchListTile(
               title: const Text('Permission granted'),
-              subtitle: const Text('(wire from juice_permissions in a real app)'),
+              subtitle:
+                  const Text('(wire from juice_permissions in a real app)'),
               value: state.permissionGranted,
               onChanged: bloc.setPermissionStatus,
             ),

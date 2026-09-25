@@ -33,10 +33,13 @@ class TelemetryStore extends TelemetryModel {
       final kind = e.extensionKind;
       if (kind == null || !kind.startsWith('juice:')) return;
       final data = Map<String, Object?>.from(e.extensionData?.data ?? const {});
-      ingest(kind.substring('juice:'.length), data,
-          at: e.timestamp != null
-              ? DateTime.fromMillisecondsSinceEpoch(e.timestamp!)
-              : DateTime.now());
+      ingest(
+        kind.substring('juice:'.length),
+        data,
+        at: e.timestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(e.timestamp!)
+            : DateTime.now(),
+      );
     });
     notifyListeners();
   }

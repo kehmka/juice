@@ -77,7 +77,8 @@ class ItemList extends StatelessJuiceWidget<MediaBloc> {
 
 /// One tile — rebuilds only on its own item's group (upload progress included).
 class ItemTile extends StatelessJuiceWidget<MediaBloc> {
-  ItemTile({required this.id}) : super(key: ValueKey(id), groups: {MediaGroups.item(id)});
+  ItemTile({required this.id})
+      : super(key: ValueKey(id), groups: {MediaGroups.item(id)});
 
   final String id;
 
@@ -115,7 +116,8 @@ class ItemTile extends StatelessJuiceWidget<MediaBloc> {
     switch (up?.status) {
       case UploadStatus.uploading:
         return IconButton(
-            icon: const Icon(Icons.cancel), onPressed: () => bloc.cancelUpload(id));
+            icon: const Icon(Icons.cancel),
+            onPressed: () => bloc.cancelUpload(id));
       case UploadStatus.completed:
         return const Icon(Icons.check_circle, color: Colors.green);
       case UploadStatus.failed:
@@ -130,7 +132,8 @@ class ItemTile extends StatelessJuiceWidget<MediaBloc> {
 }
 
 class MediaActions extends StatelessJuiceWidget<MediaBloc> {
-  MediaActions({super.key}) : super(groups: {MediaGroups.any, MediaGroups.picking});
+  MediaActions({super.key})
+      : super(groups: {MediaGroups.any, MediaGroups.picking});
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {
@@ -139,7 +142,9 @@ class MediaActions extends StatelessJuiceWidget<MediaBloc> {
       children: [
         FloatingActionButton.extended(
           heroTag: 'pick',
-          onPressed: bloc.state.picking ? null : () => bloc.pickFromGallery(multiple: true),
+          onPressed: bloc.state.picking
+              ? null
+              : () => bloc.pickFromGallery(multiple: true),
           icon: const Icon(Icons.add_photo_alternate),
           label: const Text('Pick'),
         ),

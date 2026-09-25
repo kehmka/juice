@@ -43,7 +43,8 @@ class UploadState {
       itemId: itemId,
       status: status ?? this.status,
       progress: progress ?? this.progress,
-      remoteUrl: identical(remoteUrl, _unset) ? this.remoteUrl : remoteUrl as String?,
+      remoteUrl:
+          identical(remoteUrl, _unset) ? this.remoteUrl : remoteUrl as String?,
       error: identical(error, _unset) ? this.error : error as String?,
     );
   }

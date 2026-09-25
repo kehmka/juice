@@ -8,7 +8,8 @@ import 'cleanup_barrier.dart';
 import 'feature_scope.dart';
 
 /// Use case to start tracking a scope.
-class StartScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, StartScopeEvent> {
+class StartScopeUseCase
+    extends BlocUseCase<ScopeLifecycleBloc, StartScopeEvent> {
   @override
   Future<void> execute(StartScopeEvent event) async {
     // Generate unique ID via monotonic counter

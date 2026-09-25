@@ -28,8 +28,7 @@ class ContactsBloc extends JuiceBloc<ContactsState> {
           ],
         ) {
     // Listen for online status changes
-    _statusSubscription =
-        chatService.onlineStatusChanges.listen((record) {
+    _statusSubscription = chatService.onlineStatusChanges.listen((record) {
       send(UpdateContactStatusEvent(
         contactId: record.$1,
         isOnline: record.$2,

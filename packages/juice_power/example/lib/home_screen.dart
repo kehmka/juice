@@ -31,9 +31,7 @@ class HomeScreen extends StatelessJuiceWidget<PowerBloc> {
         padding: const EdgeInsets.all(16),
         children: [
           _Row(label: 'status', value: s.status.name),
-          _Row(
-              label: 'plugged in',
-              value: s.isPluggedIn ? 'yes' : 'no'),
+          _Row(label: 'plugged in', value: s.isPluggedIn ? 'yes' : 'no'),
           _Row(
               label: 'level',
               value: s.percent == null ? 'unknown' : '${s.percent}%'),
@@ -46,9 +44,8 @@ class HomeScreen extends StatelessJuiceWidget<PowerBloc> {
                 ? Colors.green.withValues(alpha: 0.15)
                 : Colors.orange.withValues(alpha: 0.15),
             child: ListTile(
-              title: Text(mayRun
-                  ? 'Heavy work may run'
-                  : 'Heavy work is paused'),
+              title:
+                  Text(mayRun ? 'Heavy work may run' : 'Heavy work is paused'),
               subtitle: const Text(
                   'This rule lives in the app, not the package — only the app '
                   'knows what the work costs.'),
@@ -91,8 +88,7 @@ class _Row extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label),
-            Text(value,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       );

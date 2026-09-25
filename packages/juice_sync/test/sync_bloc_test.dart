@@ -191,7 +191,8 @@ void main() {
   group('Partitioned ordering', () {
     test('a blocked orderingKey holds its siblings; independents proceed',
         () async {
-      final ex = FakeExecutor()..retryableTimes['head'] = 1000; // head always fails
+      final ex = FakeExecutor()
+        ..retryableTimes['head'] = 1000; // head always fails
       final bloc = build(ex, InMemorySyncStore(),
           initialBackoff: const Duration(milliseconds: 200));
       await settle();
@@ -205,7 +206,8 @@ void main() {
       expect(sentTypes, contains('head'));
       expect(sentTypes, contains('indep')); // independent partition proceeded
       expect(sentTypes, isNot(contains('tail'))); // blocked behind head
-      expect(bloc.state.pending.map((m) => m.type), containsAll(['head', 'tail']));
+      expect(
+          bloc.state.pending.map((m) => m.type), containsAll(['head', 'tail']));
       await bloc.close();
     });
   });
@@ -434,7 +436,8 @@ void concurrencyModeTests() {
       await bloc.close();
     });
 
-    test('a mutation enqueued MID-FLUSH is sent by the same flush (re-run flag)',
+    test(
+        'a mutation enqueued MID-FLUSH is sent by the same flush (re-run flag)',
         () async {
       final ex = GatedExecutor()
         ..gatedType = 'a'

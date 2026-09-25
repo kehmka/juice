@@ -31,7 +31,8 @@ class ConsoleAnalyticsSink implements AnalyticsSink {
   Future<void> logEvent(String name, Map<String, Object?> params) async =>
       _out('[analytics] $name $params');
   @override
-  Future<void> setScreen(String name) async => _out('[analytics] screen: $name');
+  Future<void> setScreen(String name) async =>
+      _out('[analytics] screen: $name');
   @override
   Future<void> setUser(String? userId, Map<String, Object?> traits) async =>
       _out('[analytics] user: $userId $traits');

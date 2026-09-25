@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 
-
 /// `emitUpdate(skipIfSame: true)` — the ==-dedup emit option (BlocSignal
 /// tee-up item 4, already in core). Per-CALL by design: a statement about
 /// one emission site, never a bloc-wide mode — so `waiting → waiting`
@@ -11,11 +10,14 @@ import 'package:juice/juice.dart';
 class _RecordingLogger implements JuiceLogger {
   final skipped = <Map<String, dynamic>>[];
   @override
-  void log(String m, {Level level = Level.info, Map<String, dynamic>? context}) {
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {
     if (context?['type'] == 'state_emission_skipped') skipped.add(context!);
   }
+
   @override
-  void logError(String m, Object e, StackTrace s, {Map<String, dynamic>? context}) {}
+  void logError(String m, Object e, StackTrace s,
+      {Map<String, dynamic>? context}) {}
 }
 
 /// A state WITH value equality — the precondition `skipIfSame` documents.

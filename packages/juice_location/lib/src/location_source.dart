@@ -29,8 +29,7 @@ class GeoPosition {
   });
 
   @override
-  String toString() =>
-      'GeoPosition($latitude, $longitude ±${accuracy}m)';
+  String toString() => 'GeoPosition($latitude, $longitude ±${accuracy}m)';
 }
 
 /// Vendor seam for device location.

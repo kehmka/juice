@@ -25,10 +25,18 @@ class PostsScreen extends StatelessJuiceWidget<PostsBloc> {
             },
             itemBuilder: (context) => [
               _buildPolicyItem(CachePolicy.cacheFirst, 'Cache First', state),
-              _buildPolicyItem(CachePolicy.networkFirst, 'Network First', state),
+              _buildPolicyItem(
+                CachePolicy.networkFirst,
+                'Network First',
+                state,
+              ),
               _buildPolicyItem(CachePolicy.networkOnly, 'Network Only', state),
               _buildPolicyItem(CachePolicy.cacheOnly, 'Cache Only', state),
-              _buildPolicyItem(CachePolicy.staleWhileRevalidate, 'Stale While Revalidate', state),
+              _buildPolicyItem(
+                CachePolicy.staleWhileRevalidate,
+                'Stale While Revalidate',
+                state,
+              ),
             ],
           ),
           IconButton(
@@ -51,8 +59,7 @@ class PostsScreen extends StatelessJuiceWidget<PostsBloc> {
       value: policy,
       child: Row(
         children: [
-          if (state.cachePolicy == policy)
-            const Icon(Icons.check, size: 18),
+          if (state.cachePolicy == policy) const Icon(Icons.check, size: 18),
           const SizedBox(width: 8),
           Text(label),
         ],
@@ -110,11 +117,9 @@ class PostsScreen extends StatelessJuiceWidget<PostsBloc> {
   }
 
   void _navigateToDetail(BuildContext context, int postId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PostDetailScreen(postId: postId),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => PostDetailScreen(postId: postId)));
   }
 }
 
@@ -128,16 +133,8 @@ class _PostListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: CircleAvatar(child: Text('${post.id}')),
-      title: Text(
-        post.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        post.body,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
+      title: Text(post.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(post.body, maxLines: 2, overflow: TextOverflow.ellipsis),
       onTap: onTap,
     );
   }

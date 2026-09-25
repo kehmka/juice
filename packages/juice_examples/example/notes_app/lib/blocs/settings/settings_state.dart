@@ -1,6 +1,7 @@
 import 'package:juice/juice.dart';
 
 enum ViewMode { list, grid }
+
 enum SortOrder { updatedDesc, updatedAsc, titleAsc, titleDesc }
 
 class SettingsState extends BlocState {

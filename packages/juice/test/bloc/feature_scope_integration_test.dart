@@ -85,7 +85,9 @@ void main() {
         final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
 
         var cleanupDone = false;
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.delayed(Duration(milliseconds: 10), () {
             cleanupDone = true;
           }));
@@ -202,19 +204,25 @@ void main() {
         var cleanup3Done = false;
 
         // Simulate multiple blocs subscribing
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.delayed(Duration(milliseconds: 10), () {
             cleanup1Done = true;
           }));
         });
 
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.delayed(Duration(milliseconds: 20), () {
             cleanup2Done = true;
           }));
         });
 
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.delayed(Duration(milliseconds: 15), () {
             cleanup3Done = true;
           }));
@@ -238,7 +246,9 @@ void main() {
         );
 
         final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.error('cleanup error'));
         });
 
@@ -261,7 +271,9 @@ void main() {
         );
 
         final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
-        lifecycleBloc.notifications.ofType<ScopeEndingNotification>().listen((n) {
+        lifecycleBloc.notifications
+            .ofType<ScopeEndingNotification>()
+            .listen((n) {
           n.barrier.add(Future.delayed(Duration(seconds: 5)));
         });
 

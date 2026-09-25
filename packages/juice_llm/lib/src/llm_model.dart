@@ -71,6 +71,7 @@ class LlmModel {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'LlmModel($id, ${(sizeBytes / 1e6).toStringAsFixed(0)}MB, '
+  String toString() =>
+      'LlmModel($id, ${(sizeBytes / 1e6).toStringAsFixed(0)}MB, '
       '${capabilities.map((c) => c.name).join("+")})';
 }

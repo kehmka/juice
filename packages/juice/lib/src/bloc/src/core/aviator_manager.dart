@@ -53,7 +53,8 @@ class AviatorManager {
   ///
   /// Use this when you need to wait for async navigation (e.g., auth checks,
   /// data loading) to complete before proceeding.
-  Future<void> navigateAsync(String? aviatorName, Map<String, dynamic>? args) async {
+  Future<void> navigateAsync(
+      String? aviatorName, Map<String, dynamic>? args) async {
     if (aviatorName == null) return;
     final aviator = _aviators[aviatorName];
     if (aviator != null) {

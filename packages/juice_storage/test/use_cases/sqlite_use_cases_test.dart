@@ -105,7 +105,8 @@ void main() {
 
       // Insert test data directly
       final gateway = SqliteGatewayFactory.instance!;
-      await gateway.insert('users', {'name': 'Alice', 'email': 'alice@test.com'});
+      await gateway
+          .insert('users', {'name': 'Alice', 'email': 'alice@test.com'});
       await gateway.insert('users', {'name': 'Bob', 'email': 'bob@test.com'});
 
       final bloc = StorageBloc(
@@ -113,7 +114,8 @@ void main() {
         cacheIndex: cacheIndex,
       );
 
-      final queryEvent = SqliteQueryEvent(sql: 'SELECT * FROM users ORDER BY name');
+      final queryEvent =
+          SqliteQueryEvent(sql: 'SELECT * FROM users ORDER BY name');
       bloc.send(queryEvent);
       final results = await queryEvent.result as List<Map<String, dynamic>>;
 
@@ -128,7 +130,8 @@ void main() {
       await initSqliteWithTestTable();
 
       final gateway = SqliteGatewayFactory.instance!;
-      await gateway.insert('users', {'name': 'Alice', 'email': 'alice@test.com'});
+      await gateway
+          .insert('users', {'name': 'Alice', 'email': 'alice@test.com'});
       await gateway.insert('users', {'name': 'Bob', 'email': 'bob@test.com'});
 
       final bloc = StorageBloc(
@@ -189,7 +192,8 @@ void main() {
         cacheIndex: cacheIndex,
       );
 
-      final queryEvent = SqliteQueryEvent(sql: 'SELECT * FROM nonexistent_table');
+      final queryEvent =
+          SqliteQueryEvent(sql: 'SELECT * FROM nonexistent_table');
       bloc.send(queryEvent);
 
       // Use a shorter timeout for the error expectation
@@ -222,7 +226,8 @@ void main() {
 
       // Verify data was inserted
       final gateway = SqliteGatewayFactory.instance!;
-      final results = await gateway.query('SELECT * FROM users WHERE id = ?', [rowId]);
+      final results =
+          await gateway.query('SELECT * FROM users WHERE id = ?', [rowId]);
       expect(results.length, 1);
       expect(results[0]['name'], 'Charlie');
 
@@ -341,7 +346,8 @@ void main() {
       expect(affected, 1);
 
       // Verify update
-      final results = await gateway.query('SELECT email FROM users WHERE name = ?', ['Alice']);
+      final results = await gateway
+          .query('SELECT email FROM users WHERE name = ?', ['Alice']);
       expect(results[0]['email'], 'new@test.com');
 
       await bloc.close();
@@ -515,14 +521,16 @@ void main() {
       );
 
       final rawEvent = SqliteRawEvent(
-        sql: 'CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)',
+        sql:
+            'CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)',
       );
       bloc.send(rawEvent);
       await rawEvent.result;
 
       // Verify table was created by inserting into it
       final gateway = SqliteGatewayFactory.instance!;
-      final rowId = await gateway.insert('settings', {'key': 'theme', 'value': 'dark'});
+      final rowId =
+          await gateway.insert('settings', {'key': 'theme', 'value': 'dark'});
       expect(rowId, greaterThan(0));
 
       await bloc.close();
@@ -537,14 +545,16 @@ void main() {
       );
 
       final rawEvent = SqliteRawEvent(
-        sql: "INSERT INTO users (name, email) VALUES ('David', 'david@test.com')",
+        sql:
+            "INSERT INTO users (name, email) VALUES ('David', 'david@test.com')",
       );
       bloc.send(rawEvent);
       await rawEvent.result;
 
       // Verify insert
       final gateway = SqliteGatewayFactory.instance!;
-      final results = await gateway.query("SELECT * FROM users WHERE name = 'David'");
+      final results =
+          await gateway.query("SELECT * FROM users WHERE name = 'David'");
       expect(results.length, 1);
 
       await bloc.close();
@@ -567,7 +577,8 @@ void main() {
 
       // Verify insert
       final gateway = SqliteGatewayFactory.instance!;
-      final results = await gateway.query("SELECT * FROM users WHERE name = 'Eve'");
+      final results =
+          await gateway.query("SELECT * FROM users WHERE name = 'Eve'");
       expect(results.length, 1);
       expect(results[0]['email'], 'eve@test.com');
 

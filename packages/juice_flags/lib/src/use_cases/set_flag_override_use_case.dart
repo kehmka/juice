@@ -5,7 +5,8 @@ import '../flags_events.dart';
 import '../flags_state.dart';
 
 /// Handles [SetFlagOverrideEvent] — a local override wins over fetched values.
-class SetFlagOverrideUseCase extends BlocUseCase<FlagsBloc, SetFlagOverrideEvent> {
+class SetFlagOverrideUseCase
+    extends BlocUseCase<FlagsBloc, SetFlagOverrideEvent> {
   @override
   Future<void> execute(SetFlagOverrideEvent event) async {
     final old = bloc.state.values;

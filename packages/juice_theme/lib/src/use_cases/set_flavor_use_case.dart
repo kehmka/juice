@@ -12,7 +12,8 @@ class SetFlavorUseCase extends BlocUseCase<ThemeBloc, SetFlavorEvent>
   Future<void> execute(SetFlavorEvent event) async {
     if (event.flavor == bloc.state.flavor) return;
     await commit(
-      bloc.state.copyWith(flavor: event.flavor, clearFlavor: event.flavor == null),
+      bloc.state
+          .copyWith(flavor: event.flavor, clearFlavor: event.flavor == null),
       {ThemeGroups.flavor},
     );
   }

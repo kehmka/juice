@@ -167,9 +167,10 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
 ///
 /// Similar to JuiceWidgetState but handles state changes from two different blocs,
 /// merging their streams and providing access to both bloc instances.
-abstract class JuiceWidgetState2<TBloc1 extends JuiceBloc<BlocState>,
-    TBloc2 extends JuiceBloc<BlocState>, TWidget extends StatefulWidget>
-    extends State<TWidget> {
+abstract class JuiceWidgetState2<
+    TBloc1 extends JuiceBloc<BlocState>,
+    TBloc2 extends JuiceBloc<BlocState>,
+    TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState2 with optional resolver and rebuild groups.
   ///
   /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
@@ -400,8 +401,7 @@ abstract class JuiceWidgetState3<
       initial: _bloc1.currentStatus,
       initiator: onInit,
       stream: MergeStream<StreamStatus>(
-              [_bloc1.stream, _bloc2.stream, _bloc3.stream])
-          .where((status) {
+          [_bloc1.stream, _bloc2.stream, _bloc3.stream]).where((status) {
         if (denyRebuild(
             event: status.event, key: widget.key, rebuildGroups: groups)) {
           return false;

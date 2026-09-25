@@ -27,8 +27,11 @@ class MutableStateField extends DartLintRule {
   );
 
   @override
-  void run(CustomLintResolver resolver, ErrorReporter reporter,
-      CustomLintContext context) {
+  void run(
+    CustomLintResolver resolver,
+    ErrorReporter reporter,
+    CustomLintContext context,
+  ) {
     context.registry.addFieldDeclaration((node) {
       if (node.isStatic) return;
       if (node.fields.isFinal || node.fields.isConst) return;

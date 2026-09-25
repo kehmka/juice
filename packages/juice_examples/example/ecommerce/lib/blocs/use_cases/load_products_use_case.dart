@@ -54,8 +54,7 @@ class LoadProductsUseCase extends UseCase<ProductsBloc, LoadProductsEvent> {
   }
 }
 
-class LoadCategoriesUseCase
-    extends UseCase<ProductsBloc, LoadCategoriesEvent> {
+class LoadCategoriesUseCase extends UseCase<ProductsBloc, LoadCategoriesEvent> {
   @override
   Future<void> execute(LoadCategoriesEvent event) async {
     try {

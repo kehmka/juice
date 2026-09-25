@@ -10,8 +10,7 @@ import '../auth_state.dart';
 ///
 /// Reads stored refresh token, refreshes with provider, transitions
 /// to authenticated if successful, or unauthenticated if not.
-class RestoreSessionUseCase
-    extends BlocUseCase<AuthBloc, InitializeAuthEvent> {
+class RestoreSessionUseCase extends BlocUseCase<AuthBloc, InitializeAuthEvent> {
   @override
   Future<void> execute(InitializeAuthEvent event) async {
     // Store config on the bloc

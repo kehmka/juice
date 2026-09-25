@@ -6,11 +6,15 @@ import '../sync_errors.dart';
 import '../sync_events.dart';
 import '../sync_state.dart';
 
-List<Mutation> _replace(List<Mutation> list, Mutation m) =>
-    [for (final x in list) if (x.id == m.id) m else x];
+List<Mutation> _replace(List<Mutation> list, Mutation m) => [
+      for (final x in list)
+        if (x.id == m.id) m else x
+    ];
 
-List<Mutation> _remove(List<Mutation> list, String id) =>
-    [for (final x in list) if (x.id != id) x];
+List<Mutation> _remove(List<Mutation> list, String id) => [
+      for (final x in list)
+        if (x.id != id) x
+    ];
 
 /// Handles [FlushRequestedEvent] — the guarded, partitioned-FIFO drain.
 ///
@@ -75,7 +79,8 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
   }
 
   /// Returns true to hard-stop the whole flush (storage failure).
-  Future<bool> _processOne(Mutation m, String partition, Set<String> skip) async {
+  Future<bool> _processOne(
+      Mutation m, String partition, Set<String> skip) async {
     final inflight = m.copyWith(
       status: MutationStatus.inFlight,
       attempts: m.attempts + 1,
@@ -84,7 +89,8 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
     // Persist the in-flight marker before sending (crash-recoverable).
     if (await _persist(inflight)) return true; // storage failure → stop
     emitUpdate(
-      newState: bloc.state.copyWith(pending: _replace(bloc.state.pending, inflight)),
+      newState:
+          bloc.state.copyWith(pending: _replace(bloc.state.pending, inflight)),
       groupsToRebuild: {SyncGroups.mutation(m.id), SyncGroups.status},
     );
 
@@ -129,7 +135,11 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
         pending: _remove(bloc.state.pending, m.id),
         processedCount: bloc.state.processedCount + 1,
       ),
-      groupsToRebuild: {SyncGroups.mutation(m.id), SyncGroups.status, SyncGroups.queue},
+      groupsToRebuild: {
+        SyncGroups.mutation(m.id),
+        SyncGroups.status,
+        SyncGroups.queue
+      },
     );
     return false;
   }
@@ -153,7 +163,11 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
         pending: _remove(bloc.state.pending, m.id),
         failed: [...bloc.state.failed, dead],
       ),
-      groupsToRebuild: {SyncGroups.mutation(m.id), SyncGroups.failed, SyncGroups.status},
+      groupsToRebuild: {
+        SyncGroups.mutation(m.id),
+        SyncGroups.failed,
+        SyncGroups.status
+      },
     );
   }
 

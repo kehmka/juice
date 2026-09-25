@@ -171,7 +171,8 @@ void main() {
       onSlowGet('/b', delay: const Duration(milliseconds: 120));
 
       await settle(
-        InitializeFetchEvent(config: const FetchConfig(maxConcurrentRequests: 1)),
+        InitializeFetchEvent(
+            config: const FetchConfig(maxConcurrentRequests: 1)),
       );
 
       // Track how many requests are simultaneously in the Dio layer.
@@ -195,8 +196,10 @@ void main() {
       ));
 
       await Future.wait([
-        fetchBloc.send(GetEvent(url: '/a', cachePolicy: CachePolicy.networkOnly)),
-        fetchBloc.send(GetEvent(url: '/b', cachePolicy: CachePolicy.networkOnly)),
+        fetchBloc
+            .send(GetEvent(url: '/a', cachePolicy: CachePolicy.networkOnly)),
+        fetchBloc
+            .send(GetEvent(url: '/b', cachePolicy: CachePolicy.networkOnly)),
       ]);
 
       expect(fetchBloc.state.stats.successCount, 2);

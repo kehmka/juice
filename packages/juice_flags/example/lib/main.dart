@@ -85,7 +85,10 @@ class PromoBanner extends StatelessJuiceWidget<FlagsBloc> {
 
 class GreetingCard extends StatelessJuiceWidget<FlagsBloc> {
   GreetingCard({super.key})
-      : super(groups: {FlagsGroups.flag('greeting'), FlagsGroups.flag('max_items')});
+      : super(groups: {
+          FlagsGroups.flag('greeting'),
+          FlagsGroups.flag('max_items')
+        });
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {

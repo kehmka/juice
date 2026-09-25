@@ -12,11 +12,9 @@ class CartState extends BlocState {
     this.orderPlaced = false,
   });
 
-  double get total =>
-      items.fold(0, (sum, i) => sum + i.price * i.quantity);
+  double get total => items.fold(0, (sum, i) => sum + i.price * i.quantity);
 
-  int get itemCount =>
-      items.fold(0, (sum, i) => sum + i.quantity);
+  int get itemCount => items.fold(0, (sum, i) => sum + i.quantity);
 
   CartState copyWith({
     List<CartItem>? items,

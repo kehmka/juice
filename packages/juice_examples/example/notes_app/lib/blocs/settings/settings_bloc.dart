@@ -54,8 +54,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
                     await storage.prefsWrite(
                         'sort_order', event.sortOrder.name);
                     ctx.emit.update(
-                      newState:
-                          ctx.state.copyWith(sortOrder: event.sortOrder),
+                      newState: ctx.state.copyWith(sortOrder: event.sortOrder),
                       groups: {SettingsGroups.sort},
                     );
                   },

@@ -25,7 +25,8 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(12),
@@ -134,7 +135,8 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isCurrent
                           ? _getDepthColor(depth).withValues(alpha: 0.2)
@@ -172,13 +174,16 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
                             stackEntry.path,
                             style: TextStyle(
                               fontFamily: 'monospace',
-                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isCurrent
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ),
                         if (isTop)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.grey[700],
                               borderRadius: BorderRadius.circular(4),
@@ -195,7 +200,8 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
                         if (isCurrent && !isTop) ...[
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: _getDepthColor(depth),
                               borderRadius: BorderRadius.circular(4),
@@ -222,7 +228,8 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
                   children: [
                     const Text(
                       'History',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     const Spacer(),
                     Text(
@@ -249,7 +256,8 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
                   ...state.history.reversed.take(10).map((entry) {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(4),
@@ -264,9 +272,11 @@ class PlaygroundScreen extends StatelessJuiceWidget<RoutingBloc> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(
-                              color: _getTypeColor(entry.type).withValues(alpha: 0.1),
+                              color: _getTypeColor(entry.type)
+                                  .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(3),
                             ),
                             child: Text(

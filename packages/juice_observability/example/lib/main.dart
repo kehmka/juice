@@ -73,7 +73,8 @@ class HomeScreen extends StatelessJuiceWidget<ObservabilityBloc> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${s.errorCount} errors · ${s.breadcrumbs.length} breadcrumbs'),
+            Text(
+                '${s.errorCount} errors · ${s.breadcrumbs.length} breadcrumbs'),
             if (s.lastError != null)
               Padding(
                 padding: const EdgeInsets.all(8),
@@ -82,14 +83,15 @@ class HomeScreen extends StatelessJuiceWidget<ObservabilityBloc> {
               ),
             const SizedBox(height: 24),
             OutlinedButton(
-              onPressed: () =>
-                  bloc.breadcrumb('tapped at ${s.breadcrumbs.length}', category: 'ui'),
+              onPressed: () => bloc.breadcrumb(
+                  'tapped at ${s.breadcrumbs.length}',
+                  category: 'ui'),
               child: const Text('Drop a breadcrumb'),
             ),
             const SizedBox(height: 8),
             FilledButton(
-              onPressed: () =>
-                  bloc.recordError(StateError('demo error'), StackTrace.current),
+              onPressed: () => bloc.recordError(
+                  StateError('demo error'), StackTrace.current),
               child: const Text('Record an error'),
             ),
             const SizedBox(height: 8),

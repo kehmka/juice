@@ -28,8 +28,11 @@ class GenericEvent extends DartLintRule {
   );
 
   @override
-  void run(CustomLintResolver resolver, ErrorReporter reporter,
-      CustomLintContext context) {
+  void run(
+    CustomLintResolver resolver,
+    ErrorReporter reporter,
+    CustomLintContext context,
+  ) {
     context.registry.addClassDeclaration((node) {
       if (node.typeParameters == null) return;
       final element = node.declaredFragment?.element;

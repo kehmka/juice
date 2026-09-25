@@ -169,7 +169,8 @@ void concurrencyModeTests() {
       Future<void>.delayed(Duration(milliseconds: ms));
 
   group('Concurrency modes (0.5.0)', () {
-    test('a second setUser does not start its fan-out until the first '
+    test(
+        'a second setUser does not start its fan-out until the first '
         'completes (sequential) — and reporters see them in call order',
         () async {
       final r = GatedReporter()..gate = Completer<void>();

@@ -31,12 +31,10 @@ class AuthSession {
   });
 
   /// Whether the access token is expired.
-  bool get isExpired =>
-      expiresAt?.isBefore(DateTime.now()) ?? false;
+  bool get isExpired => expiresAt?.isBefore(DateTime.now()) ?? false;
 
   /// Time until the access token expires (null if expiry unknown).
-  Duration? get timeUntilExpiry =>
-      expiresAt?.difference(DateTime.now());
+  Duration? get timeUntilExpiry => expiresAt?.difference(DateTime.now());
 
   AuthSession copyWith({
     String? accessToken,

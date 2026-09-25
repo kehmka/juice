@@ -51,8 +51,7 @@ class NotesBloc extends JuiceBloc<NotesState> {
                   typeOfEvent: TogglePinEvent,
                   handler: (ctx, event) async {
                     final notes = List<Note>.from(ctx.state.notes);
-                    final idx =
-                        notes.indexWhere((n) => n.id == event.noteId);
+                    final idx = notes.indexWhere((n) => n.id == event.noteId);
                     if (idx < 0) return;
                     notes[idx] =
                         notes[idx].copyWith(isPinned: !notes[idx].isPinned);
@@ -72,8 +71,7 @@ class NotesBloc extends JuiceBloc<NotesState> {
                   typeOfEvent: ChangeNoteColorEvent,
                   handler: (ctx, event) async {
                     final notes = List<Note>.from(ctx.state.notes);
-                    final idx =
-                        notes.indexWhere((n) => n.id == event.noteId);
+                    final idx = notes.indexWhere((n) => n.id == event.noteId);
                     if (idx < 0) return;
                     notes[idx] = notes[idx].copyWith(color: event.color);
                     final storage = BlocScope.get<StorageBloc>();

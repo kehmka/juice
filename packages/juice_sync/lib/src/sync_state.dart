@@ -84,7 +84,8 @@ class SyncState extends BlocState {
       status: status ?? this.status,
       online: online ?? this.online,
       processedCount: processedCount ?? this.processedCount,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError:
+          identical(lastError, _unset) ? this.lastError : lastError as String?,
     );
   }
 

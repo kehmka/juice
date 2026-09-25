@@ -91,8 +91,7 @@ class StatusBar extends StatelessJuiceWidget<SyncBloc> {
 
 /// The queue — rebuilds when membership changes (`sync:queue`/`sync:failed`).
 class QueueList extends StatelessJuiceWidget<SyncBloc> {
-  QueueList({super.key})
-      : super(groups: {SyncGroups.queue, SyncGroups.failed});
+  QueueList({super.key}) : super(groups: {SyncGroups.queue, SyncGroups.failed});
 
   @override
   Widget onBuild(BuildContext context, StreamStatus status) {

@@ -215,7 +215,8 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
     // Trim history if needed
     var newHistory = [...bloc.state.history, historyEntry];
     if (newHistory.length > config.maxHistorySize) {
-      newHistory = newHistory.sublist(newHistory.length - config.maxHistorySize);
+      newHistory =
+          newHistory.sublist(newHistory.length - config.maxHistorySize);
     }
 
     emitUpdate(

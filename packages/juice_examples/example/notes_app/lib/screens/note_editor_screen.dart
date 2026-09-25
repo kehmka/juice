@@ -144,7 +144,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               if (bloc.state.noteId.isNotEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(12),
-                  child: Icon(Icons.check_circle, size: 20, color: Colors.green),
+                  child:
+                      Icon(Icons.check_circle, size: 20, color: Colors.green),
                 );
               }
               return const SizedBox.shrink();
@@ -173,8 +174,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               if (bloc.state.validationError != null) {
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: Colors.red[50],
                   child: Row(
                     children: [
@@ -267,8 +268,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Note color',
-                style: Theme.of(ctx).textTheme.titleMedium),
+            Text('Note color', style: Theme.of(ctx).textTheme.titleMedium),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,

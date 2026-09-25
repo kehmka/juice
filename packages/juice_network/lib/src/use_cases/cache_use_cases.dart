@@ -109,7 +109,8 @@ class CleanupExpiredCacheUseCase
         cacheStats: CacheStats(
           entryCount: bloc.state.cacheStats.entryCount - removed,
           totalBytes: bloc.state.cacheStats.totalBytes,
-          expiredCount: event.namespace == null ? 0 : bloc.state.cacheStats.expiredCount,
+          expiredCount:
+              event.namespace == null ? 0 : bloc.state.cacheStats.expiredCount,
         ),
       ),
     );

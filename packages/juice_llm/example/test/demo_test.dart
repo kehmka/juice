@@ -8,7 +8,8 @@ void main() {
   testWidgets('Echo demo streams a reply to the screen', (tester) async {
     BlocScope.register<LlmBloc>(
       () => LlmBloc.withConfig(LlmConfig(
-        provider: EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 1)),
+        provider:
+            EchoLlmProvider(perTokenDelay: const Duration(milliseconds: 1)),
       )),
       lifecycle: BlocLifecycle.permanent,
     );

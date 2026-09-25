@@ -20,8 +20,7 @@ class LlmMessage {
   const LlmMessage.user(String content,
       {List<Uint8List> images = const [], List<Uint8List> audio = const []})
       : this(LlmRole.user, content, images: images, audio: audio);
-  const LlmMessage.assistant(String content)
-      : this(LlmRole.assistant, content);
+  const LlmMessage.assistant(String content) : this(LlmRole.assistant, content);
 }
 
 enum LlmRole { system, user, assistant }

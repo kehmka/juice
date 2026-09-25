@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_network
-version: 0.13.0
+version: 0.13.1
 requires:
   juice: ">=1.6.0"
   juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-16
+updated: 2026-09-25
 ---
 
 # juice_network — AI card

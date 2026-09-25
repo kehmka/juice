@@ -75,13 +75,16 @@ class RefreshTokenInterceptor extends FetchInterceptor {
 
     // Singleflight: if refresh is already in progress, wait for it
     if (_refreshInFlight != null) {
+      String? newToken;
       try {
-        final newToken = await _refreshInFlight!.future;
-        if (newToken != null) {
-          return _retryRequest(error.requestOptions, newToken);
-        }
+        newToken = await _refreshInFlight!.future;
       } catch (_) {
         // Refresh failed, propagate original error
+      }
+      // Retry OUTSIDE the try: a failed retry propagates to the caller, it
+      // is not mistaken for a failed refresh.
+      if (newToken != null) {
+        return _retryRequest(error.requestOptions, newToken);
       }
       return error;
     }
@@ -95,17 +98,18 @@ class RefreshTokenInterceptor extends FetchInterceptor {
     _isRefreshing = true;
     _refreshInFlight = Completer<String?>();
 
+    final String newToken;
     try {
-      final newToken = await refreshToken();
+      final token = await refreshToken();
 
-      if (newToken == null) {
+      if (token == null) {
         _refreshInFlight!.complete(null);
         await onRefreshFailed?.call();
         return error;
       }
 
-      _refreshInFlight!.complete(newToken);
-      return _retryRequest(error.requestOptions, newToken);
+      _refreshInFlight!.complete(token);
+      newToken = token;
     } catch (e) {
       _refreshInFlight!.completeError(e);
       await onRefreshFailed?.call();
@@ -114,6 +118,13 @@ class RefreshTokenInterceptor extends FetchInterceptor {
       _isRefreshing = false;
       _refreshInFlight = null;
     }
+
+    // Retry OUTSIDE the try (it was an unawaited return inside it, so the
+    // `finally` already ran first and a retry failure already escaped the
+    // catch — this keeps exactly that behavior, without the analyzer's
+    // unawaited_return_in_try_block, and without routing a failed retry into
+    // completeError on an already-completed completer).
+    return _retryRequest(error.requestOptions, newToken);
   }
 
   /// Retry the failed request with a new token.

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2026-09-25
+
+### Fixed
+
+- `RefreshTokenInterceptor`: the two retries after a refresh were
+  `return _retryRequest(...)` inside a `try` without `await`
+  (`unawaited_return_in_try_block`, flagged by current analyzers). They now
+  run after the `try`, which is exactly the behavior the unawaited returns
+  already had — the `finally` runs first and a failed retry propagates to the
+  caller — made explicit, and without a later `await` routing a retry failure
+  into `completeError` on an already-completed completer.
+
 ## [0.13.0] - 2026-08-12
 
 ### Changed

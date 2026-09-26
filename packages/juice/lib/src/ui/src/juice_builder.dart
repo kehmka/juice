@@ -33,7 +33,10 @@ class JuiceBuilder<TBloc extends JuiceBloc> extends StatefulWidget {
   /// the rebuild filters.
   ///
   /// [groups] controls which rebuild groups this widget responds to.
-  /// Defaults to `{'*'}` which rebuilds on all state changes.
+  /// Default `{'*'}` rebuilds on emissions sent to EVERY widget
+  /// (`rebuildAlways`, which is also what an emit without `groupsToRebuild`
+  /// sends) — NOT on emissions targeted at named groups. Name the groups
+  /// this widget shows to rebuild on those.
   ///
   /// [buildWhen] is an optional additional filter. Return false to skip
   /// rebuilding for a particular state change.
@@ -55,7 +58,10 @@ class JuiceBuilder<TBloc extends JuiceBloc> extends StatefulWidget {
       builder;
 
   /// Groups that control when this widget rebuilds.
-  /// Default is `{'*'}` which means rebuild on all state changes.
+  /// Default `{'*'}` rebuilds on emissions sent to EVERY widget
+  /// (`rebuildAlways`, which is also what an emit without `groupsToRebuild`
+  /// sends) — NOT on emissions targeted at named groups. Name the groups
+  /// this widget shows to rebuild on those.
   final Set<String> groups;
 
   /// Optional condition to determine if the widget should rebuild.

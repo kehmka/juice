@@ -48,7 +48,10 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
         _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
-  /// Default is {"*"} which means rebuild on all state changes.
+  /// Default `{'*'}` rebuilds on emissions sent to EVERY widget
+  /// (`rebuildAlways`, which is also what an emit without `groupsToRebuild`
+  /// sends) — NOT on emissions targeted at named groups. Name the groups
+  /// this widget shows to rebuild on those.
   /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
 
@@ -188,7 +191,10 @@ abstract class JuiceWidgetState2<
         _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
-  /// Default is {"*"} which means rebuild on all state changes.
+  /// Default `{'*'}` rebuilds on emissions sent to EVERY widget
+  /// (`rebuildAlways`, which is also what an emit without `groupsToRebuild`
+  /// sends) — NOT on emissions targeted at named groups. Name the groups
+  /// this widget shows to rebuild on those.
   /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
 
@@ -340,7 +346,10 @@ abstract class JuiceWidgetState3<
         _customResolver = resolver;
 
   /// Groups that control when this widget rebuilds.
-  /// Default is {"*"} which means rebuild on all state changes.
+  /// Default `{'*'}` rebuilds on emissions sent to EVERY widget
+  /// (`rebuildAlways`, which is also what an emit without `groupsToRebuild`
+  /// sends) — NOT on emissions targeted at named groups. Name the groups
+  /// this widget shows to rebuild on those.
   /// This set is unmodifiable to preserve immutability.
   final Set<String> groups;
 

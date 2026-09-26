@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:logger/logger.dart';
+import 'package:logger/web.dart';
 
 import '../juice_logger.dart';
 import 'event_concurrency.dart';

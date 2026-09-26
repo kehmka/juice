@@ -132,7 +132,7 @@ class EndScopeResult {
 // =============================================================================
 
 /// Base class for all scope notifications.
-/// Enables type-safe filtering via stream.whereType<T>().
+/// Enables type-safe filtering via `stream.whereType<T>()`.
 abstract class ScopeNotification {
   /// Unique scope identifier.
   String get scopeId;

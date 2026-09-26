@@ -77,7 +77,7 @@ class InlineEmitter<TState extends BlocState> {
     if (aviatorName != null) _navigate(aviatorName, aviatorArgs);
   }
 
-  /// Converts Set<Object> to Set<String> for internal use.
+  /// Converts `Set<Object>` to `Set<String>` for internal use.
   ///
   /// Supports:
   /// - [RebuildGroup] - uses `.name`

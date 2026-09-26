@@ -34,3 +34,6 @@ jobs:
 
       - name: Test Example App
         run: cd example && flutter test
+
+      - name: Core Coverage Gate
+        run: sh tool/coverage_check.sh 80

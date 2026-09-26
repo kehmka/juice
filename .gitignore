@@ -97,3 +97,6 @@ CLAUDE.md
 
 # Generated rollups
 rollups/
+
+# flutter test --coverage output (tool/coverage_check.sh)
+coverage/

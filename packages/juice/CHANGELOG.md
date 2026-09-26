@@ -1,5 +1,73 @@
 # Changelog
 
+## [1.9.0] - 2026-09-26
+
+Robustness release: the guarantees Juice documents now hold under stress —
+closing mid-flight, failing closes, stale leases, mis-registered use cases —
+and the core is Web/WASM-compatible.
+
+### Added
+- **`UseCaseBuilder.typed(() => FooUseCase())`** — type-checked registration.
+  The event type is inferred from the use case, so pairing
+  `typeOfEvent: SaveEvent` with a `LoadUseCase` is a compile error instead of
+  a dispatch-time cast failure. The use case's bloc type is checked when the
+  bloc registers the builder: registered on the wrong bloc, it throws
+  `ArgumentError` from that bloc's constructor. Takes `concurrency` and
+  `initialEventBuilder`. Additive; the constructor is unchanged.
+- **`JuiceBloc.isClosing`** — true once `close()` has started, and stays
+  true (monotonic; `isClosed` marks completion). Formalizes the flag
+  `juice_sync`'s `SyncBloc` already declared, which now overrides it.
+
+### Changed
+- **The close fence.** An emit after the bloc has closed (a use case still
+  running when the user left) is dropped and logged as
+  `emission_after_close` (warning) instead of throwing `StateError` — which
+  surfaced as a bloc error and, under `RetryableUseCaseBuilder`, was retried
+  against the closed bloc. From the moment `close()` starts, new events are
+  refused (`send`, `sendCancellable`), and `sendAndWait` throws `StateError`
+  at once instead of waiting out its timeout.
+- **`close()` is memoized**: a second caller awaits the same teardown instead
+  of returning before it finishes.
+- **`RetryableUseCaseBuilder`** abandons the retry loop (`retry_abandoned`)
+  when the bloc closes during backoff.
+- **`package:juice/juice.dart` re-exports `package:logger/web.dart`**, not
+  `logger.dart`: everything except `FileOutput` / `AdvancedFileOutput`
+  (nothing in the family uses them). logger's own web stub for those imports
+  `dart:io` — in every release through 2.8.0 — which made juice
+  WASM-incompatible. An app writing log files imports
+  `package:logger/logger.dart` directly.
+
+### Fixed
+- **A stale lease can no longer close a replacement bloc.** A lease taken
+  before `BlocScope.end<T>()` / `endFeature` and released after a new
+  instance was created decremented the NEW instance's count and auto-closed
+  it under the widgets using it. Leases now remember their instance. Every
+  release also settles `LeakDetector`, so a lease released during a close is
+  no longer reported as a leak.
+- **A `close()` that throws no longer wedges its entry.** `BlocScope` reports
+  it (`bloc_close_error`), rethrows to the caller, and always clears the
+  entry — it used to leave it "closing" forever, so every later `get` /
+  `lease` threw. `leaseAsync` waits through a failed close.
+- **`FeatureScope.end()` can no longer hang.** A feature bloc whose close
+  threw left the end event uncompleted forever; the event now fails with the
+  error, after the scope is still removed and `ScopeEndedNotification` still
+  published. `start()` / `end()` fall back to direct disposal when the
+  `ScopeLifecycleBloc` is closed or closing (its refused events never
+  complete).
+- **Use-case wiring runs inside the telemetry span**: a wiring failure logs
+  its `use_case_error` END and reaches `onError` (it was a START with no END,
+  swallowed silently in `sequential` mode). The wrong-bloc cast now names the
+  use case, the bloc it expects, and the bloc it was registered on.
+- pub.dev static analysis: two doc comments with bare angle brackets.
+
+### Quality
+- pana 160/160 locally (1.8.1 scored 140: platform support and static
+  analysis).
+- Core line-coverage gate in CI (`tool/coverage_check.sh`, `melos run
+  coverage:juice`), with the vendored, unused `Bloc<Event, State>` base
+  (`bloc.dart`, `emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
+  `global_bloc_resolver.dart`) excluded and flagged for removal in 2.0.0.
+
 ## [1.8.1] - 2026-09-25
 
 ### Fixed

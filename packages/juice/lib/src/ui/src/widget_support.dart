@@ -16,7 +16,8 @@ const String _optOut = '-';
 /// emitUpdate(groupsToRebuild: rebuildAlways);
 /// ```
 ///
-/// For widgets (rebuild on all state changes):
+/// For widgets (the default: rebuild on emissions broadcast with
+/// `rebuildAlways` — targeted emissions need the widget to name the group):
 /// ```dart
 /// class MyWidget extends StatelessJuiceWidget<MyBloc> {
 ///   MyWidget({super.key, super.groups = rebuildAlways});

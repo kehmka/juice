@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../juice_logger.dart';
 import '../aviators/aviator.dart';
 
 /// Manages navigation aviators for a bloc.
@@ -38,10 +39,35 @@ class AviatorManager {
   ///
   /// Note: If the aviator's navigation is async, this method will not wait
   /// for it to complete. Use [navigateAsync] if you need to await completion.
+  ///
+  /// A failure in async navigation (an unknown deep link, a failing auth
+  /// check) is logged as `aviator_error`. Nobody awaits this call — it runs
+  /// from `emitUpdate(aviatorName:)` — so an unhandled error here used to
+  /// escape as an uncaught zone error, outside every use case's handling.
   void navigate(String? aviatorName, Map<String, dynamic>? args) {
     if (aviatorName == null) return;
     final aviator = _aviators[aviatorName];
-    aviator?.navigateWhere.call(args ?? {});
+    if (aviator == null) return;
+    try {
+      final result = aviator.navigateWhere.call(args ?? {});
+      if (result is Future<void>) {
+        result.catchError((Object e, StackTrace st) => _logFailure(
+              aviatorName,
+              e,
+              st,
+            ));
+      }
+    } catch (e, st) {
+      _logFailure(aviatorName, e, st);
+    }
+  }
+
+  void _logFailure(String aviatorName, Object error, StackTrace stackTrace) {
+    JuiceLoggerConfig.logger
+        .logError('Aviator navigation failed', error, stackTrace, context: {
+      'type': 'aviator_error',
+      'aviator': aviatorName,
+    });
   }
 
   /// Navigates using the named aviator and awaits completion.

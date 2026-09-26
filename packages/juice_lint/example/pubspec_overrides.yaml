@@ -1,6 +1,4 @@
-# melos_managed_dependency_overrides: juice,juice_lint
+# melos_managed_dependency_overrides: juice
 dependency_overrides:
   juice:
     path: ../../juice
-  juice_lint:
-    path: ..

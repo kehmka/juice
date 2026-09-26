@@ -14,16 +14,16 @@ command:
 
 scripts:
   analyze:
-    run: dart run melos exec --concurrency=1 -- flutter analyze
-    description: Run analyzer in all packages
+    run: dart run melos exec --concurrency=1 --ignore=juice_lint_example -- flutter analyze
+    description: Run analyzer in all packages (juice_lint_example is the rules' planted-violation fixture suite — its warnings are the point; lint:juice verifies it)
 
   test:
     run: dart run melos exec --concurrency=1 --dir-exists=test --ignore=notes_app -- flutter test
     description: Run tests in all packages
 
   lint:juice:
-    run: dart run melos exec --concurrency=1 --scope="chat_app,dashboard,ecommerce,notes_app,social_feed" -- dart run custom_lint
-    description: Run juice_lint (custom_lint) on the example-app canaries — flutter analyze does not load analyzer plugins
+    run: dart run melos exec --concurrency=1 --scope="chat_app,dashboard,ecommerce,notes_app,social_feed" -- dart analyze --fatal-infos && dart run melos exec --scope=juice_lint -- dart run tool/check_fixtures.dart
+    description: juice_lint — dart analyze the five canary apps (plugin rules included) and verify the fixture suite reports exactly its planted diagnostics. dart analyze, not flutter analyze - Flutter 3.47's LSP-based flutter analyze exits when the server finishes, before plugin diagnostics arrive
 
   skill:check:
     run: tool/sync_skill.sh --check

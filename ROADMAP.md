@@ -384,6 +384,40 @@ flows; require fixing only if an app hits them):
   between the executor await and the durable delete; add a post-await
   `isClosing` guard when hardening.
 
+## Tier 1 — tooling and re-derived mechanisms (2026-09-26)  ✅ folded into juice 1.9.0
+
+Rows B, C and G of the comparison table below, plus correction 2 (one way to
+await an event's value):
+
+- **Result events in core** — `ResultEvent` + `sendForResult` /
+  `sendAndWaitResult` / `OperationResult` promoted from juice_storage
+  (2.3.0 builds on them). Stricter: dropped/silent events fail loud instead
+  of timing out. Not migrated, deliberately: juice_permissions'
+  `requestsInFlight` (a singleflight coalescer, a different pattern) and
+  juice_forms' optional `completion` completers (would change its API).
+- **G · `juiceTest`** — declarative bloc tests, no sleeps, close before
+  assert, per-emission group snapshots, use-case-error and in-flight-at-
+  close checks. Gate met on juice_theme: its behavior tests lost every
+  `settle()` and now assert groups.
+- **B · juice_lint 0.2.0 on `analysis_server_plugin`** — the three rules
+  ported (+ an insert-`final` quick fix), the five canary apps on the
+  top-level `plugins:` form, custom_lint gone. **Finding: Flutter 3.47's
+  `flutter analyze` still shows no plugin diagnostics** — its LSP client
+  exits on the server's first "analysis done", before plugin results land
+  (verified with `--protocol-traffic-log` and flutter_tools source). `dart
+  analyze` reports them; `melos run lint:juice` now uses it.
+- **C · new rules** — shipped on by default: `juice_send_in_build`,
+  `juice_lease_in_build`, `juice_stale_read_across_await` (conservative
+  heuristic, documented escape). Opt-in: `juice_missing_concurrency_mode` —
+  precise, but 126 builders in examples/tests/core internals omit a mode,
+  so the family-wide "every builder declares its mode" held only for domain
+  `lib/`. Dropped: `juice_nullable_copywith_sentinel` — 13 hits, mostly
+  set-once fields; no static rule tells them from clearable ones.
+  Zero false positives on real family code for the shipped rules.
+
+Open from it: gate CI on `dart analyze` (or add `lint:juice` to `ci`)?
+Declare modes at the 126 sites and turn the concurrency rule on?
+
 ## Tier 0 — robustness (2026-09-26)  ✅ juice 1.9.0
 
 From the post-1.8.1 review: the design was ahead of the ecosystem, the
@@ -528,12 +562,12 @@ release-mode gate — a doctrine call.
 | # | Candidate | Cost | Gate | Raised by |
 |---|---|---|---|---|
 | A | Skill via pub's package-skills channel (`packages/juice/skills/juice-framework/`, emitted by sync_skill.sh; installs with `dart run skills@ get` into Claude Code / Cursor / Gemini / Cline / Copilot — verified on dart.dev) | S | `skills@ get` accepts the name on a scratch consumer | dx |
-| B | Port `juice_lint` to Dart's official `analysis_server_plugin` (reports via `flutter analyze`; quick fixes) — closes the CLI limitation found dogfooding | M | docket-5 sentinel proof under the new host | dx |
-| C | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
+| B ✅ | Port `juice_lint` to Dart's official `analysis_server_plugin` (reports via `dart analyze` — NOT Flutter 3.47's `flutter analyze`; quick fixes) — closes the CLI limitation found dogfooding | M | docket-5 sentinel proof under the new host | dx |
+| C ✅ (partly) | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
 | D | `fix_data.yaml` for the three `@Deprecated` members | S | confirm the v2.0.0 removal list | dx |
 | E | State hydration seam (`StatePersistence<TState>` + `hydrate`; storage default + fake; versioned FAIL-LOUD migration) | M | migrating theme + i18n must net-delete code | bloc, riverpod |
 | F | `bindStream` on `BlocUseCase` (bloc's `emit.forEach`; five packages hand-roll listen+cancel; enabler for `restartable`) | M | migrate location + llm; `close()` bodies shrink under LeakDetector | bloc |
-| G | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
+| G ✅ | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
 | H | `WaitingStatus.progress`; `isWaitingFor<TEvent>()` / `isRunning(Type)` / `lastFailure(Type)` | S | llm model acquire; permissions' `requestsInFlight` map deletable | riverpod, others |
 | I | DevTools rebuild inspector + state diff + emission rate (`widget_rebuild` event from the accept path) | M | approve the event schema, measure overhead; build with the select measurement | riverpod, signals, dx, others |
 | J | Stop re-subscribing on every parent rebuild (`JuiceWidgetState` builds the filtered stream in `build`) | S | widget test counting `listen()` | signals |

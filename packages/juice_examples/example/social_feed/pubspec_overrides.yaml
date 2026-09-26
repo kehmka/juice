@@ -1,9 +1,7 @@
-# melos_managed_dependency_overrides: juice,juice_network,juice_storage,juice_lint
+# melos_managed_dependency_overrides: juice,juice_network,juice_storage
 dependency_overrides:
   juice:
     path: ../../../juice
-  juice_lint:
-    path: ../../../juice_lint
   juice_network:
     path: ../../../juice_network
   juice_storage:

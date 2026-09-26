@@ -14,6 +14,16 @@ and the core is Web/WASM-compatible.
   bloc registers the builder: registered on the wrong bloc, it throws
   `ArgumentError` from that bloc's constructor. Takes `concurrency` and
   `initialEventBuilder`. Additive; the constructor is unchanged.
+- **Events that return a value, in core**: `ResultEvent<T>` (moved to its
+  own library), `OperationResult`, and the `ResultEventOps` extension —
+  `bloc.sendForResult(event)` / `bloc.sendAndWaitResult(event)`. Promoted
+  from `juice_storage` (2.3.0 now builds on them) so the family has one way
+  to await an event's value. Stricter than storage's original: a closed or
+  closing bloc throws at once, and an event whose processing ends without a
+  terminal status (dropped by a `droppable` builder, or its use case emitted
+  nothing) throws `StateError` instead of waiting out the timeout. The
+  terminal status is captured synchronously at emit time (an internal
+  emission tap), not from the asynchronously delivered stream.
 - **`JuiceBloc.isClosing`** — true once `close()` has started, and stays
   true (monotonic; `isClosed` marks completion). Formalizes the flag
   `juice_sync`'s `SyncBloc` already declared, which now overrides it.

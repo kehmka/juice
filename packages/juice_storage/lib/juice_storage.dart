@@ -45,8 +45,10 @@ export 'src/storage_exceptions.dart';
 
 // Result types (for advanced usage)
 export 'src/core/result_event.dart';
-export 'src/core/operation_result.dart';
-export 'src/core/bloc_result_ops.dart';
+// The result machinery moved to core in juice 1.9.0; re-exported so code that
+// imports only juice_storage keeps compiling unchanged.
+export 'package:juice/juice.dart'
+    show OperationResult, ResultEvent, ResultEventOps;
 export 'src/core/storage_keys.dart';
 
 // Cache

@@ -44,7 +44,22 @@ class StateManager<State> {
       throw StateError('Cannot emit state after StateManager is closed');
     }
     _state = state;
+    for (final tap in List.of(_taps)) {
+      tap(state);
+    }
     _controller.add(state);
+  }
+
+  final List<void Function(State)> _taps = [];
+
+  /// Registers a SYNCHRONOUS observer of every emission, called inside
+  /// [emit] before the (asynchronously delivered) stream event. Returns the
+  /// function that removes it. Framework-internal: for code that must know
+  /// what was emitted by the time the emitting work completes — stream
+  /// delivery can land several microtasks later.
+  void Function() tap(void Function(State state) observer) {
+    _taps.add(observer);
+    return () => _taps.remove(observer);
   }
 
   /// Closes the state manager and its stream.

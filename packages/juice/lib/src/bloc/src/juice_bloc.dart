@@ -213,6 +213,14 @@ class JuiceBloc<TState extends BlocState>
     return result;
   }
 
+  /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream
+  /// delivery). Returns the remover. Framework-internal — `sendAndWaitResult`
+  /// uses it to know an event's terminal status the moment processing ends.
+  @internal
+  void Function() tapEmissions(
+          void Function(StreamStatus<TState> status) observer) =>
+      _stateManager.tap(observer);
+
   /// Runs the named aviator WITHOUT emitting a status. Framework-internal:
   /// inline use cases navigate through this — they used to call
   /// `emitUpdate(aviatorName:)`, which emitted an extra UpdatingStatus that

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
-import 'package:juice_storage/src/core/operation_result.dart';
 
 class TestState extends BlocState {
   final int value;

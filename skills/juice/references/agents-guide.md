@@ -115,6 +115,14 @@ bloc registers it (wrong bloc → `ArgumentError` from the constructor). Takes
 new code; keep the explicit constructor only for a use case declared over an
 abstract base event (events match by exact runtime type, gotcha 2).
 
+**Events that return a value (juice ≥ 1.9.0).** Extend `ResultEvent<T>`. The
+use case emits a terminal status for that event (`emitUpdate` on success,
+`emitFailure` / `emitCancel` otherwise) and calls `event.succeed(value)`;
+callers `await bloc.sendForResult(event)` (value, or throws the failure's
+error) or `bloc.sendAndWaitResult(event)` (an `OperationResult` with the
+status too). A dropped event or a use case that emits nothing fails loud
+instead of timing out. Don't hand-roll a `Completer` field on an event.
+
 ---
 
 ## 3. Widgets

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-26
+
+### Changed
+- **The result machinery moved to core (juice 1.9.0).** `OperationResult`,
+  `sendAndWaitResult` and `sendForResult` were this package's — the complete
+  version of an "event returns a value" pattern the family re-derived four
+  ways. They now live in `package:juice` (`OperationResult`, `ResultEvent`,
+  the `ResultEventOps` extension), and `StorageResultEvent` extends the core
+  `ResultEvent`, adding only its `requestId`. Same names and shapes, and this
+  package re-exports them, so code importing only `juice_storage` compiles
+  unchanged. The `JuiceBlocResultOps` extension name is gone (the methods
+  are on core's `ResultEventOps`).
+- Behavior of the core versions, now shared: a closed/closing bloc throws
+  `StateError` at once; an event whose processing ends without a terminal
+  status (dropped, or its use case emitted nothing) throws `StateError`
+  instead of waiting out the timeout.
+- Requires `juice: ^1.9.0`.
+
 ## [2.2.0] - 2026-09-02
 
 ### Added

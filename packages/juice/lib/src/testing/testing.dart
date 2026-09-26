@@ -10,3 +10,4 @@
 library testing;
 
 export 'bloc_tester.dart';
+export 'juice_test.dart';

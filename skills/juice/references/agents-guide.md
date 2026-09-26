@@ -286,8 +286,28 @@ flutter pub publish --dry-run     # 0 warnings expected (a pubspec_overrides hin
 ```
 
 Tests are headless: implement a fake of the seam, drive the bloc, assert on
-`bloc.state` (and on emitted `status.event?.groupsToRebuild` to verify selective
-rebuilds). A common helper: `Future<void> settle([int ms = 20]) => Future.delayed(...)`.
+what it emitted. Prefer **`juiceTest`** (`package:juice/testing.dart`, juice ≥
+1.9.0) over sleeping:
+
+```dart
+juiceTest<FooBloc, FooState>(
+  'load emits the items on the status group',
+  build: () => FooBloc(),
+  act: (b) async {
+    await b.send(InitializeFooEvent(config: FooConfig(source: FakeFooSource())));
+    await b.send(LoadFooEvent());              // send() completes when processed
+  },
+  skip: 1,                                     // the init emission
+  expect: () => [isUpdatingStatus(groups: {FooGroups.status})],
+);
+```
+
+`act` returns the `send()` futures (no `settle()`), the bloc is closed before
+asserting, each emission's groups are snapshotted at emit time (gotcha 4), an
+unexpected use-case error fails the test (`errors:` to expect one), and a use
+case still running at close fails it. `wait:` is only for deliberate timers or
+debounces. Construct with the plain constructor and send the init event in
+`act` — `withConfig` fires it without returning the future.
 
 Examples are **juice-pure**: only the juice family + flutter; a `Demo*` seam impl
 so the app runs with no device/backend; a trivial smoke test.

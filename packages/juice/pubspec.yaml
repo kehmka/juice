@@ -28,6 +28,10 @@ dependencies:
   # matcher, not flutter_test: a runtime dep on flutter_test forced the test
   # framework into every consumer app's dependency graph.
   matcher: ^0.12.16
+  # juiceTest (package:juice/testing.dart) registers tests through
+  # test_api's public scaffolding — the same `test` flutter_test re-exports.
+  test_api: ">=0.7.0 <0.8.0"
+  meta: ^1.15.0
 
 dev_dependencies:
   flutter_test:

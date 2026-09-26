@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/testing.dart';
 import 'package:juice_theme/juice_theme.dart';
 
 /// Pure-Dart fake — drives the bloc without real storage.
@@ -21,9 +22,6 @@ class FakeThemePersistence implements ThemePersistence {
 }
 
 void main() {
-  Future<void> settle([int ms = 20]) =>
-      Future<void>.delayed(Duration(milliseconds: ms));
-
   group('ThemeState model', () {
     test('defaults to system mode, no flavor', () {
       const s = ThemeState();
@@ -39,83 +37,111 @@ void main() {
     });
   });
 
+  // Ported to juiceTest (juice 1.9.0): no settle() sleeps — each act awaits
+  // the processing of the events it sends — and every emission's rebuild
+  // groups are asserted, which the settle()-based versions never checked.
   group('ThemeBloc', () {
-    test('loads persisted selection on init', () async {
-      final p = FakeThemePersistence(
-          const ThemeSelection(mode: ThemeMode.dark, flavor: 'ocean'));
-      final bloc = ThemeBloc.withConfig(ThemeConfig(persistence: p));
-      await settle();
+    Matcher theme({ThemeMode? mode, Object? flavor = _any}) => isA<ThemeState>()
+        .having((s) => s.mode, 'mode', mode ?? anything)
+        .having((s) => s.flavor, 'flavor',
+            identical(flavor, _any) ? anything : flavor);
 
-      expect(bloc.state.mode, ThemeMode.dark);
-      expect(bloc.state.flavor, 'ocean');
-      await bloc.close();
-    });
+    Future<void> init(ThemeBloc b, ThemeConfig config) =>
+        b.send(InitializeThemeEvent(config: config));
 
-    test('falls back to config defaults when nothing persisted', () async {
-      final p = FakeThemePersistence(); // nothing saved
-      final bloc = ThemeBloc.withConfig(
-        ThemeConfig(persistence: p, defaultMode: ThemeMode.light),
-      );
-      await settle();
+    final darkOcean = FakeThemePersistence(
+        const ThemeSelection(mode: ThemeMode.dark, flavor: 'ocean'));
+    juiceTest<ThemeBloc, ThemeState>(
+      'loads persisted selection on init, on every theme group',
+      build: () => ThemeBloc(),
+      act: (b) => init(b, ThemeConfig(persistence: darkOcean)),
+      expect: () => [
+        isUpdatingStatus(
+          state: theme(mode: ThemeMode.dark, flavor: 'ocean'),
+          groups: ThemeGroups.all,
+        ),
+      ],
+    );
 
-      expect(bloc.state.mode, ThemeMode.light);
-      await bloc.close();
-    });
+    juiceTest<ThemeBloc, ThemeState>(
+      'falls back to config defaults when nothing persisted',
+      build: () => ThemeBloc(),
+      act: (b) => init(
+        b,
+        ThemeConfig(
+            persistence: FakeThemePersistence(), defaultMode: ThemeMode.light),
+      ),
+      expect: () => [isUpdatingStatus(state: theme(mode: ThemeMode.light))],
+    );
 
-    test('setMode updates state and persists', () async {
-      final p = FakeThemePersistence();
-      final bloc = ThemeBloc.withConfig(ThemeConfig(persistence: p));
-      await settle();
+    final setModeStore = FakeThemePersistence();
+    juiceTest<ThemeBloc, ThemeState>(
+      'setMode updates state on the mode group only, and persists',
+      build: () => ThemeBloc(),
+      act: (b) async {
+        await init(b, ThemeConfig(persistence: setModeStore));
+        await b.send(SetThemeModeEvent(ThemeMode.dark));
+      },
+      skip: 1, // the init emission
+      expect: () => [
+        isUpdatingStatus(
+          state: theme(mode: ThemeMode.dark),
+          groups: {ThemeGroups.mode},
+        ),
+      ],
+      verify: (_) => expect(setModeStore.saved?.mode, ThemeMode.dark),
+    );
 
-      bloc.setMode(ThemeMode.dark);
-      await settle();
+    juiceTest<ThemeBloc, ThemeState>(
+      'toggle flips light/dark (system → dark → light)',
+      build: () => ThemeBloc(),
+      act: (b) async {
+        await init(b, ThemeConfig(persistence: FakeThemePersistence()));
+        await b.send(ToggleThemeEvent());
+        await b.send(ToggleThemeEvent());
+      },
+      skip: 1,
+      expect: () => [
+        isUpdatingStatus(
+            state: theme(mode: ThemeMode.dark), groups: {ThemeGroups.mode}),
+        isUpdatingStatus(
+            state: theme(mode: ThemeMode.light), groups: {ThemeGroups.mode}),
+      ],
+    );
 
-      expect(bloc.state.mode, ThemeMode.dark);
-      expect(p.saved?.mode, ThemeMode.dark);
-      await bloc.close();
-    });
+    final flavorStore = FakeThemePersistence();
+    juiceTest<ThemeBloc, ThemeState>(
+      'setFlavor sets and clears on the flavor group, persisting each time',
+      build: () => ThemeBloc(),
+      act: (b) async {
+        await init(b, ThemeConfig(persistence: flavorStore));
+        await b.send(SetFlavorEvent('ocean'));
+        expect(flavorStore.saved?.flavor, 'ocean');
+        await b.send(SetFlavorEvent(null));
+      },
+      skip: 1,
+      expect: () => [
+        isUpdatingStatus(
+            state: theme(flavor: 'ocean'), groups: {ThemeGroups.flavor}),
+        isUpdatingStatus(
+            state: theme(flavor: null), groups: {ThemeGroups.flavor}),
+      ],
+      verify: (_) {
+        expect(flavorStore.saved?.flavor, isNull);
+        expect(flavorStore.saveCount, 2);
+      },
+    );
 
-    test('toggle flips light/dark (system → dark)', () async {
-      final p = FakeThemePersistence();
-      final bloc = ThemeBloc.withConfig(ThemeConfig(persistence: p));
-      await settle(); // starts system
-
-      bloc.toggle();
-      await settle();
-      expect(bloc.state.mode, ThemeMode.dark); // system → dark
-
-      bloc.toggle();
-      await settle();
-      expect(bloc.state.mode, ThemeMode.light); // dark → light
-      await bloc.close();
-    });
-
-    test('setFlavor sets and clears, persisting each time', () async {
-      final p = FakeThemePersistence();
-      final bloc = ThemeBloc.withConfig(ThemeConfig(persistence: p));
-      await settle();
-
-      bloc.setFlavor('ocean');
-      await settle();
-      expect(bloc.state.flavor, 'ocean');
-      expect(p.saved?.flavor, 'ocean');
-
-      bloc.setFlavor(null);
-      await settle();
-      expect(bloc.state.flavor, isNull);
-      expect(p.saved?.flavor, isNull);
-      await bloc.close();
-    });
-
-    test('in-memory only (null persistence) still works', () async {
-      final bloc = ThemeBloc.withConfig(const ThemeConfig());
-      await settle();
-
-      bloc.setMode(ThemeMode.dark);
-      await settle();
-      expect(bloc.state.mode, ThemeMode.dark); // no throw without persistence
-      await bloc.close();
-    });
+    juiceTest<ThemeBloc, ThemeState>(
+      'in-memory only (null persistence) still works',
+      build: () => ThemeBloc(),
+      act: (b) async {
+        await init(b, const ThemeConfig());
+        await b.send(SetThemeModeEvent(ThemeMode.dark));
+      },
+      skip: 1,
+      expect: () => [isUpdatingStatus(state: theme(mode: ThemeMode.dark))],
+    );
   });
 
   concurrencyModeTests();
@@ -212,3 +238,5 @@ void concurrencyModeTests() {
     });
   });
 }
+
+const Object _any = Object();

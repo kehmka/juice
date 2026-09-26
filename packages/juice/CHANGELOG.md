@@ -24,6 +24,19 @@ and the core is Web/WASM-compatible.
   nothing) throws `StateError` instead of waiting out the timeout. The
   terminal status is captured synchronously at emit time (an internal
   emission tap), not from the asynchronously delivered stream.
+- **`juiceTest`** (`package:juice/testing.dart`) — declarative bloc tests:
+  `build` / `seed` / `act` / `wait` / `skip` / `expect` / `errors` /
+  `verify`, plus `runJuiceTest` to call the body directly. No fixed sleeps
+  (`act` returns the `send()` futures, which complete when processing does);
+  the bloc is closed BEFORE asserting; each emission's rebuild groups are
+  snapshotted at emit time (they accumulate on a multi-emit event);
+  `isUpdatingStatus` / `isWaitingStatus` / `isFailureStatus` /
+  `isCancelingStatus` match kind, state and groups; an unexpected use-case
+  error fails the test; a use case still running at close fails it (the
+  "act didn't await" leak). `BlocTester` remains. Dogfooded: juice_theme's
+  behavior tests are ported and now assert groups with no `settle()`.
+  Adds `test_api` (its public `scaffolding.dart`, the `test` flutter_test
+  re-exports) and `meta` as dependencies, used only by `testing.dart`.
 - **`JuiceBloc.isClosing`** — true once `close()` has started, and stays
   true (monotonic; `isClosed` marks completion). Formalizes the flag
   `juice_sync`'s `SyncBloc` already declared, which now overrides it.

@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_sync
-version: 0.2.0
+version: 0.2.1
 requires:
-  juice: ">=1.6.0"
+  juice: ">=1.9.0"
   juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-15
+updated: 2026-09-26
 ---
 
 # juice_sync — AI card
@@ -30,7 +30,7 @@ streams use `juice_realtime`.
 
 ```yaml
 dependencies:
-  juice_sync: ^0.2.0
+  juice_sync: ^0.2.1
   juice_storage: ^2.2.0   # for the durable StorageSyncStore (any 1.2+ works)
 ```
 

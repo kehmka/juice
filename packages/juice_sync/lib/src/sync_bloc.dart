@@ -107,6 +107,10 @@ class SyncBloc extends JuiceBloc<SyncState> {
   SyncStore get store => _config.store;
   MutationExecutor get executor => _config.executor;
   int get maxAttempts => _config.maxAttempts;
+  /// Set at the very START of this bloc's own close() — before its seams are
+  /// disposed and before [JuiceBloc.close] runs — so a flush loop stops as
+  /// soon as teardown begins. Same contract as the core getter it overrides.
+  @override
   bool get isClosing => _closed;
 
   /// Subscribe to the online signal (deduped edges → [OnlineChangedEvent]).

@@ -42,8 +42,8 @@ scripts:
     description: Check formatting in all packages (writes nothing)
 
   coverage:juice:
-    run: sh tool/coverage_check.sh 80
-    description: Fail if juice core line coverage drops below the gate (exclusions and reasons in the script)
+    run: sh tool/coverage_check.sh 90
+    description: Fail if juice core line coverage drops below 90% (exclusions and reasons in the script)
 
   ci:
     run: dart run melos run format:check && dart run melos run analyze && dart run melos run test && dart run melos run coverage:juice

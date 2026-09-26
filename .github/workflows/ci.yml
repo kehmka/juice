@@ -36,4 +36,4 @@ jobs:
         run: cd example && flutter test
 
       - name: Core Coverage Gate
-        run: sh tool/coverage_check.sh 80
+        run: sh tool/coverage_check.sh 90

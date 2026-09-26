@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../bloc_state.dart';
 import '../bloc_event.dart';
+import '../cancellable_event.dart';
 import '../juice_bloc.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
@@ -176,6 +177,10 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
         },
       );
       _onError(error, stackTrace, event);
+    } finally {
+      // The work is over: a still-running timeout must not fire later and
+      // mark this completed event timed out.
+      if (event is TimeoutSupport) event.settleTimeout();
     }
   }
 

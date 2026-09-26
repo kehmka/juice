@@ -60,13 +60,45 @@ and the core is Web/WASM-compatible.
   use case, the bloc it expects, and the bloc it was registered on.
 - pub.dev static analysis: two doc comments with bare angle brackets.
 
+Found by the new tests:
+- **`StatelessJuiceWidget` / `2` / `3` rebuilt with a different `scope`** kept
+  leasing and streaming the OLD bloc while its `bloc` getter read the new
+  one (and a leased new bloc was never leased, so the getter threw). The
+  lease holders now re-lease on a scope change — new lease first, then the
+  old one released.
+- **`JuiceAsyncBuilder`**: a stream closing right after an error threw
+  "Snapshot data must not be null" (done now keeps the error); a future
+  failing after unmount wrote to a disposed notifier, and a replaced
+  future's late error overwrote the current snapshot (the error path now has
+  the success path's guard).
+- **`AviatorManager.navigate`** dropped the future of async navigation, so an
+  unknown deep link or a failing auth/data step — on the path of every
+  `emitUpdate(aviatorName:)` — escaped as an uncaught zone error. Now logged
+  as `aviator_error`.
+- **Inline use cases navigating** (`ctx.emit.failure(aviatorName: …)`)
+  emitted an extra `UpdatingStatus` that overwrote the failure/waiting/
+  cancel and widened the groups to `*` (every widget rebuilt). Navigation
+  no longer emits.
+- **`CancellableEvent` equality is identity.** The value-style `==` compared
+  only the runtime type and the cancelled flag (two different orders were
+  equal), and `hashCode` changed on `cancel()`, losing the event in any
+  Set/Map. `TimeoutSupport`'s override is gone too.
+- **A `TimeoutSupport` timer is stopped when its use case finishes**; it
+  used to fire later and mark a completed event timed out and cancelled.
+- Docs: the default `groups: {'*'}` rebuilds on `rebuildAlways` broadcasts
+  only, not "on all state changes" (behavior unchanged, now pinned);
+  `JuiceWidgetState2/3.close()` runs once ALL blocs have closed.
+
 ### Quality
 - pana 160/160 locally (1.8.1 scored 140: platform support and static
   analysis).
-- Core line-coverage gate in CI (`tool/coverage_check.sh`, `melos run
-  coverage:juice`), with the vendored, unused `Bloc<Event, State>` base
-  (`bloc.dart`, `emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
-  `global_bloc_resolver.dart`) excluded and flagged for removal in 2.0.0.
+- **Core line coverage 55.8% → 94.4%**, now gated at 90% in CI
+  (`tool/coverage_check.sh`, `melos run coverage:juice`). The vendored,
+  unused `Bloc<Event, State>` base (`bloc.dart`, `emitter.dart`,
+  `bloc_support.dart`, `bloc_base.dart`, `global_bloc_resolver.dart`) is
+  excluded and flagged for removal in 2.0.0. The suite grew from 217 to
+  479 tests; every exported widget is now tested (`JuiceBuilder*`,
+  `JuiceWidgetState*` and the `JuiceExceptionWidget` had none).
 
 ## [1.8.1] - 2026-09-25
 

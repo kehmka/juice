@@ -113,10 +113,6 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
       (throw ArgumentError('widget.initial must not be null'));
 
   /// Returns the current snapshot data, throwing if null.
-  T get _requiredSnapshotData =>
-      _snapshotNotifier.value.data ??
-      (throw StateError('Snapshot data must not be null'));
-
   @override
   void initState() {
     super.initState();
@@ -146,6 +142,10 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
       _snapshotNotifier.value =
           AsyncSnapshot<T>.withData(ConnectionState.done, value);
     }).catchError((error, stackTrace) {
+      // Same guard as the success path: a future that fails after unmount
+      // wrote to a disposed notifier, and one that was REPLACED overwrote
+      // the current future's snapshot with its stale error.
+      if (future != widget.future || !mounted) return;
       _snapshotNotifier.value =
           AsyncSnapshot<T>.withError(ConnectionState.done, error, stackTrace);
       if (!widget.silent) {
@@ -197,8 +197,11 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
         }
       },
       onDone: () {
-        _snapshotNotifier.value = AsyncSnapshot<T>.withData(
-            ConnectionState.done, _requiredSnapshotData);
+        // Keep what the snapshot holds — data OR error — and mark it done.
+        // Requiring data here threw "Snapshot data must not be null" when a
+        // stream closed right after an error.
+        _snapshotNotifier.value =
+            _snapshotNotifier.value.inState(ConnectionState.done);
       },
     );
   }

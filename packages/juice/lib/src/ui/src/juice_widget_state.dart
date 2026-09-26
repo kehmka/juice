@@ -303,7 +303,8 @@ abstract class JuiceWidgetState2<
     return const SizedBox.shrink();
   }
 
-  /// Called when either bloc stream is closed.
+  /// Called when the merged stream completes — i.e. once ALL of the blocs
+  /// have closed, not when the first one does.
   /// Override to handle cleanup or show final UI state.
   @protected
   Widget close(BuildContext context) {
@@ -467,7 +468,8 @@ abstract class JuiceWidgetState3<
     return const SizedBox.shrink();
   }
 
-  /// Called when any bloc stream is closed.
+  /// Called when the merged stream completes — i.e. once ALL of the blocs
+  /// have closed, not when the first one does.
   /// Override to handle cleanup or show final UI state.
   @protected
   Widget close(BuildContext context) {

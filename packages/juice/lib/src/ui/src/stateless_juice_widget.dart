@@ -426,12 +426,26 @@ class _BlocLeaseHolder<TBloc extends JuiceBloc<BlocState>>
 
 class _BlocLeaseHolderState<TBloc extends JuiceBloc<BlocState>>
     extends State<_BlocLeaseHolder<TBloc>> {
-  late final BlocLease<TBloc> _lease;
+  late BlocLease<TBloc> _lease;
 
   @override
   void initState() {
     super.initState();
     _lease = BlocScope.lease<TBloc>(scope: widget.scope);
+  }
+
+  // Rebuilt with a different scope: lease the new bloc, THEN release the old
+  // one. Without this the holder kept leasing and streaming the old bloc
+  // while the widget's `bloc` getter read the new one (and a leased new bloc
+  // was never leased at all, so the getter threw).
+  @override
+  void didUpdateWidget(_BlocLeaseHolder<TBloc> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scope != oldWidget.scope) {
+      final previous = _lease;
+      _lease = BlocScope.lease<TBloc>(scope: widget.scope);
+      previous.dispose();
+    }
   }
 
   @override
@@ -468,14 +482,30 @@ class _BlocLeaseHolder2<TBloc1 extends JuiceBloc<BlocState>,
 class _BlocLeaseHolder2State<TBloc1 extends JuiceBloc<BlocState>,
         TBloc2 extends JuiceBloc<BlocState>>
     extends State<_BlocLeaseHolder2<TBloc1, TBloc2>> {
-  late final BlocLease<TBloc1> _lease1;
-  late final BlocLease<TBloc2> _lease2;
+  late BlocLease<TBloc1> _lease1;
+  late BlocLease<TBloc2> _lease2;
 
   @override
   void initState() {
     super.initState();
     _lease1 = BlocScope.lease<TBloc1>(scope: widget.scope1);
     _lease2 = BlocScope.lease<TBloc2>(scope: widget.scope2);
+  }
+
+  // See _BlocLeaseHolderState.didUpdateWidget: re-lease per changed scope.
+  @override
+  void didUpdateWidget(_BlocLeaseHolder2<TBloc1, TBloc2> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scope1 != oldWidget.scope1) {
+      final previous = _lease1;
+      _lease1 = BlocScope.lease<TBloc1>(scope: widget.scope1);
+      previous.dispose();
+    }
+    if (widget.scope2 != oldWidget.scope2) {
+      final previous = _lease2;
+      _lease2 = BlocScope.lease<TBloc2>(scope: widget.scope2);
+      previous.dispose();
+    }
   }
 
   @override
@@ -519,9 +549,9 @@ class _BlocLeaseHolder3State<
         TBloc2 extends JuiceBloc<BlocState>,
         TBloc3 extends JuiceBloc<BlocState>>
     extends State<_BlocLeaseHolder3<TBloc1, TBloc2, TBloc3>> {
-  late final BlocLease<TBloc1> _lease1;
-  late final BlocLease<TBloc2> _lease2;
-  late final BlocLease<TBloc3> _lease3;
+  late BlocLease<TBloc1> _lease1;
+  late BlocLease<TBloc2> _lease2;
+  late BlocLease<TBloc3> _lease3;
 
   @override
   void initState() {
@@ -529,6 +559,27 @@ class _BlocLeaseHolder3State<
     _lease1 = BlocScope.lease<TBloc1>(scope: widget.scope1);
     _lease2 = BlocScope.lease<TBloc2>(scope: widget.scope2);
     _lease3 = BlocScope.lease<TBloc3>(scope: widget.scope3);
+  }
+
+  // See _BlocLeaseHolderState.didUpdateWidget: re-lease per changed scope.
+  @override
+  void didUpdateWidget(_BlocLeaseHolder3<TBloc1, TBloc2, TBloc3> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scope1 != oldWidget.scope1) {
+      final previous = _lease1;
+      _lease1 = BlocScope.lease<TBloc1>(scope: widget.scope1);
+      previous.dispose();
+    }
+    if (widget.scope2 != oldWidget.scope2) {
+      final previous = _lease2;
+      _lease2 = BlocScope.lease<TBloc2>(scope: widget.scope2);
+      previous.dispose();
+    }
+    if (widget.scope3 != oldWidget.scope3) {
+      final previous = _lease3;
+      _lease3 = BlocScope.lease<TBloc3>(scope: widget.scope3);
+      previous.dispose();
+    }
   }
 
   @override

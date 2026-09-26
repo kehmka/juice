@@ -213,6 +213,14 @@ class JuiceBloc<TState extends BlocState>
     return result;
   }
 
+  /// Runs the named aviator WITHOUT emitting a status. Framework-internal:
+  /// inline use cases navigate through this — they used to call
+  /// `emitUpdate(aviatorName:)`, which emitted an extra UpdatingStatus that
+  /// overwrote a failure/waiting/cancel and broadcast to every widget.
+  @internal
+  void navigateAviator(String? aviatorName, Map<String, dynamic>? args) =>
+      _aviatorManager.navigate(aviatorName, args);
+
   /// Triggers an update with the current state.
   void start() => send(UpdateEvent(newState: state));
 

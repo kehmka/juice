@@ -414,16 +414,9 @@ class BlocScope {
     // Check for leaks before closing
     FeatureScope.debugCheckLeaks();
 
-    // Close all blocs
-    final futures = <Future<void>>[];
-    for (final entry in _entries.entries) {
-      if (entry.value.instance != null) {
-        futures.add(_closeEntry(entry.key));
-      }
-    }
-    await Future.wait(futures);
-
-    // Leak detection in debug mode
+    // Leak detection in debug mode — BEFORE closing, while the lease counts
+    // and instances are still the live ones (_closeEntry zeroes and clears
+    // them).
     assert(() {
       final leaks = <String>[];
 
@@ -453,6 +446,15 @@ class BlocScope {
 
       return true;
     }());
+
+    // Close all blocs
+    final futures = <Future<void>>[];
+    for (final entry in _entries.entries) {
+      if (entry.value.instance != null) {
+        futures.add(_closeEntry(entry.key));
+      }
+    }
+    await Future.wait(futures);
 
     _entries.clear();
 

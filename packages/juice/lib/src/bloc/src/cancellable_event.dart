@@ -1,4 +1,5 @@
 import 'package:juice/juice.dart';
+import 'package:flutter/foundation.dart' show internal;
 
 /// Base class for events that support cancellation.
 ///
@@ -46,15 +47,9 @@ abstract class CancellableEvent extends EventBase {
     _isCancelled = false;
   }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CancellableEvent &&
-          runtimeType == other.runtimeType &&
-          _isCancelled == other._isCancelled;
-
-  @override
-  int get hashCode => Object.hash(runtimeType, _isCancelled);
+  // Identity equality (EventBase default). A value-style == over only
+  // runtimeType + the cancelled flag made two DIFFERENT orders equal, and
+  // its hashCode changed on cancel(), losing the event in any Set/Map.
 }
 
 /// Mixin that adds timeout capabilities to [CancellableEvent].
@@ -123,6 +118,15 @@ mixin TimeoutSupport on CancellableEvent {
   }
 
   /// Cleanup timer when cancelled
+  /// Stops the timeout clock without cancelling. Called by the framework
+  /// when the event's use case finishes, so a timer outliving the work can
+  /// no longer mark a COMPLETED event timed out and cancelled.
+  @internal
+  void settleTimeout() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
+  }
+
   @override
   void cancel() {
     _timeoutTimer?.cancel();
@@ -141,17 +145,6 @@ mixin TimeoutSupport on CancellableEvent {
     _isTimedOut = false;
     super.reset();
   }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      super == other &&
-          other is TimeoutSupport &&
-          _timeout == other._timeout &&
-          _isTimedOut == other._isTimedOut;
-
-  @override
-  int get hashCode => Object.hash(super.hashCode, _timeout, _isTimedOut);
 }
 
 /// Example of a cancellable event with timeout support:

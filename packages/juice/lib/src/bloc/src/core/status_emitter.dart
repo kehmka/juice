@@ -1,4 +1,4 @@
-import 'package:logger/logger.dart' show Level;
+import 'package:logger/web.dart' show Level;
 
 import '../bloc_state.dart';
 import '../bloc_event.dart';

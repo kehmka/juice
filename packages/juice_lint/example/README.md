@@ -1,37 +1,34 @@
 # juice_lint — what it catches, what you see, what to do
 
-`juice_lint` turns three idioms from Juice's `AGENTS.md` into analyzer
-rules. Each one flags a mistake that compiles cleanly and fails quietly at
-runtime. This walkthrough shows, per rule, the offending code, the exact
+`juice_lint` turns idioms from Juice's `AGENTS.md` into analyzer rules.
+Each one flags a mistake that compiles cleanly and fails quietly at
+runtime. This walkthrough shows, per rule, the offending code, the
 warning you get, and the fix.
 
-`lib/fixtures.dart` in this directory is the same material as a
-self-verifying test: every marked line must trip its rule, every unmarked
-line must stay clean.
+The `lib/` fixtures in this directory are the same material as a
+self-verifying test: every `// expect_lint:` marker's rule must be reported
+on the line below it, and every other line must stay clean
+(`dart run tool/check_fixtures.dart` from `packages/juice_lint`).
 
 ## Running it
 
-```yaml
-# pubspec.yaml
-dev_dependencies:
-  custom_lint: ^0.8.1
-  juice_lint: ^0.1.0
-```
+Nothing in `pubspec.yaml` — enable the plugin in `analysis_options.yaml`,
+in a top-level `plugins:` section:
 
 ```yaml
-# analysis_options.yaml
-analyzer:
-  plugins:
-    - custom_lint
+plugins:
+  juice_lint:
+    path: ..            # this directory; consumers use a version or path
 ```
 
 ```sh
-dart run custom_lint
+dart analyze
 ```
 
-The IDE's analysis server shows the warnings inline. `flutter analyze`
-and `dart analyze` load the plugin but do **not** report its diagnostics,
-so on the command line and in CI, `dart run custom_lint` is the runner.
+The rules are reported by `dart analyze` and the IDE (juice_lint 0.1.0, on
+custom_lint, only reported through `dart run custom_lint`). `flutter
+analyze` on Flutter 3.47.5 exits before plugin results arrive, so it
+shows none of them.
 
 ## 1 · `juice_generic_event`
 
@@ -52,7 +49,7 @@ is simply dead.
 What you see:
 
 ```
-lib/blocs/load_events.dart:3:7 • A generic EventBase subclass never matches a typeOfEvent builder (events are matched by exact runtime type). • juice_generic_event • WARNING
+warning - lib/blocs/load_events.dart:3:7 - A generic EventBase subclass never matches a typeOfEvent builder (events are matched by exact runtime type). - juice_generic_event
 ```
 
 The fix is a concrete event per shape you actually send:
@@ -90,7 +87,7 @@ against a value that already moved.
 What you see:
 
 ```
-lib/blocs/cart_state.dart:2:3 • A BlocState field must be final — state is an immutable value changed only through copyWith. • juice_mutable_state_field • WARNING
+warning - lib/blocs/cart_state.dart:2:3 - A BlocState field must be final — state is an immutable value changed only through copyWith. - juice_mutable_state_field
 ```
 
 The fix is the canonical state shape: `final` fields, a `const`
@@ -138,7 +135,7 @@ knows they exist.
 What you see:
 
 ```
-lib/blocs/search_state.dart:3:3 • BlocState holds data, not behavior — move functions, timers, subscriptions, and controllers to the bloc or its config. • juice_behavior_in_state • WARNING
+warning - lib/blocs/search_state.dart:3:3 - BlocState holds data, not behavior — move functions, timers, subscriptions, and controllers to the bloc or its config. - juice_behavior_in_state
 ```
 
 The fix moves the handle to the bloc, which owns its lifecycle and
@@ -169,26 +166,91 @@ class SearchBloc extends JuiceBloc<SearchState> {
 Callbacks become events: instead of storing `onSubmit`, the widget sends
 `SubmitSearchEvent()` and a use case handles it.
 
-## Suppressing a rule
+## 4 · `juice_missing_concurrency_mode` (opt-in)
 
-Project-wide, in `analysis_options.yaml`:
-
-```yaml
-custom_lint:
-  rules:
-    - juice_behavior_in_state: false
-```
-
-Or on one line:
+**AGENTS.md §4:** pick the concurrency mode per event. This is the one
+rule that is off by default (the `concurrent` default is legitimate for
+independent events); this package enables it under `diagnostics:`.
 
 ```dart
-// ignore: juice_mutable_state_field
+() => UseCaseBuilder(typeOfEvent: AddItemEvent, useCaseGenerator: () => AddItemUseCase()),
+() => UseCaseBuilder.typed(() => RenameItemUseCase()),
+```
+
+Both default to `concurrent`: a second `AddItemEvent` runs while the first
+is suspended at an `await`. That may be right — but it should be a
+decision. The fix is to say which: `sequential` (mutates shared state),
+`droppable` (exclusive flow), or `concurrent` (independent):
+
+```dart
+() => UseCaseBuilder.typed(() => AddItemUseCase(),
+    concurrency: EventConcurrency.sequential),
+```
+
+## 5 · `juice_send_in_build` and 6 · `juice_lease_in_build`
+
+`build`/`onBuild` runs on every rebuild — and emissions cause rebuilds.
+
+```dart
+@override
+Widget onBuild(BuildContext context, StreamStatus status) {
+  bloc.send(RefreshEvent());                  // juice_send_in_build
+  final lease = BlocScope.lease<ItemsBloc>(); // juice_lease_in_build
+  return TextButton(
+    onPressed: () => bloc.send(SaveEvent()),  // a callback: fine
+    child: Text('${lease.bloc.state.count}'),
+  );
+}
+```
+
+A send in the build body dispatches on every rebuild (and loops if its
+use case emits into this widget's groups). A lease in build takes a new
+reference on every rebuild and never releases one, so the bloc can never
+be disposed. Send from callbacks or `initState`; lease in `initState`,
+release in `dispose`. Only statements directly in the build body are
+flagged — closures (`onPressed:`, `builder:`) run later.
+
+## 7 · `juice_stale_read_across_await`
+
+**AGENTS.md §4 — the #1 latent bug.**
+
+```dart
+final items = bloc.state.items;             // snapshot
+final created = await createRemote(e.name); // another event emits here
+emitUpdate(newState: bloc.state.copyWith(items: [...items, created])); // clobbers it
+```
+
+The fix: read `bloc.state` after the await (or make the event
+`sequential` — though that only serializes events of the same type). The
+rule is deliberately narrow — a snapshot of the state or of a collection
+in it, crossing an `await`, flowing into `newState:`; see the package
+README for the exact heuristic. A deliberate rollback is silenced at the
+use with `// ignore: juice_lint/juice_stale_read_across_await`
+(`RollbackUseCase` in `lib/use_case_fixtures.dart`).
+
+## Suppressing a rule
+
+Project-wide, under the plugin in `analysis_options.yaml`:
+
+```yaml
+plugins:
+  juice_lint:
+    path: ..
+    diagnostics:
+      juice_behavior_in_state: false
+```
+
+Or on one line — plugin diagnostics take the `juice_lint/` prefix:
+
+```dart
+// ignore: juice_lint/juice_mutable_state_field
 int scratch = 0;
 ```
 
 ## Scope
 
-All three rules key on Juice's own base types
-(`package:juice` `EventBase` and `BlocState`). A class from another package
-that happens to share a name is never touched, and a plain class with
-identical fields (see `NotAState` in `lib/fixtures.dart`) gets no lints.
+Every rule keys on Juice's own types (`package:juice` `EventBase`,
+`BlocState`, `UseCase`, `UseCaseBuilder`, `BlocScope`, `JuiceBloc`). A class
+from another package that happens to share a name is never touched, and a
+plain class with identical fields (see `NotAState` in `lib/fixtures.dart`)
+gets no lints.

@@ -36,8 +36,10 @@ AI models and routes you to the per-package card for anything specific.
    check your draft against it. The list is short and every item is a
    mistake that compiles.
 5. **After editing:** `flutter analyze` must be clean and `flutter test`
-   green. If `juice_lint` is a dev dependency, `dart run custom_lint`
-   catches three of the gotchas mechanically.
+   green. If the `juice_lint` analyzer plugin is enabled (a top-level
+   `plugins:` entry in `analysis_options.yaml`), `dart analyze` also
+   catches several of the gotchas mechanically (`flutter analyze` does not
+   wait for plugin results).
 
 ## What to read for which task
 

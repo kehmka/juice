@@ -1,7 +1,8 @@
-// Fixtures for juice_lint. Each marked line MUST trigger its rule; lines
-// without a marker must stay clean (custom_lint fails the run if a rule
-// over-fires). Verified by `dart run custom_lint`. The markers are the
-// comments below, one line above each offending declaration.
+// Fixtures for juice_lint's state and event rules. Each `// expect_lint:`
+// marker names the rule that MUST be reported on the next line; every other
+// line must stay clean. `dart run tool/check_fixtures.dart` (from
+// packages/juice_lint) runs `dart analyze` here and fails on any missing or
+// extra diagnostic.
 import 'package:juice/juice.dart';
 
 // --- juice_generic_event ---------------------------------------------------
@@ -11,11 +12,23 @@ class BadGenericEvent<T> extends EventBase {} // generic → never matches
 
 class GoodEvent extends EventBase {} // non-generic → fine
 
+// An abstract generic BASE is never sent itself → fine; its concrete,
+// non-generic subclasses are what get sent → fine.
+abstract class PayloadEvent<T> extends EventBase {
+  T get payload;
+}
+
+class NamePayloadEvent extends PayloadEvent<String> {
+  @override
+  final String payload;
+  NamePayloadEvent(this.payload);
+}
+
 // --- juice_mutable_state_field & juice_behavior_in_state --------------------
 
 class BadState extends BlocState {
   // expect_lint: juice_mutable_state_field
-  int count = 0; // non-final → mutable state
+  int count = 0; // non-final → mutable state (quick fix: insert `final`)
 
   // expect_lint: juice_behavior_in_state
   final void Function()? onTap; // a callback belongs on the bloc

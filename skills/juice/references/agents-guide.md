@@ -234,10 +234,16 @@ instead of rebuilding. Two rules:
   the state (or the changed field's type) real `==`/`hashCode` —
   `EntityStatuses` and the framework value types already have it.
 
-> Many of these gotchas are now enforced by **`juice_lint`** (a
-> `custom_lint` plugin): `juice_generic_event`, `juice_mutable_state_field`,
-> `juice_behavior_in_state`. Add it as a dev_dependency to catch them in the
-> IDE.
+> Many of these gotchas are now enforced by **`juice_lint`** (an
+> `analysis_server_plugin` analyzer plugin, reported by `dart analyze` and
+> the IDE — not by Flutter 3.47's `flutter analyze`, which exits before
+> plugin results arrive): `juice_generic_event`,
+> `juice_mutable_state_field`, `juice_behavior_in_state`,
+> `juice_send_in_build`, `juice_lease_in_build`,
+> `juice_stale_read_across_await`, plus the opt-in
+> `juice_missing_concurrency_mode`. Enable it with a top-level `plugins:
+> juice_lint:` section in `analysis_options.yaml` (no pubspec dependency);
+> suppress one site with `// ignore: juice_lint/<rule>`.
 
 ## 5. Gotchas — what AI models get wrong about Juice
 

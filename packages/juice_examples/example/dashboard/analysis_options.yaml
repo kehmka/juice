@@ -1,16 +1,13 @@
 include: package:flutter_lints/flutter.yaml
 
-# juice_lint (custom_lint plugin). The IDE's analysis server surfaces its
-# diagnostics; `flutter analyze` loads the plugin but does NOT report them
-# (custom_lint's documented CLI behavior, verified 2026-09-02) — run
-# `dart run custom_lint` here, or `melos run lint:juice` from the root.
+# juice_lint dogfood canary: the AGENTS.md idioms as analyzer rules, as an
+# analysis_server_plugin plugin. Its diagnostics are reported by the IDE and
+# `dart analyze` — `melos run lint:juice` enforces them here. (Flutter 3.47's
+# `flutter analyze` exits before plugin results arrive, so it shows none.)
+plugins:
+  juice_lint:
+    path: ../../../juice_lint
+
 analyzer:
-  plugins:
-    - custom_lint
-  errors:
-    # custom_lint uses the legacy analyzer-plugin API, which current Dart SDKs
-    # flag as deprecated. Silenced so `flutter analyze` stays a zero-issue CI
-    # gate; juice_lint still needs migrating to the new plugin system.
-    analysis_options_deprecated_plugins: ignore
   exclude:
     - build/**

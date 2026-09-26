@@ -1,8 +1,13 @@
-analyzer:
-  plugins:
-    - custom_lint
-  errors:
-    # custom_lint uses the legacy analyzer-plugin API, which current Dart SDKs
-    # flag as deprecated. Silenced so `flutter analyze` stays a zero-issue CI
-    # gate; juice_lint still needs migrating to the new plugin system.
-    analysis_options_deprecated_plugins: ignore
+# juice_lint as an analysis_server_plugin plugin: its diagnostics are
+# reported by the IDE and `dart analyze` (not by Flutter 3.47's `flutter
+# analyze`, which exits before plugin results arrive). The fixtures in
+# lib/ plant one violation per `// expect_lint:` marker, so analyzing this
+# package reports EXACTLY those warnings — `dart run tool/check_fixtures.dart`
+# (from packages/juice_lint) asserts that. The warnings are the point, so this
+# package is excluded from `melos run analyze` (see melos.yaml).
+plugins:
+  juice_lint:
+    path: ..
+    diagnostics:
+      # The one opt-in (lint) rule; enabled here so its fixtures run.
+      juice_missing_concurrency_mode: true

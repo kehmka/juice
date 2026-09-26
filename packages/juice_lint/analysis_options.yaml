@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    # The fixtures package is analyzed on its own (it enables this plugin).
+    - example/**

@@ -342,6 +342,7 @@ class JuiceBloc<TState extends BlocState>
   }
 
   void _registerUseCase(UseCaseBuilderBase builder) {
+    if (builder is UseCaseBuilder) builder.checkRegisteredOn(this);
     _useCaseRegistry.register(builder);
 
     _dispatcher.register<EventBase>(

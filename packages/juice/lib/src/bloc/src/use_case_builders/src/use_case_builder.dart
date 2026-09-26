@@ -91,7 +91,69 @@ class UseCaseBuilder implements UseCaseBuilderBase {
     required this.useCaseGenerator,
     UseCaseEventBuilder? initialEventBuilder,
     this.concurrency = EventConcurrency.concurrent,
-  }) : _initialEventBuilder = initialEventBuilder;
+  })  : _initialEventBuilder = initialEventBuilder,
+        _acceptsBloc = null,
+        _useCaseBlocType = null;
+
+  UseCaseBuilder._typed({
+    required this.typeOfEvent,
+    required this.useCaseGenerator,
+    required UseCaseEventBuilder? initialEventBuilder,
+    required this.concurrency,
+    required bool Function(JuiceBloc bloc) acceptsBloc,
+    required Type useCaseBlocType,
+  })  : _initialEventBuilder = initialEventBuilder,
+        _acceptsBloc = acceptsBloc,
+        _useCaseBlocType = useCaseBlocType;
+
+  /// Type-checked registration: the event type is INFERRED from the use
+  /// case, so it cannot disagree with it.
+  ///
+  /// ```dart
+  /// () => UseCaseBuilder.typed(() => LoadFooUseCase()),
+  /// () => UseCaseBuilder.typed(() => SaveFooUseCase(),
+  ///     concurrency: EventConcurrency.sequential),
+  /// ```
+  ///
+  /// With the plain constructor, `typeOfEvent: SaveEvent` paired with a
+  /// `LoadUseCase` compiles and fails at dispatch. Here `TEvent` comes from
+  /// the generator's return type — a mismatch is not expressible. `TBloc` is
+  /// inferred the same way and checked when the bloc REGISTERS the builder:
+  /// a use case copied onto the wrong bloc throws [ArgumentError] from that
+  /// bloc's constructor, not on the first event.
+  ///
+  /// The event must be the use case's exact event class (events match by
+  /// runtime type — AGENTS gotcha 2); a use case declared over an abstract
+  /// base event should keep the explicit constructor.
+  static UseCaseBuilder
+      typed<TBloc extends JuiceBloc, TEvent extends EventBase>(
+    UseCase<TBloc, TEvent> Function() useCaseGenerator, {
+    EventConcurrency concurrency = EventConcurrency.concurrent,
+    TEvent Function()? initialEventBuilder,
+  }) {
+    return UseCaseBuilder._typed(
+      typeOfEvent: TEvent,
+      useCaseGenerator: useCaseGenerator,
+      initialEventBuilder: initialEventBuilder,
+      concurrency: concurrency,
+      acceptsBloc: (bloc) => bloc is TBloc,
+      useCaseBlocType: TBloc,
+    );
+  }
+
+  final bool Function(JuiceBloc bloc)? _acceptsBloc;
+  final Type? _useCaseBlocType;
+
+  /// Throws [ArgumentError] when a [typed] builder is registered on a bloc
+  /// its use case cannot run on. A no-op for the plain constructor.
+  void checkRegisteredOn(JuiceBloc bloc) {
+    final accepts = _acceptsBloc;
+    if (accepts == null || accepts(bloc)) return;
+    throw ArgumentError(
+      'UseCaseBuilder.typed for $typeOfEvent builds a use case for '
+      '$_useCaseBlocType, but was registered on ${bloc.runtimeType}.',
+    );
+  }
 
   /// The type of event this use case handles.
   final Type typeOfEvent;

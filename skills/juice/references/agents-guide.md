@@ -106,6 +106,15 @@ class LoadFooUseCase extends BlocUseCase<FooBloc, LoadFooEvent> {
 
 `lib/juice_foo.dart` is a barrel that exports `src/*` (and the default provider).
 
+**Type-checked registration (juice ≥ 1.9.0).** `UseCaseBuilder.typed(() =>
+LoadFooUseCase())` infers the event type from the use case — pairing
+`typeOfEvent: SaveEvent` with a `LoadUseCase` becomes a compile error instead
+of a dispatch-time cast failure — and checks the use case's bloc type when the
+bloc registers it (wrong bloc → `ArgumentError` from the constructor). Takes
+`concurrency:` and `initialEventBuilder:` like the constructor. Prefer it in
+new code; keep the explicit constructor only for a use case declared over an
+abstract base event (events match by exact runtime type, gotcha 2).
+
 ---
 
 ## 3. Widgets

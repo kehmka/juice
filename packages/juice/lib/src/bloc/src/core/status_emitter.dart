@@ -1,3 +1,5 @@
+import 'package:logger/logger.dart' show Level;
+
 import '../bloc_state.dart';
 import '../bloc_event.dart';
 import '../stream_status.dart';
@@ -109,6 +111,23 @@ class StatusEmitter<TState extends BlocState> {
     _emit(StreamStatus.canceling, 'cancel', event, newState, groups);
   }
 
+  /// The close fence. A use case still running when its bloc closes (the
+  /// user left mid-fetch) must not crash on its next emit — that emit is
+  /// dropped, and logged as `emission_after_close` so it stays visible. It
+  /// used to throw `StateError`, which surfaced as a bloc error and, under
+  /// `RetryableUseCaseBuilder`, was retried against the closed bloc.
+  bool _droppedAfterClose(String statusName, EventBase event, {Object? error}) {
+    if (!_stateManager.isClosed) return false;
+    _logger.log('Emission after close dropped', level: Level.warning, context: {
+      'type': 'emission_after_close',
+      'status': statusName,
+      'bloc': _blocName,
+      'event': event.runtimeType.toString(),
+      if (error != null) 'error': error.toString(),
+    });
+    return true;
+  }
+
   void _emit(
     StreamStatus<TState> Function(TState, TState, EventBase?) factory,
     String statusName,
@@ -116,9 +135,7 @@ class StatusEmitter<TState extends BlocState> {
     TState? newState,
     Set<String>? groupsToRebuild,
   ) {
-    if (_stateManager.isClosed) {
-      throw StateError('Cannot emit $statusName after bloc is closed');
-    }
+    if (_droppedAfterClose(statusName, event)) return;
 
     _logger.log('Emitting $statusName', context: {
       'type': 'state_emission',
@@ -153,9 +170,7 @@ class StatusEmitter<TState extends BlocState> {
     Object? error,
     StackTrace? errorStackTrace,
   ) {
-    if (_stateManager.isClosed) {
-      throw StateError('Cannot emit failure after bloc is closed');
-    }
+    if (_droppedAfterClose('failure', event, error: error)) return;
 
     _logger.log('Emitting failure', context: {
       'type': 'state_emission',

@@ -130,6 +130,9 @@ class FeatureScope {
     }
 
     final lifecycleBloc = BlocScope.get<ScopeLifecycleBloc>();
+    // A closing/closed lifecycle bloc refuses events, and awaiting the
+    // result of a refused event would hang forever — degrade instead.
+    if (lifecycleBloc.isClosed || lifecycleBloc.isClosing) return;
     final event = StartScopeEvent(name: name, scope: this);
     lifecycleBloc.send(event);
     _scopeId = await event.result;
@@ -152,6 +155,14 @@ class FeatureScope {
     return _endFuture!;
   }
 
+  /// A closing/closed [ScopeLifecycleBloc] refuses events (app shutdown
+  /// closes it too), so `event.result` would never complete. Fall back to
+  /// ending the blocs directly.
+  static bool _lifecycleBlocUnavailable() {
+    final existing = BlocScope.maybePeekExisting<ScopeLifecycleBloc>();
+    return existing == null || existing.isClosed || existing.isClosing;
+  }
+
   Future<EndScopeResult> _doEnd() async {
     if (_ended) {
       return EndScopeResult.notFound;
@@ -165,7 +176,9 @@ class FeatureScope {
 
     // Graceful degradation: if ScopeLifecycleBloc not registered or not started,
     // just dispose blocs directly
-    if (!BlocScope.isRegistered<ScopeLifecycleBloc>() || _scopeId == null) {
+    if (!BlocScope.isRegistered<ScopeLifecycleBloc>() ||
+        _scopeId == null ||
+        _lifecycleBlocUnavailable()) {
       await BlocScope.endFeature(this);
       return const EndScopeResult(
         found: true,

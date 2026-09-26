@@ -144,6 +144,9 @@ class ScopeLifecycleBloc extends JuiceBloc<ScopeState> {
 
     // Start the end operation
     final completer = Completer<EndScopeResult>();
+    // Concurrent callers await this future; when there are none, an error
+    // completed into it must not become an unhandled zone error.
+    completer.future.ignore();
     _endingFutures[scopeId] = completer.future;
 
     try {

@@ -147,10 +147,13 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       'executionId': executionId,
     });
 
-    _wireUseCase(useCase, context);
-
     final stopwatch = Stopwatch()..start();
     try {
+      // Wiring is INSIDE the span: a wiring failure (a use case registered on
+      // the wrong bloc fails its setBloc cast) used to escape before the try —
+      // a START with no END, the error skipping onError, and in sequential
+      // mode swallowed by the dispatcher with no log at all.
+      _wireUseCase(useCase, context);
       await useCase.execute(event);
       _logger.log('Use case completed', context: {
         'type': 'use_case_completed',

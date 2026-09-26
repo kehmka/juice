@@ -45,7 +45,16 @@ abstract class UseCase<TBloc extends JuiceBloc, TEvent extends EventBase> {
   /// Called by the framework during use case execution setup.
   /// Performs a type-safe cast from JuiceBloc to the specific TBloc type.
   void setBloc(JuiceBloc blocInstance) {
-    bloc = blocInstance as TBloc;
+    if (blocInstance is! TBloc) {
+      // Say WHICH registration is wrong — the bare cast error named neither
+      // the use case nor the bloc it was mistakenly registered on.
+      throw StateError(
+        '$runtimeType expects a $TBloc but was registered on '
+        '${blocInstance.runtimeType}. Check the UseCaseBuilder list of '
+        '${blocInstance.runtimeType}.',
+      );
+    }
+    bloc = blocInstance;
   }
 
   /// Emits an update state to indicate successful operation completion.

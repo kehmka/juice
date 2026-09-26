@@ -188,6 +188,20 @@ class _RetryableUseCase<
           emitCancel();
           return;
         }
+
+        // The bloc closed during the backoff (the user left): re-running the
+        // work against a dead bloc is pointless and has side effects.
+        if (bloc.isClosed || bloc.isClosing) {
+          JuiceLoggerConfig.logger.log(
+            'Retry abandoned: bloc closed',
+            context: {
+              'type': 'retry_abandoned',
+              'attempt': attempt,
+              'bloc': bloc.runtimeType.toString(),
+            },
+          );
+          return;
+        }
       }
 
       // Track whether inner use case called emitFailure

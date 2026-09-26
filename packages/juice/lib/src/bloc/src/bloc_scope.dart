@@ -226,7 +226,7 @@ class BlocScope {
 
     return BlocLease<T>(
       bloc,
-      () => _releaseLease<T>(id),
+      () => _releaseLease<T>(id, bloc),
     );
   }
 
@@ -244,9 +244,13 @@ class BlocScope {
       throw StateError('Bloc $T (scope: $scope) not registered');
     }
 
-    // Wait for any in-progress close to complete
+    // Wait for any in-progress close to complete. Only the WAIT matters
+    // here: a close that threw has already been reported by _closeEntry and
+    // left the entry clean, so a fresh instance can be leased.
     if (entry.closingFuture != null) {
-      await entry.closingFuture;
+      try {
+        await entry.closingFuture;
+      } catch (_) {}
     }
 
     return lease<T>(scope: scope);
@@ -329,17 +333,34 @@ class BlocScope {
     return entry.instance!;
   }
 
-  static void _releaseLease<T extends JuiceBloc<BlocState>>(BlocId id) {
+  static void _releaseLease<T extends JuiceBloc<BlocState>>(
+    BlocId id,
+    T leasedInstance,
+  ) {
+    // The lease is settled for leak detection whatever happens next — a
+    // lease released during or after its bloc's close is not a leak.
+    LeakDetector.trackLeaseRelease(id);
+
     final entry = _entries[id];
     if (entry == null) return;
 
     // Don't decrement if already closing
     if (entry.isClosing) return;
 
-    entry.leaseCount--;
+    // A lease taken on an instance that has since been ended (end<T>(),
+    // endFeature) and REPLACED must not touch the new instance's count:
+    // _closeEntry zeroed it, and decrementing it here would auto-close a
+    // bloc other widgets are still leasing.
+    if (!identical(entry.instance, leasedInstance)) {
+      JuiceLoggerConfig.logger.log('Stale lease released', context: {
+        'type': 'bloc_lifecycle',
+        'action': 'lease_release_stale',
+        'bloc': id.type.toString(),
+      });
+      return;
+    }
 
-    // Track lease release for leak detection
-    LeakDetector.trackLeaseRelease(id);
+    entry.leaseCount--;
 
     JuiceLoggerConfig.logger.log('Lease released', context: {
       'type': 'bloc_lifecycle',
@@ -453,7 +474,7 @@ class BlocScope {
 
     // Start close
     final bloc = entry.instance!;
-    entry.closingFuture = bloc.close();
+    entry.closingFuture = Future.sync(bloc.close);
 
     JuiceLoggerConfig.logger.log('Bloc closing', context: {
       'type': 'bloc_lifecycle',
@@ -461,16 +482,27 @@ class BlocScope {
       'bloc': id.type.toString(),
     });
 
-    await entry.closingFuture;
+    try {
+      await entry.closingFuture;
+    } catch (e, st) {
+      // Reported, then rethrown to the caller — but the entry is still
+      // cleared below. A close() that throws used to leave closingFuture set
+      // forever: every later get/lease threw "is closing" and the bloc could
+      // never be recreated.
+      JuiceLoggerConfig.logger.logError('Bloc close failed', e, st, context: {
+        'type': 'bloc_close_error',
+        'bloc': id.type.toString(),
+      });
+      rethrow;
+    } finally {
+      // Track bloc close for leak detection
+      LeakDetector.trackBlocClose(id);
 
-    // Track bloc close for leak detection
-    LeakDetector.trackBlocClose(id);
-
-    // Only clear after close completes
-    entry.instance = null;
-    entry.closingFuture = null;
-    entry.leaseCount = 0;
-    entry.createdAt = null;
+      entry.instance = null;
+      entry.closingFuture = null;
+      entry.leaseCount = 0;
+      entry.createdAt = null;
+    }
   }
 
   // ============================================================

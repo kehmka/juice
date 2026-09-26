@@ -257,7 +257,10 @@ instead of rebuilding. Two rules:
    the package's seam interface in the app; do NOT add the vendor dep to the
    feature bloc. Ship a default impl + a fake.
 8. **`close()` must release everything** it created — cancel every subscription
-   and timer, dispose seams — before `super.close()`.
+   and timer, dispose seams — before `super.close()`. You do NOT need to guard
+   emits against a closed bloc (juice ≥ 1.9.0): an in-flight use case's emit
+   after close is dropped and logged (`emission_after_close`), and events sent
+   once `close()` starts are refused (`bloc.isClosing`).
 9. **Fail loud.** Missing/invalid input → `emitFailure` or throw with a reason;
    never silently fall back to a default. Multi-sink blocs isolate each sink
    (try/catch per sink) so one failure can't break the rest.

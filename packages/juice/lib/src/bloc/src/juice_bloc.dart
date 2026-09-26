@@ -126,12 +126,15 @@ class JuiceBloc<TState extends BlocState>
   @override
   bool get isClosed => _stateManager.isClosed;
 
-  /// True from the moment [close] starts until it finishes (then [isClosed]).
+  /// True once [close] has started — and stays true after it completes
+  /// (then [isClosed] is true as well). Monotonic, like `SyncBloc`'s own
+  /// flag it now formalizes.
   ///
   /// New events are refused from here on, so nothing is dispatched into a
-  /// bloc that is tearing down. Use cases already in flight keep running;
-  /// their emits after the close completes are dropped (the close fence).
-  bool get isClosing => _closing && !isClosed;
+  /// bloc that is tearing down. Use cases already in flight keep running and
+  /// can check this to stop early; their emits after the close completes are
+  /// dropped (the close fence).
+  bool get isClosing => _closing || isClosed;
   bool _closing = false;
 
   /// Sends an event to be processed by its registered use case.

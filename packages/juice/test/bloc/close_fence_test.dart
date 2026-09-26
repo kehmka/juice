@@ -122,7 +122,7 @@ void main() {
     await b.send(_Quick());
     await closing;
     expect(_QuickUC.runs, 0);
-    expect(b.isClosing, isFalse);
+    expect(b.isClosing, isTrue, reason: 'monotonic: stays true once closed');
     expect(b.isClosed, isTrue);
   });
 

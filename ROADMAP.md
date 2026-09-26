@@ -384,6 +384,33 @@ flows; require fixing only if an app hits them):
   between the executor await and the durable delete; add a post-await
   `isClosing` guard when hardening.
 
+## Tier 0 — robustness (2026-09-26)  ✅ juice 1.9.0
+
+From the post-1.8.1 review: the design was ahead of the ecosystem, the
+verification behind it. Five items, all shipped in juice 1.9.0 (+ juice_sync
+0.2.1, juice_network 0.13.1 earlier):
+
+1. **Close fence** — emits after close are dropped + logged
+   (`emission_after_close`); events refused from the start of close
+   (`isClosing`, monotonic); memoized close; retry abandons a closed bloc.
+2. **Lifecycle can't wedge** — leases bound to their instance; a throwing
+   close() clears its entry and fails (not hangs) FeatureScope.end(); wiring
+   inside the telemetry span.
+3. **`UseCaseBuilder.typed`** — event/use-case mismatch is a compile error;
+   wrong bloc fails at construction.
+4. **Coverage 55.8% → 94.4%, gated at 90% in CI** (`tool/coverage_check.sh`).
+   The new tests found ten more bugs (scope switch, JuiceAsyncBuilder ×3,
+   aviator error leak, inline navigation emit, CancellableEvent equality,
+   TimeoutSupport timer) — all fixed and pinned.
+5. **Web/WASM** — `logger/web.dart` re-export; pana 160/160.
+
+Open from it: the vendored `Bloc<Event, State>` base (`bloc.dart`,
+`emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
+`global_bloc_resolver.dart`) — exported, unused, excluded from the gate;
+deprecate or remove in 2.0.0. Relay setup errors (StateRelay/StatusRelay
+init against an unregistered or closed bloc) surface only as uncaught zone
+errors — decide whether that is fail-loud enough.
+
 ## Teed up from the BlocSignal comparison (2026-08-21)
 
 Five items stolen with pride from `BlocSignal` (Randal Schwartz's

@@ -62,7 +62,11 @@ class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
       final inFlight = bloc.getEndingFuture(info.id);
       if (inFlight != null) {
         // Return the same result as the operation already in progress
-        event.succeed(await inFlight);
+        try {
+          event.succeed(await inFlight);
+        } catch (e, st) {
+          event.fail(e, st);
+        }
         return;
       }
       // Invariant breach: phase is ending but no future tracked.
@@ -77,11 +81,18 @@ class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
     }
 
     // Idempotent: use getOrCreateEndingFuture to handle concurrent calls
-    final result = await bloc.getOrCreateEndingFuture(
-      info.id,
-      () => _doEnd(info),
-    );
-    event.succeed(result);
+    // The event must ALWAYS complete: `FeatureScope.end()` awaits
+    // `event.result`, and an exception that skipped `succeed` left it hanging
+    // forever (a feature bloc whose close() threw did exactly that).
+    try {
+      final result = await bloc.getOrCreateEndingFuture(
+        info.id,
+        () => _doEnd(info),
+      );
+      event.succeed(result);
+    } catch (e, st) {
+      event.fail(e, st);
+    }
   }
 
   ScopeInfo? _resolveScope(EndScopeEvent event) {
@@ -137,7 +148,18 @@ class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
 
     // 5. ALWAYS dispose blocs - timeout only affects cleanupCompleted flag
     // This guarantees disposal proceeds; timeout is informational only.
-    await BlocScope.endFeature(info.scope);
+    // A bloc whose close() throws must not strand the scope in `ending`:
+    // every managed bloc is still closed and cleared (endFeature waits for
+    // all of them), the scope is still removed and ENDED still published,
+    // and only then is the error rethrown to the caller.
+    Object? closeError;
+    StackTrace? closeStack;
+    try {
+      await BlocScope.endFeature(info.scope);
+    } catch (e, st) {
+      closeError = e;
+      closeStack = st;
+    }
 
     // 6. Remove from state
     final duration = DateTime.now().difference(info.startedAt);
@@ -158,6 +180,10 @@ class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
       duration: duration,
       cleanupCompleted: barrierResult.completed,
     ));
+
+    if (closeError != null) {
+      Error.throwWithStackTrace(closeError, closeStack!);
+    }
 
     return EndScopeResult(
       found: true,

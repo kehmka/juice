@@ -126,13 +126,23 @@ class JuiceBloc<TState extends BlocState>
   @override
   bool get isClosed => _stateManager.isClosed;
 
+  /// True from the moment [close] starts until it finishes (then [isClosed]).
+  ///
+  /// New events are refused from here on, so nothing is dispatched into a
+  /// bloc that is tearing down. Use cases already in flight keep running;
+  /// their emits after the close completes are dropped (the close fence).
+  bool get isClosing => _closing && !isClosed;
+  bool _closing = false;
+
   /// Sends an event to be processed by its registered use case.
   ///
   /// If the bloc is closed, the event is ignored and a warning is logged.
   Future<void> send(EventBase event) async {
-    if (isClosed) {
+    if (isClosed || _closing) {
       _logger.log(
-        'Event ignored: bloc is closed',
+        isClosed
+            ? 'Event ignored: bloc is closed'
+            : 'Event ignored: bloc is closing',
         context: {
           'type': 'bloc_lifecycle',
           'action': 'event_ignored',
@@ -149,7 +159,7 @@ class JuiceBloc<TState extends BlocState>
   ///
   /// If the bloc is closed, the event is not dispatched.
   T sendCancellable<T extends CancellableEvent>(T event) {
-    if (!isClosed) {
+    if (!isClosed && !_closing) {
       send(event);
     }
     return event;
@@ -168,7 +178,8 @@ class JuiceBloc<TState extends BlocState>
   /// Returns the final [StreamStatus] after processing completes.
   ///
   /// Throws [TimeoutException] if the operation doesn't complete within
-  /// the timeout duration.
+  /// the timeout duration, and [StateError] if the bloc is closed or closing
+  /// (the event would be ignored).
   ///
   /// Example:
   /// ```dart
@@ -181,6 +192,13 @@ class JuiceBloc<TState extends BlocState>
     EventBase event, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    if (isClosed || _closing) {
+      // Fail loud: the event would be ignored and the wait could only time
+      // out.
+      throw StateError(
+          'sendAndWait(${event.runtimeType}) on a closed or closing '
+          '$runtimeType');
+    }
     // Listen BEFORE sending: `send` completes only after the use case has
     // finished emitting, and the stream does not replay, so subscribing
     // afterwards missed the event's own result and always timed out.
@@ -242,8 +260,17 @@ class JuiceBloc<TState extends BlocState>
   /// Closes the bloc and releases all resources.
   @mustCallSuper
   @override
-  Future<void> close() async {
+  Future<void> close() {
+    // Memoized: a second caller (a scope ending while a widget disposes)
+    // awaits the same teardown instead of returning before it finishes.
+    return _closeFuture ??= _close();
+  }
+
+  Future<void>? _closeFuture;
+
+  Future<void> _close() async {
     if (isClosed) return;
+    _closing = true;
 
     _logger.log('Closing bloc', context: {
       'type': 'bloc_lifecycle',
@@ -369,7 +396,7 @@ class JuiceBloc<TState extends BlocState>
       emitCancel: (newState, groups) =>
           _statusEmitter.emitCancel(event, newState, groups),
       emitEvent: (EventBase? e) {
-        if (e != null) {
+        if (e != null && !_stateManager.isClosed) {
           _stateManager.emit(currentStatus.copyWith(event: e));
         }
       },

@@ -46,7 +46,7 @@ scripts:
     description: Fail if juice core line coverage drops below 90% (exclusions and reasons in the script)
 
   ci:
-    run: dart run melos run format:check && dart run melos run analyze && dart run melos run test && dart run melos run coverage:juice
+    run: dart run melos run format:check && dart run melos run analyze && dart run melos run test && dart run melos run coverage:juice && dart run melos run lint:juice
     description: Run full CI pipeline
 
   publish:dry:

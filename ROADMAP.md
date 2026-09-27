@@ -415,8 +415,9 @@ await an event's value):
   set-once fields; no static rule tells them from clearable ones.
   Zero false positives on real family code for the shipped rules.
 
-Open from it: gate CI on `dart analyze` (or add `lint:juice` to `ci`)?
-Declare modes at the 126 sites and turn the concurrency rule on?
+CI runs `melos run lint:juice` as its last step (Kevin's call, 2026-09-27).
+Open from it: declare modes at the 126 sites and turn the concurrency rule
+on?
 
 ## Tier 0 — robustness (2026-09-26)  ✅ juice 1.9.0
 

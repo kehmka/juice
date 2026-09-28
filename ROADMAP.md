@@ -392,10 +392,12 @@ flows; require fixing only if an app hits them):
   1 widget/update; Juice groups do it with 0 consumer selector calls (vs 100
   for BlocSelector / JuiceSelector, 101 for Riverpod select). Frame cost:
   tuned forms within a few % (Juice groups fastest p50). Dispatch: Juice
-  ~3× bloc per event (use-case instance + async executor + telemetry span)
-  — reported, not hidden. The run found and fixed two telemetry costs
-  (eager default-logger formatting; state/groups stringified into every
-  emit's context): default-logger dispatch 12.54 → 6.50 µs.
+  ~3× bloc per event — reported, not hidden. A layer breakdown puts it
+  mostly in telemetry context construction (~1.7–1.8 µs) and the async
+  executor (~0.8 µs); the fresh use-case instance is ~0.34 µs of a ~5 µs
+  send. The run found and fixed two telemetry costs (eager default-logger
+  formatting; state/groups stringified into every emit's context):
+  default-logger dispatch 12.54 → 6.50 µs, shipped in juice 1.9.1.
 - Next: E (state hydration), F (`bindStream`) then `restartable`, I
   (DevTools rebuild inspector + state diff).
 

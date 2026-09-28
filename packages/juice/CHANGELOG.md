@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.9.1] - 2026-09-28
+
+Dispatch-cost release, driven by the new benchmarks (`benchmarks/`,
+Juice vs bloc vs Riverpod). No API changes.
+
+### Fixed
+- **Leaner telemetry on the emit path.** The status emitter put the
+  state's `toString()` and the groups' `toString()` into its log context on
+  every emission, whatever the logger; it now passes the objects (loggers
+  that print stringify them). The executor names a span's use case and
+  event once. With the logger fix below, default-logger dispatch measured
+  12.54 → 6.50 µs per event (release, `benchmarks/RESULTS.md`).
+- **`DefaultJuiceLogger` no longer formats lines it will drop.** Every
+  emission logs a context holding the state; the line was built eagerly —
+  `'$message | Context: $context'`, i.e. the state's `toString()` — on
+  EVERY emission, in release too, where logger's default filter then
+  discards it. With the default printer the message is now a closure the
+  printer evaluates only when the line passes the filter. A caller-supplied
+  `Logger` keeps eager strings (its printer may not evaluate function
+  messages, e.g. `LogfmtPrinter`). Found by the new benchmarks
+  (`benchmarks/`).
+
+### Docs
+- Measured where a dispatch's time goes (`benchmarks/RESULTS.md` §4): the
+  fresh use-case instance per event costs ~0.34 µs of a ~5 µs send; the
+  rest is telemetry context construction and the async executor.
+
 ## [1.9.0] - 2026-09-26
 
 Robustness release: the guarantees Juice documents now hold under stress —
@@ -81,21 +108,6 @@ and the core is Web/WASM-compatible.
   its `use_case_error` END and reaches `onError` (it was a START with no END,
   swallowed silently in `sequential` mode). The wrong-bloc cast now names the
   use case, the bloc it expects, and the bloc it was registered on.
-- **Leaner telemetry on the emit path.** The status emitter put the
-  state's `toString()` and the groups' `toString()` into its log context on
-  every emission, whatever the logger; it now passes the objects (loggers
-  that print stringify them). The executor names a span's use case and
-  event once. With the logger fix below, default-logger dispatch measured
-  12.54 → 6.50 µs per event (release, `benchmarks/RESULTS.md`).
-- **`DefaultJuiceLogger` no longer formats lines it will drop.** Every
-  emission logs a context holding the state; the line was built eagerly —
-  `'$message | Context: $context'`, i.e. the state's `toString()` — on
-  EVERY emission, in release too, where logger's default filter then
-  discards it. With the default printer the message is now a closure the
-  printer evaluates only when the line passes the filter. A caller-supplied
-  `Logger` keeps eager strings (its printer may not evaluate function
-  messages, e.g. `LogfmtPrinter`). Found by the new benchmarks
-  (`benchmarks/`).
 - pub.dev static analysis: two doc comments with bare angle brackets.
 
 Found by the new tests:

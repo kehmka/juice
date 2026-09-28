@@ -30,7 +30,8 @@ class DefaultJuiceLogger implements JuiceLogger {
 
   /// Creates a DefaultJuiceLogger with optional custom Logger configuration.
   DefaultJuiceLogger({Logger? logger})
-      : _logger = logger ??
+      : _lazy = logger == null,
+        _logger = logger ??
             Logger(
               printer: PrettyPrinter(
                 methodCount: 2,
@@ -42,13 +43,24 @@ class DefaultJuiceLogger implements JuiceLogger {
               ),
             );
 
+  /// Whether messages are passed to [_logger] as closures (built only if
+  /// the filter lets the line through). True for the default PrettyPrinter,
+  /// which evaluates function messages; a caller-supplied [Logger] may use a
+  /// printer that doesn't (LogfmtPrinter), so it gets eager strings as before.
+  final bool _lazy;
+
   @override
   void log(String message,
       {Level level = Level.info, Map<String, dynamic>? context}) {
-    if (context != null) {
-      _logger.log(level, '$message | Context: $context');
-    } else {
+    if (context == null) {
       _logger.log(level, message);
+    } else if (_lazy) {
+      // Every emission logs a context holding the state's toString(). Built
+      // eagerly, that string was paid for on EVERY emission — in release
+      // too, where logger's default filter then drops the line.
+      _logger.log(level, () => '$message | Context: $context');
+    } else {
+      _logger.log(level, '$message | Context: $context');
     }
   }
 
@@ -56,8 +68,12 @@ class DefaultJuiceLogger implements JuiceLogger {
   void logError(String message, Object error, StackTrace stackTrace,
       {Map<String, dynamic>? context}) {
     if (context != null) {
-      _logger.e('$message | Context: $context',
-          error: error, stackTrace: stackTrace);
+      _logger.e(
+          _lazy
+              ? () => '$message | Context: $context'
+              : '$message | Context: $context',
+          error: error,
+          stackTrace: stackTrace);
     } else {
       _logger.e(message, error: error, stackTrace: stackTrace);
     }

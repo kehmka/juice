@@ -81,6 +81,15 @@ and the core is Web/WASM-compatible.
   its `use_case_error` END and reaches `onError` (it was a START with no END,
   swallowed silently in `sequential` mode). The wrong-bloc cast now names the
   use case, the bloc it expects, and the bloc it was registered on.
+- **`DefaultJuiceLogger` no longer formats lines it will drop.** Every
+  emission logs a context holding the state; the line was built eagerly —
+  `'$message | Context: $context'`, i.e. the state's `toString()` — on
+  EVERY emission, in release too, where logger's default filter then
+  discards it. With the default printer the message is now a closure the
+  printer evaluates only when the line passes the filter. A caller-supplied
+  `Logger` keeps eager strings (its printer may not evaluate function
+  messages, e.g. `LogfmtPrinter`). Found by the new benchmarks
+  (`benchmarks/`).
 - pub.dev static analysis: two doc comments with bare angle brackets.
 
 Found by the new tests:

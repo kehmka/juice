@@ -384,6 +384,21 @@ flows; require fixing only if an app hits them):
   between the executor await and the durable delete; add a post-await
   `isClosing` guard when hardening.
 
+## Tier 2 — capability (2026-09-28, in progress)
+
+- **Benchmarks ✅** — `benchmarks/` (outside `packages/**`; bloc and
+  Riverpod pinned there only), results in `benchmarks/RESULTS.md`, release
+  build under Xvfb. Rebuild counts: every framework's idiomatic form builds
+  1 widget/update; Juice groups do it with 0 consumer selector calls (vs 100
+  for BlocSelector / JuiceSelector, 101 for Riverpod select). Frame cost:
+  tuned forms within a few % (Juice groups fastest p50). Dispatch: Juice
+  ~3× bloc per event (use-case instance + async executor + telemetry span)
+  — reported, not hidden. The run found and fixed two telemetry costs
+  (eager default-logger formatting; state/groups stringified into every
+  emit's context): default-logger dispatch 12.54 → 6.50 µs.
+- Next: E (state hydration), F (`bindStream`) then `restartable`, I
+  (DevTools rebuild inspector + state diff).
+
 ## Tier 1 — tooling and re-derived mechanisms (2026-09-26)  ✅ folded into juice 1.9.0
 
 Rows B, C and G of the comparison table below, plus correction 2 (one way to

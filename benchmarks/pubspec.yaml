@@ -1,0 +1,25 @@
+name: juice_benchmarks
+description: "Juice vs bloc vs Riverpod: rebuild counts and dispatch/rebuild cost, measured on identical scenarios. Not a published package."
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  juice:
+    path: ../packages/juice
+  # Pinned exactly so published numbers name the versions they measured.
+  bloc: 9.2.1
+  flutter_bloc: 9.1.1
+  flutter_riverpod: 3.4.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: false

@@ -1,0 +1,62 @@
+{
+  "cells": 100,
+  "updates": 10,
+  "results": [
+    {
+      "variant": "juice · groups",
+      "framework": "juice",
+      "mechanism": "emitter names the group; widget filters by set intersection",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 0.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
+      "variant": "juice · JuiceSelector",
+      "framework": "juice",
+      "mechanism": "consumer-side selector + == (no groups)",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 100.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
+      "variant": "juice · no groups",
+      "framework": "juice",
+      "mechanism": "rebuildAlways broadcast (the default)",
+      "buildsPerUpdate": 100.0,
+      "selectorCallsPerUpdate": 0.0,
+      "untouchedCellsRebuilt": 99
+    },
+    {
+      "variant": "bloc · BlocSelector",
+      "framework": "bloc",
+      "mechanism": "consumer-side selector + ==",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 100.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
+      "variant": "bloc · BlocBuilder",
+      "framework": "bloc",
+      "mechanism": "no filter (the default)",
+      "buildsPerUpdate": 100.0,
+      "selectorCallsPerUpdate": 0.0,
+      "untouchedCellsRebuilt": 99
+    },
+    {
+      "variant": "riverpod · select",
+      "framework": "riverpod",
+      "mechanism": "consumer-side select + ==",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 101.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
+      "variant": "riverpod · watch",
+      "framework": "riverpod",
+      "mechanism": "no filter (the default)",
+      "buildsPerUpdate": 100.0,
+      "selectorCallsPerUpdate": 0.0,
+      "untouchedCellsRebuilt": 99
+    }
+  ]
+}

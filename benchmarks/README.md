@@ -1,0 +1,73 @@
+# Juice benchmarks — Juice vs bloc vs Riverpod
+
+Measured numbers for the claims Juice makes, on one shared scenario, with each
+framework in its **idiomatic ("tuned")** form and its **default ("naive")**
+form. Not a published package; kept outside `packages/` so bloc and Riverpod
+never enter the Juice family's dependency graph or CI.
+
+Versions measured (pinned in `pubspec.yaml`): juice (this repo, path),
+bloc 9.2.1 / flutter_bloc 9.1.1, flutter_riverpod 3.4.3.
+
+## The scenario
+
+`N` cell widgets, each showing one `int` of shared state (a `List<int>`); an
+update sets one cell. Every framework holds the list immutably and replaces it
+on update.
+
+| variant | how the rebuild is targeted |
+|---|---|
+| juice · groups | the use case names the changed cell's group; each widget filters by set intersection |
+| juice · JuiceSelector | consumer-side selector + `==` (no groups) |
+| juice · no groups | the default: `rebuildAlways` broadcast |
+| bloc · BlocSelector | consumer-side selector + `==` |
+| bloc · BlocBuilder | the default: no filter |
+| riverpod · select | consumer-side `select` + `==` |
+| riverpod · watch | the default: watch the whole list |
+
+Bloc is used with events (a `Bloc`, not a `Cubit`) so dispatch is comparable
+to Juice's event → use case path. Riverpod has no event queue: an update is a
+synchronous notifier method call — that difference is part of what the
+dispatch numbers show, not something to normalize away.
+
+## What is measured
+
+1. **Rebuild counts** (`test/rebuild_counts_test.dart`, `flutter test`) —
+   100 cells, cell 7 updated 10 times: widgets built per update, and
+   consumer-side selector calls per update. **Deterministic**: independent of
+   machine and build mode, and pinned by the test (tuned = 1 build/update,
+   naive = 100).
+2. **Dispatch cost** (`lib/dispatch.dart`, release build) — µs per update
+   with no widgets: `sequential` (await each) and `burst` (fire all, await
+   the last). Juice is reported with its **default logger** and with a
+   **silent logger**, because its default telemetry formatting is a
+   measurable per-emission cost of its own.
+3. **Rebuild frame cost** (`lib/main.dart`, release build) — 1000 cells, 300
+   single-cell updates, one frame each; p50/p90 of the engine's
+   `FrameTiming.buildDuration` (UI thread: build + layout + paint). Raster is
+   excluded: under a virtual display it would time a software rasterizer.
+
+Each timing benchmark runs a warm-up round, then keeps the fastest of 5
+rounds per variant.
+
+## Running
+
+```bash
+benchmarks/tool/run.sh
+```
+
+Needs Flutter, the Linux desktop toolchain (clang, cmake, ninja, pkg-config,
+libgtk-3-dev) and `xvfb-run`. Writes `results/rebuild_counts.json` and
+`results/timing.json` (the latter records build mode, Dart version and CPU
+count). Timing numbers are only comparable between runs on the same machine.
+
+## Reading the results honestly
+
+- All three frameworks reach **1 build per update** when used idiomatically.
+  The difference is *where* the targeting lives: Juice names the invalidation
+  once, at the emitter; selector-based approaches run a selector in every
+  consumer on every update (see the selector-calls column).
+- Juice's group filter is also per-widget work (a set intersection per
+  subscribed widget per emission), so "no selector calls" is not "no work" —
+  the frame-cost numbers are the fair comparison of the two.
+- Headless Linux under Xvfb is not a phone. Relative ordering is the result;
+  absolute microseconds are this machine's.

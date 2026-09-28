@@ -1,5 +1,7 @@
 # Juice benchmarks — Juice vs bloc vs Riverpod
 
+**Latest results: [RESULTS.md](RESULTS.md).**
+
 Measured numbers for the claims Juice makes, on one shared scenario, with each
 framework in its **idiomatic ("tuned")** form and its **default ("naive")**
 form. Not a published package; kept outside `packages/` so bloc and Riverpod

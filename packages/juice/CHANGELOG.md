@@ -81,6 +81,12 @@ and the core is Web/WASM-compatible.
   its `use_case_error` END and reaches `onError` (it was a START with no END,
   swallowed silently in `sequential` mode). The wrong-bloc cast now names the
   use case, the bloc it expects, and the bloc it was registered on.
+- **Leaner telemetry on the emit path.** The status emitter put the
+  state's `toString()` and the groups' `toString()` into its log context on
+  every emission, whatever the logger; it now passes the objects (loggers
+  that print stringify them). The executor names a span's use case and
+  event once. With the logger fix below, default-logger dispatch measured
+  12.54 → 6.50 µs per event (release, `benchmarks/RESULTS.md`).
 - **`DefaultJuiceLogger` no longer formats lines it will drop.** Every
   emission logs a context holding the state; the line was built eagerly —
   `'$message | Context: $context'`, i.e. the state's `toString()` — on

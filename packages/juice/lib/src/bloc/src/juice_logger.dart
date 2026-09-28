@@ -4,12 +4,33 @@ import "../../../juice.dart";
 ///
 /// Provides a standard logging interface that can be implemented to support
 /// different logging backends or configurations.
+///
+/// **The contract for implementers (juice ≥ 1.9.1).** The framework calls
+/// [log] on every use-case execution and every state emission, in every
+/// build mode, and it passes context values as **live objects** — the
+/// emission's `'state'` is the state itself and `'groups'` is the caller's
+/// set — precisely so that a logger which drops a line pays nothing for it.
+/// Two consequences:
+///
+/// - **Stringify lazily.** Decide whether the line will be kept (level,
+///   environment, sampling) *before* touching `context`; `'$context'` or
+///   `state.toString()` on every emission is the per-emission cost 1.9.1
+///   removed from [DefaultJuiceLogger].
+/// - **Do not retain `context`.** It holds the current state object; a
+///   logger that buffers entries would pin every state it ever saw. Copy
+///   what you keep as strings or primitives.
+///
+/// [logError] is the fail-loud path: errors are rare and must stay visible,
+/// so formatting eagerly there is acceptable.
 abstract class JuiceLogger {
   /// Logs a message with the specified log level and optional context.
   ///
   /// [message] - The message to log
   /// [level] - The severity level of the log
-  /// [context] - Additional structured data about the log entry
+  /// [context] - Additional structured data about the log entry. Values may
+  /// be live objects (the emitting bloc's state, a group set); stringify
+  /// only for lines you keep, and never hold on to the map. See the class
+  /// doc.
   void log(String message,
       {Level level = Level.info, Map<String, dynamic>? context});
 

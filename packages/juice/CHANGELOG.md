@@ -3,7 +3,12 @@
 ## [1.9.1] - 2026-09-28
 
 Dispatch-cost release, driven by the new benchmarks (`benchmarks/`,
-Juice vs bloc vs Riverpod). No API changes.
+Juice vs bloc vs Riverpod). No signatures change; one contract does:
+**`JuiceLogger` context values are now live objects** (the emission's
+`'state'` is the state, `'groups'` the caller's set), not strings. A custom
+logger must stringify lazily — after its own level check — and must not
+retain the context map. `DefaultJuiceLogger` and `DevtoolsJuiceLogger`
+already do; see the `JuiceLogger` class doc.
 
 ### Fixed
 - **Leaner telemetry on the emit path.** The status emitter put the

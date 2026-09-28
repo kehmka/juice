@@ -74,19 +74,26 @@ Context is particularly useful for:
 
 ## Custom Logger Implementation
 
-You can implement your own logging system by creating a class that implements the `JuiceLogger` interface:
+You can implement your own logging system by creating a class that implements the `JuiceLogger` interface.
+
+Two rules first, because the framework calls `log` on **every** use-case execution and **every** state emission, in every build mode, and passes context values as live objects (the emission's `'state'` is the state itself):
+
+1. **Decide before you format.** Check the level (or environment, or a sample rate) *before* touching `context`. Building `'$context'` unconditionally runs the state's `toString()` on every emission, in release too — the exact cost `DefaultJuiceLogger` stopped paying in juice 1.9.1.
+2. **Never keep `context`.** It holds the current state object. A logger that buffers entries would pin every state it ever saw; copy what you keep as strings.
 
 ```dart
 class CustomLogger implements JuiceLogger {
+  CustomLogger({this.minLevel = Level.info});
+  final Level minLevel;
+
   @override
   void log(String message, {
     Level level = Level.info,
     Map<String, dynamic>? context
   }) {
-    // Your custom logging implementation
+    if (level.index < minLevel.index) return; // decide first — nothing built
     final timestamp = DateTime.now().toIso8601String();
-    final contextStr = context != null ? ' | $context' : '';
-    
+    final contextStr = context != null ? ' | $context' : ''; // only past the gate
     print('[$timestamp][$level] $message$contextStr');
   }
 
@@ -97,7 +104,7 @@ class CustomLogger implements JuiceLogger {
     StackTrace stackTrace, {
     Map<String, dynamic>? context
   }) {
-    // Your custom error logging implementation
+    // Errors are rare and must stay visible: no gate here, format eagerly.
     final timestamp = DateTime.now().toIso8601String();
     final contextStr = context != null ? ' | $context' : '';
     
@@ -250,7 +257,10 @@ class ProductionLogger implements JuiceLogger {
     Level level = Level.info,
     Map<String, dynamic>? context
   }) async {
-    // Clean and validate context
+    // Decide first: below the environment's level, nothing is built or sent.
+    if (level.index < (_isProd ? Level.warning.index : Level.debug.index)) return;
+
+    // Clean and validate context (copies to strings — never keep the map)
     final safeContext = _sanitizeContext(context);
     
     // Add standard fields
@@ -312,7 +322,12 @@ class ProductionLogger implements JuiceLogger {
         return MapEntry(key, _sanitizeString(value));
       }
       
-      return MapEntry(key, value);
+      // Everything else crosses as a string: the framework passes live
+      // objects (the emitting bloc's state), which must not be retained or
+      // handed to a service that serializes them later.
+      return MapEntry(key, value == null || value is num || value is bool
+          ? value
+          : _sanitizeString(value.toString()));
     });
   }
   

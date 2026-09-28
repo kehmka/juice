@@ -48,6 +48,12 @@ dispatch numbers show, not something to normalize away.
    `FrameTiming.buildDuration` (UI thread: build + layout + paint). Raster is
    excluded: under a virtual display it would time a software rasterizer.
 
+4. **Dispatch breakdown** (`lib/breakdown.dart`, release build) — where a
+   Juice `send` spends its time: the real layers (raw store, status emitter,
+   full send with a reused vs a fresh use-case instance) timed directly, plus
+   two labelled synthetic layers (the telemetry maps alone, the async hop
+   depth alone).
+
 Each timing benchmark runs a warm-up round, then keeps the fastest of 5
 rounds per variant.
 
@@ -58,9 +64,10 @@ benchmarks/tool/run.sh
 ```
 
 Needs Flutter, the Linux desktop toolchain (clang, cmake, ninja, pkg-config,
-libgtk-3-dev) and `xvfb-run`. Writes `results/rebuild_counts.json` and
-`results/timing.json` (the latter records build mode, Dart version and CPU
-count). Timing numbers are only comparable between runs on the same machine.
+libgtk-3-dev) and `xvfb-run`. Writes `results/rebuild_counts.json`,
+`results/timing.json` and `results/breakdown.json` (the timing files record
+the Dart version and CPU count). Timing numbers are only comparable between
+runs on the same machine.
 
 ## Reading the results honestly
 

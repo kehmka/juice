@@ -140,11 +140,15 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
     final useCase = builder.generator();
     final context = _contextFactory(event);
     final executionId = _nextExecutionId++;
+    // Named once per execution (runtimeType.toString() isn't free, and the
+    // span logs it up to three times).
+    final useCaseName = useCase.runtimeType.toString();
+    final eventName = event.runtimeType.toString();
 
     _logger.log('Executing use case', context: {
       'type': 'use_case_execution',
-      'useCase': useCase.runtimeType.toString(),
-      'event': event.runtimeType.toString(),
+      'useCase': useCaseName,
+      'event': eventName,
       'executionId': executionId,
     });
 
@@ -158,8 +162,8 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       await useCase.execute(event);
       _logger.log('Use case completed', context: {
         'type': 'use_case_completed',
-        'useCase': useCase.runtimeType.toString(),
-        'event': event.runtimeType.toString(),
+        'useCase': useCaseName,
+        'event': eventName,
         'executionId': executionId,
         'elapsedMicros': stopwatch.elapsedMicroseconds,
       });
@@ -170,8 +174,8 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
         stackTrace,
         context: {
           'type': 'use_case_error',
-          'useCase': useCase.runtimeType.toString(),
-          'event': event.runtimeType.toString(),
+          'useCase': useCaseName,
+          'event': eventName,
           'executionId': executionId,
           'elapsedMicros': stopwatch.elapsedMicroseconds,
         },

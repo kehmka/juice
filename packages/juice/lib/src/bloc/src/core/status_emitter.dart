@@ -140,9 +140,11 @@ class StatusEmitter<TState extends BlocState> {
     _logger.log('Emitting $statusName', context: {
       'type': 'state_emission',
       'status': statusName,
-      'state': '${newState ?? state}',
+      // Objects, not strings: a logger that prints stringifies them itself;
+      // one that drops the line (release, a silent sink) pays nothing.
+      'state': newState ?? state,
       'bloc': _blocName,
-      'groups': groupsToRebuild?.toString(),
+      'groups': groupsToRebuild,
       'event': event.runtimeType.toString(),
     });
 
@@ -175,9 +177,11 @@ class StatusEmitter<TState extends BlocState> {
     _logger.log('Emitting failure', context: {
       'type': 'state_emission',
       'status': 'failure',
-      'state': '${newState ?? state}',
+      // Objects, not strings: a logger that prints stringifies them itself;
+      // one that drops the line (release, a silent sink) pays nothing.
+      'state': newState ?? state,
       'bloc': _blocName,
-      'groups': groupsToRebuild?.toString(),
+      'groups': groupsToRebuild,
       'event': event.runtimeType.toString(),
       'error': error?.toString(),
     });

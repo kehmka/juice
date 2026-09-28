@@ -1,0 +1,36 @@
+{
+  "dart": "3.13.4",
+  "cpus": 4,
+  "breakdown": [
+    {
+      "layer": "stateManager.emit",
+      "kind": "real",
+      "microsPerOp": 0.04
+    },
+    {
+      "layer": "statusEmitter.emitUpdate",
+      "kind": "real",
+      "microsPerOp": 1.811
+    },
+    {
+      "layer": "telemetry maps (3 per event)",
+      "kind": "synthetic",
+      "microsPerOp": 1.68
+    },
+    {
+      "layer": "4 awaited async hops",
+      "kind": "synthetic",
+      "microsPerOp": 0.788
+    },
+    {
+      "layer": "send · StatefulUseCaseBuilder (reused instance)",
+      "kind": "real",
+      "microsPerOp": 4.653
+    },
+    {
+      "layer": "send · UseCaseBuilder (fresh instance)",
+      "kind": "real",
+      "microsPerOp": 4.992
+    }
+  ]
+}

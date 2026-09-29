@@ -411,3 +411,26 @@ iPhone 17 Pro Max.
 - One `BENCH_STALLED` still fires once per phone run, in the first variant
   of the first round, while the app's window is coming up; medians of
   three rounds absorb it. A per-round stall flag is the next refinement.
+
+## 9. The telemetry knob, priced (2026-09-28) — juice 1.10.0
+
+§4 and §6 said telemetry context construction is ~40% of a dispatch even
+when the logger drops it. `JuiceLoggerConfig.minLevel` (juice 1.10.0) is
+the one knob: below it the framework does not build the per-event span
+pair or emission entry at all. Default `Level.all` — nothing changes unless
+set; errors, ignored events and failure emissions are never gated. This is
+the same send measured with the knob at `Level.warning`, 5 rounds, median
+[range]:
+
+| send · fresh instance | default | minLevel = warning | saved |
+|---|---:|---:|---:|
+| Mac (Apple Silicon) | 2.79 µs [2.73–2.88] | 1.90 µs [1.81–1.94] | 32% |
+| iPhone 17 Pro Max | 1.73 µs [1.64–1.78] | 1.12 µs [1.08–1.16] | 35% |
+
+Ranges do not overlap on either machine. On the phone a Juice send drops
+from 2.3× bloc's (§6, 0.76 µs) to ~1.5×; what remains is the async executor
+(~0.4 µs) and the fresh use-case instance (~0.1 µs) — the design. The
+knob buys about a third of a dispatch, for apps that dispatch enough events
+per frame to notice; at ~1 µs per event that is thousands per frame.
+`DevtoolsJuiceLogger` consumes the chatter, so the default stays where the
+panel should work.

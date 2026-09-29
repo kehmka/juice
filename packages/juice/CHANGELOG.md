@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.10.0] - 2026-09-28
+
+Includes everything listed under 1.9.1 below, which was never published on
+its own; the new knob makes this a minor.
+
+### Added
+- **`JuiceLoggerConfig.minLevel` — the one knob for the framework's own
+  per-event chatter.** Every use-case execution logs a span pair and every
+  emission logs an entry, at `Level.info`; building those context maps is
+  ~40% of a dispatch even when the logger drops them (benchmarks §4, §6:
+  ~0.7 of ~1.7 µs per send on an iPhone 17 Pro Max). Below `minLevel` the
+  framework does not build them — the logger is not called for that entry.
+  Default `Level.all`: nothing changes unless set. `Level.warning` in
+  release is the whole gain. Never gates `logError`, `emission_after_close`,
+  `event_ignored`, or a failure emission's entry: those stay loud.
+  `DevtoolsJuiceLogger` consumes the chatter, so leave the default in any
+  build where the panel should work. Pinned by
+  `test/bloc/telemetry_level_test.dart`.
+
 ## [1.9.1] - 2026-09-28
 
 Dispatch-cost release, driven by the new benchmarks (`benchmarks/`,

@@ -212,7 +212,11 @@ Every use-case execution logs a structured START (`use_case_execution`) and
 exactly one END sharing its `executionId`: `use_case_completed` (with
 `elapsedMicros`) or `use_case_error` (also stamped). Mirror everything to
 DevTools with `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`
-(`juice_observability ≥ 0.3.0`). Gotcha: `use_case_error` has TWO sources
+(`juice_observability ≥ 0.3.0`). The chatter costs ~40% of a dispatch
+even when dropped; `JuiceLoggerConfig.minLevel = Level.warning` (juice ≥
+1.10.0) stops it being built at all — errors, ignored events and failure
+emissions stay loud regardless. Leave the default (`Level.all`) wherever
+the DevTools panel should work. Gotcha: `use_case_error` has TWO sources
 sharing the type — the executor's span-closer (has `executionId`) and
 `BlocErrorHandler`'s summary (has `bloc`/`state`). Span consumers key on
 `executionId` presence.

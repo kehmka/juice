@@ -217,6 +217,22 @@ Future<List<BreakdownRow>> _once(int n) async {
   );
   await fresh.close();
 
+  // 7. The same send with the framework's chatter NOT BUILT
+  //    (JuiceLoggerConfig.minLevel = Level.warning, juice ≥ 1.10.0) — the
+  //    one knob the breakdown priced.
+  final savedLevel = JuiceLoggerConfig.minLevel;
+  JuiceLoggerConfig.minLevel = Level.warning;
+  final quiet = _FreshBloc();
+  rows.add(
+    BreakdownRow(
+      'send · fresh instance, minLevel = warning (chatter not built)',
+      'real',
+      await _timeAsync(n, (_) => quiet.send(_Ev())),
+    ),
+  );
+  await quiet.close();
+  JuiceLoggerConfig.minLevel = savedLevel;
+
   return rows;
 }
 

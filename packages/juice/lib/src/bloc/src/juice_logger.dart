@@ -113,4 +113,21 @@ class JuiceLoggerConfig {
   static void configureLogger(JuiceLogger logger) {
     _logger = logger;
   }
+
+  /// The ONE knob for the framework's own per-event chatter (juice ≥ 1.10.0).
+  ///
+  /// Every use-case execution logs a span pair and every emission logs an
+  /// entry, at [Level.info], and building those context maps is ~40% of a
+  /// dispatch's cost even when the logger drops them (benchmarks/RESULTS.md
+  /// §4, §6). Below this level the framework does not build them at all —
+  /// the logger is never called for that entry. Default [Level.all]: nothing
+  /// changes unless you set it. `Level.warning` in release is the whole
+  /// gain. Never gates [JuiceLogger.logError], `emission_after_close`,
+  /// `event_ignored`, or a failure emission's entry: those stay loud.
+  /// `DevtoolsJuiceLogger` needs the chatter — leave this at [Level.all]
+  /// (or [Level.info]) in any build where the panel should work.
+  static Level minLevel = Level.all;
+
+  /// Whether an entry at [level] would be built and delivered at all.
+  static bool logs(Level level) => level.value >= minLevel.value;
 }

@@ -71,11 +71,13 @@ class StatusEmitter<TState extends BlocState> {
     bool skipIfSame = false,
   }) {
     if (skipIfSame && newState == state) {
-      _logger.log('Skipping duplicate state emission', context: {
-        'type': 'state_emission_skipped',
-        'bloc': _blocName,
-        'event': event.runtimeType.toString(),
-      });
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        _logger.log('Skipping duplicate state emission', context: {
+          'type': 'state_emission_skipped',
+          'bloc': _blocName,
+          'event': event.runtimeType.toString(),
+        });
+      }
       return;
     }
     _emit(StreamStatus.updating, 'update', event, newState, groups);
@@ -137,16 +139,18 @@ class StatusEmitter<TState extends BlocState> {
   ) {
     if (_droppedAfterClose(statusName, event)) return;
 
-    _logger.log('Emitting $statusName', context: {
-      'type': 'state_emission',
-      'status': statusName,
-      // Objects, not strings: a logger that prints stringifies them itself;
-      // one that drops the line (release, a silent sink) pays nothing.
-      'state': newState ?? state,
-      'bloc': _blocName,
-      'groups': groupsToRebuild,
-      'event': event.runtimeType.toString(),
-    });
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      _logger.log('Emitting $statusName', context: {
+        'type': 'state_emission',
+        'status': statusName,
+        // Objects, not strings: a logger that prints stringifies them itself;
+        // one that drops the line (release, a silent sink) pays nothing.
+        'state': newState ?? state,
+        'bloc': _blocName,
+        'groups': groupsToRebuild,
+        'event': event.runtimeType.toString(),
+      });
+    }
 
     // Apply default groups if not specified
     final groups = groupsToRebuild ?? rebuildAlways;

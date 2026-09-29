@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:logger/web.dart' show Level;
 import '../bloc_state.dart';
 import '../bloc_event.dart';
 import '../cancellable_event.dart';
@@ -145,12 +146,17 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
     final useCaseName = useCase.runtimeType.toString();
     final eventName = event.runtimeType.toString();
 
-    _logger.log('Executing use case', context: {
-      'type': 'use_case_execution',
-      'useCase': useCaseName,
-      'event': eventName,
-      'executionId': executionId,
-    });
+    // Chatter (the span pair) is built only above JuiceLoggerConfig.minLevel;
+    // the error end of a span is never gated.
+    final chatter = JuiceLoggerConfig.logs(Level.info);
+    if (chatter) {
+      _logger.log('Executing use case', context: {
+        'type': 'use_case_execution',
+        'useCase': useCaseName,
+        'event': eventName,
+        'executionId': executionId,
+      });
+    }
 
     final stopwatch = Stopwatch()..start();
     try {
@@ -160,13 +166,15 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       // mode swallowed by the dispatcher with no log at all.
       _wireUseCase(useCase, context);
       await useCase.execute(event);
-      _logger.log('Use case completed', context: {
-        'type': 'use_case_completed',
-        'useCase': useCaseName,
-        'event': eventName,
-        'executionId': executionId,
-        'elapsedMicros': stopwatch.elapsedMicroseconds,
-      });
+      if (chatter) {
+        _logger.log('Use case completed', context: {
+          'type': 'use_case_completed',
+          'useCase': useCaseName,
+          'event': eventName,
+          'executionId': executionId,
+          'elapsedMicros': stopwatch.elapsedMicroseconds,
+        });
+      }
     } catch (error, stackTrace) {
       _logger.logError(
         'Use case execution failed',

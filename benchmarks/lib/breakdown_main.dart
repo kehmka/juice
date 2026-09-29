@@ -15,6 +15,11 @@ Future<void> main() async {
   emit(
     const JsonEncoder.withIndent('  ').convert({
       'dart': Platform.version.split(' ').first,
+      'flutter': const String.fromEnvironment(
+        'BENCH_FLUTTER',
+        defaultValue: 'unknown',
+      ),
+      'toolchainDrift': const bool.fromEnvironment('BENCH_TOOLCHAIN_DRIFT'),
       'cpus': Platform.numberOfProcessors,
       'breakdown': [for (final r in rows) r.toJson()],
     }),

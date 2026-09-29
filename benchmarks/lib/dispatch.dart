@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juice/juice.dart';
 
+import 'stats.dart';
+
 import 'scenarios/cells_bloc.dart' as b;
 import 'scenarios/cells_juice.dart' as j;
 import 'scenarios/cells_riverpod.dart' as r;
@@ -17,19 +19,21 @@ import 'scenarios/cells_riverpod.dart' as r;
 /// telemetry spans; bloc routes an event through an event stream to a
 /// handler; Riverpod calls a notifier method synchronously (no event queue).
 class DispatchResult {
-  DispatchResult(this.name, this.shape, this.updates, this.elapsed);
+  DispatchResult(this.name, this.shape, this.updates, this.sample);
   final String name;
   final String shape;
   final int updates;
-  final Duration elapsed;
 
-  double get microsPerUpdate => elapsed.inMicroseconds / updates;
+  /// µs per update, one entry per round (never the fastest alone).
+  final Sample sample;
+
+  double get microsPerUpdate => sample.median;
 
   Map<String, Object> toJson() => {
     'variant': name,
     'shape': shape,
     'updates': updates,
-    'microsPerUpdate': double.parse(microsPerUpdate.toStringAsFixed(3)),
+    ...sample.toJson('microsPerUpdate'),
   };
 }
 
@@ -96,7 +100,7 @@ Future<_Target> _riverpod() async {
   });
 }
 
-Future<DispatchResult> _sequential(String name, _Setup setup, int n) async {
+Future<double> _sequential(_Setup setup, int n) async {
   final t = await setup();
   final sw = Stopwatch()..start();
   for (var k = 0; k < n; k++) {
@@ -104,10 +108,10 @@ Future<DispatchResult> _sequential(String name, _Setup setup, int n) async {
   }
   sw.stop();
   await t.close();
-  return DispatchResult(name, 'sequential', n, sw.elapsed);
+  return sw.elapsedMicroseconds / n;
 }
 
-Future<DispatchResult> _burst(String name, _Setup setup, int n) async {
+Future<double> _burst(_Setup setup, int n) async {
   final t = await setup();
   final sw = Stopwatch()..start();
   Future<void>? last;
@@ -117,12 +121,12 @@ Future<DispatchResult> _burst(String name, _Setup setup, int n) async {
   await last;
   sw.stop();
   await t.close();
-  return DispatchResult(name, 'burst', n, sw.elapsed);
+  return sw.elapsedMicroseconds / n;
 }
 
 /// Bloc's burst: `stream.first` per update would resolve on the FIRST
 /// state, not each one; wait for the Nth emission instead.
-Future<DispatchResult> _blocBurst(int n) async {
+Future<double> _blocBurst(int n) async {
   final bloc = b.CellsBloc(_cells);
   final done = bloc.stream.take(n).last;
   final sw = Stopwatch()..start();
@@ -132,41 +136,46 @@ Future<DispatchResult> _blocBurst(int n) async {
   await done;
   sw.stop();
   await bloc.close();
-  return DispatchResult('bloc', 'burst', n, sw.elapsed);
+  return sw.elapsedMicroseconds / n;
 }
 
 /// Runs every dispatch benchmark [rounds] times after a warm-up and keeps
-/// the fastest round per (variant, shape) — the least-disturbed run.
+/// EVERY round per (variant, shape): the report carries median, range and
+/// spread, and declares ties (see stats.dart).
 Future<List<DispatchResult>> runDispatch({
   int n = 20000,
   int rounds = 5,
 }) async {
   final defaultLogger = JuiceLoggerConfig.logger;
 
-  Future<List<DispatchResult>> once() async {
-    final out = <DispatchResult>[];
+  Future<Map<(String, String), double>> once() async {
+    final out = <(String, String), double>{};
     JuiceLoggerConfig.configureLogger(defaultLogger);
-    out.add(await _sequential('juice (default logger)', _juice, n));
-    out.add(await _burst('juice (default logger)', _juice, n));
+    out[('juice (default logger)', 'sequential')] = await _sequential(
+      _juice,
+      n,
+    );
+    out[('juice (default logger)', 'burst')] = await _burst(_juice, n);
     JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
-    out.add(await _sequential('juice (silent logger)', _juice, n));
-    out.add(await _burst('juice (silent logger)', _juice, n));
-    out.add(await _sequential('bloc', _bloc, n));
-    out.add(await _blocBurst(n));
-    out.add(await _sequential('riverpod', _riverpod, n));
-    out.add(await _burst('riverpod', _riverpod, n));
+    out[('juice (silent logger)', 'sequential')] = await _sequential(_juice, n);
+    out[('juice (silent logger)', 'burst')] = await _burst(_juice, n);
+    out[('bloc', 'sequential')] = await _sequential(_bloc, n);
+    out[('bloc', 'burst')] = await _blocBurst(n);
+    out[('riverpod', 'sequential')] = await _sequential(_riverpod, n);
+    out[('riverpod', 'burst')] = await _burst(_riverpod, n);
     return out;
   }
 
   await once(); // warm-up (JIT/AOT caches, allocator)
-  final best = <String, DispatchResult>{};
+  final all = <(String, String), List<double>>{};
   for (var i = 0; i < rounds; i++) {
-    for (final r in await once()) {
-      final key = '${r.name}/${r.shape}';
-      final prev = best[key];
-      if (prev == null || r.elapsed < prev.elapsed) best[key] = r;
+    for (final e in (await once()).entries) {
+      all.putIfAbsent(e.key, () => []).add(e.value);
     }
   }
   JuiceLoggerConfig.configureLogger(defaultLogger);
-  return best.values.toList();
+  return [
+    for (final e in all.entries)
+      DispatchResult(e.key.$1, e.key.$2, n, Sample(e.value)),
+  ];
 }

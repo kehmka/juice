@@ -1,5 +1,13 @@
 # Results — 2026-09-28
 
+> **Harness note (2026-09-28, after these sections were written):** the
+> harness now keeps every round and reports median + range + spread, and
+> declares ties itself (README "What is measured"); a `TOOLCHAIN` pin makes
+> `tool/run.sh` refuse a mismatched Flutter. §1–§6 below are from the earlier
+> fastest-of-5 harness and are kept as measured; the next Linux run on the
+> pinned toolchain will regenerate §2–§4 in the new schema. §7 shows the new
+> schema on the Mac (drift allowed, so not a published number).
+
 Machine: 4-core Intel Xeon @ 2.80 GHz (cloud VM), Linux, **release (AOT)**
 build, Dart 3.13.4 / Flutter 3.47.5, run headless under Xvfb.
 Versions: juice 1.9.1 (this repo), bloc 9.2.1 / flutter_bloc 9.1.1,
@@ -250,3 +258,78 @@ CPU time rather than wall time — see the roadmap.
 - Frame cost is only comparable within one machine and one clock regime;
   the desktop tables in §2 remain the fair mechanism comparison.
 
+## 7. The new harness on the Mac — median, range, verdicts (2026-09-28)
+
+Same Mac as §5, Flutter 3.44.4 (`toolchainDrift: true` — the pin is
+3.47.5, so these are NOT publishable numbers; they show the schema and
+what the harness now says on its own). Every round kept; 5 rounds for
+dispatch and breakdown, 3 for frames.
+
+### Dispatch, sequential, µs per update
+
+| variant | median | range | spread |
+|---|---:|---:|---:|
+| riverpod | 0.40 | 0.38–0.41 | ±3% |
+| bloc | 0.98 | 0.95–1.01 | ±3% |
+| juice (silent logger) | 2.84 | 2.79–2.96 | ±3% |
+| juice (default logger) | 3.08 | 3.05–3.17 | ±2% |
+
+Verdicts (adjacent pairs by median; a tie means the ranges overlap):
+
+- riverpod < bloc: **faster** (59%)
+- bloc < juice (silent logger): **faster** (66%)
+- juice (silent logger) < juice (default logger): **faster** (8%)
+
+Spreads of 2–3% make every gap here real, including the default-vs-silent
+logger gap — 8% on this machine, ranges not overlapping. The 1.9.1 fix
+closed most of that gap, not all of it.
+
+### Frame cost, tuned forms, p50 µs (median of 3 rounds)
+
+| variant | median | range | spread |
+|---|---:|---:|---:|
+| juice · JuiceSelector | 601 | 557–622 | ±5% |
+| juice · groups | 616 | 614–752 | ±11% |
+| bloc · BlocSelector | 635 | 629–724 | ±8% |
+| riverpod · select | 635 | 584–732 | ±12% |
+| juice · JuiceSelector + groups | 755 | 685–875 | ±13% |
+
+Verdicts:
+
+- juice · JuiceSelector < juice · groups: **tie** (2%)
+- juice · groups < bloc · BlocSelector: **tie** (3%)
+- bloc · BlocSelector < riverpod · select: **tie** (0%)
+- riverpod · select < juice · JuiceSelector + groups: **tie** (16%)
+
+**Every tuned pair is a tie.** This is the sentence §2 and §5 could only
+imply: on the cells scenario the four targeting mechanisms cost the same
+per frame within this machine's noise (spreads 5–13% against differences
+of 0–3%). The harness now says so itself. The one to watch, not a
+finding: `JuiceSelector + groups` has the highest median on the Mac and
+the phone both — inside the tie band here, but consistent; the grouped
+selector does the group filter AND the selector per widget, and holds a
+subscription per cell rather than a `StreamBuilder`. Worth a look when
+the second scenario lands.
+
+### Breakdown, µs per op
+
+| layer | kind | median | range | spread |
+|---|---|---:|---:|---:|
+| stateManager.emit | real | 0.02 | 0.02–0.02 | ±6% |
+| statusEmitter.emitUpdate | real | 1.00 | 0.90–1.01 | ±5% |
+| telemetry maps (3 per event) | synthetic | 1.05 | 0.99–1.11 | ±6% |
+| 4 awaited async hops | synthetic | 0.50 | 0.49–0.54 | ±4% |
+| send · StatefulUseCaseBuilder (reused instance) | real | 2.44 | 2.38–2.48 | ±2% |
+| send · UseCaseBuilder (fresh instance) | real | 2.71 | 2.69–2.76 | ±1% |
+
+Same shape as §4 and §6, now with the noise attached.
+
+### Learned running it
+
+The frame benchmark awaits engine frames, and the engine delivers frames
+only to a visible window. Launched from a background shell the macOS window
+sat behind the editor and the run waited at 0% CPU — for 39 minutes the
+first time, until it was fronted; it resumed at once. Now: `tool/run.sh`
+keeps the app activated until it exits, and a frame that takes more than
+5 s prints `BENCH_STALLED` once so the condition is visible in the log.
+The same rule produced the phone's Auto-Lock requirement in §6.

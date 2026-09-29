@@ -4,6 +4,7 @@ import 'package:juice/src/bloc/src/core/state_manager.dart';
 import 'package:juice/src/bloc/src/core/status_emitter.dart';
 
 import 'dispatch.dart' show SilentJuiceLogger;
+import 'stats.dart';
 
 /// WHERE A JUICE DISPATCH'S TIME GOES — measured layer by layer.
 ///
@@ -68,10 +69,18 @@ class BreakdownRow {
   final String layer;
   final String kind; // 'real' | 'synthetic'
   final double micros;
+}
+
+/// A layer's rounds gathered: median, range, spread.
+class BreakdownResult {
+  BreakdownResult(this.layer, this.kind, this.sample);
+  final String layer;
+  final String kind;
+  final Sample sample;
   Map<String, Object> toJson() => {
     'layer': layer,
     'kind': kind,
-    'microsPerOp': double.parse(micros.toStringAsFixed(3)),
+    ...sample.toJson('microsPerOp'),
   };
 }
 
@@ -211,18 +220,23 @@ Future<List<BreakdownRow>> _once(int n) async {
   return rows;
 }
 
-/// Warm-up, then the fastest of [rounds] per layer.
-Future<List<BreakdownRow>> runBreakdown({int n = 20000, int rounds = 5}) async {
+/// Warm-up, then EVERY round per layer (median + range in the report).
+Future<List<BreakdownResult>> runBreakdown({
+  int n = 20000,
+  int rounds = 5,
+}) async {
   final previous = JuiceLoggerConfig.logger;
   JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
   await _once(n);
-  final best = <String, BreakdownRow>{};
+  final all = <String, (String, List<double>)>{};
   for (var r = 0; r < rounds; r++) {
     for (final row in await _once(n)) {
-      final prev = best[row.layer];
-      if (prev == null || row.micros < prev.micros) best[row.layer] = row;
+      all.putIfAbsent(row.layer, () => (row.kind, [])).$2.add(row.micros);
     }
   }
   JuiceLoggerConfig.configureLogger(previous);
-  return best.values.toList();
+  return [
+    for (final e in all.entries)
+      BreakdownResult(e.key, e.value.$1, Sample(e.value.$2)),
+  ];
 }

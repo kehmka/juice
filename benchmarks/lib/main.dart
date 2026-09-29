@@ -9,6 +9,7 @@ import 'package:juice/juice.dart' show JuiceLoggerConfig;
 import 'counters.dart';
 import 'dispatch.dart';
 import 'scenarios/all.dart';
+import 'stats.dart';
 
 /// The timing half of the benchmarks. Built in RELEASE (AOT) and run headless
 /// by tool/run.sh; prints one JSON document between markers, then exits.
@@ -22,6 +23,7 @@ import 'scenarios/all.dart';
 ///    under a virtual display it measures a software rasterizer.
 const frameCells = 1000;
 const frameUpdates = 300;
+const frameRounds = 3;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,12 @@ Future<void> _run(ValueNotifier<Widget> host) async {
   final report = <String, Object>{
     'mode': kReleaseMode ? 'release' : (kProfileMode ? 'profile' : 'debug'),
     'dart': Platform.version.split(' ').first,
+    // Injected by tool/run.sh (--dart-define); TOOLCHAIN pins it.
+    'flutter': const String.fromEnvironment(
+      'BENCH_FLUTTER',
+      defaultValue: 'unknown',
+    ),
+    'toolchainDrift': const bool.fromEnvironment('BENCH_TOOLCHAIN_DRIFT'),
     'os': Platform.operatingSystem,
     'cpus': Platform.numberOfProcessors,
   };
@@ -49,20 +57,56 @@ Future<void> _run(ValueNotifier<Widget> host) async {
   progress('start');
   final dispatch = await runDispatch();
   report['dispatch'] = [for (final r in dispatch) r.toJson()];
+  report['dispatchComparisons'] = {
+    for (final shape in ['sequential', 'burst'])
+      shape: compare({
+        for (final r in dispatch)
+          if (r.shape == shape) r.name: r.sample,
+      }),
+  };
   progress('dispatch done');
 
   // Frame benchmarks use the silent logger for every framework, so what is
   // compared is the widget-side cost (dispatch is reported separately).
   final defaultLogger = JuiceLoggerConfig.logger;
   JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
-  final frames = <Map<String, Object>>[];
-  for (final variant in allVariants()) {
-    progress('frames: ${variant.name} …');
-    frames.add(await _frameBench(host, variant));
-    progress('frames: ${variant.name} done');
+  // Each variant runs frameRounds times; the p50 of each round is a sample,
+  // so a variant's frame cost carries a range like everything else.
+  final frameSamples = <String, (Variant, List<Map<String, Object>>)>{};
+  for (var round = 0; round < frameRounds; round++) {
+    for (final variant in allVariants()) {
+      progress('frames r$round: ${variant.name} …');
+      final r = await _frameBench(host, variant);
+      frameSamples.putIfAbsent(variant.name, () => (variant, [])).$2.add(r);
+      progress('frames r$round: ${variant.name} done');
+    }
   }
   JuiceLoggerConfig.configureLogger(defaultLogger);
+  final frames = <Map<String, Object>>[];
+  final tunedP50 = <String, Sample>{};
+  for (final e in frameSamples.entries) {
+    final runs = e.value.$2;
+    final p50 = Sample([
+      for (final r in runs) (r['buildMicrosP50'] as int).toDouble(),
+    ]);
+    final p90 = Sample([
+      for (final r in runs) (r['buildMicrosP90'] as int).toDouble(),
+    ]);
+    final builds = runs.first['buildsPerUpdate'] as double;
+    frames.add({
+      'variant': e.key,
+      'framework': e.value.$1.framework,
+      'cells': frameCells,
+      'updates': frameUpdates,
+      'rounds': runs.length,
+      'buildsPerUpdate': builds,
+      'buildMicrosP50': p50.toJson('median'),
+      'buildMicrosP90': p90.toJson('median'),
+    });
+    if (builds < 2) tunedP50[e.key] = p50;
+  }
   report['frames'] = frames;
+  report['frameComparisons'] = {'tunedP50': compare(tunedP50)};
 
   emit('BENCH_JSON_BEGIN');
   emit(const JsonEncoder.withIndent('  ').convert(report));
@@ -71,9 +115,30 @@ Future<void> _run(ValueNotifier<Widget> host) async {
   exit(0);
 }
 
-Future<void> _frame() {
+/// One frame. The engine only delivers frames to a VISIBLE window — an
+/// occluded macOS window or a backgrounded phone app gets none, and this
+/// await would sit forever at 0% CPU. So a frame that takes more than
+/// [stallAfter] is reported (once) as BENCH_STALLED, with the reason; the
+/// await itself still completes as soon as the window is visible again.
+const stallAfter = Duration(seconds: 5);
+bool _stallReported = false;
+Future<void> _frame() async {
   SchedulerBinding.instance.scheduleFrame();
-  return SchedulerBinding.instance.endOfFrame;
+  final done = SchedulerBinding.instance.endOfFrame;
+  await Future.any([
+    done,
+    Future<void>.delayed(stallAfter).then((_) {
+      if (!_stallReported) {
+        _stallReported = true;
+        emit(
+          'BENCH_STALLED no frame for ${stallAfter.inSeconds}s — the '
+          'window is occluded or the app is backgrounded; bring it to the '
+          'front (frames resume, timing of THIS variant is suspect)',
+        );
+      }
+    }),
+  ]);
+  await done;
 }
 
 Future<Map<String, Object>> _frameBench(

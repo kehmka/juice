@@ -55,8 +55,24 @@ dispatch numbers show, not something to normalize away.
    two labelled synthetic layers (the telemetry maps alone, the async hop
    depth alone).
 
-Each timing benchmark runs a warm-up round, then keeps the fastest of 5
-rounds per variant.
+Each timing benchmark runs a warm-up round, then keeps **every** one of 5
+rounds per variant (3 for the frame benchmark) and reports the **median with
+its range** (`min`, `max`, `spread` = half-range over median) plus the raw
+rounds. The report also carries **verdicts**: variants measuring the same
+thing are sorted by median, and each adjacent pair is a `tie` when their
+ranges overlap or `faster` by a percentage when they do not
+(`dispatchComparisons`, `frameComparisons`). A difference inside the spread
+is declared a tie by the harness — not left to the reader.
+
+## Toolchain pin
+
+`TOOLCHAIN` holds the Flutter version the published numbers were compiled
+with. `tool/run.sh` refuses to run on any other version, because timings
+compiled by different Dart versions are not comparable. To run anyway (a
+local look, never for RESULTS.md) set `JUICE_BENCH_ALLOW_DRIFT=1`; the
+results then carry `"toolchainDrift": true` and the actual `"flutter"`
+version. Phone builds by hand should pass the same defines:
+`--dart-define=BENCH_FLUTTER=<version> --dart-define=BENCH_TOOLCHAIN_DRIFT=<bool>`.
 
 ## Running
 
@@ -85,7 +101,16 @@ xcrun devicectl device process launch --console --terminate-existing \
 sed -n '/BENCH_JSON_BEGIN/,/BENCH_JSON_END/p' run.log | sed '1d;$d' > results/timing_ios.json
 ```
 
-and again with `-t lib/breakdown_main.dart` for `breakdown_ios.json`. The app
+and again with `-t lib/breakdown_main.dart` for `breakdown_ios.json`.
+
+**The frame benchmark needs a visible window, on every platform.** The engine
+delivers frames only to a window that is on screen: an occluded macOS window
+or a backgrounded phone app gets none, and the run sits at 0% CPU until it is
+fronted (it resumes by itself when it is). On macOS `tool/run.sh` keeps the
+app activated until it exits — expect it to take focus for the few minutes
+the frame phase runs. A frame that takes more than 5 s prints
+`BENCH_STALLED` once, so a stall is diagnosable from the log rather than
+silent; that variant's timing is then suspect. The app
 prints `BENCH_PROGRESS` lines per phase and also writes the JSON to its
 Documents dir (copy out with `devicectl device copy from --domain-type
 appDataContainer --domain-identifier com.example.juiceBenchmarks --source

@@ -1,36 +1,98 @@
 {
   "dart": "3.12.2",
+  "flutter": "3.44.4",
+  "toolchainDrift": true,
   "cpus": 12,
   "breakdown": [
     {
       "layer": "stateManager.emit",
       "kind": "real",
-      "microsPerOp": 0.018
+      "microsPerOp": 0.018,
+      "min": 0.016,
+      "max": 0.019,
+      "spread": 0.063,
+      "rounds": [
+        0.018,
+        0.018,
+        0.018,
+        0.019,
+        0.016
+      ]
     },
     {
       "layer": "statusEmitter.emitUpdate",
       "kind": "real",
-      "microsPerOp": 0.844
+      "microsPerOp": 1.004,
+      "min": 0.901,
+      "max": 1.007,
+      "spread": 0.053,
+      "rounds": [
+        1.004,
+        0.944,
+        0.901,
+        1.007,
+        1.007
+      ]
     },
     {
       "layer": "telemetry maps (3 per event)",
       "kind": "synthetic",
-      "microsPerOp": 1.035
+      "microsPerOp": 1.048,
+      "min": 0.991,
+      "max": 1.114,
+      "spread": 0.059,
+      "rounds": [
+        1.048,
+        1.003,
+        0.991,
+        1.048,
+        1.114
+      ]
     },
     {
       "layer": "4 awaited async hops",
       "kind": "synthetic",
-      "microsPerOp": 0.529
+      "microsPerOp": 0.503,
+      "min": 0.495,
+      "max": 0.535,
+      "spread": 0.04,
+      "rounds": [
+        0.523,
+        0.503,
+        0.495,
+        0.501,
+        0.535
+      ]
     },
     {
       "layer": "send · StatefulUseCaseBuilder (reused instance)",
       "kind": "real",
-      "microsPerOp": 2.417
+      "microsPerOp": 2.445,
+      "min": 2.377,
+      "max": 2.479,
+      "spread": 0.021,
+      "rounds": [
+        2.479,
+        2.446,
+        2.377,
+        2.426,
+        2.445
+      ]
     },
     {
       "layer": "send · UseCaseBuilder (fresh instance)",
       "kind": "real",
-      "microsPerOp": 2.723
+      "microsPerOp": 2.714,
+      "min": 2.688,
+      "max": 2.756,
+      "spread": 0.012,
+      "rounds": [
+        2.714,
+        2.756,
+        2.688,
+        2.705,
+        2.749
+      ]
     }
   ]
 }

@@ -1,6 +1,8 @@
 {
   "mode": "release",
   "dart": "3.12.2",
+  "flutter": "3.44.4",
+  "toolchainDrift": true,
   "os": "macos",
   "cpus": 12,
   "dispatch": [
@@ -8,121 +10,451 @@
       "variant": "juice (default logger)",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 3.107
+      "microsPerUpdate": 3.084,
+      "min": 3.047,
+      "max": 3.166,
+      "spread": 0.019,
+      "rounds": [
+        3.166,
+        3.047,
+        3.065,
+        3.094,
+        3.084
+      ]
     },
     {
       "variant": "juice (default logger)",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 4.474
+      "microsPerUpdate": 5.473,
+      "min": 5.024,
+      "max": 5.556,
+      "spread": 0.049,
+      "rounds": [
+        5.473,
+        5.024,
+        5.531,
+        5.258,
+        5.556
+      ]
     },
     {
       "variant": "juice (silent logger)",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 2.864
+      "microsPerUpdate": 2.84,
+      "min": 2.794,
+      "max": 2.96,
+      "spread": 0.029,
+      "rounds": [
+        2.851,
+        2.794,
+        2.816,
+        2.84,
+        2.96
+      ]
     },
     {
       "variant": "juice (silent logger)",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 4.226
+      "microsPerUpdate": 5.238,
+      "min": 4.914,
+      "max": 5.589,
+      "spread": 0.064,
+      "rounds": [
+        4.914,
+        5.238,
+        4.929,
+        5.589,
+        5.488
+      ]
     },
     {
       "variant": "bloc",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 0.975
+      "microsPerUpdate": 0.98,
+      "min": 0.949,
+      "max": 1.014,
+      "spread": 0.033,
+      "rounds": [
+        0.98,
+        0.949,
+        0.97,
+        1.012,
+        1.014
+      ]
     },
     {
       "variant": "bloc",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 0.787
+      "microsPerUpdate": 0.808,
+      "min": 0.744,
+      "max": 0.836,
+      "spread": 0.057,
+      "rounds": [
+        0.833,
+        0.744,
+        0.744,
+        0.836,
+        0.808
+      ]
     },
     {
       "variant": "riverpod",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 0.404
+      "microsPerUpdate": 0.397,
+      "min": 0.378,
+      "max": 0.405,
+      "spread": 0.034,
+      "rounds": [
+        0.397,
+        0.378,
+        0.38,
+        0.401,
+        0.405
+      ]
     },
     {
       "variant": "riverpod",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 0.613
+      "microsPerUpdate": 0.692,
+      "min": 0.654,
+      "max": 0.833,
+      "spread": 0.129,
+      "rounds": [
+        0.679,
+        0.654,
+        0.743,
+        0.833,
+        0.692
+      ]
     }
   ],
+  "dispatchComparisons": {
+    "sequential": [
+      {
+        "faster": "riverpod",
+        "slower": "bloc",
+        "verdict": "faster",
+        "byPercent": 59.492,
+        "reason": "ranges do not overlap"
+      },
+      {
+        "faster": "bloc",
+        "slower": "juice (silent logger)",
+        "verdict": "faster",
+        "byPercent": 65.505,
+        "reason": "ranges do not overlap"
+      },
+      {
+        "faster": "juice (silent logger)",
+        "slower": "juice (default logger)",
+        "verdict": "faster",
+        "byPercent": 7.896,
+        "reason": "ranges do not overlap"
+      }
+    ],
+    "burst": [
+      {
+        "faster": "riverpod",
+        "slower": "bloc",
+        "verdict": "tie",
+        "byPercent": 14.315,
+        "reason": "ranges overlap (0.654–0.833 vs 0.744–0.836)"
+      },
+      {
+        "faster": "bloc",
+        "slower": "juice (silent logger)",
+        "verdict": "faster",
+        "byPercent": 84.583,
+        "reason": "ranges do not overlap"
+      },
+      {
+        "faster": "juice (silent logger)",
+        "slower": "juice (default logger)",
+        "verdict": "tie",
+        "byPercent": 4.299,
+        "reason": "ranges overlap (4.914–5.589 vs 5.024–5.556)"
+      }
+    ]
+  },
   "frames": [
     {
       "variant": "juice · groups",
       "framework": "juice",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 301,
+      "rounds": 3,
       "buildsPerUpdate": 1.0,
-      "buildMicrosP50": 834,
-      "buildMicrosP90": 1201
+      "buildMicrosP50": {
+        "median": 616.0,
+        "min": 614.0,
+        "max": 752.0,
+        "spread": 0.112,
+        "rounds": [
+          752.0,
+          616.0,
+          614.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 1726.0,
+        "min": 968.0,
+        "max": 2679.0,
+        "spread": 0.496,
+        "rounds": [
+          1726.0,
+          2679.0,
+          968.0
+        ]
+      }
+    },
+    {
+      "variant": "juice · JuiceSelector + groups",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "rounds": 3,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": {
+        "median": 755.0,
+        "min": 685.0,
+        "max": 875.0,
+        "spread": 0.126,
+        "rounds": [
+          685.0,
+          755.0,
+          875.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 1337.0,
+        "min": 1069.0,
+        "max": 3204.0,
+        "spread": 0.798,
+        "rounds": [
+          3204.0,
+          1069.0,
+          1337.0
+        ]
+      }
     },
     {
       "variant": "juice · JuiceSelector",
       "framework": "juice",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1.0,
-      "buildMicrosP50": 909,
-      "buildMicrosP90": 1440
+      "buildMicrosP50": {
+        "median": 601.0,
+        "min": 557.0,
+        "max": 622.0,
+        "spread": 0.054,
+        "rounds": [
+          601.0,
+          557.0,
+          622.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 927.0,
+        "min": 882.0,
+        "max": 2791.0,
+        "spread": 1.03,
+        "rounds": [
+          2791.0,
+          882.0,
+          927.0
+        ]
+      }
     },
     {
       "variant": "juice · no groups",
       "framework": "juice",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1000.0,
-      "buildMicrosP50": 2039,
-      "buildMicrosP90": 2411
+      "buildMicrosP50": {
+        "median": 1777.0,
+        "min": 1707.0,
+        "max": 1984.0,
+        "spread": 0.078,
+        "rounds": [
+          1984.0,
+          1777.0,
+          1707.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 2110.0,
+        "min": 2107.0,
+        "max": 2314.0,
+        "spread": 0.049,
+        "rounds": [
+          2314.0,
+          2107.0,
+          2110.0
+        ]
+      }
     },
     {
       "variant": "bloc · BlocSelector",
       "framework": "bloc",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1.0,
-      "buildMicrosP50": 1163,
-      "buildMicrosP90": 1496
+      "buildMicrosP50": {
+        "median": 635.0,
+        "min": 629.0,
+        "max": 724.0,
+        "spread": 0.075,
+        "rounds": [
+          629.0,
+          635.0,
+          724.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 1199.0,
+        "min": 1137.0,
+        "max": 2556.0,
+        "spread": 0.592,
+        "rounds": [
+          2556.0,
+          1137.0,
+          1199.0
+        ]
+      }
     },
     {
       "variant": "bloc · BlocBuilder",
       "framework": "bloc",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1000.0,
-      "buildMicrosP50": 2219,
-      "buildMicrosP90": 2525
+      "buildMicrosP50": {
+        "median": 2119.0,
+        "min": 2115.0,
+        "max": 2308.0,
+        "spread": 0.046,
+        "rounds": [
+          2308.0,
+          2115.0,
+          2119.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 2475.0,
+        "min": 2391.0,
+        "max": 2660.0,
+        "spread": 0.054,
+        "rounds": [
+          2660.0,
+          2391.0,
+          2475.0
+        ]
+      }
     },
     {
       "variant": "riverpod · select",
       "framework": "riverpod",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1.0,
-      "buildMicrosP50": 943,
-      "buildMicrosP90": 1293
+      "buildMicrosP50": {
+        "median": 635.0,
+        "min": 584.0,
+        "max": 732.0,
+        "spread": 0.117,
+        "rounds": [
+          635.0,
+          732.0,
+          584.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 1242.0,
+        "min": 1076.0,
+        "max": 2533.0,
+        "spread": 0.587,
+        "rounds": [
+          2533.0,
+          1076.0,
+          1242.0
+        ]
+      }
     },
     {
       "variant": "riverpod · watch",
       "framework": "riverpod",
       "cells": 1000,
       "updates": 300,
-      "framesTimed": 302,
+      "rounds": 3,
       "buildsPerUpdate": 1000.0,
-      "buildMicrosP50": 2053,
-      "buildMicrosP90": 2314
+      "buildMicrosP50": {
+        "median": 1876.0,
+        "min": 1776.0,
+        "max": 1879.0,
+        "spread": 0.027,
+        "rounds": [
+          1876.0,
+          1879.0,
+          1776.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 2243.0,
+        "min": 2115.0,
+        "max": 2289.0,
+        "spread": 0.039,
+        "rounds": [
+          2243.0,
+          2289.0,
+          2115.0
+        ]
+      }
     }
-  ]
+  ],
+  "frameComparisons": {
+    "tunedP50": [
+      {
+        "faster": "juice · JuiceSelector",
+        "slower": "juice · groups",
+        "verdict": "tie",
+        "byPercent": 2.435,
+        "reason": "ranges overlap (557.0–622.0 vs 614.0–752.0)"
+      },
+      {
+        "faster": "juice · groups",
+        "slower": "bloc · BlocSelector",
+        "verdict": "tie",
+        "byPercent": 2.992,
+        "reason": "ranges overlap (614.0–752.0 vs 629.0–724.0)"
+      },
+      {
+        "faster": "bloc · BlocSelector",
+        "slower": "riverpod · select",
+        "verdict": "tie",
+        "byPercent": 0.0,
+        "reason": "ranges overlap (629.0–724.0 vs 584.0–732.0)"
+      },
+      {
+        "faster": "riverpod · select",
+        "slower": "juice · JuiceSelector + groups",
+        "verdict": "tie",
+        "byPercent": 15.894,
+        "reason": "ranges overlap (584.0–732.0 vs 685.0–875.0)"
+      }
+    ]
+  }
 }

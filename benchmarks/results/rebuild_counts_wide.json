@@ -1,0 +1,77 @@
+{
+  "cells": 100,
+  "k": 5,
+  "updates": 10,
+  "results": [
+    {
+      "variant": "wide · juice · groups",
+      "framework": "juice",
+      "mechanism": "emitter names K cells + header",
+      "k": 5,
+      "cellBuildsPerUpdate": 5.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 6.0,
+      "selectorCallsPerUpdate": 0.0
+    },
+    {
+      "variant": "wide · juice · JuiceSelector + groups",
+      "framework": "juice",
+      "mechanism": "group filter, then selector, per cell + header",
+      "k": 5,
+      "cellBuildsPerUpdate": 5.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 6.0,
+      "selectorCallsPerUpdate": 6.0
+    },
+    {
+      "variant": "wide · juice · no groups",
+      "framework": "juice",
+      "mechanism": "rebuildAlways broadcast (the default)",
+      "k": 5,
+      "cellBuildsPerUpdate": 100.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 101.0,
+      "selectorCallsPerUpdate": 0.0
+    },
+    {
+      "variant": "wide · bloc · BlocSelector",
+      "framework": "bloc",
+      "mechanism": "selector per cell + header",
+      "k": 5,
+      "cellBuildsPerUpdate": 5.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 6.0,
+      "selectorCallsPerUpdate": 101.0
+    },
+    {
+      "variant": "wide · bloc · BlocBuilder",
+      "framework": "bloc",
+      "mechanism": "no filter (the default)",
+      "k": 5,
+      "cellBuildsPerUpdate": 100.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 101.0,
+      "selectorCallsPerUpdate": 0.0
+    },
+    {
+      "variant": "wide · riverpod · select",
+      "framework": "riverpod",
+      "mechanism": "select per cell + header",
+      "k": 5,
+      "cellBuildsPerUpdate": 5.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 6.0,
+      "selectorCallsPerUpdate": 107.0
+    },
+    {
+      "variant": "wide · riverpod · watch",
+      "framework": "riverpod",
+      "mechanism": "no filter (the default)",
+      "k": 5,
+      "cellBuildsPerUpdate": 100.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 101.0,
+      "selectorCallsPerUpdate": 0.0
+    }
+  ]
+}

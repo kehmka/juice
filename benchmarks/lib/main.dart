@@ -10,6 +10,7 @@ import 'package:juice/juice.dart' show JuiceLoggerConfig;
 import 'counters.dart';
 import 'dispatch.dart';
 import 'scenarios/all.dart';
+import 'scenarios/wide.dart';
 import 'stats.dart';
 
 /// The timing half of the benchmarks. Built in RELEASE (AOT) and run headless
@@ -91,92 +92,14 @@ Future<void> _run(ValueNotifier<Widget> host) async {
 
   // Frame benchmarks use the silent logger for every framework, so what is
   // compared is the widget-side cost (dispatch is reported separately).
-  final defaultLogger = JuiceLoggerConfig.logger;
-  JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
-  // Each variant runs frameRounds times; the p50 of each round is a sample,
-  // so a variant's frame cost carries a range like everything else.
-  final frameSamples = <String, (Variant, List<Map<String, Object>>)>{};
-  final pin = pinClock && (Platform.isIOS || Platform.isAndroid);
-  report['clockPinned'] = pin;
-  Isolate? spinner;
-  if (pin) {
-    final ready = ReceivePort();
-    spinner = await Isolate.spawn(_spin, ready.sendPort);
-    await ready.first;
-    progress('clock pinned (busy isolate) for the frame phase');
-  }
-  for (var round = 0; round < frameRounds; round++) {
-    for (final variant in allVariants()) {
-      progress('frames r$round: ${variant.name} …');
-      final r = await _frameBench(host, variant);
-      frameSamples.putIfAbsent(variant.name, () => (variant, [])).$2.add(r);
-      progress('frames r$round: ${variant.name} done');
-    }
-  }
-  spinner?.kill(priority: Isolate.immediate);
-  JuiceLoggerConfig.configureLogger(defaultLogger);
-  final frames = <Map<String, Object>>[];
-  final tunedP50 = <String, Sample>{};
-  for (final e in frameSamples.entries) {
-    final runs = e.value.$2;
-    final p50 = Sample([
-      for (final r in runs) (r['buildMicrosP50'] as int).toDouble(),
-    ]);
-    final p90 = Sample([
-      for (final r in runs) (r['buildMicrosP90'] as int).toDouble(),
-    ]);
-    final builds = runs.first['buildsPerUpdate'] as double;
-    final probe = Sample([
-      for (final r in runs) r['clockProbeMicros'] as double,
-    ]);
-    frames.add({
-      'variant': e.key,
-      'framework': e.value.$1.framework,
-      'cells': frameCells,
-      'updates': frameUpdates,
-      'rounds': runs.length,
-      'buildsPerUpdate': builds,
-      'buildMicrosP50': p50.toJson('median'),
-      'buildMicrosP90': p90.toJson('median'),
-      'clockProbeMicros': probe.toJson('median'),
-      for (final k in [
-        'rasterMicrosP50',
-        'totalSpanMicrosP50',
-        'vsyncOverheadMicrosP50',
-        'uiThreadMicrosP50',
-      ])
-        k: Sample([for (final r in runs) (r[k] as int).toDouble()]).median,
-    });
-    if (builds < 2) {
-      tunedP50[e.key] = p50;
-    }
-  }
-  // Normalize every variant's p50 to the FASTEST clock seen (smallest probe
-  // median): raw × (fastestProbe / thisProbe). Equal probes ⇒ no change.
-  final fastestProbe = frames
-      .map((f) => (f['clockProbeMicros'] as Map)['median'] as double)
-      .reduce((a, b) => a < b ? a : b);
-  final normalized = <String, Sample>{};
-  for (final f in frames) {
-    final probe = (f['clockProbeMicros'] as Map)['median'] as double;
-    final factor = probe == 0 ? 1.0 : fastestProbe / probe;
-    final raw = frameSamples[f['variant']]!.$2;
-    final n = Sample([
-      for (final r in raw) (r['buildMicrosP50'] as int) * factor,
-    ]);
-    f['clockFactor'] = double.parse(factor.toStringAsFixed(3));
-    f['buildMicrosP50Normalized'] = n.toJson('median');
-    if ((f['buildsPerUpdate'] as double) < 2) {
-      normalized[f['variant'] as String] = n;
-    }
-  }
-  report['frames'] = frames;
-  // The probe's arithmetic must not be elided: its result is reported.
-  report['clockProbeSink'] = _probeSink;
-  report['frameComparisons'] = {
-    'tunedP50': compare(tunedP50),
-    'tunedP50Normalized': compare(normalized),
-  };
+  await _frames(host, report, allVariants(), 'frames', 'frameComparisons');
+  await _frames(
+    host,
+    report,
+    wideVariants(),
+    'framesWide',
+    'frameWideComparisons',
+  );
 
   emit('BENCH_JSON_BEGIN');
   emit(const JsonEncoder.withIndent('  ').convert(report));
@@ -349,3 +272,100 @@ void _persist(String line) {
 /// Phase markers on stdout (captured by the console) so a stuck run can be
 /// located.
 void progress(String what) => stdout.writeln('BENCH_PROGRESS $what');
+
+/// Frame benchmark over one scenario's variants; writes [framesKey] (rows) and
+/// [comparisonsKey] (verdicts) into [report].
+Future<void> _frames(
+  ValueNotifier<Widget> host,
+  Map<String, Object> report,
+  List<Variant> variants,
+  String framesKey,
+  String comparisonsKey,
+) async {
+  final defaultLogger = JuiceLoggerConfig.logger;
+  JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
+  // Each variant runs frameRounds times; the p50 of each round is a sample,
+  // so a variant's frame cost carries a range like everything else.
+  final frameSamples = <String, (Variant, List<Map<String, Object>>)>{};
+  final pin = pinClock && (Platform.isIOS || Platform.isAndroid);
+  report['clockPinned'] = pin;
+  Isolate? spinner;
+  if (pin) {
+    final ready = ReceivePort();
+    spinner = await Isolate.spawn(_spin, ready.sendPort);
+    await ready.first;
+    progress('clock pinned (busy isolate) for the frame phase');
+  }
+  for (var round = 0; round < frameRounds; round++) {
+    for (final variant in variants) {
+      progress('frames r$round: ${variant.name} …');
+      final r = await _frameBench(host, variant);
+      frameSamples.putIfAbsent(variant.name, () => (variant, [])).$2.add(r);
+      progress('frames r$round: ${variant.name} done');
+    }
+  }
+  spinner?.kill(priority: Isolate.immediate);
+  JuiceLoggerConfig.configureLogger(defaultLogger);
+  final frames = <Map<String, Object>>[];
+  final tunedP50 = <String, Sample>{};
+  for (final e in frameSamples.entries) {
+    final runs = e.value.$2;
+    final p50 = Sample([
+      for (final r in runs) (r['buildMicrosP50'] as int).toDouble(),
+    ]);
+    final p90 = Sample([
+      for (final r in runs) (r['buildMicrosP90'] as int).toDouble(),
+    ]);
+    final builds = runs.first['buildsPerUpdate'] as double;
+    final probe = Sample([
+      for (final r in runs) r['clockProbeMicros'] as double,
+    ]);
+    frames.add({
+      'variant': e.key,
+      'framework': e.value.$1.framework,
+      'cells': frameCells,
+      'updates': frameUpdates,
+      'rounds': runs.length,
+      'buildsPerUpdate': builds,
+      'buildMicrosP50': p50.toJson('median'),
+      'buildMicrosP90': p90.toJson('median'),
+      'clockProbeMicros': probe.toJson('median'),
+      for (final k in [
+        'rasterMicrosP50',
+        'totalSpanMicrosP50',
+        'vsyncOverheadMicrosP50',
+        'uiThreadMicrosP50',
+      ])
+        k: Sample([for (final r in runs) (r[k] as int).toDouble()]).median,
+    });
+    if (builds < 2) {
+      tunedP50[e.key] = p50;
+    }
+  }
+  // Normalize every variant's p50 to the FASTEST clock seen (smallest probe
+  // median): raw × (fastestProbe / thisProbe). Equal probes ⇒ no change.
+  final fastestProbe = frames
+      .map((f) => (f['clockProbeMicros'] as Map)['median'] as double)
+      .reduce((a, b) => a < b ? a : b);
+  final normalized = <String, Sample>{};
+  for (final f in frames) {
+    final probe = (f['clockProbeMicros'] as Map)['median'] as double;
+    final factor = probe == 0 ? 1.0 : fastestProbe / probe;
+    final raw = frameSamples[f['variant']]!.$2;
+    final n = Sample([
+      for (final r in raw) (r['buildMicrosP50'] as int) * factor,
+    ]);
+    f['clockFactor'] = double.parse(factor.toStringAsFixed(3));
+    f['buildMicrosP50Normalized'] = n.toJson('median');
+    if ((f['buildsPerUpdate'] as double) < 2) {
+      normalized[f['variant'] as String] = n;
+    }
+  }
+  report[framesKey] = frames;
+  // The probe's arithmetic must not be elided: its result is reported.
+  report['clockProbeSink'] = _probeSink;
+  report[comparisonsKey] = {
+    'tunedP50': compare(tunedP50),
+    'tunedP50Normalized': compare(normalized),
+  };
+}

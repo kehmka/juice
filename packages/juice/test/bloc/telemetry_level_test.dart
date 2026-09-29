@@ -123,7 +123,8 @@ void main() {
       await b.close();
     });
 
-    test('declares off: a failure emission and an ignored event are STILL '
+    test(
+        'declares off: a failure emission and an ignored event are STILL '
         'delivered — never gated', () async {
       final log = _Declaring(Level.off);
       JuiceLoggerConfig.configureLogger(log);
@@ -145,7 +146,8 @@ void main() {
       await b.close();
     });
 
-    test('the global floor is the HIGHER of the two: it silences a logger '
+    test(
+        'the global floor is the HIGHER of the two: it silences a logger '
         'that declares all, and cannot lower one that declares warning',
         () async {
       final all = _Declaring(Level.all);
@@ -161,7 +163,8 @@ void main() {
           reason: 'the floor cannot force entries into the logger');
     });
 
-    test('the declaration is read live: raising and lowering it at run time '
+    test(
+        'the declaration is read live: raising and lowering it at run time '
         'turns the chatter off and on', () async {
       final log = _Declaring(Level.warning);
       JuiceLoggerConfig.configureLogger(log);
@@ -183,7 +186,8 @@ void main() {
   });
 
   group('DefaultJuiceLogger declares what its filter keeps', () {
-    test('asserts enabled (tests, debug): Logger.level — everything by '
+    test(
+        'asserts enabled (tests, debug): Logger.level — everything by '
         'default, and it follows the package level', () {
       final logger = DefaultJuiceLogger();
       expect(logger.minLevel, Logger.level);
@@ -201,7 +205,8 @@ void main() {
       expect(logger.minLevel, Level.all);
     });
 
-    test('only the CONFIGURED logger\'s declaration counts: a wrapper that '
+    test(
+        'only the CONFIGURED logger\'s declaration counts: a wrapper that '
         'does not declare receives everything', () async {
       Logger.level = Level.off; // the inner default logger keeps nothing
       final wrapper = _Wrapper(DefaultJuiceLogger());

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show NotifierProviderFamily;
 import 'package:juice/juice.dart';
 
 import '../counters.dart';
@@ -388,6 +389,90 @@ class WideRiverpodWatchVariant extends WideRiverpodSelectVariant {
   );
 }
 
+/// One provider per cell plus a DERIVED sum provider that watches every
+/// cell — Riverpod's other idiomatic form. This is where families meet the
+/// wide scenario's cross-cutting header: K cell notifiers change per update,
+/// and the sum provider must recompute over all N of them. Its recomputes
+/// are counted in `Counters.selectorCalls` (each one is an O(N) derivation,
+/// not an O(1) selector — read the column with that in mind), and the
+/// update sets the K cells one provider at a time, as a family forces.
+class WideCellNotifier extends Notifier<int> {
+  WideCellNotifier(this.index);
+  final int index;
+  @override
+  int build() => 0;
+  void set(int value) => state = value;
+}
+
+class WideRiverpodFamilyVariant extends Variant {
+  @override
+  String get name => 'wide · riverpod · family';
+  @override
+  String get framework => 'riverpod';
+  @override
+  String get mechanism => 'family per cell + derived sum provider';
+
+  late NotifierProviderFamily<WideCellNotifier, int, int> cellProvider;
+  late Provider<int> sumProvider;
+  late ProviderContainer container;
+  late int cells;
+
+  @override
+  void setUp(int cells) {
+    this.cells = cells;
+    cellProvider = NotifierProvider.family<WideCellNotifier, int, int>(
+      WideCellNotifier.new,
+    );
+    sumProvider = Provider<int>((ref) {
+      Counters.selectorCalls++; // one O(N) recompute
+      var sum = 0;
+      for (var i = 0; i < cells; i++) {
+        sum += ref.watch(cellProvider(i));
+      }
+      return sum;
+    });
+    container = ProviderContainer();
+  }
+
+  Widget header() => Consumer(
+    builder: (_, ref, __) {
+      final sum = ref.watch(sumProvider);
+      Counters.headerBuilds++;
+      return headerText(sum);
+    },
+  );
+
+  Widget cell(int i) => Consumer(
+    builder: (_, ref, __) {
+      final v = ref.watch(cellProvider(i));
+      Counters.builds[i]++;
+      return cellText(v);
+    },
+  );
+
+  @override
+  Widget build(int cells) => UncontrolledProviderScope(
+    container: container,
+    child: Column(
+      children: [
+        header(),
+        Wrap(children: [for (var i = 0; i < cells; i++) cell(i)]),
+      ],
+    ),
+  );
+
+  @override
+  Future<void> update(int index, int value) async {
+    final k = wideK(cells);
+    for (var j = 0; j < k; j++) {
+      container.read(cellProvider((index + j) % cells).notifier).set(value);
+    }
+  }
+
+  @override
+  Future<void> tearDown() async => container.dispose();
+}
+
 /// Every wide variant, tuned first within each framework.
 List<Variant> wideVariants() => [
   WideJuiceGroupsVariant(),
@@ -395,6 +480,7 @@ List<Variant> wideVariants() => [
   WideJuiceUngroupedVariant(),
   WideBlocSelectorVariant(),
   WideBlocBuilderVariant(),
+  WideRiverpodFamilyVariant(),
   WideRiverpodSelectVariant(),
   WideRiverpodWatchVariant(),
 ];

@@ -24,6 +24,7 @@ on update.
 | juice · no groups | the default: `rebuildAlways` broadcast |
 | bloc · BlocSelector | consumer-side selector + `==` |
 | bloc · BlocBuilder | the default: no filter |
+| riverpod · family | one provider per cell (`NotifierProvider.family`): the targeting lives in the provider graph, no selector runs |
 | riverpod · select | consumer-side `select` + `==` |
 | riverpod · watch | the default: watch the whole list |
 
@@ -38,7 +39,10 @@ dispatch numbers show, not something to normalize away.
 N cells plus a header showing the sum over every cell; one update sets a
 run of K = N/20 consecutive cells, so K cells and the header change every
 update. Tuned forms build K+1 per update, naive N+1 (pinned by
-`test/rebuild_counts_wide_test.dart`). The timing app reports it as
+`test/rebuild_counts_wide_test.dart`). Riverpod's family form here is a
+provider per cell plus a derived sum provider watching all N; its sum
+recomputes are counted as selector calls (one O(N) recompute, not an
+O(1) selector). The timing app reports it as
 `framesWide` / `frameWideComparisons`. RESULTS §10.
 
 ## What is measured
@@ -64,7 +68,10 @@ update. Tuned forms build K+1 per update, naive N+1 (pinned by
    Juice `send` spends its time: the real layers (raw store, status emitter,
    full send with a reused vs a fresh use-case instance) timed directly, plus
    two labelled synthetic layers (the telemetry maps alone, the async hop
-   depth alone).
+   depth alone). The hop depth and the full send are also run in the
+   **burst** shape (fire all, await the last) at 2,000 and 20,000 in
+   flight, so a cost that grows with the size (queue depth, GC) separates
+   from a per-event one (RESULTS §12).
 
 Each timing benchmark runs a warm-up round, then keeps **every** one of 5
 rounds per variant (3 for the frame benchmark) and reports the **median with

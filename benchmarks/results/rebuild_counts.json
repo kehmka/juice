@@ -51,6 +51,14 @@
       "untouchedCellsRebuilt": 99
     },
     {
+      "variant": "riverpod · family",
+      "framework": "riverpod",
+      "mechanism": "one provider per cell (family)",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 0.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
       "variant": "riverpod · select",
       "framework": "riverpod",
       "mechanism": "consumer-side select + ==",

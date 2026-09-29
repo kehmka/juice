@@ -23,7 +23,14 @@ import 'stats.dart';
 /// - `4 async hops`        — four nested awaited async calls, the depth of
 ///                           send → dispatcher → executor → execute().
 ///
-/// All with the silent logger, µs per operation, fastest of 5 rounds.
+/// BURST shape (2026-09-29): the dispatch benchmark found Juice's burst
+/// (fire all, await the last) SLOWER per event than its sequential shape,
+/// on every machine, while bloc and Riverpod get cheaper in burst. These
+/// rows fire the same ops without awaiting each one, at two sizes: a cost
+/// that grows with the size is depth (microtask queue, allocation/GC), a
+/// flat one is per event.
+///
+/// All with the silent logger, µs per operation, every round kept.
 
 class _S extends BlocState {
   const _S(this.n);
@@ -89,6 +96,18 @@ Future<double> _timeAsync(int n, Future<void> Function(int i) op) async {
   for (var i = 0; i < n; i++) {
     await op(i);
   }
+  sw.stop();
+  return sw.elapsedMicroseconds / n;
+}
+
+/// Fire every op, await only the last (the dispatch benchmark's burst).
+Future<double> _timeBurst(int n, Future<void> Function(int i) op) async {
+  final sw = Stopwatch()..start();
+  Future<void>? last;
+  for (var i = 0; i < n; i++) {
+    last = op(i);
+  }
+  await last;
   sw.stop();
   return sw.elapsedMicroseconds / n;
 }
@@ -232,6 +251,47 @@ Future<List<BreakdownRow>> _once(int n) async {
   );
   await quiet.close();
   JuiceLoggerConfig.minLevel = savedLevel;
+
+  // 8. BURST shape, two sizes each: the hop depth alone, then the full
+  //    send (fresh instance) and the full send with chatter not built.
+  for (final size in [n ~/ 10, n]) {
+    rows.add(
+      BreakdownRow(
+        '4 awaited async hops · burst n=$size',
+        'synthetic',
+        await _timeBurst(size, _hop4),
+      ),
+    );
+    final b = _FreshBloc();
+    rows.add(
+      BreakdownRow(
+        'send · fresh instance · burst n=$size',
+        'real',
+        await _timeBurst(size, (_) => b.send(_Ev())),
+      ),
+    );
+    await b.close();
+    final s = _StatefulBloc();
+    rows.add(
+      BreakdownRow(
+        'send · reused instance · burst n=$size',
+        'real',
+        await _timeBurst(size, (_) => s.send(_Ev())),
+      ),
+    );
+    await s.close();
+    JuiceLoggerConfig.minLevel = Level.warning;
+    final q = _FreshBloc();
+    rows.add(
+      BreakdownRow(
+        'send · fresh, minLevel = warning · burst n=$size',
+        'real',
+        await _timeBurst(size, (_) => q.send(_Ev())),
+      ),
+    );
+    await q.close();
+    JuiceLoggerConfig.minLevel = savedLevel;
+  }
 
   return rows;
 }

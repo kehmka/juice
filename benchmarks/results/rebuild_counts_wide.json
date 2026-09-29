@@ -54,6 +54,16 @@
       "selectorCallsPerUpdate": 0.0
     },
     {
+      "variant": "wide · riverpod · family",
+      "framework": "riverpod",
+      "mechanism": "family per cell + derived sum provider",
+      "k": 5,
+      "cellBuildsPerUpdate": 5.0,
+      "headerBuildsPerUpdate": 1.0,
+      "buildsPerUpdate": 6.0,
+      "selectorCallsPerUpdate": 1.0
+    },
+    {
       "variant": "wide · riverpod · select",
       "framework": "riverpod",
       "mechanism": "select per cell + header",

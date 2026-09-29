@@ -11,10 +11,10 @@ is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
 
 | claim | number | where | caveat |
 |---|---|---|---|
-| **Rebuild counts** | every tuned form 1 build / update; Juice groups 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
-| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise; untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 372–421 vs 1029–1185 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned |
-| **Frame cost, wide** (built to hurt groups) | groups hold: JuiceSelector+groups 655, groups 670, BlocSelector 692, Riverpod select 788 µs p50; naive 1347–1502 | §10 (phone, pinned) | phone-only so far; drift toolchain |
-| **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with `minLevel = warning` | §3 (Linux), §6 (phone), §9 (knob) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes |
+| **Rebuild counts** | every tuned form 1 build / update; Juice groups AND Riverpod family 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
+| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, except Riverpod's family form, **8% under groups** on the Mac (ranges apart); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 372–421 vs 1029–1185 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not yet on the phone or Linux |
+| **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 655, groups 670, BlocSelector 692, Riverpod select 788 µs p50; naive 1347–1502); against Riverpod's **family** form groups lose on the Mac: family 968 vs groups 1154 µs, **16% raw, a tie probe-normalized** | §10 (phone, pinned), §11 (family, Mac) | drift toolchain both; family not yet on the phone, where the pinned clock would settle raw vs normalized |
+| **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with `minLevel = warning`. Juice's burst-slower-than-sequential number is the 20,000-deep in-flight chain, not the per-event path: at 2,000 in flight burst is cheaper (§12) | §3 (Linux), §6 (phone), §9 (knob), §12 (burst) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes; four awaited hops for one structural await is a candidate (§12) |
 | **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
 | **The knob** | `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9 | ranges do not overlap; default unchanged |
 
@@ -22,6 +22,10 @@ Superseded and kept as measured: §5's and §6's frame tables (the phone's
 inversion, explained and fixed in §8); §2–§4's fastest-of-5 schema (the
 next Linux run on the pinned toolchain regenerates them as median + range).
 Not yet measured anywhere: a parent-rebuild scenario (roadmap item J).
+Riverpod's family form (one provider per cell — the other idiomatic
+Riverpod, and the source-side counterpart of groups) was added
+2026-09-29; its counts are in §1 and §10, its frame cost is in §11. It is
+the fastest tuned form on the Mac in both scenarios.
 
 ---
 
@@ -46,6 +50,7 @@ Xvfb. Raw data: `results/*.json`. Method: `README.md`.
 | **juice · groups** | **1** | **0** |
 | juice · JuiceSelector | 1 | 100 |
 | bloc · BlocSelector | 1 | 100 |
+| **riverpod · family** | **1** | **0** |
 | riverpod · select | 1 | 101 |
 | juice · no groups (default) | 100 | 0 |
 | bloc · BlocBuilder (default) | 100 | 0 |
@@ -54,7 +59,12 @@ Xvfb. Raw data: `results/*.json`. Method: `README.md`.
 All three frameworks rebuild exactly the changed widget when used
 idiomatically. Juice gets there by naming the invalidation once, at the
 emitter; selector-based targeting runs a selector in every consumer on every
-update. (Juice's group check is also per-widget work — a set intersection —
+update. **Riverpod's family form (added 2026-09-29) matches Juice's counts
+exactly** — one provider per cell puts the targeting in the provider graph,
+so an update touches one provider and no selector runs. "0 selector calls"
+is therefore not unique to groups; it is what any source-side targeting
+gives, and the frame numbers are where the two source-side forms differ,
+if they do. (Juice's group check is also per-widget work — a set intersection —
 which is why the frame numbers below are the fair cost comparison.)
 
 ## 2. Rebuild frame cost
@@ -480,13 +490,17 @@ running 1001 set-intersections cheaper or dearer per frame than running
 | wide · juice · no groups | 100 | 1 | 0 |
 | wide · bloc · BlocSelector | 5 | 1 | 101 |
 | wide · bloc · BlocBuilder | 100 | 1 | 0 |
+| wide · riverpod · family | 5 | 1 | 1 (one O(N) sum recompute) |
 | wide · riverpod · select | 5 | 1 | 107 |
 | wide · riverpod · watch | 100 | 1 | 0 |
 
 Every tuned form builds exactly K+1, every naive form N+1 — the pinned
 expectation. The selector column is the scenario's shape: groups 0, the
 grouped selector K+1 (the group filter runs first), BlocSelector N+1,
-Riverpod N+1 plus its own bookkeeping.
+Riverpod select N+1 plus its own bookkeeping. Riverpod's family form
+(added 2026-09-29) sets the K cells one provider at a time and Riverpod
+coalesces the K notifications into ONE recompute of the derived sum — an
+O(N) walk over every cell provider, counted as 1 in the column.
 
 ### Frame cost — iPhone 17 Pro Max, clock pinned, N = 1000, K = 50
 
@@ -528,3 +542,149 @@ tuned):
   ×1.25: they were already rebuilding everything.
 - **Naive is ~2× tuned** here as in every other table, once the clock is
   pinned.
+
+---
+
+## 11. Riverpod's family form — the missing variant (2026-09-29)
+
+§1's "0 selector calls" column had one entry: groups. That was the
+harness's choice of shape, not a property of Riverpod: one provider per
+cell (`NotifierProvider.family`) is the other idiomatic Riverpod, and it
+puts the targeting in the provider graph — source-side, like groups. It
+was missing from both scenarios. This section adds it (`riverpod ·
+family`, `wide · riverpod · family`; cells: one `Notifier<int>` per cell;
+wide: the same plus a derived sum `Provider<int>` watching all N cells,
+the K cells set one provider at a time as a family forces).
+
+Same Mac as §7, Flutter 3.44.4 (`toolchainDrift: true` — not publishable
+numbers), unpinned clock, 3 rounds for frames, 5 for dispatch. Raw data:
+`results/timing_macos.json` (this run replaces §7's file; §7's numbers
+stand as printed there).
+
+### Rebuild counts (deterministic; also in §1 and §10)
+
+Cells: family **1 build, 0 selector calls** — identical to groups. Wide:
+family **K+1 builds, 1 recompute** of the derived sum per update (Riverpod
+coalesces the K writes into one O(N) recompute); groups K+1 builds, 0.
+
+### Frame cost, cells — p50 build µs, median of 3 rounds, N = 1000
+
+| variant | p50 | range | builds/update |
+|---|---:|---:|---:|
+| **riverpod · family** | **663** | 630–689 | 1 |
+| juice · JuiceSelector + groups | 707 | 672–728 | 1 |
+| riverpod · select | 712 | 679–728 | 1 |
+| juice · groups | 724 | 723–768 | 1 |
+| juice · JuiceSelector | 736 | 706–748 | 1 |
+| bloc · BlocSelector | 851 | 839–895 | 1 |
+| riverpod · watch | 1893 | 1826–1913 | 1000 |
+| juice · no groups | 1960 | 1946–2023 | 1000 |
+| bloc · BlocBuilder | 2375 | 2360–2381 | 1000 |
+
+Harness verdicts (adjacent pairs): family < JuiceSelector+groups **tie**
+(6%); JuiceSelector+groups < select **tie** (1%); select < groups **tie**
+(2%); groups < JuiceSelector **tie** (2%); JuiceSelector < BlocSelector
+**faster** (14%). Read directly, family vs groups is 630–689 against
+723–768: the ranges do not overlap, **family is faster by 8%** under the
+harness's own rule. The chain of adjacent ties hides that; it is stated
+here so it is not hidden.
+
+### Frame cost, wide — p50 build µs, N = 1000, K = 50
+
+| variant | p50 | range | builds/update |
+|---|---:|---:|---:|
+| **wide · riverpod · family** | **968** | 921–996 | 50 |
+| wide · juice · groups | 1154 | 1130–1253 | 50 |
+| wide · juice · JuiceSelector + groups | 1242 | 1156–1293 | 50 |
+| wide · bloc · BlocSelector | 1432 | 1359–1463 | 50 |
+| wide · riverpod · select | 1441 | 1424–1452 | 50 |
+| wide · riverpod · watch | 2184 | 2133–2212 | 1000 |
+| wide · juice · no groups | 2207 | 2153–2382 | 1000 |
+| wide · bloc · BlocBuilder | 2702 | 2667–2746 | 1000 |
+
+Harness verdicts: family < groups **faster (16%)**, ranges do not
+overlap; groups < JuiceSelector+groups tie (7%); JuiceSelector+groups <
+BlocSelector faster (13%); BlocSelector < select tie (1%). With the clock
+probe subtracted (`tunedP50Normalized`) family < groups becomes a **tie
+(5%)** — on this unpinned Mac the probe moved between variants, so the
+raw and normalized verdicts disagree. A pinned phone run settles it; the
+phone is where §10's wide numbers were taken, and this variant has not
+run there yet.
+
+### Reading
+
+- **The "0 selector calls" claim is not Juice's alone.** Any source-side
+  targeting gives it; Riverpod's family form gives it with the same
+  counts. §1's sentence about "where the targeting lives" stands, but the
+  honest contrast is groups vs family, not groups vs selectors.
+- **Family is the fastest tuned form on this machine, in both scenarios.**
+  On cells it is 8% under groups (ranges apart) and within the tie band
+  of the grouped selector. On wide it is 16% under groups raw, a tie
+  normalized. Groups still beat every consumer-side selector form.
+- **Why, mechanically.** Groups filter every subscribed widget on every
+  emission (1001 `denyRebuild` set intersections through 1001 stream
+  subscriptions); a family notifies only the touched providers' single
+  consumers, and the derived sum does one O(N) read in one place. The
+  emitter side is cheaper too: no group set to build. Groups' cost is the
+  per-widget filter; family's is per-provider bookkeeping and a provider
+  object per cell.
+- **What §10's conclusion becomes.** "The scenario did not turn against
+  groups" was measured against selector forms only. Against the family
+  form, on this Mac, it did — by 16% raw, and by a margin the
+  normalization calls noise. The claim in the READMEs is corrected to
+  say so.
+- **What this does not say.** Nothing about dispatch (family has none —
+  a synchronous notifier write), nothing about the phone, nothing on the
+  pinned toolchain. And a family is one provider object per cell: a
+  1000-cell grid is 1000 providers plus 1000 element subscriptions, a
+  shape Riverpod handles well here and one that is not the same design
+  as one bloc naming groups.
+
+---
+
+## 12. The burst anomaly, explained (2026-09-29)
+
+Every dispatch table shows Juice's **burst** shape (fire all 20,000 sends,
+await the last) costing MORE per event than its sequential shape, while
+bloc and Riverpod get cheaper in burst — Mac §11 run: 2.97 µs sequential,
+5.65 burst. The breakdown now runs its layers in the burst shape at two
+sizes. Same Mac, Flutter 3.44.4 (drift), silent logger, 5 rounds, median
+[range]. Raw data: `results/breakdown_macos.json`.
+
+| layer | sequential | burst n=2,000 | burst n=20,000 |
+|---|---:|---:|---:|
+| 4 awaited async hops (synthetic) | 0.50 [0.49–0.54] | **0.29** [0.27–0.44] | **1.27** [1.16–1.57] |
+| send · fresh instance | 2.72 [2.67–2.75] | **2.48** [2.41–3.36] | **4.82** [3.84–5.12] |
+| send · reused instance | 2.45 [2.42–2.51] | 2.33 [2.17–2.77] | 4.42 [3.32–4.94] |
+| send · fresh, minLevel = warning | 1.81 [1.79–1.85] | **1.57** [1.54–2.14] | **2.93** [2.70–3.83] |
+
+### Reading
+
+- **At 2,000 in flight, burst is cheaper than sequential for every Juice
+  row** — the throughput gain bloc and Riverpod show. The anomaly is not
+  Juice's per-event path.
+- **At 20,000 in flight, every row roughly doubles, and so does the
+  synthetic hop row** (0.29 → 1.27 µs — four nested awaits, no Juice code
+  at all). Twenty thousand un-awaited sends are twenty thousand chains of
+  four pending futures each: the Dart microtask queue and the young-gen
+  GC pay for the depth, superlinearly. The send rows grow by more than
+  the hop row (+2.3 µs vs +1.0) because each in-flight send also holds
+  its use-case instance, context, closures and status objects until it
+  completes.
+- **So the burst number is a benchmark artefact of its own size.** A real
+  app never has 20,000 sends in flight; a burst between two frames is
+  tens to hundreds, where burst is cheaper than sequential. bloc does not
+  show it because `add()` returns nothing — its queue holds one pending
+  handler per event, not a four-deep await chain — and Riverpod has no
+  queue.
+- **What it says about the hop depth.** The depth cost scales with hops ×
+  in-flight. Collapsing send → dispatcher → executor from four awaited
+  hops to the one structural await (the executor's, which closes the
+  span) would shrink both the sequential hop term (~0.5 µs here) and the
+  burst growth. Candidate, not decision: the breakdown's hop and burst
+  rows are its gate.
+- **Harness note.** The dispatch benchmark's burst at n = 20,000 measures
+  Dart's async depth cost more than Juice's per-event cost. Whether to
+  keep that size (and say so) or report burst at a realistic in-flight
+  depth is a harness decision, recorded here rather than changed.
+

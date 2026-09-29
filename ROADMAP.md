@@ -386,18 +386,28 @@ flows; require fixing only if an app hits them):
 
 ## Tier 2 — capability (2026-09-28, in progress)
 
-- **Benchmarks ✅** — `benchmarks/` (outside `packages/**`; bloc and
-  Riverpod pinned there only), results in `benchmarks/RESULTS.md`, release
-  build under Xvfb. Rebuild counts: every framework's idiomatic form builds
-  1 widget/update; Juice groups do it with 0 consumer selector calls (vs 100
-  for BlocSelector / JuiceSelector, 101 for Riverpod select). Frame cost:
-  tuned forms within a few % (Juice groups fastest p50). Dispatch: Juice
-  ~3× bloc per event — reported, not hidden. A layer breakdown puts it
-  mostly in telemetry context construction (~1.7–1.8 µs) and the async
-  executor (~0.8 µs); the fresh use-case instance is ~0.34 µs of a ~5 µs
-  send. The run found and fixed two telemetry costs (eager default-logger
-  formatting; state/groups stringified into every emit's context):
-  default-logger dispatch 12.54 → 6.50 µs, shipped in juice 1.9.1.
+- **Benchmarks ✅ (through 2026-09-29)** — `benchmarks/` (outside
+  `packages/**`; bloc and Riverpod pinned there only); `RESULTS.md` opens
+  with "Where it stands" (one row per claim, machine, section, caveat);
+  the deterministic rebuild-count tests run in CI. Rebuild counts: every
+  idiomatic form builds 1 widget/update; Juice groups AND Riverpod's
+  provider-per-cell family do it with 0 selector calls (BlocSelector /
+  JuiceSelector 100, Riverpod select 101). Frame cost: groups tie every
+  selector form; Riverpod's family form is the fastest tuned form on the
+  Mac (8% under groups on cells, 16% raw / tie normalized on the wide
+  scenario built to hurt groups; phone not yet run). Dispatch: Juice ~3×
+  bloc per event on desktops, 2.6× phone, ~1.5× with the one knob
+  (`JuiceLoggerConfig.minLevel`, juice 1.10.0, saves about a third —
+  measured). Breakdown: telemetry context ~40%, async executor ~25%,
+  fresh instance ~6%. The burst-slower-than-sequential number is the
+  20,000-deep in-flight chain (Dart microtask depth + GC), not the
+  per-event path (§12). Two telemetry costs found and fixed in 1.9.1
+  (default-logger dispatch 12.54 → 6.50 µs). Harness: median + range +
+  ties, TOOLCHAIN pin (3.47.5; every Mac/phone number so far is a drift
+  run), clock probe + pin on phones. Open: Linux rerun on the pinned
+  toolchain (regenerates §2–§4); family variant on the phone; whether the
+  dispatch burst shape keeps n = 20,000 (measures Dart's depth cost) or
+  reports a realistic in-flight depth — a harness rule, Kevin's call.
 - Next: E (state hydration), F (`bindStream`) then `restartable`, I
   (DevTools rebuild inspector + state diff).
 
@@ -592,6 +602,7 @@ release-mode gate — a doctrine call.
 | K | Lease `linger` window on `register` | S | a measured cold re-entry in Amoli | riverpod |
 | L | `BlocScope.whenReady/allReady` + test-only `override<T>()` | S | count ordered init awaits in the example apps first | others |
 | M | `juice_feature` mason brick | M | regenerate notes_app's feature to zero diff; delete on first drift | others, dx |
+| N | Collapse the send hop depth: `send` and `dispatch` return the future through instead of awaiting it, leaving the executor's await (closes the span, routes errors) as the one structural await — 4 hops → 2, ~0.2 µs of a 1.1–1.8 µs knob-on send (~15–20%), and the burst depth cost scales with hops × in-flight (RESULTS §12). Changes error TIMING (an un-awaited send's "no handler" / closed-bloc error would surface synchronously unless wrapped), microtask ordering of a send's completion, and async stack-trace depth — the ordering risk lives in consumer code and cannot be tested from the framework | S | not before a consumer dispatches enough events per frame to notice, or the 2.0 dispatcher work (vendored Bloc removal) touches this code anyway; then the existing suite + three pins (un-awaited error stays async; sequential queue order; span pair closes on success and error) + the breakdown's hop and send rows as the number | benchmarks §12 |
 
 `restartable` (#3) stays parked but is now validated by two external
 implementations (bloc_concurrency's switchMap fence; BlocSignal 1.3.0's

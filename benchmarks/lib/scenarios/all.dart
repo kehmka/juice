@@ -13,6 +13,7 @@ List<Variant> allVariants() => [
   JuiceUngroupedVariant(),
   BlocSelectorVariant(),
   BlocBuilderVariant(),
+  RiverpodFamilyVariant(),
   RiverpodSelectVariant(),
   RiverpodWatchVariant(),
 ];

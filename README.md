@@ -35,7 +35,7 @@ If you only need simple local state or straightforward CRUD screens, mainstream 
 
 - **Use-case driven blocs**: business logic lives in dedicated use cases, not large widget callbacks
 - **Lifecycle ownership**: `BlocScope` supports `permanent`, `feature`, and `leased` lifecycles
-- **Targeted rebuilds**: rebuild groups let widgets opt into only the state changes they care about. Measured against bloc and Riverpod in [`benchmarks/`](benchmarks/RESULTS.md): 1 build and 0 selector calls per update (Riverpod's provider-per-cell family matches those counts and is the fastest tuned form per frame on the Mac), groups tie the selector forms per frame, untargeted defaults ~2×
+- **Targeted rebuilds**: rebuild groups let widgets opt into only the state changes they care about. Measured against bloc and Riverpod in [`benchmarks/`](benchmarks/RESULTS.md): 1 build and 0 selector calls per update (Riverpod's provider-per-cell family matches those counts), groups tie the selector forms and the family form per frame on a Mac and a clock-pinned iPhone, untargeted defaults ~2×
 - **Status-aware state**: `StreamStatus` separates persistent state from transient states like waiting, failure, and canceling
 - **Cross-bloc orchestration**: event subscriptions, state relays, and status relays are first-class patterns
 

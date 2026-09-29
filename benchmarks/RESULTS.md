@@ -12,8 +12,8 @@ is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
 | claim | number | where | caveat |
 |---|---|---|---|
 | **Rebuild counts** | every tuned form 1 build / update; Juice groups AND Riverpod family 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
-| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, except Riverpod's family form, **8% under groups** on the Mac (ranges apart); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 372–421 vs 1029–1185 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not yet on the phone or Linux |
-| **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 655, groups 670, BlocSelector 692, Riverpod select 788 µs p50; naive 1347–1502); against Riverpod's **family** form groups lose on the Mac: family 968 vs groups 1154 µs, **16% raw, a tie probe-normalized** | §10 (phone, pinned), §11 (family, Mac) | drift toolchain both; family not yet on the phone, where the pinned clock would settle raw vs normalized |
+| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, Riverpod's provider-per-cell family included (family vs groups: 8% on the Mac, 2% on the pinned phone); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 373–429 vs 1050–1231 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac + phone) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not on Linux |
+| **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 648, groups 666, BlocSelector 688, Riverpod select 792 µs p50; naive 1330–1498); against Riverpod's **family** form the Mac and the phone point opposite ways raw (family 16% under groups on the Mac; groups 9% under family on the phone) and **both tie probe-normalized** — a tie band, no winner | §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
 | **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with `minLevel = warning`. Juice's burst-slower-than-sequential number is the 20,000-deep in-flight chain, not the per-event path: at 2,000 in flight burst is cheaper (§12) | §3 (Linux), §6 (phone), §9 (knob), §12 (burst) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes; four awaited hops for one structural await is a candidate (§12) |
 | **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
 | **The knob** | `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9 | ranges do not overlap; default unchanged |
@@ -24,8 +24,9 @@ next Linux run on the pinned toolchain regenerates them as median + range).
 Not yet measured anywhere: a parent-rebuild scenario (roadmap item J).
 Riverpod's family form (one provider per cell — the other idiomatic
 Riverpod, and the source-side counterpart of groups) was added
-2026-09-29; its counts are in §1 and §10, its frame cost is in §11. It is
-the fastest tuned form on the Mac in both scenarios.
+2026-09-29; its counts are in §1 and §10, its frame cost is in §11: within
+a few percent of groups either way on both machines, a tie once the clock
+is accounted for.
 
 ---
 
@@ -611,16 +612,66 @@ raw and normalized verdicts disagree. A pinned phone run settles it; the
 phone is where §10's wide numbers were taken, and this variant has not
 run there yet.
 
-### Reading
+### The phone — iPhone 17 Pro Max, clock pinned (same day)
+
+Same phone and settings as §8/§10 (Flutter 3.44.4, drift; `clockPinned:
+true`; the usual one `BENCH_STALLED` in the first variant of the first
+round). Raw data: `results/timing_ios.json` (replaces §10's file; §10's
+numbers stand as printed). p50 build µs, median of 3 rounds:
+
+| cells, N = 1000 | p50 | range | probe µs |
+|---|---:|---:|---:|
+| juice · JuiceSelector + groups | 373 | 369–382 | 384 |
+| **riverpod · family** | **373** | 370–373 | 384 |
+| juice · JuiceSelector | 375 | 375–379 | 384 |
+| riverpod · select | 379 | 379–380 | 389 |
+| juice · groups | 382 | 374–386 | 384 |
+| bloc · BlocSelector | 429 | 423–429 | 389 |
+| riverpod · watch | 1050 | 1050–1059 | 389 |
+| juice · no groups | 1077 | 1072–1105 | 387 |
+| bloc · BlocBuilder | 1231 | 1207–1232 | 389 |
+
+Verdicts: every adjacent tuned pair a **tie** down to BlocSelector
+(family < JuiceSelector "faster" by 0.5% on non-overlapping ranges of
+370–373 vs 375–379 — the rule's letter, not a finding). Family vs groups
+directly: 373 vs 382, **2%**, ranges 1 µs apart. The Mac's 8% is 2% on
+the pinned phone.
+
+| wide, N = 1000, K = 50 | p50 | range | probe µs | raster p50 |
+|---|---:|---:|---:|---:|
+| juice · JuiceSelector + groups | 648 | 641–655 | 407 | 497 |
+| **juice · groups** | **666** | 664–672 | 404 | 489 |
+| bloc · BlocSelector | 688 | 677–690 | 384 | 461 |
+| riverpod · family | 723 | 717–747 | **434** | **516** |
+| riverpod · select | 792 | 777–793 | 393 | 466 |
+| riverpod · watch | 1330 | 1323–1337 | 400 | 473 |
+| juice · no groups | 1339 | 1325–1341 | 394 | 477 |
+| bloc · BlocBuilder | 1498 | 1468–1534 | 401 | 479 |
+
+Verdicts, raw: JuiceSelector+groups < groups faster (3%); groups <
+BlocSelector faster (3%); BlocSelector < family faster (5%); family <
+select faster (9%). **Groups beat family by 9% raw.** Normalized (probe
+subtracted): groups vs family **tie (1%)** — the family variant's probe
+ran at 434 µs against 384–407 for every other variant, and its raster
+was the slowest too, so the chip was measurably slower during that
+variant even with the pin on. The pin holds the clock; it does not hold
+whatever else (thermal, memory pressure from 1,001 provider elements)
+moved it here.
+
+### Reading, both machines
 
 - **The "0 selector calls" claim is not Juice's alone.** Any source-side
   targeting gives it; Riverpod's family form gives it with the same
   counts. §1's sentence about "where the targeting lives" stands, but the
   honest contrast is groups vs family, not groups vs selectors.
-- **Family is the fastest tuned form on this machine, in both scenarios.**
-  On cells it is 8% under groups (ranges apart) and within the tie band
-  of the grouped selector. On wide it is 16% under groups raw, a tie
-  normalized. Groups still beat every consumer-side selector form.
+- **Family and groups are within noise of each other once the clock is
+  accounted for.** Cells: family 8% under groups on the Mac, 2% on the
+  pinned phone. Wide: family 16% under groups on the Mac raw, groups 9%
+  under family on the phone raw — the two machines point in OPPOSITE
+  directions, and each collapses to a tie when its probe is subtracted.
+  The honest statement is a tie band of a few percent either way, not a
+  winner. Groups still beat every consumer-side selector form on both
+  machines, in both scenarios.
 - **Why, mechanically.** Groups filter every subscribed widget on every
   emission (1001 `denyRebuild` set intersections through 1001 stream
   subscriptions); a family notifies only the touched providers' single
@@ -630,12 +681,11 @@ run there yet.
   object per cell.
 - **What §10's conclusion becomes.** "The scenario did not turn against
   groups" was measured against selector forms only. Against the family
-  form, on this Mac, it did — by 16% raw, and by a margin the
-  normalization calls noise. The claim in the READMEs is corrected to
-  say so.
+  form the Mac says it did (16% raw) and the phone says it did not (9%
+  raw the other way); normalized, both say tie. The READMEs now say:
+  groups tie the selector forms and Riverpod's family form alike.
 - **What this does not say.** Nothing about dispatch (family has none —
-  a synchronous notifier write), nothing about the phone, nothing on the
-  pinned toolchain. And a family is one provider object per cell: a
+  a synchronous notifier write), nothing on the pinned toolchain. And a family is one provider object per cell: a
   1000-cell grid is 1000 providers plus 1000 element subscriptions, a
   shape Riverpod handles well here and one that is not the same design
   as one bloc naming groups.

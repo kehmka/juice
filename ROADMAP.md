@@ -393,9 +393,9 @@ flows; require fixing only if an app hits them):
   idiomatic form builds 1 widget/update; Juice groups AND Riverpod's
   provider-per-cell family do it with 0 selector calls (BlocSelector /
   JuiceSelector 100, Riverpod select 101). Frame cost: groups tie every
-  selector form; Riverpod's family form is the fastest tuned form on the
-  Mac (8% under groups on cells, 16% raw / tie normalized on the wide
-  scenario built to hurt groups; phone not yet run). Dispatch: Juice ~3×
+  selector form AND Riverpod's family form (family vs groups: cells 8%
+  Mac / 2% pinned phone; wide 16% one way on the Mac, 9% the other way on
+  the phone, both ties normalized — a tie band, no winner). Dispatch: Juice ~3×
   bloc per event on desktops, 2.6× phone, ~1.5× with the one knob
   (`JuiceLoggerConfig.minLevel`, juice 1.10.0, saves about a third —
   measured). Breakdown: telemetry context ~40%, async executor ~25%,
@@ -405,7 +405,7 @@ flows; require fixing only if an app hits them):
   (default-logger dispatch 12.54 → 6.50 µs). Harness: median + range +
   ties, TOOLCHAIN pin (3.47.5; every Mac/phone number so far is a drift
   run), clock probe + pin on phones. Open: Linux rerun on the pinned
-  toolchain (regenerates §2–§4); family variant on the phone; whether the
+  toolchain (regenerates §2–§4); whether the
   dispatch burst shape keeps n = 20,000 (measures Dart's depth cost) or
   reports a realistic in-flight depth — a harness rule, Kevin's call.
 - Next: E (state hydration), F (`bindStream`) then `restartable`, I

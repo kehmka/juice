@@ -64,6 +64,19 @@ ranges overlap or `faster` by a percentage when they do not
 (`dispatchComparisons`, `frameComparisons`). A difference inside the spread
 is declared a tie by the harness — not left to the reader.
 
+## Clock pin, clock probe, phases
+
+Frame timings carry three extra fields. `clockProbeMicros` is a fixed piece
+of CPU work timed inside every measured frame — a direct read of the clock
+the frame ran at (its median is subtracted from the raw build duration).
+`rasterMicrosP50`, `totalSpanMicrosP50`, `vsyncOverheadMicrosP50` and
+`uiThreadMicrosP50` say where a frame's time sits. And on phones the frame
+phase runs with a **busy isolate pinning the clock** (`clockPinned: true`),
+because dynamic frequency scaling otherwise runs the whole SoC slower for a
+light frame than a heavy one — every phase, raster included — and a
+one-widget frame measures slower than a 1000-widget frame (RESULTS §8).
+`--dart-define=BENCH_NO_PIN=true` disables it; the report says which.
+
 ## Toolchain pin
 
 `TOOLCHAIN` holds the Flutter version the published numbers were compiled

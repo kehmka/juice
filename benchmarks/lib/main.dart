@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart' show kProfileMode, kReleaseMode;
 import 'package:flutter/scheduler.dart';
@@ -24,6 +25,28 @@ import 'stats.dart';
 const frameCells = 1000;
 const frameUpdates = 300;
 const frameRounds = 3;
+
+/// CLOCK PIN. On a phone, dynamic frequency scaling runs the whole SoC slower
+/// for a light frame than a heavy one — every phase, raster included, so a
+/// one-widget frame measures SLOWER than a 1000-widget frame (§6). A busy
+/// isolate for the duration of the frame phase keeps the clock up for every
+/// variant alike; it costs one core, which the UI and raster threads do not
+/// need. Default ON for phones, OFF on desktop; recorded in the report.
+const pinClock = bool.fromEnvironment(
+  'BENCH_PIN_CLOCK',
+  defaultValue:
+      bool.fromEnvironment('dart.library.io') &&
+      !bool.fromEnvironment('BENCH_NO_PIN'),
+);
+
+void _spin(SendPort ready) {
+  ready.send(null);
+  var h = 1;
+  while (true) {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    if (h == -1) break; // never; keeps the loop non-trivial
+  }
+}
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,6 +96,15 @@ Future<void> _run(ValueNotifier<Widget> host) async {
   // Each variant runs frameRounds times; the p50 of each round is a sample,
   // so a variant's frame cost carries a range like everything else.
   final frameSamples = <String, (Variant, List<Map<String, Object>>)>{};
+  final pin = pinClock && (Platform.isIOS || Platform.isAndroid);
+  report['clockPinned'] = pin;
+  Isolate? spinner;
+  if (pin) {
+    final ready = ReceivePort();
+    spinner = await Isolate.spawn(_spin, ready.sendPort);
+    await ready.first;
+    progress('clock pinned (busy isolate) for the frame phase');
+  }
   for (var round = 0; round < frameRounds; round++) {
     for (final variant in allVariants()) {
       progress('frames r$round: ${variant.name} …');
@@ -81,6 +113,7 @@ Future<void> _run(ValueNotifier<Widget> host) async {
       progress('frames r$round: ${variant.name} done');
     }
   }
+  spinner?.kill(priority: Isolate.immediate);
   JuiceLoggerConfig.configureLogger(defaultLogger);
   final frames = <Map<String, Object>>[];
   final tunedP50 = <String, Sample>{};
@@ -93,6 +126,9 @@ Future<void> _run(ValueNotifier<Widget> host) async {
       for (final r in runs) (r['buildMicrosP90'] as int).toDouble(),
     ]);
     final builds = runs.first['buildsPerUpdate'] as double;
+    final probe = Sample([
+      for (final r in runs) r['clockProbeMicros'] as double,
+    ]);
     frames.add({
       'variant': e.key,
       'framework': e.value.$1.framework,
@@ -102,17 +138,75 @@ Future<void> _run(ValueNotifier<Widget> host) async {
       'buildsPerUpdate': builds,
       'buildMicrosP50': p50.toJson('median'),
       'buildMicrosP90': p90.toJson('median'),
+      'clockProbeMicros': probe.toJson('median'),
+      for (final k in [
+        'rasterMicrosP50',
+        'totalSpanMicrosP50',
+        'vsyncOverheadMicrosP50',
+        'uiThreadMicrosP50',
+      ])
+        k: Sample([for (final r in runs) (r[k] as int).toDouble()]).median,
     });
-    if (builds < 2) tunedP50[e.key] = p50;
+    if (builds < 2) {
+      tunedP50[e.key] = p50;
+    }
+  }
+  // Normalize every variant's p50 to the FASTEST clock seen (smallest probe
+  // median): raw × (fastestProbe / thisProbe). Equal probes ⇒ no change.
+  final fastestProbe = frames
+      .map((f) => (f['clockProbeMicros'] as Map)['median'] as double)
+      .reduce((a, b) => a < b ? a : b);
+  final normalized = <String, Sample>{};
+  for (final f in frames) {
+    final probe = (f['clockProbeMicros'] as Map)['median'] as double;
+    final factor = probe == 0 ? 1.0 : fastestProbe / probe;
+    final raw = frameSamples[f['variant']]!.$2;
+    final n = Sample([
+      for (final r in raw) (r['buildMicrosP50'] as int) * factor,
+    ]);
+    f['clockFactor'] = double.parse(factor.toStringAsFixed(3));
+    f['buildMicrosP50Normalized'] = n.toJson('median');
+    if ((f['buildsPerUpdate'] as double) < 2) {
+      normalized[f['variant'] as String] = n;
+    }
   }
   report['frames'] = frames;
-  report['frameComparisons'] = {'tunedP50': compare(tunedP50)};
+  // The probe's arithmetic must not be elided: its result is reported.
+  report['clockProbeSink'] = _probeSink;
+  report['frameComparisons'] = {
+    'tunedP50': compare(tunedP50),
+    'tunedP50Normalized': compare(normalized),
+  };
 
   emit('BENCH_JSON_BEGIN');
   emit(const JsonEncoder.withIndent('  ').convert(report));
   emit('BENCH_JSON_END');
   await stdout.flush();
   exit(0);
+}
+
+/// CLOCK PROBE. A fixed piece of CPU work, timed inside every measured frame
+/// (in a transient frame callback, i.e. on the UI thread just before build).
+/// On a phone a light frame may be scheduled on an efficiency core at a low
+/// clock while a heavy frame gets a performance core at full clock; wall
+/// time then punishes the light frame. The probe's duration is a direct
+/// read of the clock the frame ran at: if it differs systematically between
+/// variants, the hypothesis holds and `buildMicrosP50Normalized` (raw ×
+/// fastest-probe / this-probe) is the fair number; if it is equal, the
+/// hypothesis is wrong. The probe adds its own ~100 µs to the frame; it is
+/// subtracted from the raw build duration before reporting.
+int _probeSink = 0;
+double _clockProbe() {
+  final sw = Stopwatch()..start();
+  var h = 0x9e3779b9;
+  for (var i = 0; i < 200000; i++) {
+    h ^= i;
+    h = (h * 0x85ebca6b) & 0xffffffff;
+    h ^= h >> 13;
+  }
+  sw.stop();
+  _probeSink ^= h;
+  return sw.elapsedMicroseconds.toDouble();
 }
 
 /// One frame. The engine only delivers frames to a VISIBLE window — an
@@ -156,8 +250,18 @@ Future<Map<String, Object>> _frameBench(
   SchedulerBinding.instance.addTimingsCallback(collect);
 
   Counters.reset(frameCells);
+  final probes = <double>[];
+  final uiThread = <int>[]; // our own stopwatch: transient cb → post-frame cb
   for (var k = 1; k <= frameUpdates; k++) {
     await variant.update(k % frameCells, k);
+    // Runs at the start of THIS frame, on the UI thread, before build.
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      probes.add(_clockProbe());
+      final sw = Stopwatch()..start();
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        uiThread.add(sw.elapsedMicroseconds);
+      });
+    });
     await _frame();
   }
   // FrameTimings are delivered in batches; give the engine time to flush.
@@ -170,14 +274,21 @@ Future<Map<String, Object>> _frameBench(
   await _frame();
   await variant.tearDown();
 
+  final probeMedian = probes.isEmpty ? 0.0 : Sample(probes).median;
+  // The probe ran inside the measured frames: take its median back out.
   final micros =
       timings
-          .map((t) => t.buildDuration.inMicroseconds)
+          .map((t) => t.buildDuration.inMicroseconds - probeMedian.round())
           .where((us) => us > 0)
           .toList()
         ..sort();
   int pct(double p) =>
       micros.isEmpty ? 0 : micros[((micros.length - 1) * p).round()];
+  int med(Iterable<int> xs) {
+    final l = xs.toList()..sort();
+    return l.isEmpty ? 0 : l[l.length ~/ 2];
+  }
+
   return {
     'variant': variant.name,
     'framework': variant.framework,
@@ -187,6 +298,17 @@ Future<Map<String, Object>> _frameBench(
     'buildsPerUpdate': builds / frameUpdates,
     'buildMicrosP50': pct(0.5),
     'buildMicrosP90': pct(0.9),
+    'clockProbeMicros': probeMedian,
+    // The engine's other phases, medians, to see WHERE a frame's time sits.
+    'rasterMicrosP50': med(timings.map((t) => t.rasterDuration.inMicroseconds)),
+    'totalSpanMicrosP50': med(timings.map((t) => t.totalSpan.inMicroseconds)),
+    'vsyncOverheadMicrosP50': med(
+      timings.map((t) => t.vsyncOverhead.inMicroseconds),
+    ),
+    // What the framework itself spent from the first transient callback to
+    // the post-frame callback (build+layout+paint as Dart sees it), minus
+    // the probe, which ran inside that window.
+    'uiThreadMicrosP50': med(uiThread) - probeMedian.round(),
   };
 }
 
@@ -197,7 +319,9 @@ Future<Map<String, Object>> _frameBench(
 /// Documents dir as a backup, and a failed write is loud, never silent.
 void emit(String line) {
   stdout.writeln(line);
-  if (Platform.isIOS || Platform.isAndroid) _persist(line);
+  if (Platform.isIOS || Platform.isAndroid) {
+    _persist(line);
+  }
 }
 
 final _buf = StringBuffer();

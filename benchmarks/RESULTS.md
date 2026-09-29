@@ -245,8 +245,7 @@ variance, not of work). So on this phone the frame numbers are dominated
 by laying out 1000 children at a clock the benchmark does not control,
 and they do not discriminate between targeting mechanisms. They are kept
 here so nobody re-derives the inversion as a finding. What would settle
-it: pin the work per frame high enough to stay on a P-core, or measure
-CPU time rather than wall time — see the roadmap.
+it: pin the clock — done in §8, which supersedes this table.
 
 ### What the phone validates
 
@@ -333,3 +332,82 @@ first time, until it was fronted; it resumed at once. Now: `tool/run.sh`
 keeps the app activated until it exits, and a frame that takes more than
 5 s prints `BENCH_STALLED` once so the condition is visible in the log.
 The same rule produced the phone's Auto-Lock requirement in §6.
+
+## 8. The phone's frame inversion, explained and fixed (2026-09-28)
+
+§6 reported that on the iPhone the naive 1000-rebuild forms measured
+FASTER than the tuned one-rebuild forms, for all three frameworks alike,
+and called it an artifact. This section is the experiment that found the
+cause and the harness change that removes it. Same phone, same build
+settings as §6 (Flutter 3.44.4, drift allowed).
+
+### Step 1 — a clock probe inside every frame
+
+A fixed piece of CPU work timed in a transient frame callback (on the UI
+thread, just before build), reported per variant as `clockProbeMicros`
+and subtracted from the raw build duration. If light frames run at a
+lower clock, the probe takes longer in the tuned variants.
+
+It did: naive variants 652–734 µs, tuned variants 775–1012 µs — light
+frames ran 20–35% slower. Even the Mac showed it (534–579 vs 599–618).
+Hypothesis confirmed. But normalizing by the probe did **not** restore the
+desktop ordering (tuned still ~1.1–1.3× naive after normalization).
+
+### Step 2 — every phase, not just build
+
+Recording the engine's raster duration, total span and vsync overhead
+alongside a UI-thread stopwatch of our own showed the tuned variants
+slower in **every** phase — raster included: ~1750 µs against ~775 µs for
+the naive forms, on a different thread, drawing the same picture. Only one
+thing does that: dynamic frequency scaling of the whole SoC. A light frame
+lets the chip idle down, and every thread pays; a short UI-thread probe
+sees only part of it (its own burst partly wakes the clock).
+
+### Step 3 — pin the clock
+
+A busy isolate for the duration of the frame phase (one core, which the UI
+and raster threads do not use) keeps the frequency up for every variant
+alike. `clockPinned: true` in the report; default on for phones, off on
+desktop, `--dart-define=BENCH_NO_PIN=true` to disable.
+
+p50 build µs (probe subtracted), median of 3 rounds:
+
+| variant | probe µs | build p50 | range | raster p50 | builds/update |
+|---|---:|---:|---:|---:|---:|
+| juice · JuiceSelector + groups | 389 | 372 | 371–377 | 459 | 1 |
+| juice · JuiceSelector | 389 | 373 | 371–374 | 450 | 1 |
+| riverpod · select | 384 | 376 | 376–378 | 452 | 1 |
+| juice · groups | 389 | 377 | 371–380 | 458 | 1 |
+| bloc · BlocSelector | 384 | 421 | 414–422 | 448 | 1 |
+| riverpod · watch | 389 | 1029 | 1026–1031 | 456 | 1000 |
+| juice · no groups | 389 | 1090 | 1076–1096 | 470 | 1000 |
+| bloc · BlocBuilder | 389 | 1185 | 1176–1188 | 463 | 1000 |
+
+Verdicts among the tuned forms:
+
+- juice · JuiceSelector + groups < juice · JuiceSelector: **tie** (0%)
+- juice · JuiceSelector < riverpod · select: **faster** (1%)
+- riverpod · select < juice · groups: **tie** (0%)
+- juice · groups < bloc · BlocSelector: **faster** (10%)
+
+The probe is flat (384–389 µs, every variant), raster is flat (~450–470),
+and the ordering matches both desktops: **a 1000-widget frame costs ~2.8×
+a one-widget frame on the phone**, the tuned forms tie with each other,
+and `BlocSelector` sits 10% behind. Absolute numbers with the clock up: a
+one-widget frame ~0.4 ms, a 1000-widget frame ~1.1 ms of build on an
+iPhone 17 Pro Max.
+
+### What this means for reading phone numbers
+
+- Wall-clock frame times on a phone are not comparable across variants of
+  different weight unless the clock is held constant. The harness now
+  holds it. §6's frame table is superseded by the one above; its dispatch
+  and breakdown tables stand (those phases run the CPU flat out and were
+  never affected).
+- The pin itself costs nothing to the measured threads on a 6-core phone
+  but is a real change of conditions: numbers with `clockPinned: true` are
+  "at sustained clock", which is also the state a phone is in during any
+  real interaction burst.
+- One `BENCH_STALLED` still fires once per phone run, in the first variant
+  of the first round, while the app's window is coming up; medians of
+  three rounds absorb it. A per-round stall flag is the next refinement.

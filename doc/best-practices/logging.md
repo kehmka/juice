@@ -78,13 +78,16 @@ You can implement your own logging system by creating a class that implements th
 
 Two rules first, because the framework calls `log` on **every** use-case execution and **every** state emission, in every build mode, and passes context values as live objects (the emission's `'state'` is the state itself):
 
+0. **Declare what you keep** (juice ≥ 1.10.0). Implement `LevelAwareJuiceLogger` — one getter, `Level get minLevel` — and the framework does not even *build* a per-event entry below that level: no context map, no call. A logger that only `implements JuiceLogger` is treated as keeping everything. Errors, ignored events, `emission_after_close` and failure emissions are delivered whatever you declare, so keep your own level check in `log`. Only the *configured* logger's declaration counts: if you wrap `DefaultJuiceLogger`, declare your own level rather than delegating to it (it keeps nothing outside debug builds).
 1. **Decide before you format.** Check the level (or environment, or a sample rate) *before* touching `context`. Building `'$context'` unconditionally runs the state's `toString()` on every emission, in release too — the exact cost `DefaultJuiceLogger` stopped paying in juice 1.9.1.
 2. **Never keep `context`.** It holds the current state object. A logger that buffers entries would pin every state it ever saw; copy what you keep as strings.
 
 ```dart
-class CustomLogger implements JuiceLogger {
+class CustomLogger implements LevelAwareJuiceLogger {
   CustomLogger({this.minLevel = Level.info});
-  final Level minLevel;
+
+  @override
+  final Level minLevel; // the framework builds nothing below this
 
   @override
   void log(String message, {

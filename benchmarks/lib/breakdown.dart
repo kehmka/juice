@@ -252,6 +252,23 @@ Future<List<BreakdownRow>> _once(int n) async {
   await quiet.close();
   JuiceLoggerConfig.minLevel = savedLevel;
 
+  // 7b. The same send with NOTHING configured but the default logger
+  //     (juice ≥ 1.10.0): DefaultJuiceLogger declares what its filter
+  //     keeps — nothing outside debug — so in a release build this row
+  //     should land on row 7 with no knob set.
+  final configured = JuiceLoggerConfig.logger;
+  JuiceLoggerConfig.configureLogger(DefaultJuiceLogger());
+  final unconfigured = _FreshBloc();
+  rows.add(
+    BreakdownRow(
+      'send · fresh instance, DefaultJuiceLogger, no knob set',
+      'real',
+      await _timeAsync(n, (_) => unconfigured.send(_Ev())),
+    ),
+  );
+  await unconfigured.close();
+  JuiceLoggerConfig.configureLogger(configured);
+
   // 8. BURST shape, two sizes each: the hop depth alone, then the full
   //    send (fresh instance) and the full send with chatter not built.
   for (final size in [n ~/ 10, n]) {

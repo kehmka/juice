@@ -396,9 +396,11 @@ flows; require fixing only if an app hits them):
   selector form AND Riverpod's family form (family vs groups: cells 8%
   Mac / 2% pinned phone; wide 16% one way on the Mac, 9% the other way on
   the phone, both ties normalized — a tie band, no winner). Dispatch: Juice ~3×
-  bloc per event on desktops, 2.6× phone, ~1.5× with the one knob
-  (`JuiceLoggerConfig.minLevel`, juice 1.10.0, saves about a third —
-  measured). Breakdown: telemetry context ~40%, async executor ~25%,
+  bloc per event on desktops, 2.6× phone, ~1.5× with the chatter not
+  built — the DEFAULT in release from juice 1.10.0 (a logger declares what
+  it keeps, `LevelAwareJuiceLogger`; the default logger keeps nothing in
+  release; `JuiceLoggerConfig.minLevel` is the global floor; saves about a
+  third — measured, §9 and §13). Breakdown: telemetry context ~40%, async executor ~25%,
   fresh instance ~6%. The burst-slower-than-sequential number is the
   20,000-deep in-flight chain (Dart microtask depth + GC), not the
   per-event path (§12). Two telemetry costs found and fixed in 1.9.1
@@ -472,6 +474,174 @@ Open from it: the vendored `Bloc<Event, State>` base (`bloc.dart`,
 deprecate or remove in 2.0.0. Relay setup errors (StateRelay/StatusRelay
 init against an unregistered or closed bloc) surface only as uncaught zone
 errors — decide whether that is fail-loud enough.
+
+## The 2.0 docket (2026-09-29)
+
+**Premise (Kevin, 2026-09-29):** Juice has no installed base today, so
+"wait for a consumer" gates never open and protect nobody. This is the
+cheapest moment the project will ever have to make breaking changes, and
+every 1.x release that ships makes the eventual 2.0 dearer. The goal is
+the best product for whoever comes later, not compatibility with people
+who are not here. So: the breaking set goes out TOGETHER as juice 2.0.0,
+once, with the non-breaking piece (item A) shipping first in 1.10.0.
+
+**The true cost of 2.0 is the cascade, not the code:** every family
+package pins `juice: ^1.x`. A 2.0 core means a bump-and-publish wave
+across all 25 packages (constraint-only for most; sync/theme/media/obs
+/llm carry code that touches the changed surfaces). Budget it as one
+release day after the core is green, in dependency order, through the
+hygiene gate below. pub.dev is permanent: nothing publishes until the
+whole set is green locally AND in CI on the pinned toolchain.
+
+Each item below states what changes, why it is right for a future user,
+the design question only Kevin can rule on, and its gate. Nothing is
+built before its ruling. Items are ordered by dependency, not priority.
+
+### 1.10.0 first — non-breaking
+
+**A · Telemetry cost follows the consumer.  ✅ BUILT 2026-09-29, unpublished** (juice 1.10.0 `LevelAwareJuiceLogger`; observability 0.5.1 listener gate; release gate met — unconfigured send 1.82 µs = knob-on 1.82 µs, RESULTS §13). As specified: today the framework builds
+every span pair and emission entry unless the global
+`JuiceLoggerConfig.minLevel` says otherwise — and the default logger's
+own filter (`logger`'s `DevelopmentFilter`: an `assert`, so it logs
+NOTHING in release or profile) throws all of it away. Change: a logger
+may declare the lowest level it consumes; `JuiceLoggerConfig.logs()`
+consults the configured logger before the global knob; the global knob
+stays as the override. `DefaultJuiceLogger` declares "all in debug,
+nothing below warning otherwise" — exactly what its filter already does,
+so no unconfigured app loses a printed line and every unconfigured
+release build gets the knob's third for free. `DevtoolsJuiceLogger`
+declares `all` only while a panel is attached (the obs 0.5.1 listener
+gate, expressed the same way). A custom logger receives exactly what it
+declares. Non-breaking: an optional interface, not a new abstract member
+(classes `implements JuiceLogger` must not break).
+— *Design question:* name and shape (an interface `LevelAwareLogger { Level
+get minLevel; }` vs a `Level minLevel` getter with a default on a base
+class). Profile mode: follows the filter (nothing), state it in the doc.
+— *Gate:* telemetry_level tests extended (default logger: debug all /
+release warning; custom logger's declaration honoured; global override
+wins); breakdown row "fresh, default logger, release" equals the knob-on
+row. Then publish 1.10.0.
+
+### 2.0.0 — the breaking set
+
+**B · `concurrency` becomes REQUIRED on `UseCaseBuilder` / `.typed`.**
+A declared mode is doctrine (this file, "Concurrency semantics"); a
+default is a decision nobody made. Today the lint rule
+`juice_missing_concurrency_mode` is off by default and the family itself
+has bare sites (126 by the 09-27 audit; 237 grep hits in lib/ today —
+recount at start). Making the parameter required removes the need for
+the lint rule in core code and makes the omission a compile error for
+every future user. The family's own sites get declared in the same
+change (each one a ruling: the 09-15 table method — concurrent /
+sequential / droppable per event, reasons written down).
+— *Design question:* required parameter (compile error, the honest
+form) vs lint-on-by-default (softer, still a warning someone can
+ignore). Recommendation: required. `StatefulUseCaseBuilder` and
+`RelayUseCaseBuilder` (removed, see D) follow.
+— *Gate:* `melos run lint:juice` reports zero missing modes across 28
+packages with the rule ON (proves the sweep) BEFORE the parameter
+becomes required (proves the compiler agrees); every mode ruling in the
+commit message.
+
+**C · Collapse the send hop depth** (tee-up N, pulled forward: the
+ordering risk lives in consumer code, and there is none). `send` and
+`dispatch` return the future through; the executor's await is the one
+structural await. 4 hops → 2; ~0.2 µs of a 1.1–1.8 µs send; the burst
+depth cost halves (RESULTS §12).
+— *Design question:* error timing for an UN-awaited send. Today "no
+handler" and "bloc closed" surface asynchronously (an `async` function
+turns a throw into a failed future). Options: keep that (wrap the throw
+in `Future.error` — same contract, fewer hops) or let it throw
+synchronously (louder, a behaviour change). Recommendation: keep async —
+a caller who does not await should not get a synchronous exception from
+a fire-and-forget send.
+— *Gate:* three pins (un-awaited error stays async; sequential queue
+order holds; span pair closes on success AND error) + the breakdown's
+hop and send rows show the drop.
+
+**D · Remove the deprecated members** — `UpdateEvent.newState` (state
+changes go through a use case; the parameter bypasses the pattern) and
+`RelayUseCaseBuilder` (replaced by `StateRelay` / `StatusRelay`). Both
+say "removed in v2.0.0" in their annotations. Tee-up D (`fix_data.yaml`)
+ships in 1.10.0 FIRST so the IDE migrates the two before they disappear.
+— *Design question:* none — the removal list is these two (the earlier
+"three" counted the constructor parameter and its field separately).
+— *Gate:* `dart analyze` clean across the family with both gone; the
+examples compile; CHANGELOG names both.
+
+**E · Delete the vendored `Bloc<Event, State>` base** — `bloc.dart`,
+`emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
+`global_bloc_resolver.dart`: exported, unused, excluded from the coverage
+gate. No package or example outside core imports them (verified
+2026-09-29). Dead public surface is a maintenance promise the project
+cannot keep and a source of confusion for a reader who finds two `Bloc`s.
+— *Design question:* delete vs deprecate-then-delete. With no installed
+base, deprecation protects nobody. Recommendation: delete.
+— *Gate:* the exports gone, `pana` still 160/160, coverage gate
+unchanged or up.
+
+**F · `JuiceExceptionWidget` in release.** Today every build renders the
+exception text and the full stack trace in the tree, with a
+copy-to-clipboard button — three call sites in core (widget_support,
+JuiceBuilder ×2). A store build showing a stack trace to an end user is
+the wrong product. Change: in release, render a neutral error surface and
+log the error (loud in the log, quiet on screen); keep the diagnostic
+widget in debug/profile.
+— *Design question:* one override seam (a single configurable error
+builder — `JuiceUiConfig.errorBuilder`, or a parameter on the builders)
+or none (the two built-in renderings only). Doctrine says one knob per
+purpose; a seam lets an app brand its error surface without forking the
+widget. Recommendation: one seam, default = debug diagnostic / release
+neutral.
+— *Gate:* widget tests for both modes; the seam exercised once in an
+example app.
+
+**G · Relay setup errors fail loud.** `StateRelay` / `StatusRelay`
+initialised against an unregistered or closed bloc surface only as
+uncaught zone errors today (found in the Tier 0 review). A misconfigured
+relay should throw at registration, where the developer is looking, with
+the bloc and relay named.
+— *Design question:* throw (recommended) vs log-and-continue with the
+relay inert. Doctrine: fail loudly.
+— *Gate:* a test per case (unregistered, closed) pinning the throw and
+its message.
+
+**H · Stop re-subscribing on every parent rebuild** (tee-up J). Every
+Juice widget form builds its filtered stream inside `build`, so a
+parent rebuild cancels and re-listens. Behavioural, not API-breaking,
+but it changes listen ordering, so it rides with 2.0 rather than a patch.
+— *Design question:* none beyond "do it".
+— *Gate:* a widget test counting `listen()` across N parent rebuilds
+(N+1 today → 1); a parent-rebuild frame scenario in `benchmarks/` to
+price it before/after.
+
+**I · Re-registration on hot reload.** Builders register once at
+construction, so a NEW `UseCaseBuilder` needs a hot restart (AGENTS
+gotcha, from the ecosystem comparison). Decide whether 2.0 supports
+re-registration or documents the restart.
+— *Design question:* support (a `reassemble` hook that re-runs the
+builder list — complexity in the registry) vs document. Recommendation:
+document; a hot restart is seconds and the registry stays simple.
+— *Gate:* if documented, the AGENTS line and the skill sync; if
+supported, a test that a builder added after construction dispatches.
+
+### Not in 2.0, on purpose
+
+`restartable` (#3) and `bindStream` (F): their gate is design input
+from a real use case, not compatibility — they stay parked. `lease
+linger` (K), `whenReady` (L), `progress` (H): additive, can ride any
+minor. Pub package-skills (A), mason brick (M): tooling, not core.
+
+### Sequence
+
+1. 1.10.0: A + tee-up D's `fix_data.yaml`; publish on Kevin's word.
+2. 2.0.0 on a branch off main: B, C, D, E, F, G, H, (I) — each behind
+   its ruling, each with its gate green, CHANGELOG written as it goes
+   (a "Breaking" section per item with the migration in one line).
+3. Family wave: bump every `juice: ^1.x` to `^2.0.0`, run the hygiene
+   gate per package, publish in dependency order, tag `<package>-v<ver>`.
+4. AGENTS.md, llms.txt, every AI card's `requires`, the skill bundle:
+   one sync pass (`tool/sync_skill.sh`, `tool/check_cards.sh`).
 
 ## Teed up from the BlocSignal comparison (2026-08-21)
 

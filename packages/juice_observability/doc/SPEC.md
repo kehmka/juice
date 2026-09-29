@@ -56,6 +56,14 @@ without a type post as `juice:error`. Values sanitized for the wire
 always receives the call first. The `post` function is an injected seam
 (defaults to `developer.postEvent`).
 
+Cost follows the listener (0.5.1, juice ≥ 1.10.0): it implements
+`LevelAwareJuiceLogger`. While the VM Extension stream has a listener
+(`developer.extensionStreamHasListener`; the `flutter run` daemon counts)
+it declares `Level.all` and posts. With none it builds no payload, posts
+nothing, and declares what the inner logger declares, so the framework
+builds no per-event telemetry either. Read per entry. `hasListener` is the
+second injected seam; injecting `post` alone keeps the listener present.
+
 Spans: juice ≥ 1.7.0 emits the telemetry pair — `use_case_execution` and
 `use_case_completed`/`use_case_error` sharing an `executionId`, with
 `elapsedMicros` on the end entry — so consumers can draw duration spans by

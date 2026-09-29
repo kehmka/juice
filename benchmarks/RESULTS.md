@@ -14,9 +14,9 @@ is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
 | **Rebuild counts** | every tuned form 1 build / update; Juice groups AND Riverpod family 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
 | **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, Riverpod's provider-per-cell family included (family vs groups: 8% on the Mac, 2% on the pinned phone); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 373–429 vs 1050–1231 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac + phone) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not on Linux |
 | **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 648, groups 666, BlocSelector 688, Riverpod select 792 µs p50; naive 1330–1498); against Riverpod's **family** form the Mac and the phone point opposite ways raw (family 16% under groups on the Mac; groups 9% under family on the phone) and **both tie probe-normalized** — a tie band, no winner | §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
-| **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with `minLevel = warning`. Juice's burst-slower-than-sequential number is the 20,000-deep in-flight chain, not the per-event path: at 2,000 in flight burst is cheaper (§12) | §3 (Linux), §6 (phone), §9 (knob), §12 (burst) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes; four awaited hops for one structural await is a candidate (§12) |
+| **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built — which is the DEFAULT in release from 1.10.0 (the default logger declares it keeps nothing there, §13; Mac 2.72 → 1.82 µs with nothing configured). Juice's burst-slower-than-sequential number is the 20,000-deep in-flight chain, not the per-event path: at 2,000 in flight burst is cheaper (§12) | §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes; four awaited hops for one structural await is a candidate (§12) |
 | **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
-| **The knob** | `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9 | ranges do not overlap; default unchanged |
+| **The knob, and the default** | a logger declares what it keeps and nothing below it is built; the default logger keeps nothing in release, so the saving is the default (§13). By hand, `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9, §13 | ranges do not overlap; §13 is Mac only so far |
 
 Superseded and kept as measured: §5's and §6's frame tables (the phone's
 inversion, explained and fixed in §8); §2–§4's fastest-of-5 schema (the
@@ -737,4 +737,33 @@ sizes. Same Mac, Flutter 3.44.4 (drift), silent logger, 5 rounds, median
   Dart's async depth cost more than Juice's per-event cost. Whether to
   keep that size (and say so) or report burst at a realistic in-flight
   depth is a harness decision, recorded here rather than changed.
+
+---
+
+## 13. The cost follows the consumer (2026-09-29) — juice 1.10.0
+
+§9 priced a knob someone has to find. 1.10.0 removes the need to find it:
+a logger may declare the lowest level it keeps (`LevelAwareJuiceLogger`)
+and the framework builds nothing below that. `DefaultJuiceLogger` declares
+what its filter already does — everything in debug, nothing in profile or
+release — so an app that configures NOTHING gets the knob's saving in
+release and loses no line it ever printed. Same Mac, Flutter 3.44.4
+(drift), release build, 5 rounds, median [range]. Raw data:
+`results/breakdown_macos.json`.
+
+| send · fresh instance | µs |
+|---|---:|
+| silent logger that declares nothing (the old out-of-the-box cost) | 2.72 [2.65–2.80] |
+| `minLevel = warning` set by hand (§9's knob) | 1.82 [1.80–1.85] |
+| **`DefaultJuiceLogger`, nothing configured** | **1.82 [1.79–1.85]** |
+
+The unconfigured row lands on the knob row: **33% of a send, by default**.
+Against bloc's 1.02 µs on this machine (§11 run) a Juice send out of the
+box is ~1.8× in release, down from ~2.7–3×.
+
+**Reading the dispatch tables after 1.10.0.** `juice (default logger)` is
+now the cheap row in release (it declares; chatter is not built) and
+`juice (silent logger)` the dear one (the benchmark's silent logger
+declares nothing, so everything is built and thrown away). §3, §6, §7 and
+§11's dispatch rows predate this and stand as measured.
 

@@ -44,8 +44,47 @@ abstract class JuiceLogger {
       {Map<String, dynamic>? context});
 }
 
+/// A [JuiceLogger] that DECLARES the lowest level it keeps (juice ≥ 1.10.0).
+///
+/// The framework's per-event chatter — the use-case span pair and the
+/// emission entry, all at [Level.info] — costs about a third of a dispatch
+/// to BUILD, whether or not the logger keeps it. A logger that implements
+/// this interface tells the framework what it will keep, and the framework
+/// does not build an entry below that: the cost follows the consumer.
+///
+/// Optional. A logger that only `implements JuiceLogger` is treated as
+/// keeping everything, exactly as before. [JuiceLoggerConfig.minLevel] is a
+/// global floor on top: the effective level is the HIGHER of the two, so the
+/// global knob can silence more but can never force entries into a logger
+/// that declared it drops them.
+///
+/// [minLevel] is read on every gated entry, so it may change at run time
+/// (a DevTools panel attaching, a remote log level) and must be cheap.
+///
+/// Never gated, whatever is declared: [logError], `emission_after_close`,
+/// `event_ignored`, and a failure emission's entry. Those are still
+/// delivered — a logger that must not see them filters them itself.
+///
+/// **Wrapping another logger?** Only the CONFIGURED logger's declaration
+/// counts. A wrapper that does not implement this interface receives
+/// everything; one that delegates [minLevel] to its inner logger inherits
+/// the inner logger's silence (the [DefaultJuiceLogger] keeps nothing
+/// outside debug builds). Declare what YOUR logger consumes.
+abstract interface class LevelAwareJuiceLogger implements JuiceLogger {
+  /// The lowest level this logger keeps. [Level.all] keeps everything,
+  /// [Level.off] nothing.
+  Level get minLevel;
+}
+
 /// Default implementation of [JuiceLogger] using the Logger package.
-class DefaultJuiceLogger implements JuiceLogger {
+///
+/// Declares its level ([LevelAwareJuiceLogger]) as exactly what the `logger`
+/// package's default filter already does: that filter decides inside an
+/// `assert`, so it keeps lines at or above `Logger.level` when asserts are
+/// enabled (debug builds, tests) and keeps NOTHING otherwise (profile and
+/// release). So an app that never configures a logger pays for no chatter
+/// in release, and loses no line it ever printed.
+class DefaultJuiceLogger implements LevelAwareJuiceLogger {
   /// Internal logger instance
   final Logger _logger;
 
@@ -69,6 +108,27 @@ class DefaultJuiceLogger implements JuiceLogger {
   /// which evaluates function messages; a caller-supplied [Logger] may use a
   /// printer that doesn't (LogfmtPrinter), so it gets eager strings as before.
   final bool _lazy;
+
+  /// Whether asserts are enabled — the same test `logger`'s
+  /// `DevelopmentFilter` makes, so the declaration below cannot drift from
+  /// what the filter does.
+  static final bool _assertsEnabled = () {
+    var enabled = false;
+    assert(() {
+      enabled = true;
+      return true;
+    }());
+    return enabled;
+  }();
+
+  /// With the default [Logger]: `Logger.level` when asserts are enabled,
+  /// [Level.off] otherwise — what its filter keeps. With a caller-supplied
+  /// [Logger] the filter is unknown (the package exposes no way to read
+  /// it), so everything is declared kept, as before 1.10.0; wrap it in your
+  /// own [LevelAwareJuiceLogger] to declare its real level.
+  @override
+  Level get minLevel =>
+      !_lazy ? Level.all : (_assertsEnabled ? Logger.level : Level.off);
 
   @override
   void log(String message,
@@ -114,20 +174,34 @@ class JuiceLoggerConfig {
     _logger = logger;
   }
 
-  /// The ONE knob for the framework's own per-event chatter (juice ≥ 1.10.0).
+  /// The global FLOOR for the framework's own per-event chatter
+  /// (juice ≥ 1.10.0).
   ///
   /// Every use-case execution logs a span pair and every emission logs an
-  /// entry, at [Level.info], and building those context maps is ~40% of a
-  /// dispatch's cost even when the logger drops them (benchmarks/RESULTS.md
-  /// §4, §6). Below this level the framework does not build them at all —
-  /// the logger is never called for that entry. Default [Level.all]: nothing
-  /// changes unless you set it. `Level.warning` in release is the whole
-  /// gain. Never gates [JuiceLogger.logError], `emission_after_close`,
+  /// entry, at [Level.info]; building those context maps is about a third
+  /// of a dispatch's cost (benchmarks/RESULTS.md §9). The framework builds
+  /// an entry only if BOTH agree to it:
+  ///
+  /// 1. this floor — default [Level.all], so it gates nothing unless set;
+  /// 2. the configured logger's own declaration, if it implements
+  ///    [LevelAwareJuiceLogger] (the [DefaultJuiceLogger] does: everything
+  ///    in debug, nothing in profile/release — what its filter keeps).
+  ///
+  /// So an unconfigured app already pays for no chatter in release. Set
+  /// this to silence a logger that declares nothing, or to raise the floor
+  /// above what a logger asks for; it cannot lower it.
+  ///
+  /// Never gates [JuiceLogger.logError], `emission_after_close`,
   /// `event_ignored`, or a failure emission's entry: those stay loud.
-  /// `DevtoolsJuiceLogger` needs the chatter — leave this at [Level.all]
-  /// (or [Level.info]) in any build where the panel should work.
   static Level minLevel = Level.all;
 
-  /// Whether an entry at [level] would be built and delivered at all.
-  static bool logs(Level level) => level.value >= minLevel.value;
+  /// Whether an entry at [level] would be built and delivered at all: at or
+  /// above the global floor AND at or above what the configured logger
+  /// declares it keeps.
+  static bool logs(Level level) {
+    if (level.value < minLevel.value) return false;
+    final logger = _logger;
+    return logger is! LevelAwareJuiceLogger ||
+        level.value >= logger.minLevel.value;
+  }
 }

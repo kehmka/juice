@@ -57,8 +57,12 @@ O(1) selector). The timing app reports it as
 2. **Dispatch cost** (`lib/dispatch.dart`, release build) — µs per update
    with no widgets: `sequential` (await each) and `burst` (fire all, await
    the last). Juice is reported with its **default logger** and with a
-   **silent logger**, because its default telemetry formatting is a
-   measurable per-emission cost of its own.
+   **silent logger**. From juice 1.10.0 the default logger DECLARES that
+   it keeps nothing in release, so the framework builds no per-event
+   telemetry for it and it is the cheap row; the benchmark's silent logger
+   declares nothing, so everything is built and thrown away and it is the
+   dear one (RESULTS §13). Results recorded before 1.10.0 have the two the
+   other way round.
 3. **Rebuild frame cost** (`lib/main.dart`, release build) — 1000 cells, 300
    single-cell updates, one frame each; p50/p90 of the engine's
    `FrameTiming.buildDuration` (UI thread: build + layout + paint). Raster is

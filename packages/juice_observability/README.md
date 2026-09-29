@@ -17,7 +17,7 @@ reporters. It does **not** own a vendor SDK — each `CrashReporter` is an adapt
 
 ```yaml
 dependencies:
-  juice_observability: ^0.5.0
+  juice_observability: ^0.5.1
 ```
 
 ## DevTools mirror — `DevtoolsJuiceLogger`
@@ -39,6 +39,15 @@ wire-safe (live objects cross as `toString`, capped). With juice ≥ 1.7.0,
 starts and ends share an `executionId` with `elapsedMicros` — enough to
 draw honest duration spans, even when same-type events overlap under
 `concurrent`.
+
+**Cost follows the listener (0.5.1, juice ≥ 1.10.0).** The logger builds
+payloads and posts only while the VM's Extension stream has a listener, and
+declares its level to the framework the same way: everything while a
+listener is attached, otherwise whatever the inner logger declares. So a
+release build, or an app launched without tooling, builds no telemetry and
+stringifies no state; attaching DevTools mid-run turns it on live. Under
+`flutter run` the tooling daemon is itself a listener, so telemetry is
+always on there.
 
 ## DevTools extension — the panel
 

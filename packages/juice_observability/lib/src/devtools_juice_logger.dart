@@ -24,6 +24,20 @@ import 'package:juice/juice.dart';
 /// overlap under `concurrent`. (`use_case_error` has two sources sharing
 /// the type; the span-closing one carries `executionId`.)
 ///
+/// COST FOLLOWS THE LISTENER (0.5.1, juice ≥ 1.10.0): this logger declares
+/// its level ([LevelAwareJuiceLogger]) and builds payloads only while the
+/// VM's Extension stream has a listener (`dart:developer`
+/// `extensionStreamHasListener`). With a listener it declares [Level.all],
+/// so the framework builds the full telemetry the panel consumes — in any
+/// build mode a tool can attach to. With none it posts nothing, builds no
+/// payload (no `state.toString()` per emission), and declares whatever
+/// [inner] declares, so the framework's chatter is not built either. Read
+/// on every entry: attaching DevTools mid-run turns the telemetry on live.
+/// "A listener" includes the tooling daemon `flutter run` attaches, so
+/// under `flutter run` telemetry is always on and the panel can replay the
+/// daemon's history; an app launched on its own, and every release build,
+/// pays nothing.
+///
 /// Wire it once at startup, wrapping whatever logger you already use:
 ///
 /// ```dart
@@ -31,19 +45,41 @@ import 'package:juice/juice.dart';
 /// // or, keeping a custom console logger:
 /// JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger(inner: myLogger));
 /// ```
-class DevtoolsJuiceLogger implements JuiceLogger {
+class DevtoolsJuiceLogger implements LevelAwareJuiceLogger {
   /// [inner] receives every call unchanged (console logging keeps working);
   /// defaults to [DefaultJuiceLogger]. [post] is the VM seam — injectable so
   /// tests can capture instead of broadcasting; defaults to
-  /// `dart:developer`'s [developer.postEvent].
+  /// `dart:developer`'s [developer.postEvent]. [hasListener] is the other
+  /// half of that seam — whether anyone would receive a post; defaults to
+  /// `dart:developer`'s [developer.extensionStreamHasListener]. A test that
+  /// injects [post] alone gets a listener that is always present, so its
+  /// captures are not silently empty.
   DevtoolsJuiceLogger({
     JuiceLogger? inner,
     void Function(String eventKind, Map<String, Object?> data)? post,
+    bool Function()? hasListener,
   })  : _inner = inner ?? DefaultJuiceLogger(),
-        _post = post ?? developer.postEvent;
+        _post = post ?? developer.postEvent,
+        _hasListener = hasListener ??
+            (post != null
+                ? _always
+                : () => developer.extensionStreamHasListener);
+
+  static bool _always() => true;
 
   final JuiceLogger _inner;
   final void Function(String eventKind, Map<String, Object?> data) _post;
+  final bool Function() _hasListener;
+
+  /// [Level.all] while a listener is attached (the panel consumes every
+  /// entry); otherwise what [inner] declares — everything, if it declares
+  /// nothing.
+  @override
+  Level get minLevel {
+    if (_hasListener()) return Level.all;
+    final inner = _inner;
+    return inner is LevelAwareJuiceLogger ? inner.minLevel : Level.all;
+  }
 
   /// Extension-event payloads travel over the VM-service wire on every
   /// message; an unbounded `state.toString()` would make each emission a
@@ -57,6 +93,7 @@ class DevtoolsJuiceLogger implements JuiceLogger {
     _inner.log(message, level: level, context: context);
     final type = context?['type'];
     if (type is! String) return; // untyped chatter stays console-only
+    if (!_hasListener()) return; // nobody to receive it: build nothing
     _post('juice:$type', _payload(message, level, context!));
   }
 
@@ -64,6 +101,7 @@ class DevtoolsJuiceLogger implements JuiceLogger {
   void logError(String message, Object error, StackTrace stackTrace,
       {Map<String, dynamic>? context}) {
     _inner.logError(message, error, stackTrace, context: context);
+    if (!_hasListener()) return; // inner stays loud; the wire has no reader
     final type = context?['type'];
     final kind = type is String ? 'juice:$type' : 'juice:error';
     _post(kind, {

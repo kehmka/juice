@@ -1,22 +1,42 @@
 # Changelog
 
-## [1.10.0] - 2026-09-28
+## [1.10.0] - 2026-09-29
 
 Includes everything listed under 1.9.1 below, which was never published on
-its own; the new knob makes this a minor.
+its own; the additions make this a minor.
 
 ### Added
-- **`JuiceLoggerConfig.minLevel` — the one knob for the framework's own
-  per-event chatter.** Every use-case execution logs a span pair and every
+- **`LevelAwareJuiceLogger` — the telemetry cost follows the consumer.**
+  An optional interface (`Level get minLevel`): a logger declares the
+  lowest level it keeps, and the framework does not build a per-event
+  entry below it. A logger that only `implements JuiceLogger` keeps
+  everything, as before. `JuiceLoggerConfig.minLevel` (below) is a global
+  floor on top — the effective level is the HIGHER of the two.
+- **`DefaultJuiceLogger` declares what its filter already does.** The
+  `logger` package's default filter decides inside an `assert`: it keeps
+  lines at or above `Logger.level` in debug and NOTHING in profile or
+  release. The default logger now declares exactly that, so an app that
+  never configures a logger pays for no chatter in release — about a third
+  of a dispatch (benchmarks §9) — and loses no line it ever printed. A
+  caller-supplied `Logger` has an unreadable filter and is declared
+  `Level.all`, unchanged.
+  **One thing to check if you wrap the default logger:** only the
+  CONFIGURED logger's declaration counts. A wrapper that does not implement
+  the interface still receives everything; one that delegates `minLevel` to
+  an inner `DefaultJuiceLogger` receives no chatter outside debug. Declare
+  what your logger consumes.
+- **`JuiceLoggerConfig.minLevel` — the global floor for the framework's
+  own per-event chatter.** Every use-case execution logs a span pair and every
   emission logs an entry, at `Level.info`; building those context maps is
   ~40% of a dispatch even when the logger drops them (benchmarks §4, §6:
   ~0.7 of ~1.7 µs per send on an iPhone 17 Pro Max). Below `minLevel` the
   framework does not build them — the logger is not called for that entry.
   Default `Level.all`: nothing changes unless set. `Level.warning` in
-  release is the whole gain. Never gates `logError`, `emission_after_close`,
-  `event_ignored`, or a failure emission's entry: those stay loud.
-  `DevtoolsJuiceLogger` consumes the chatter, so leave the default in any
-  build where the panel should work. Pinned by
+  release is the whole gain for a logger that declares nothing. Never
+  gates `logError`, `emission_after_close`, `event_ignored`, or a failure
+  emission's entry: those stay loud. `DevtoolsJuiceLogger` (observability
+  ≥ 0.5.1) declares `Level.all` while a listener is attached, so the panel
+  works without touching this. Pinned by
   `test/bloc/telemetry_level_test.dart`.
 
 ## [1.9.1] - 2026-09-28

@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_observability
-version: 0.5.0
+version: 0.5.1
 requires:
-  juice: ">=1.7.0"
-updated: 2026-09-16
+  juice: ">=1.10.0"
+updated: 2026-09-29
 ---
 
 # juice_observability — AI card
@@ -31,7 +31,7 @@ each report. For event/screen tracking use `juice_analytics`.
 
 ```yaml
 dependencies:
-  juice_observability: ^0.5.0
+  juice_observability: ^0.5.1
 ```
 
 ## DevTools mirror + extension
@@ -57,6 +57,15 @@ Payloads are wire-safe: primitives pass through, live objects cross as
 `juice ≥ 1.7.0` so starts and ends share an `executionId` (+
 `elapsedMicros`) — that is what makes duration spans honest under
 `concurrent` overlap.
+
+COST FOLLOWS THE LISTENER (0.5.1): it implements `LevelAwareJuiceLogger`.
+While the VM Extension stream has a listener (`dart:developer`
+`extensionStreamHasListener`; the `flutter run` daemon counts) it declares
+`Level.all` and posts; with none it builds no payload, posts nothing, and
+declares what `inner` declares — so release builds and untooled launches
+pay for no telemetry. Read per entry: attaching mid-run turns it on. Test
+seam: `hasListener: () => bool` beside `post:` (injecting `post` alone
+keeps the listener present).
 
 **The extension** (`extension/devtools/`, built from
 `packages/juice_observability_devtools_extension`) is discovered by DevTools

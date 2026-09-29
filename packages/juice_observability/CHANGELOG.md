@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-09-29
+
+Requires `juice ^1.10.0` (`LevelAwareJuiceLogger`).
+
+### Changed — `DevtoolsJuiceLogger`: the cost follows the listener
+- Payloads are built and posted only while the VM's Extension stream has a
+  listener (`dart:developer` `extensionStreamHasListener`). `postEvent`
+  already dropped events nobody would receive; the logger built each
+  payload first — including the state's `toString()` on every emission.
+  Now it builds nothing for nobody. The inner logger still receives every
+  call, errors included.
+- It declares its level to the framework (`LevelAwareJuiceLogger`):
+  `Level.all` while a listener is attached, otherwise what the inner
+  logger declares. With the default inner logger, a release build or an
+  app launched without tooling builds no per-event telemetry at all;
+  attaching DevTools mid-run turns it on live. Under `flutter run` the
+  tooling daemon is a listener, so nothing changes there.
+- New test seam `hasListener:` beside `post:`. Injecting `post` alone keeps
+  the listener present, so existing captures are unaffected.
+
 ## [0.5.0] - 2026-09-16
 
 ### Changed — every builder now declares its `EventConcurrency` mode

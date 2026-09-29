@@ -87,6 +87,75 @@ void main() {
     expect(posted[1].$2['useCase'], 'LoadFoo');
     expect(inner.errors, hasLength(2));
   });
+
+  group('cost follows the listener (0.5.1)', () {
+    late bool attached;
+    late DevtoolsJuiceLogger gated;
+
+    DevtoolsJuiceLogger make(JuiceLogger inner) => DevtoolsJuiceLogger(
+          inner: inner,
+          post: (kind, data) => posted.add((kind, data)),
+          hasListener: () => attached,
+        );
+
+    setUp(() {
+      attached = false;
+      gated = make(inner);
+    });
+
+    test(
+        'no listener: nothing is posted and no payload is built — the '
+        'state is never stringified', () {
+      final state = _Exploding();
+      gated.log('Emitting update',
+          context: {'type': 'state_emission', 'state': state});
+      gated.logError('boom', StateError('x'), StackTrace.current,
+          context: {'type': 'use_case_error', 'state': state});
+      expect(posted, isEmpty);
+      expect(state.stringified, 0);
+      expect(inner.logs, ['Emitting update'], reason: 'inner still forwards');
+      expect(inner.errors, ['boom'], reason: 'errors stay loud in the inner');
+    });
+
+    test('a listener attaching mid-run turns posting on, live', () {
+      gated.log('one', context: {'type': 'state_emission'});
+      attached = true;
+      gated.log('two', context: {'type': 'state_emission'});
+      expect(posted.map((p) => p.$2['message']), ['two']);
+    });
+
+    test('declares all while attached, the inner logger\'s level otherwise',
+        () {
+      final declaring = _Declaring(Level.warning);
+      final logger = make(declaring);
+      expect(logger.minLevel, Level.warning);
+      attached = true;
+      expect(logger.minLevel, Level.all);
+    });
+
+    test('an inner logger that declares nothing keeps everything', () {
+      expect(gated.minLevel, Level.all);
+    });
+
+    test(
+        'configured on the framework: no listener and a quiet inner '
+        'logger means the chatter is not built; attaching builds it', () {
+      final saved = JuiceLoggerConfig.logger;
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      JuiceLoggerConfig.configureLogger(make(_Declaring(Level.off)));
+      expect(JuiceLoggerConfig.logs(Level.info), isFalse);
+      attached = true;
+      expect(JuiceLoggerConfig.logs(Level.info), isTrue);
+    });
+
+    test(
+        'injecting post alone keeps the listener present, so captures '
+        'are never silently empty', () {
+      logger.log('x', context: {'type': 'state_emission'});
+      expect(posted, hasLength(1));
+      expect(logger.minLevel, Level.all);
+    });
+  });
 }
 
 class _Verbose {
@@ -94,4 +163,21 @@ class _Verbose {
   final String s;
   @override
   String toString() => s;
+}
+
+class _Declaring extends _RecordingLogger implements LevelAwareJuiceLogger {
+  _Declaring(this.minLevel);
+  @override
+  final Level minLevel;
+}
+
+/// Counts how often it is stringified — a payload built for nobody would
+/// show up here.
+class _Exploding {
+  int stringified = 0;
+  @override
+  String toString() {
+    stringified++;
+    return 'state';
+  }
 }

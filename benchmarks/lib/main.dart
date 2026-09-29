@@ -46,8 +46,10 @@ Future<void> _run(ValueNotifier<Widget> host) async {
     'cpus': Platform.numberOfProcessors,
   };
 
+  progress('start');
   final dispatch = await runDispatch();
   report['dispatch'] = [for (final r in dispatch) r.toJson()];
+  progress('dispatch done');
 
   // Frame benchmarks use the silent logger for every framework, so what is
   // compared is the widget-side cost (dispatch is reported separately).
@@ -55,14 +57,16 @@ Future<void> _run(ValueNotifier<Widget> host) async {
   JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
   final frames = <Map<String, Object>>[];
   for (final variant in allVariants()) {
+    progress('frames: ${variant.name} …');
     frames.add(await _frameBench(host, variant));
+    progress('frames: ${variant.name} done');
   }
   JuiceLoggerConfig.configureLogger(defaultLogger);
   report['frames'] = frames;
 
-  stdout.writeln('BENCH_JSON_BEGIN');
-  stdout.writeln(const JsonEncoder.withIndent('  ').convert(report));
-  stdout.writeln('BENCH_JSON_END');
+  emit('BENCH_JSON_BEGIN');
+  emit(const JsonEncoder.withIndent('  ').convert(report));
+  emit('BENCH_JSON_END');
   await stdout.flush();
   exit(0);
 }
@@ -120,3 +124,39 @@ Future<Map<String, Object>> _frameBench(
     'buildMicrosP90': pct(0.9),
   };
 }
+
+/// The JSON goes to stdout on every platform: tool/run.sh reads it on
+/// desktop, and `devicectl device process launch --console` over a CABLE
+/// captures it on a phone (a wireless tunnel drops; `print` on iOS goes to
+/// os_log, not stdout). On a phone it is ALSO written to the app's
+/// Documents dir as a backup, and a failed write is loud, never silent.
+void emit(String line) {
+  stdout.writeln(line);
+  if (Platform.isIOS || Platform.isAndroid) _persist(line);
+}
+
+final _buf = StringBuffer();
+void _persist(String line) {
+  if (line == 'BENCH_JSON_BEGIN') {
+    _buf.clear();
+    return;
+  }
+  if (line != 'BENCH_JSON_END') {
+    _buf.writeln(line);
+    return;
+  }
+  // Documents sits beside tmp in the sandbox; systemTemp is always set.
+  final path =
+      '${Directory.systemTemp.parent.path}/Documents/bench_timing.json';
+  try {
+    File(path).writeAsStringSync(_buf.toString());
+    stdout.writeln('BENCH_WROTE $path');
+  } catch (e) {
+    stdout.writeln('BENCH_WRITE_FAILED $path: $e');
+    rethrow;
+  }
+}
+
+/// Phase markers on stdout (captured by the console) so a stuck run can be
+/// located.
+void progress(String what) => stdout.writeln('BENCH_PROGRESS $what');

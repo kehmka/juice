@@ -11,6 +11,14 @@
       "untouchedCellsRebuilt": 0
     },
     {
+      "variant": "juice · JuiceSelector + groups",
+      "framework": "juice",
+      "mechanism": "group filter first, then consumer-side selector + == (idiomatic since 1.8.0)",
+      "buildsPerUpdate": 1.0,
+      "selectorCallsPerUpdate": 1.0,
+      "untouchedCellsRebuilt": 0
+    },
+    {
       "variant": "juice · JuiceSelector",
       "framework": "juice",
       "mechanism": "consumer-side selector + == (no groups)",

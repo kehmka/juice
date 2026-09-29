@@ -19,6 +19,7 @@ on update.
 | variant | how the rebuild is targeted |
 |---|---|
 | juice · groups | the use case names the changed cell's group; each widget filters by set intersection |
+| juice · JuiceSelector + groups | group filter first (denyRebuild), then consumer-side selector + `==` — the idiomatic form since 1.8.0 |
 | juice · JuiceSelector | consumer-side selector + `==` (no groups) |
 | juice · no groups | the default: `rebuildAlways` broadcast |
 | bloc · BlocSelector | consumer-side selector + `==` |
@@ -68,6 +69,30 @@ libgtk-3-dev) and `xvfb-run`. Writes `results/rebuild_counts.json`,
 `results/timing.json` and `results/breakdown.json` (the timing files record
 the Dart version and CPU count). Timing numbers are only comparable between
 runs on the same machine.
+
+## On a phone
+
+The scenarios run unchanged; only the transport differs. `ios/` and `macos/`
+runners are checked in (`flutter create --platforms=…` output, signing team
+set in `ios/`). Cable-attach the phone, unlock it, set Auto-Lock to Never
+for the run (a suspended app never gets frames), then:
+
+```bash
+flutter build ios --release
+xcrun devicectl device install app --device <udid> build/ios/iphoneos/Runner.app
+xcrun devicectl device process launch --console --terminate-existing \
+  --device <udid> com.example.juiceBenchmarks | tee run.log
+sed -n '/BENCH_JSON_BEGIN/,/BENCH_JSON_END/p' run.log | sed '1d;$d' > results/timing_ios.json
+```
+
+and again with `-t lib/breakdown_main.dart` for `breakdown_ios.json`. The app
+prints `BENCH_PROGRESS` lines per phase and also writes the JSON to its
+Documents dir (copy out with `devicectl device copy from --domain-type
+appDataContainer --domain-identifier com.example.juiceBenchmarks --source
+Documents/bench_timing.json`). Two things learned the hard way: `print` on
+iOS goes to os_log, not the captured stdout, and a wireless tunnel drops —
+use `stdout` and a cable. Read the phone's frame numbers with RESULTS §6 in
+hand.
 
 ## Reading the results honestly
 

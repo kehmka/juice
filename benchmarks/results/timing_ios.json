@@ -1,0 +1,138 @@
+{
+  "mode": "release",
+  "dart": "3.12.2",
+  "os": "ios",
+  "cpus": 6,
+  "dispatch": [
+    {
+      "variant": "juice (default logger)",
+      "shape": "sequential",
+      "updates": 20000,
+      "microsPerUpdate": 1.985
+    },
+    {
+      "variant": "juice (default logger)",
+      "shape": "burst",
+      "updates": 20000,
+      "microsPerUpdate": 2.623
+    },
+    {
+      "variant": "juice (silent logger)",
+      "shape": "sequential",
+      "updates": 20000,
+      "microsPerUpdate": 1.868
+    },
+    {
+      "variant": "juice (silent logger)",
+      "shape": "burst",
+      "updates": 20000,
+      "microsPerUpdate": 2.483
+    },
+    {
+      "variant": "bloc",
+      "shape": "sequential",
+      "updates": 20000,
+      "microsPerUpdate": 0.756
+    },
+    {
+      "variant": "bloc",
+      "shape": "burst",
+      "updates": 20000,
+      "microsPerUpdate": 0.613
+    },
+    {
+      "variant": "riverpod",
+      "shape": "sequential",
+      "updates": 20000,
+      "microsPerUpdate": 0.284
+    },
+    {
+      "variant": "riverpod",
+      "shape": "burst",
+      "updates": 20000,
+      "microsPerUpdate": 0.42
+    }
+  ],
+  "frames": [
+    {
+      "variant": "juice · groups",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": 3079,
+      "buildMicrosP90": 3435
+    },
+    {
+      "variant": "juice · JuiceSelector + groups",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": 3783,
+      "buildMicrosP90": 4353
+    },
+    {
+      "variant": "juice · JuiceSelector",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": 3551,
+      "buildMicrosP90": 3868
+    },
+    {
+      "variant": "juice · no groups",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1000.0,
+      "buildMicrosP50": 2337,
+      "buildMicrosP90": 2397
+    },
+    {
+      "variant": "bloc · BlocSelector",
+      "framework": "bloc",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": 3204,
+      "buildMicrosP90": 4289
+    },
+    {
+      "variant": "bloc · BlocBuilder",
+      "framework": "bloc",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1000.0,
+      "buildMicrosP50": 2475,
+      "buildMicrosP90": 2626
+    },
+    {
+      "variant": "riverpod · select",
+      "framework": "riverpod",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1.0,
+      "buildMicrosP50": 2785,
+      "buildMicrosP90": 3893
+    },
+    {
+      "variant": "riverpod · watch",
+      "framework": "riverpod",
+      "cells": 1000,
+      "updates": 300,
+      "framesTimed": 301,
+      "buildsPerUpdate": 1000.0,
+      "buildMicrosP50": 2414,
+      "buildMicrosP90": 2669
+    }
+  ]
+}

@@ -136,3 +136,36 @@ class JuiceSelectorVariant extends JuiceGroupsVariant {
   Future<void> update(int index, int value) =>
       bloc.send(SetCellEvent(index, value, grouped: false));
 }
+
+/// JuiceSelector WITH groups — the idiomatic form since juice 1.8.0: the
+/// group filter runs first (the same denyRebuild as every Juice widget), and
+/// only emissions that pass it reach the selector. Expected: 1 build and
+/// 1 selector call per update, where the ungrouped form runs the selector
+/// in every cell.
+class JuiceGroupedSelectorVariant extends JuiceGroupsVariant {
+  @override
+  String get name => 'juice · JuiceSelector + groups';
+  @override
+  String get mechanism =>
+      'group filter first, then consumer-side selector + == '
+      '(idiomatic since 1.8.0)';
+
+  @override
+  Widget build(int cells) => Wrap(
+    children: [
+      for (var i = 0; i < cells; i++)
+        JuiceSelector<CellsBloc, CellsState, int>(
+          bloc: bloc,
+          groups: {CellGroups.cell(i)},
+          selector: (s) {
+            Counters.selectorCalls++;
+            return s.cells[i];
+          },
+          builder: (_, v) {
+            Counters.builds[i]++;
+            return cellText(v);
+          },
+        ),
+    ],
+  );
+}

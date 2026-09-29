@@ -15,17 +15,33 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Linux (the published numbers) runs headless under Xvfb and writes
+# results/timing.json + breakdown.json. macOS runs on the real display
+# (a window appears for a few seconds per run) and writes the
+# *_macos.json files, so a second machine never overwrites the first.
+case "$(uname -s)" in
+  Darwin)
+    platform=macos
+    bundle=build/macos/Build/Products/Release/juice_benchmarks.app/Contents/MacOS/juice_benchmarks
+    run() { "$bundle"; }
+    suffix=_macos ;;
+  *)
+    platform=linux
+    bundle=build/linux/x64/release/bundle/juice_benchmarks
+    run() { xvfb-run -a "$bundle"; }
+    suffix= ;;
+esac
+
 flutter pub get >/dev/null
 flutter test --no-pub test/rebuild_counts_test.dart
 
-flutter build linux --release >/dev/null
-bundle=build/linux/x64/release/bundle/juice_benchmarks
-out=$(xvfb-run -a "$bundle" 2>/dev/null)
+flutter build "$platform" --release >/dev/null
+out=$(run 2>/dev/null)
 echo "$out" | sed -n '/BENCH_JSON_BEGIN/,/BENCH_JSON_END/p' \
-  | sed '1d;$d' > results/timing.json
+  | sed '1d;$d' > "results/timing$suffix.json"
 
-flutter build linux --release -t lib/breakdown_main.dart >/dev/null
-out=$(xvfb-run -a "$bundle" 2>/dev/null)
+flutter build "$platform" --release -t lib/breakdown_main.dart >/dev/null
+out=$(run 2>/dev/null)
 echo "$out" | sed -n '/BENCH_JSON_BEGIN/,/BENCH_JSON_END/p' \
-  | sed '1d;$d' > results/breakdown.json
-echo "wrote results/rebuild_counts.json, results/timing.json and results/breakdown.json"
+  | sed '1d;$d' > "results/breakdown$suffix.json"
+echo "wrote results/rebuild_counts.json, results/timing$suffix.json and results/breakdown$suffix.json"

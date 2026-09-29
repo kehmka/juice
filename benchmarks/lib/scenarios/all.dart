@@ -8,6 +8,7 @@ export 'variant.dart';
 /// Every variant, tuned first within each framework.
 List<Variant> allVariants() => [
   JuiceGroupsVariant(),
+  JuiceGroupedSelectorVariant(),
   JuiceSelectorVariant(),
   JuiceUngroupedVariant(),
   BlocSelectorVariant(),

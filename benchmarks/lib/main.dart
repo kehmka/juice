@@ -338,7 +338,9 @@ Future<void> _frames(
       ])
         k: Sample([for (final r in runs) (r[k] as int).toDouble()]).median,
     });
-    if (builds < 2) {
+    // Tuned = targeted: fewer than half the cells rebuilt (1 in the cells
+    // scenario, K in the wide one); naive rebuilds all of them.
+    if (builds < frameCells / 2) {
       tunedP50[e.key] = p50;
     }
   }
@@ -357,7 +359,7 @@ Future<void> _frames(
     ]);
     f['clockFactor'] = double.parse(factor.toStringAsFixed(3));
     f['buildMicrosP50Normalized'] = n.toJson('median');
-    if ((f['buildsPerUpdate'] as double) < 2) {
+    if ((f['buildsPerUpdate'] as double) < frameCells / 2) {
       normalized[f['variant'] as String] = n;
     }
   }

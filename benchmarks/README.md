@@ -32,6 +32,15 @@ to Juice's event → use case path. Riverpod has no event queue: an update is a
 synchronous notifier method call — that difference is part of what the
 dispatch numbers show, not something to normalize away.
 
+## The second scenario: wide
+
+`lib/scenarios/wide.dart`, built to stress what groups do NOT help with:
+N cells plus a header showing the sum over every cell; one update sets a
+run of K = N/20 consecutive cells, so K cells and the header change every
+update. Tuned forms build K+1 per update, naive N+1 (pinned by
+`test/rebuild_counts_wide_test.dart`). The timing app reports it as
+`framesWide` / `frameWideComparisons`. RESULTS §10.
+
 ## What is measured
 
 1. **Rebuild counts** (`test/rebuild_counts_test.dart`, `flutter test`) —

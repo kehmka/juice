@@ -434,3 +434,73 @@ knob buys about a third of a dispatch, for apps that dispatch enough events
 per frame to notice; at ~1 µs per event that is thousands per frame.
 `DevtoolsJuiceLogger` consumes the chatter, so the default stays where the
 panel should work.
+
+## 10. The wide scenario — built to hurt groups (2026-09-28)
+
+Definition approved before any number existed (`lib/scenarios/wide.dart`):
+N cells plus a **header** showing the sum over every cell; one update sets a
+run of **K = N/20 consecutive cells** (5 of 100, 50 of 1000), so K cells
+and the header change on every update. Groups put the targeting cost on
+the emitter, which must name K+1 groups including a header the use case
+has to remember; selectors put it on consumers, which run everywhere. The
+question, unknown when the scenario was written: is naming 51 groups and
+running 1001 set-intersections cheaper or dearer per frame than running
+1001 selectors?
+
+### Rebuild counts (deterministic, N = 100, K = 5)
+
+| variant | cell builds | header builds | selector calls / update |
+|---|---:|---:|---:|
+| wide · juice · groups | 5 | 1 | 0 |
+| wide · juice · JuiceSelector + groups | 5 | 1 | 6 |
+| wide · juice · no groups | 100 | 1 | 0 |
+| wide · bloc · BlocSelector | 5 | 1 | 101 |
+| wide · bloc · BlocBuilder | 100 | 1 | 0 |
+| wide · riverpod · select | 5 | 1 | 107 |
+| wide · riverpod · watch | 100 | 1 | 0 |
+
+Every tuned form builds exactly K+1, every naive form N+1 — the pinned
+expectation. The selector column is the scenario's shape: groups 0, the
+grouped selector K+1 (the group filter runs first), BlocSelector N+1,
+Riverpod N+1 plus its own bookkeeping.
+
+### Frame cost — iPhone 17 Pro Max, clock pinned, N = 1000, K = 50
+
+p50 build µs (probe subtracted), median of 3 rounds:
+
+| variant | p50 | range | raster p50 | builds/update |
+|---|---:|---:|---:|---:|
+| wide · juice · JuiceSelector + groups | 655 | 653–657 | 494 | 50 |
+| wide · juice · groups | 670 | 668–672 | 489 | 50 |
+| wide · bloc · BlocSelector | 692 | 690–696 | 468 | 50 |
+| wide · riverpod · select | 788 | 781–790 | 471 | 50 |
+| wide · riverpod · watch | 1347 | 1345–1356 | 480 | 1000 |
+| wide · juice · no groups | 1370 | 1338–1394 | 481 | 1000 |
+| wide · bloc · BlocBuilder | 1502 | 1490–1526 | 488 | 1000 |
+
+Verdicts among the tuned forms (computed from the recorded rounds; this
+run predates the fix that lets the harness classify a K-build variant as
+tuned):
+
+- wide · juice · JuiceSelector + groups < wide · juice · groups: **faster** (2%)
+- wide · juice · groups < wide · bloc · BlocSelector: **faster** (3%)
+- wide · bloc · BlocSelector < wide · riverpod · select: **faster** (12%)
+
+### Reading
+
+- **The scenario did not turn against groups.** Naming 51 groups and
+  filtering 1001 subscriptions costs the emitter side about the same as
+  BlocSelector's 1001 selector calls (3%) and less than Riverpod's (15%).
+  The emitter-side cost of groups is small even when the emitter must
+  name many consumers.
+- **The grouped selector edges plain groups (2%)**: with the group filter
+  first, only the K+1 touched widgets run their selector, and a selector
+  rebuild with a pre-extracted value is marginally cheaper than a
+  `StatelessJuiceWidget` rebuild reading the bloc. Ranges are 2–6 µs, so
+  "faster (2%)" is real and small — the harness's rule, applied honestly.
+- **Cells → wide, tuned**: ×1.63–1.77 for groups and BlocSelector, ×2.08 for
+  Riverpod select — Riverpod pays most for going wide, consistent with its
+  per-consumer selector plus notifier bookkeeping. Naive forms grow only
+  ×1.25: they were already rebuilding everything.
+- **Naive is ~2× tuned** here as in every other table, once the clock is
+  pinned.

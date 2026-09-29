@@ -35,6 +35,14 @@ jobs:
       - name: Test Example App
         run: cd example && flutter test
 
+      # The benchmarks' DETERMINISTIC half only: rebuild counts per variant,
+      # machine-independent, pinned by test. Timings stay out of CI (they are
+      # only comparable on one machine). benchmarks/ is outside the melos
+      # workspace on purpose — bloc and Riverpod never enter the family's
+      # dependency graph — so it resolves its own deps here.
+      - name: Benchmark Rebuild Counts
+        run: cd benchmarks && flutter pub get && flutter test test/
+
       - name: Core Coverage Gate
         run: sh tool/coverage_check.sh 90
 

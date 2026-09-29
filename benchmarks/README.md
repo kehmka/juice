@@ -43,7 +43,9 @@ update. Tuned forms build K+1 per update, naive N+1 (pinned by
 
 ## What is measured
 
-1. **Rebuild counts** (`test/rebuild_counts_test.dart`, `flutter test`) —
+1. **Rebuild counts** (`test/rebuild_counts_test.dart`,
+   `test/rebuild_counts_wide_test.dart`; `flutter test`; **run in CI** as the
+   "Benchmark Rebuild Counts" step, so the harness cannot rot silently) —
    100 cells, cell 7 updated 10 times: widgets built per update, and
    consumer-side selector calls per update. **Deterministic**: independent of
    machine and build mode, and pinned by the test (tuned = 1 build/update,

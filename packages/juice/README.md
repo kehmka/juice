@@ -24,12 +24,12 @@ The framework is most compelling when you lean into ownership and lifecycle, not
 - **Use-case driven business logic**: blocs route events into dedicated use cases
 - **Per-event concurrency**: `EventConcurrency.sequential`/`droppable`/`concurrent` on a `UseCaseBuilder` controls how same-type events interleave (1.5.0)
 - **Lifecycle ownership**: `permanent`, `feature`, and `leased` lifecycles via `BlocScope`
-- **Targeted rebuilds**: rebuild groups let widgets subscribe narrowly
+- **Targeted rebuilds**: rebuild groups let widgets subscribe narrowly. Measured against bloc and Riverpod ([benchmarks](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md)): 1 widget rebuilt per update with 0 selector calls (selector-based targeting runs one selector per consumer per update); per frame the tuned forms of all three tie within machine noise and the untargeted defaults cost about 2×; the wide scenario built to hurt groups ([§10](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md#10-the-wide-scenario--built-to-hurt-groups-2026-09-28)) did not
 - **Status-aware streams**: `StreamStatus` separates transient workflow state from persistent app state
 - **Cross-bloc orchestration**: event subscriptions, state relays, and status relays
 - **Per-item async state**: `EntityStatuses<K>` + `BlocUseCase.guardEntity` track which *rows* of a collection are in flight or failed — the item-grained companion to `StreamStatus`, with guaranteed cleanup (no stuck spinners) (1.6.0). See the [EntityStatus guide](doc/ENTITY_STATUS_GUIDE.md) and [spec](doc/ENTITY_STATUS_SPEC.md).
 - **Skip duplicate emits**: `emitUpdate(..., skipIfSame: true)` drops an emission when `newState == state` (logging `state_emission_skipped`) — a per-call opt-in for no-op refreshes; requires value equality on the state (1.7.0)
-- **One knob for telemetry cost**: `JuiceLoggerConfig.minLevel = Level.warning` stops the per-event chatter being built at all (~40% of a dispatch); errors and failures stay loud (juice ≥ 1.10.0)
+- **One knob for telemetry cost**: `JuiceLoggerConfig.minLevel = Level.warning` stops the per-event chatter being built at all — measured at about a third of a dispatch ([§9](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md#9-the-telemetry-knob-priced-2026-09-28--juice-1100)); errors and failures stay loud (juice ≥ 1.10.0)
 - **Use-case telemetry pair**: every execution logs a start and an end entry sharing a process-unique `executionId`, with `elapsedMicros` on completion or error — honest duration spans even when same-type events overlap, consumable live in DevTools via `juice_observability`'s `DevtoolsJuiceLogger` (1.7.0)
 
 ## Quick Example

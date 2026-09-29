@@ -1,17 +1,41 @@
 # Results — 2026-09-28
 
-> **Harness note (2026-09-28, after these sections were written):** the
-> harness now keeps every round and reports median + range + spread, and
-> declares ties itself (README "What is measured"); a `TOOLCHAIN` pin makes
-> `tool/run.sh` refuse a mismatched Flutter. §1–§6 below are from the earlier
-> fastest-of-5 harness and are kept as measured; the next Linux run on the
-> pinned toolchain will regenerate §2–§4 in the new schema. §7 shows the new
-> schema on the Mac (drift allowed, so not a published number).
+## Where it stands
 
-Machine: 4-core Intel Xeon @ 2.80 GHz (cloud VM), Linux, **release (AOT)**
-build, Dart 3.13.4 / Flutter 3.47.5, run headless under Xvfb.
-Versions: juice 1.9.1 (this repo), bloc 9.2.1 / flutter_bloc 9.1.1,
-flutter_riverpod 3.4.3. Raw data: `results/*.json`. Method: `README.md`.
+The current number for each claim, the machine and section it comes from,
+and its caveat. Everything below this table is the lab record, in the
+order it was measured; later sections supersede earlier ones where they
+say so. Versions: juice 1.9.1 for §1–§8, **1.10.0** for §9–§10 (the knob
+is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
+3.4.3. Method and the tie rule: `README.md`.
+
+| claim | number | where | caveat |
+|---|---|---|---|
+| **Rebuild counts** | every tuned form 1 build / update; Juice groups 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
+| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise; untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 372–421 vs 1029–1185 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned |
+| **Frame cost, wide** (built to hurt groups) | groups hold: JuiceSelector+groups 655, groups 670, BlocSelector 692, Riverpod select 788 µs p50; naive 1347–1502 | §10 (phone, pinned) | phone-only so far; drift toolchain |
+| **Dispatch** | Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with `minLevel = warning` | §3 (Linux), §6 (phone), §9 (knob) | by design: async executor + paired telemetry span; at ~2–6 µs an event, dispatch is not where a frame budget goes |
+| **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
+| **The knob** | `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9 | ranges do not overlap; default unchanged |
+
+Superseded and kept as measured: §5's and §6's frame tables (the phone's
+inversion, explained and fixed in §8); §2–§4's fastest-of-5 schema (the
+next Linux run on the pinned toolchain regenerates them as median + range).
+Not yet measured anywhere: a parent-rebuild scenario (roadmap item J).
+
+---
+
+## The lab record
+
+> **Harness note (2026-09-28, after §1–§6 were written):** the harness now
+> keeps every round and reports median + range + spread, and declares ties
+> itself (README "What is measured"); a `TOOLCHAIN` pin makes `tool/run.sh`
+> refuse a mismatched Flutter. §1–§6 are from the earlier fastest-of-5
+> harness and are kept as measured. §7 onward use the new schema.
+
+Machine for §1–§4: 4-core Intel Xeon @ 2.80 GHz (cloud VM), Linux,
+**release (AOT)** build, Dart 3.13.4 / Flutter 3.47.5, run headless under
+Xvfb. Raw data: `results/*.json`. Method: `README.md`.
 
 ## 1. Rebuild counts (deterministic)
 
@@ -119,7 +143,7 @@ then its async path; per-event allocation is a minor term. The lever, if
 dispatch cost ever matters, is making telemetry context construction lazy
 when no logger consumes it — not changing the use-case lifecycle.
 
-## 5. Reproduction on a second machine — macOS, 2026-09-28
+## 5. Reproduction on a second machine — macOS, 2026-09-28 (frame table superseded by §7)
 
 Apple Silicon (12 cores), macOS, **release (AOT)** build, Dart 3.12.2 /
 Flutter 3.44.4 (NOT the Linux run's 3.13.4 / 3.47.5 — a toolchain
@@ -167,7 +191,7 @@ What this validates:
 - **The breakdown reconciles on the Mac too**: store 0.02 + emitter's extra
   0.82 + hops 0.53 + the two remaining span maps ≈ the 2.72 µs send.
 
-## 6. The phone — iPhone 17 Pro Max, 2026-09-28
+## 6. The phone — iPhone 17 Pro Max, 2026-09-28 (frame table superseded by §8)
 
 The machine Amoli runs on. iOS 26.6, **release (AOT)** build, Dart 3.12.2 /
 Flutter 3.44.4, 6 cores, cable-attached, screen awake (Auto-Lock off: iOS

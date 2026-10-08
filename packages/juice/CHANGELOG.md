@@ -17,8 +17,37 @@ lands here as it is built, with its migration in one line.
   `juice_missing_concurrency_mode` is retired: it has nothing left to say.
 - **`EventConcurrency` gains `restartable`** — an exhaustive `switch` over
   the enum needs a new case (see Added).
+- **`UpdateEvent.newState` removed** (deprecated since 1.x). `UpdateEvent`
+  re-emits the bloc's current state under the groups / status / aviator it
+  names; a state CHANGE is an event a use case handles. *Migration:* `dart
+  fix` removes the argument (`lib/fix_data.yaml`); where a value was
+  passed, send the event of the use case that should produce it.
+- **`RelayUseCaseBuilder` removed** (deprecated since 1.x). *Migration:*
+  `StateRelay` (state values) or `StatusRelay` (waiting / failure too) —
+  `doc/concepts/relay-use-cases.md` shows the before and after.
+
+### Changed
+- **The send path has one awaited hop, not four.** `send`, `dispatch` and
+  the mode wrappers return the handler's future through; the executor
+  keeps the one structural await (it closes the telemetry span). Measured
+  on the Mac (release, median of 5): a send with the chatter not built
+  1.74 → 1.60 µs (−8%, ranges apart); 20,000 sends in flight 3.76 → 2.82
+  µs each (−25%) — the burst depth cost scales with hops × in-flight
+  (benchmarks §14). Contracts kept, each pinned: an un-awaited send of an
+  unhandled event never throws into the caller's frame (the error arrives
+  on the future, as `async` delivered it); `send` on a closed bloc returns
+  a completed future; `sequential` keeps order past a failed run;
+  `droppable` frees its slot after a failed or dropped run; the span pair
+  still closes on success and on error. Async stack traces are two frames
+  shorter.
 
 ### Added
+- **`JuiceBloc.seedState(state, {groups})` — a `@visibleForTesting` seam**
+  that puts a bloc into a state without running a use case, as a normal
+  `UpdatingStatus` emission carrying an `UpdateEvent`. It is what
+  `juiceTest(seed:)` now uses (it used the removed `UpdateEvent.newState`).
+  Throws on a closed or closing bloc. Production code changes state through
+  a use case, never this.
 - **`EventConcurrency.restartable` — the fourth mode: latest input wins.**
   A same-type event arriving while one runs supersedes it and starts at
   once. The superseded run is fenced: every `emitUpdate` / `emitWaiting` /

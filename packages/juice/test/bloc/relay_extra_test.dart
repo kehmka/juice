@@ -62,11 +62,6 @@ class _MapResolver implements BlocDependencyResolver {
   Future<void> disposeAll() async {}
 }
 
-class _NoopUseCase extends BlocUseCase<_DstBloc, _Record> {
-  @override
-  Future<void> execute(_Record event) async {}
-}
-
 Future<void> _settle() => Future<void>.delayed(const Duration(milliseconds: 5));
 
 /// Runs [body] and collects errors that escape to the zone (e.g. thrown from
@@ -218,56 +213,6 @@ void main() {
       });
       expect(closedErrors.single.toString(), contains('closed blocs'));
       await src.close();
-    });
-  });
-
-  group('RelayUseCaseBuilder (deprecated)', () {
-    RelayUseCaseBuilder<_SrcBloc, _DstBloc, _Src> build(
-            {BlocDependencyResolver? resolver}) =>
-        RelayUseCaseBuilder<_SrcBloc, _DstBloc, _Src>(
-          typeOfEvent: _Record,
-          useCaseGenerator: () => _NoopUseCase(),
-          statusToEventTransformer: (s) => _Record('r${s.state.count}'),
-          resolver: resolver,
-        );
-
-    test('exposes UseCaseBuilderBase configuration', () async {
-      registerBoth();
-      final b = build();
-      expect(b.eventType, _Record);
-      expect(b.concurrency, EventConcurrency.concurrent);
-      expect(b.initialEventBuilder, isNull);
-      expect(b.generator(), isA<_NoopUseCase>());
-      await _settle();
-      await b.close();
-    });
-
-    test('relays through BlocScope leases and releases them on close',
-        () async {
-      registerBoth();
-      final b = build();
-      await _settle();
-      expect(BlocScope.diagnostics<_SrcBloc>()!.leaseCount, 1);
-      await BlocScope.get<_SrcBloc>().send(_Bump());
-      await _settle();
-      expect(BlocScope.get<_DstBloc>().state.labels, ['r0', 'r1']);
-      await b.close();
-      expect(BlocScope.diagnostics<_SrcBloc>()!.leaseCount, 0);
-      expect(BlocScope.diagnostics<_DstBloc>()!.leaseCount, 0);
-    });
-
-    test('init failures escape as StateError', () async {
-      final errors = await _zoneErrors(build);
-      expect((errors.single as StateError).message,
-          contains('Relay initialization failed'));
-
-      final src = _SrcBloc();
-      final dst = _DstBloc();
-      await src.close();
-      final closedErrors = await _zoneErrors(
-          () => build(resolver: _MapResolver({_SrcBloc: src, _DstBloc: dst})));
-      expect(closedErrors.single.toString(), contains('closed blocs'));
-      await dst.close();
     });
   });
 }

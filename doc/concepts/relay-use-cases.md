@@ -298,12 +298,12 @@ void main() {
 }
 ```
 
-## Migration from RelayUseCaseBuilder
+## Migration from RelayUseCaseBuilder (removed in juice 2.0.0)
 
-`RelayUseCaseBuilder` is deprecated. Here's how to migrate:
+`RelayUseCaseBuilder` was deprecated in 1.x and removed in 2.0.0. Here's how to migrate code that still uses it:
 
 ```dart
-// Before (deprecated):
+// Before (1.x, removed in 2.0.0):
 RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
   typeOfEvent: LoadProfileEvent,
   useCaseGenerator: () => LoadProfileUseCase(),

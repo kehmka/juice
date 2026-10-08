@@ -256,12 +256,30 @@ void main() {
     setUp(() => bloc = _LogBloc());
     tearDown(() => bloc.close());
 
-    test('onUpdate emits UpdatingStatus with the new state', () async {
-      await bloc
-          .send(UpdateEvent<_S>(newState: const _S(1), groupsToRebuild: {'g'}));
+    test(
+        'onUpdate re-emits the CURRENT state as UpdatingStatus under the '
+        'event\'s groups (an UpdateEvent carries no state since 2.0.0)',
+        () async {
+      await bloc.send(UpdateEvent<_S>(groupsToRebuild: {'g'}));
       expect(bloc.currentStatus, isA<UpdatingStatus<_S>>());
-      expect(bloc.state.n, 1);
+      expect(bloc.state.n, 7, reason: 'unchanged');
       expect(bloc.currentStatus.event!.groupsToRebuild, contains('g'));
+    });
+
+    test(
+        'seedState (test seam) puts the bloc into a state without a use '
+        'case, as a normal emission; throws once closed', () async {
+      final seen = <StreamStatus<_S>>[];
+      final sub = bloc.stream.listen(seen.add);
+      bloc.seedState(const _S(1), groups: {'g'});
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.state.n, 1);
+      expect(seen.single, isA<UpdatingStatus<_S>>());
+      expect(seen.single.event, isA<UpdateEvent<_S>>());
+      expect(seen.single.event!.groupsToRebuild, contains('g'));
+      await sub.cancel();
+      await bloc.close();
+      expect(() => bloc.seedState(const _S(2)), throwsStateError);
     });
 
     test('onWaiting emits WaitingStatus and keeps state when none given',
@@ -271,13 +289,12 @@ void main() {
       expect(bloc.state.n, 7);
     });
 
-    test('onFailure emits FailureStatus with the new state', () async {
+    test('onFailure emits FailureStatus and keeps the state', () async {
       await bloc.send(UpdateEvent<_S>(
-        newState: const _S(3),
         resetStatusTo: ResetStreamType.onFailure,
       ));
       expect(bloc.currentStatus, isA<FailureStatus<_S>>());
-      expect(bloc.state.n, 3);
+      expect(bloc.state.n, 7);
       expect(bloc.oldState.n, 7);
     });
 

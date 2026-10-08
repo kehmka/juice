@@ -533,12 +533,12 @@ test('my test', () async {
 });
 ```
 
-## Migration from RelayUseCaseBuilder Tests
+## Migration from RelayUseCaseBuilder Tests (removed in juice 2.0.0)
 
-If you have existing tests for `RelayUseCaseBuilder`, here's how to migrate:
+If you have tests for `RelayUseCaseBuilder` (removed in 2.0.0), here's how to migrate:
 
 ```dart
-// Before (deprecated):
+// Before (1.x, removed in 2.0.0):
 test('relay test', () async {
   final relay = RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
     typeOfEvent: LoadProfileEvent,

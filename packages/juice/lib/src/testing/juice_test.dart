@@ -54,8 +54,8 @@ class JuiceEmission<TState extends BlocState> {
 /// is fully processed, so [act] returning it is enough. Use [wait] only for
 /// work that outlives processing on purpose (a debounce, a timer).
 ///
-/// - [seed] puts the bloc in a starting state (via the built-in
-///   `UpdateEvent`) before recording starts; the seed emission is not
+/// - [seed] puts the bloc in a starting state (via the `seedState` test
+///   seam) before recording starts; the seed emission is not
 ///   recorded.
 /// - [expect] returns the expected emissions, one matcher (or value) per
 ///   emission, in order — use [isUpdatingStatus], [isWaitingStatus],
@@ -129,7 +129,7 @@ Future<List<JuiceEmission<TState>>>
   try {
     bloc = build();
     if (seed != null) {
-      await bloc.send(UpdateEvent<TState>(newState: seed()));
+      bloc.seedState(seed());
     }
     // Recording starts after the seed.
     recorder.useCaseErrors.clear();

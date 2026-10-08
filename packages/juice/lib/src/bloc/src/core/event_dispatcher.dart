@@ -130,19 +130,17 @@ class EventDispatcher<Event> {
   /// its CancellableEvent, hand it to [_onSuperseded]) and run [event] at
   /// once inside a zone that carries its [ExecutionRun].
   Future<void> _restartable(
-      Type type, EventHandler<Event> handler, Event event) async {
-    if (_disposed) return;
+      Type type, EventHandler<Event> handler, Event event) {
+    if (_disposed) return Future<void>.value();
     final run = ExecutionRun(event as Object);
     _runOf[event] = run;
     final previous = _current[type];
     _current[type] = run;
     if (previous != null) _supersede(type, previous);
-    try {
-      await runZoned(() => handler(event),
-          zoneValues: {ExecutionRun.zoneKey: run});
-    } finally {
+    return runZoned(() => handler(event),
+        zoneValues: {ExecutionRun.zoneKey: run}).whenComplete(() {
       if (identical(_current[type], run)) _current.remove(type);
-    }
+    });
   }
 
   void _supersede(Type type, ExecutionRun previous) {
@@ -162,28 +160,23 @@ class EventDispatcher<Event> {
   /// Queue [event] behind any in-flight/queued same-type runs; one at a time.
   Future<void> _sequential(
       Type type, EventHandler<Event> handler, Event event) {
-    final run = (_tails[type] ?? Future<void>.value()).then((_) async {
-      if (_disposed) return; // queued after close → skip (no emit-after-close)
-      try {
-        await handler(event);
-      } catch (_) {
-        // The executor already routes use-case errors via its own onError.
+    final run = (_tails[type] ?? Future<void>.value()).then((_) {
+      if (_disposed) {
+        return null; // queued after close → skip (no emit-after-close)
       }
+      // The executor already routes use-case errors via its own onError.
+      return handler(event).catchError((_) {});
     });
     _tails[type] = run;
     return run; // dispatch()/send() await full processing
   }
 
   /// Drop [event] if a same-type run is already in flight.
-  Future<void> _droppable(
-      Type type, EventHandler<Event> handler, Event event) async {
-    if (_running[type] == true) return;
+  Future<void> _droppable(Type type, EventHandler<Event> handler, Event event) {
+    if (_running[type] == true) return Future<void>.value();
+    if (_disposed) return Future<void>.value();
     _running[type] = true;
-    try {
-      if (!_disposed) await handler(event);
-    } finally {
-      _running[type] = false;
-    }
+    return handler(event).whenComplete(() => _running[type] = false);
   }
 
   /// Checks if a handler is registered for the given event type.
@@ -199,20 +192,27 @@ class EventDispatcher<Event> {
   /// If no handler is registered:
   /// - Calls [onUnhandledEvent] if provided
   /// - Otherwise throws [StateError]
-  Future<void> dispatch(Event event) async {
+  Future<void> dispatch(Event event) {
+    // Not `async`: the handler's future is returned through (one hop less).
+    // The no-handler error is still delivered ASYNCHRONOUSLY, as a failed
+    // future, so an un-awaited send never throws into its caller's frame —
+    // the contract `async` gave for free, kept on purpose (2.0.0).
     final handler = _handlers[event.runtimeType];
     if (handler == null) {
       if (_onUnhandledEvent != null) {
-        JuiceLoggerConfig.logger.log(
+        _log.log(
           'No handler registered for ${event.runtimeType}, using fallback handler',
           level: Level.warning,
         );
         _onUnhandledEvent(event);
-        return;
+        return Future<void>.value();
       }
-      throw StateError('No handler registered for ${event.runtimeType}');
+      return Future<void>.error(
+        StateError('No handler registered for ${event.runtimeType}'),
+        StackTrace.current,
+      );
     }
-    await handler(event);
+    return handler(event);
   }
 
   /// Removes all registered handlers and concurrency state.

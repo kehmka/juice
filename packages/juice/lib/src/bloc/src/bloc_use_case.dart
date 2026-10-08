@@ -159,8 +159,8 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
 /// - Stream status changes (update/waiting/failure)
 /// - Widget rebuild control via groups
 ///
-/// **Note**: The [UpdateEvent.newState] parameter is deprecated. State changes
-/// should go through dedicated use cases to maintain clean architecture.
+/// It re-emits the bloc's CURRENT state (an `UpdateEvent` carries none since
+/// 2.0.0); state changes go through dedicated use cases.
 class UpdateUseCase<TBloc extends JuiceBloc>
     extends BlocUseCase<TBloc, UpdateEvent> {
   @override
@@ -168,21 +168,21 @@ class UpdateUseCase<TBloc extends JuiceBloc>
     switch (event.resetStatusTo) {
       case ResetStreamType.onUpdate:
         emitUpdate(
-            newState: event.newState ?? bloc.state,
+            newState: bloc.state,
             groupsToRebuild: event.groupsToRebuild,
             aviatorName: event.aviatorName,
             aviatorArgs: event.aviatorArgs);
         break;
       case ResetStreamType.onFailure:
         emitFailure(
-            newState: event.newState ?? bloc.state,
+            newState: bloc.state,
             groupsToRebuild: event.groupsToRebuild,
             aviatorName: event.aviatorName,
             aviatorArgs: event.aviatorArgs);
         break;
       case ResetStreamType.onWaiting:
         emitWaiting(
-            newState: event.newState ?? bloc.state,
+            newState: bloc.state,
             groupsToRebuild: event.groupsToRebuild,
             aviatorName: event.aviatorName,
             aviatorArgs: event.aviatorArgs);

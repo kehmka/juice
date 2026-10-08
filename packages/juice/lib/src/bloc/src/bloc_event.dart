@@ -77,9 +77,9 @@ abstract class EventBase extends Object {
 /// - Navigation triggers via [aviatorName] and [aviatorArgs]
 /// - Resetting stream status (e.g., from failure back to updating)
 ///
-/// **Important**: Avoid using [newState] for state changes. State mutations
-/// should go through dedicated use cases to maintain clean architecture.
-/// The [newState] parameter is deprecated and will be removed in v2.0.0.
+/// **State changes go through a dedicated use case.** `UpdateEvent` carries
+/// no state (its `newState` parameter was removed in 2.0.0): it re-emits the
+/// bloc's CURRENT state under the groups / status / aviator it names.
 ///
 /// Example (correct usage):
 /// ```dart
@@ -90,32 +90,17 @@ abstract class EventBase extends Object {
 /// bloc.send(UpdateEvent(resetStatusTo: ResetStreamType.onUpdate));
 /// ```
 ///
-/// Example (incorrect - use a dedicated UseCase instead):
+/// To change state, send an event a use case handles:
 /// ```dart
-/// // DON'T DO THIS - bypasses use case pattern
-/// bloc.send(UpdateEvent(newState: state.copyWith(count: 5)));
-///
-/// // DO THIS - create a proper use case
 /// bloc.send(SetCountEvent(count: 5));
 /// ```
 class UpdateEvent<TState extends BlocState> extends EventBase {
   UpdateEvent({
-    @Deprecated(
-        'Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
-    this.newState,
     this.aviatorName,
     this.aviatorArgs,
     Set<String>? groupsToRebuild,
     this.resetStatusTo = ResetStreamType.onUpdate,
   }) : super(groupsToRebuild: groupsToRebuild ?? rebuildAlways);
-
-  /// The new state to emit.
-  ///
-  /// **Deprecated**: State changes should go through dedicated use cases.
-  /// This parameter bypasses the use case pattern and will be removed in v2.0.0.
-  @Deprecated(
-      'Use a dedicated UseCase for state changes. Will be removed in v2.0.0.')
-  final TState? newState;
 
   /// Optional aviator name to trigger navigation.
   final String? aviatorName;

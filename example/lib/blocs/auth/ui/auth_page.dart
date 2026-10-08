@@ -57,7 +57,7 @@ class AuthPage extends StatelessWidget {
               'UserProfileBloc subscribes to AuthBloc events:\n'
               '• LoginSuccessEvent → LoadProfileEvent\n'
               '• LogoutSuccessEvent → ClearProfileEvent\n\n'
-              'No RelayUseCaseBuilder needed - just clean event subscription!',
+              'No relay needed - just clean event subscription!',
               style: TextStyle(color: Colors.blue.shade800),
             ),
           ],

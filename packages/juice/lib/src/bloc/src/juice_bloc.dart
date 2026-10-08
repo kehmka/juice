@@ -256,6 +256,21 @@ class JuiceBloc<TState extends BlocState>
     }
   }
 
+  /// TEST SEAM: put the bloc into [state] without running a use case
+  /// (juice ≥ 2.0.0; replaces the removed `UpdateEvent.newState` for
+  /// seeding). Emits an `UpdatingStatus` carrying an `UpdateEvent` with
+  /// [groups], exactly as a use case's `emitUpdate` would, so widgets and
+  /// listeners see a normal emission. Throws on a closed or closing bloc.
+  /// Production code changes state through a use case — never this.
+  @visibleForTesting
+  void seedState(TState state, {Set<String>? groups}) {
+    if (isClosing) {
+      throw StateError('seedState on a closed or closing $runtimeType');
+    }
+    final event = UpdateEvent<TState>(groupsToRebuild: groups);
+    _statusEmitter.emitUpdate(event, state, event.groupsToRebuild);
+  }
+
   /// Whether [event]'s `restartable` run has been superseded by a newer
   /// same-type event. False for any other event. Inside the use case,
   /// `BlocUseCase.isSuperseded` needs no event.
@@ -305,7 +320,10 @@ class JuiceBloc<TState extends BlocState>
   /// Sends an event to be processed by its registered use case.
   ///
   /// If the bloc is closed, the event is ignored and a warning is logged.
-  Future<void> send(EventBase event) async {
+  Future<void> send(EventBase event) {
+    // Not `async`: the dispatcher's future is returned through, not awaited
+    // here — one microtask hop less per send (2.0.0, RESULTS §12/§14). The
+    // executor keeps the one structural await (it closes the span).
     if (isClosed || _closing) {
       _logger.log(
         isClosed
@@ -318,7 +336,7 @@ class JuiceBloc<TState extends BlocState>
           'event': event.runtimeType.toString(),
         },
       );
-      return;
+      return Future<void>.value();
     }
     return _dispatcher.dispatch(event);
   }
@@ -404,7 +422,7 @@ class JuiceBloc<TState extends BlocState>
       _aviatorManager.navigate(aviatorName, args);
 
   /// Triggers an update with the current state.
-  void start() => send(UpdateEvent(newState: state));
+  void start() => send(UpdateEvent());
 
   /// Emits a new status directly.
   ///

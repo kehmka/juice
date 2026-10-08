@@ -8,7 +8,7 @@ import '../../../bloc.dart';
 /// allowing a bloc to react to specific events emitted by another bloc,
 /// without needing to know the source bloc's state structure.
 ///
-/// Unlike [RelayUseCaseBuilder] which observes all state changes,
+/// Unlike [StateRelay] / [StatusRelay], which observe state changes,
 /// EventSubscription filters for specific event types, resulting in
 /// cleaner, more targeted inter-bloc communication.
 ///

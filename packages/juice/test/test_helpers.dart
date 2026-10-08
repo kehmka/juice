@@ -166,12 +166,8 @@ class SecondTestBloc extends JuiceBloc<SecondTestState> {
   SecondTestBloc({required SecondTestState initialState})
       : super(initialState, [], []);
 
-  void updateStatus(String newStatus) {
-    send(UpdateEvent(
-      newState: state.copyWith(status: newStatus),
-      groupsToRebuild: {"status-group"},
-    ));
-  }
+  void updateStatus(String newStatus) =>
+      seedState(state.copyWith(status: newStatus), groups: {"status-group"});
 }
 
 // For testing relays between blocs

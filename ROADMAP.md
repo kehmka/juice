@@ -548,7 +548,7 @@ packages with the rule ON (proves the sweep) BEFORE the parameter
 becomes required (proves the compiler agrees); every mode ruling in the
 commit message.
 
-**C · Collapse the send hop depth** (tee-up N, pulled forward: the
+**C ✅ BUILT 2026-10-07 on `v2`** (send/dispatch/mode wrappers return the future through; the no-handler error stays a failed future — Kevin's ruling; five pins in `test/bloc/hop_depth_test.dart`; Mac: knob-on send 1.74 → 1.60 µs, 20k-burst 3.76 → 2.82 µs; RESULTS §14). Original: **Collapse the send hop depth** (tee-up N, pulled forward: the
 ordering risk lives in consumer code, and there is none). `send` and
 `dispatch` return the future through; the executor's await is the one
 structural await. 4 hops → 2; ~0.2 µs of a 1.1–1.8 µs send; the burst
@@ -564,7 +564,7 @@ a fire-and-forget send.
 order holds; span pair closes on success AND error) + the breakdown's
 hop and send rows show the drop.
 
-**D · Remove the deprecated members** — `UpdateEvent.newState` (state
+**D ✅ BUILT 2026-10-07 on `v2`** (`lib/fix_data.yaml` ships with 2.0.0 for the parameter; the builder has no mechanical migration — the docs show it). Original: **Remove the deprecated members** — `UpdateEvent.newState` (state
 changes go through a use case; the parameter bypasses the pattern) and
 `RelayUseCaseBuilder` (replaced by `StateRelay` / `StatusRelay`). Both
 say "removed in v2.0.0" in their annotations. Tee-up D (`fix_data.yaml`)
@@ -775,7 +775,7 @@ release-mode gate — a doctrine call.
 | A | Skill via pub's package-skills channel (`packages/juice/skills/juice-framework/`, emitted by sync_skill.sh; installs with `dart run skills@ get` into Claude Code / Cursor / Gemini / Cline / Copilot — verified on dart.dev) | S | `skills@ get` accepts the name on a scratch consumer | dx |
 | B ✅ | Port `juice_lint` to Dart's official `analysis_server_plugin` (reports via `dart analyze` — NOT Flutter 3.47's `flutter analyze`; quick fixes) — closes the CLI limitation found dogfooding | M | docket-5 sentinel proof under the new host | dx |
 | C ✅ (partly) | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
-| D | `fix_data.yaml` for the three `@Deprecated` members | S | confirm the v2.0.0 removal list | dx |
+| D ✅ 2026-10-07 (`v2`) | `fix_data.yaml` for the removed `UpdateEvent.newState` (the only removal `dart fix` can do mechanically); `RelayUseCaseBuilder` migrates by hand per the docs | S | ~~confirm the v2.0.0 removal list~~ two members, not three | dx |
 | E | State hydration seam (`StatePersistence<TState>` + `hydrate`; storage default + fake; versioned FAIL-LOUD migration) | M | migrating theme + i18n must net-delete code | bloc, riverpod |
 | F ✅ 2026-10-07 (`v2`) | `JuiceBloc.bindStream` / `unbind` / `StreamBinding` — on the BLOC, which owns the lifetime (Kevin's ruling; the family's nine sites all start from bloc helpers): cancelled at the start of close before the use cases close, keyed replacement, loud errors, refused on a closing bloc. Location and llm migrated (location's close body shrank; llm keeps one explicit cancel so the provider is never disposed under a live stream). 20 tests, every path; coverage of the new code 100%. Seven sites remain for the family wave: connectivity, power, lifecycle, notifications, realtime, media (per-item), llm's throttle | M | ~~migrate location + llm~~ | bloc |
 | G ✅ | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
@@ -785,7 +785,7 @@ release-mode gate — a doctrine call.
 | K | Lease `linger` window on `register` | S | a measured cold re-entry in Amoli | riverpod |
 | L | `BlocScope.whenReady/allReady` + test-only `override<T>()` | S | count ordered init awaits in the example apps first | others |
 | M | `juice_feature` mason brick | M | regenerate notes_app's feature to zero diff; delete on first drift | others, dx |
-| N | Collapse the send hop depth: `send` and `dispatch` return the future through instead of awaiting it, leaving the executor's await (closes the span, routes errors) as the one structural await — 4 hops → 2, ~0.2 µs of a 1.1–1.8 µs knob-on send (~15–20%), and the burst depth cost scales with hops × in-flight (RESULTS §12). Changes error TIMING (an un-awaited send's "no handler" / closed-bloc error would surface synchronously unless wrapped), microtask ordering of a send's completion, and async stack-trace depth — the ordering risk lives in consumer code and cannot be tested from the framework | S | not before a consumer dispatches enough events per frame to notice, or the 2.0 dispatcher work (vendored Bloc removal) touches this code anyway; then the existing suite + three pins (un-awaited error stays async; sequential queue order; span pair closes on success and error) + the breakdown's hop and send rows as the number | benchmarks §12 |
+| N ✅ 2026-10-07 (`v2`, as docket item C) | Collapse the send hop depth: `send` and `dispatch` return the future through instead of awaiting it, leaving the executor's await (closes the span, routes errors) as the one structural await — 4 hops → 2, ~0.2 µs of a 1.1–1.8 µs knob-on send (~15–20%), and the burst depth cost scales with hops × in-flight (RESULTS §12). Changes error TIMING (an un-awaited send's "no handler" / closed-bloc error would surface synchronously unless wrapped), microtask ordering of a send's completion, and async stack-trace depth — the ordering risk lives in consumer code and cannot be tested from the framework | S | not before a consumer dispatches enough events per frame to notice, or the 2.0 dispatcher work (vendored Bloc removal) touches this code anyway; then the existing suite + three pins (un-awaited error stays async; sequential queue order; span pair closes on success and error) + the breakdown's hop and send rows as the number | benchmarks §12 |
 
 `restartable` (#3) stays parked but is now validated by two external
 implementations (bloc_concurrency's switchMap fence; BlocSignal 1.3.0's

@@ -7,241 +7,241 @@
     {
       "layer": "stateManager.emit",
       "kind": "real",
-      "microsPerOp": 0.019,
+      "microsPerOp": 0.027,
       "min": 0.018,
-      "max": 0.025,
-      "spread": 0.178,
+      "max": 0.031,
+      "spread": 0.236,
       "rounds": [
-        0.025,
+        0.031,
         0.019,
+        0.029,
         0.018,
-        0.019,
-        0.019
+        0.027
       ]
     },
     {
       "layer": "statusEmitter.emitUpdate",
       "kind": "real",
-      "microsPerOp": 0.931,
-      "min": 0.899,
-      "max": 0.964,
-      "spread": 0.035,
+      "microsPerOp": 0.895,
+      "min": 0.828,
+      "max": 0.907,
+      "spread": 0.044,
       "rounds": [
-        0.943,
-        0.899,
-        0.964,
-        0.931,
-        0.925
+        0.9,
+        0.907,
+        0.828,
+        0.895,
+        0.837
       ]
     },
     {
       "layer": "telemetry maps (3 per event)",
       "kind": "synthetic",
-      "microsPerOp": 1.162,
-      "min": 1.064,
-      "max": 1.254,
-      "spread": 0.082,
+      "microsPerOp": 1.051,
+      "min": 1.034,
+      "max": 1.132,
+      "spread": 0.047,
       "rounds": [
-        1.18,
+        1.132,
+        1.042,
         1.064,
-        1.254,
-        1.158,
-        1.162
+        1.034,
+        1.051
       ]
     },
     {
       "layer": "4 awaited async hops",
       "kind": "synthetic",
-      "microsPerOp": 0.511,
-      "min": 0.496,
-      "max": 0.529,
-      "spread": 0.033,
+      "microsPerOp": 0.482,
+      "min": 0.468,
+      "max": 0.505,
+      "spread": 0.038,
       "rounds": [
-        0.496,
-        0.508,
-        0.529,
-        0.518,
-        0.511
+        0.505,
+        0.468,
+        0.469,
+        0.482,
+        0.483
       ]
     },
     {
       "layer": "send · StatefulUseCaseBuilder (reused instance)",
       "kind": "real",
-      "microsPerOp": 2.423,
-      "min": 2.364,
-      "max": 2.473,
-      "spread": 0.023,
+      "microsPerOp": 2.15,
+      "min": 2.121,
+      "max": 2.194,
+      "spread": 0.017,
       "rounds": [
-        2.364,
-        2.379,
-        2.448,
-        2.473,
-        2.423
+        2.194,
+        2.164,
+        2.133,
+        2.15,
+        2.121
       ]
     },
     {
       "layer": "send · UseCaseBuilder (fresh instance)",
       "kind": "real",
-      "microsPerOp": 2.719,
-      "min": 2.65,
-      "max": 2.797,
-      "spread": 0.027,
+      "microsPerOp": 2.444,
+      "min": 2.386,
+      "max": 2.47,
+      "spread": 0.017,
       "rounds": [
-        2.65,
-        2.671,
-        2.797,
-        2.73,
-        2.719
+        2.47,
+        2.453,
+        2.444,
+        2.386,
+        2.416
       ]
     },
     {
       "layer": "send · fresh instance, minLevel = warning (chatter not built)",
       "kind": "real",
-      "microsPerOp": 1.824,
-      "min": 1.795,
-      "max": 1.846,
-      "spread": 0.014,
+      "microsPerOp": 1.6,
+      "min": 1.577,
+      "max": 1.626,
+      "spread": 0.015,
       "rounds": [
-        1.827,
-        1.795,
-        1.824,
-        1.846,
-        1.817
+        1.6,
+        1.577,
+        1.626,
+        1.592,
+        1.609
       ]
     },
     {
       "layer": "send · fresh instance, DefaultJuiceLogger, no knob set",
       "kind": "real",
-      "microsPerOp": 1.818,
-      "min": 1.79,
-      "max": 1.849,
-      "spread": 0.016,
+      "microsPerOp": 1.595,
+      "min": 1.575,
+      "max": 1.635,
+      "spread": 0.019,
       "rounds": [
-        1.818,
-        1.793,
-        1.835,
-        1.849,
-        1.79
+        1.595,
+        1.576,
+        1.633,
+        1.575,
+        1.635
       ]
     },
     {
       "layer": "4 awaited async hops · burst n=2000",
       "kind": "synthetic",
-      "microsPerOp": 0.392,
-      "min": 0.271,
-      "max": 0.452,
-      "spread": 0.231,
+      "microsPerOp": 0.269,
+      "min": 0.261,
+      "max": 0.279,
+      "spread": 0.033,
       "rounds": [
-        0.271,
-        0.345,
-        0.392,
-        0.403,
-        0.452
+        0.279,
+        0.276,
+        0.269,
+        0.261,
+        0.267
       ]
     },
     {
       "layer": "send · fresh instance · burst n=2000",
       "kind": "real",
-      "microsPerOp": 2.521,
-      "min": 2.425,
-      "max": 2.633,
-      "spread": 0.041,
+      "microsPerOp": 2.519,
+      "min": 2.337,
+      "max": 2.568,
+      "spread": 0.046,
       "rounds": [
-        2.521,
-        2.425,
-        2.633,
-        2.591,
-        2.468
+        2.412,
+        2.559,
+        2.337,
+        2.568,
+        2.519
       ]
     },
     {
       "layer": "send · reused instance · burst n=2000",
       "kind": "real",
-      "microsPerOp": 2.922,
-      "min": 2.68,
-      "max": 3.071,
-      "spread": 0.067,
+      "microsPerOp": 2.123,
+      "min": 1.949,
+      "max": 2.395,
+      "spread": 0.105,
       "rounds": [
-        2.885,
-        3.071,
-        2.922,
-        2.972,
-        2.68
+        2.197,
+        1.949,
+        2.123,
+        1.99,
+        2.395
       ]
     },
     {
       "layer": "send · fresh, minLevel = warning · burst n=2000",
       "kind": "real",
-      "microsPerOp": 1.609,
-      "min": 1.512,
-      "max": 1.634,
-      "spread": 0.038,
+      "microsPerOp": 1.5,
+      "min": 1.443,
+      "max": 1.716,
+      "spread": 0.091,
       "rounds": [
-        1.619,
-        1.512,
-        1.609,
-        1.634,
-        1.607
+        1.443,
+        1.71,
+        1.446,
+        1.716,
+        1.5
       ]
     },
     {
       "layer": "4 awaited async hops · burst n=20000",
       "kind": "synthetic",
-      "microsPerOp": 1.239,
-      "min": 1.135,
-      "max": 1.893,
-      "spread": 0.306,
+      "microsPerOp": 1.79,
+      "min": 1.452,
+      "max": 1.833,
+      "spread": 0.106,
       "rounds": [
-        1.893,
-        1.205,
-        1.26,
-        1.239,
-        1.135
+        1.833,
+        1.496,
+        1.79,
+        1.452,
+        1.794
       ]
     },
     {
       "layer": "send · fresh instance · burst n=20000",
       "kind": "real",
-      "microsPerOp": 4.534,
-      "min": 3.728,
-      "max": 5.206,
-      "spread": 0.163,
+      "microsPerOp": 3.95,
+      "min": 3.851,
+      "max": 3.988,
+      "spread": 0.017,
       "rounds": [
-        4.948,
-        4.388,
-        5.206,
-        4.534,
-        3.728
+        3.988,
+        3.956,
+        3.95,
+        3.948,
+        3.851
       ]
     },
     {
       "layer": "send · reused instance · burst n=20000",
       "kind": "real",
-      "microsPerOp": 4.164,
-      "min": 3.24,
-      "max": 4.837,
-      "spread": 0.192,
+      "microsPerOp": 3.417,
+      "min": 3.159,
+      "max": 3.554,
+      "spread": 0.058,
       "rounds": [
-        3.24,
-        4.754,
-        3.521,
-        4.837,
-        4.164
+        3.261,
+        3.417,
+        3.554,
+        3.159,
+        3.49
       ]
     },
     {
       "layer": "send · fresh, minLevel = warning · burst n=20000",
       "kind": "real",
-      "microsPerOp": 2.992,
-      "min": 2.628,
-      "max": 3.704,
-      "spread": 0.18,
+      "microsPerOp": 2.819,
+      "min": 2.648,
+      "max": 3.013,
+      "spread": 0.065,
       "rounds": [
-        2.628,
-        3.704,
-        2.992,
-        2.959,
-        3.546
+        2.863,
+        2.648,
+        2.819,
+        2.662,
+        3.013
       ]
     }
   ]

@@ -8,14 +8,8 @@
 # least-covered files so a drop is actionable.
 #
 # Exclusions are explicit and each has a reason — adding one is a review
-# decision, not a way to make the number go up:
-#   - src/bloc/src/bloc.dart, emitter.dart, bloc_support.dart and
-#     global_bloc_resolver.dart: a vendored copy of the `bloc` library's
-#     Bloc<Event, State> base and helpers. Exported, but nothing in the
-#     family uses them (JuiceBloc does not extend them). Deprecate or remove
-#     in 2.0.0; until then they are not Juice's behavior to test.
-#   - src/bloc/src/bloc_base.dart: the same vendored base (BlocBase); the
-#     interfaces JuiceBloc implements there carry no executable lines.
+# decision, not a way to make the number go up. (The vendored `bloc` base
+# that was excluded until 2.0.0 is gone; nothing is excluded today.)
 set -e
 
 threshold="${1:?usage: tool/coverage_check.sh <min-percent>}"
@@ -26,11 +20,6 @@ flutter test --no-pub --coverage >/dev/null
 
 awk -v min="$threshold" '
   BEGIN {
-    ex["lib/src/bloc/src/bloc.dart"] = 1
-    ex["lib/src/bloc/src/emitter.dart"] = 1
-    ex["lib/src/bloc/src/bloc_support.dart"] = 1
-    ex["lib/src/bloc/src/global_bloc_resolver.dart"] = 1
-    ex["lib/src/bloc/src/bloc_base.dart"] = 1
   }
   /^SF:/ {
     file = substr($0, 4); sub(/^.*\/lib\//, "lib/", file)

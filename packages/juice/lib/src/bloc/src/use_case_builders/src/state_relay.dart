@@ -58,11 +58,10 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
     this.destScope,
     BlocDependencyResolver? resolver,
   }) : _customResolver = resolver {
-    Future.microtask(() {
-      if (!_isInitialized && !_isClosed) {
-        _initialize();
-      }
-    });
+    // Synchronous (2.0.0): a relay against an unregistered or closed bloc
+    // throws HERE, at construction, where the developer is looking — not
+    // as an uncaught error from a microtask nobody awaits.
+    _initialize();
   }
 
   /// Function that transforms source bloc state into an event for destination bloc.
@@ -97,7 +96,6 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   StreamSubscription<dynamic>? _subscription;
 
   /// Whether the relay has been initialized.
-  bool _isInitialized = false;
 
   /// Whether the relay has been closed.
   bool _isClosed = false;
@@ -124,7 +122,6 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       }
 
       _setupRelay();
-      _isInitialized = true;
     } catch (e, stackTrace) {
       JuiceLoggerConfig.logger.logError(
         'Failed to initialize StateRelay between $TSourceBloc and $TDestBloc',
@@ -231,11 +228,10 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
     this.destScope,
     BlocDependencyResolver? resolver,
   }) : _customResolver = resolver {
-    Future.microtask(() {
-      if (!_isInitialized && !_isClosed) {
-        _initialize();
-      }
-    });
+    // Synchronous (2.0.0): a relay against an unregistered or closed bloc
+    // throws HERE, at construction, where the developer is looking — not
+    // as an uncaught error from a microtask nobody awaits.
+    _initialize();
   }
 
   /// Function that transforms source StreamStatus into an event for destination bloc.
@@ -258,7 +254,6 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   BlocLease<TSourceBloc>? _sourceLease;
   BlocLease<TDestBloc>? _destLease;
   StreamSubscription<dynamic>? _subscription;
-  bool _isInitialized = false;
   bool _isClosed = false;
 
   /// Whether this relay has been closed.
@@ -283,7 +278,6 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       }
 
       _setupRelay();
-      _isInitialized = true;
     } catch (e, stackTrace) {
       JuiceLoggerConfig.logger.logError(
         'Failed to initialize StatusRelay between $TSourceBloc and $TDestBloc',

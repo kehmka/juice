@@ -85,54 +85,18 @@ final info = BlocScope.diagnostics<MyBloc>();
 print('Active: ${info?.isActive}, Leases: ${info?.leaseCount}');
 ```
 
-## GlobalBlocResolver (Legacy)
+## GlobalBlocResolver — removed in juice 2.0.0
 
-> **Note:** `GlobalBlocResolver` is still available for backwards compatibility, but `BlocScope` is the recommended approach for new code.
+`GlobalBlocResolver` (the 1.x legacy resolution point, deprecated in favour
+of `BlocScope`) was removed in 2.0.0 together with the rest of the vendored
+`bloc` base. Register blocs with `BlocScope` (above) and resolve them with
+`BlocScope.get` / `BlocScope.lease`. A `BlocDependencyResolver` can still be
+passed explicitly where an API takes one (`StateRelay` / `StatusRelay`
+`resolver:`); there is no global slot to assign it to any more.
 
-The GlobalBlocResolver provides a central point for bloc resolution throughout your app.
-
-### Configuration
-
-```dart
-void main() {
-  // Legacy setup (still works)
-  GlobalBlocResolver().resolver = BlocResolver();
-
-  // With custom resolver
-  GlobalBlocResolver().resolver = CustomResolver();
-
-  runApp(MyApp());
-}
-```
-
-### Usage in Widgets
-
-```dart
-class ProfileWidget extends StatelessJuiceWidget<ProfileBloc> {
-  // Resolver is handled automatically
-  ProfileWidget({super.key, super.groups = const {"profile"}});
-  
-  @override
-  Widget onBuild(BuildContext context, StreamStatus status) {
-    // bloc is automatically resolved
-    return Text(bloc.state.userName);
-  }
-}
-```
-
-### Custom Resolver Implementation
-
-```dart
-class CustomBlocResolver implements BlocDependencyResolver {
-  @override
-  T resolve<T extends JuiceBloc<BlocState>>({
-    Map<String, dynamic>? args
-  }) {
-    // Custom resolution logic
-    return customResolutionLogic<T>(args);
-  }
-}
-```
+> The Modular and custom-resolver examples below predate 2.0.0 where they
+> assign `GlobalBlocResolver().resolver`: read those lines as "register the
+> same blocs with `BlocScope`".
 
 ## Integration with Flutter Modular
 

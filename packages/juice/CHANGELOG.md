@@ -22,6 +22,20 @@ lands here as it is built, with its migration in one line.
   names; a state CHANGE is an event a use case handles. *Migration:* `dart
   fix` removes the argument (`lib/fix_data.yaml`); where a value was
   passed, send the event of the use case that should produce it.
+- **The vendored `bloc` base is gone**: `Bloc`, `BlocBase`, `Emitter`,
+  `BlocEventSink`, `EventTransformer` / `EventMapper`, `GlobalBlocResolver`
+  (exported, unused by the framework, excluded from its own coverage gate).
+  `JuiceBloc` still implements `StateStreamableSource`, `Emittable` and
+  `ErrorSink` (now in `bloc_interfaces.dart`, still exported). *Migration:*
+  code that extended the vendored `Bloc` was never Juice; `GlobalBlocResolver`
+  users register with `BlocScope` (`doc/concepts/dependency.md`).
+- **`StateRelay` / `StatusRelay` initialise synchronously and THROW at
+  construction** (`StateError`) when a bloc is unregistered or closed —
+  not as an uncaught error from a microtask nobody awaits. *Migration:*
+  register both blocs with `BlocScope` (or pass `resolver:`) BEFORE
+  constructing the relay; a relay constructed in the same tick as the
+  registrations that used to "just work" because of the microtask now has
+  to come after them.
 - **`RelayUseCaseBuilder` removed** (deprecated since 1.x). *Migration:*
   `StateRelay` (state values) or `StatusRelay` (waiting / failure too) —
   `doc/concepts/relay-use-cases.md` shows the before and after.

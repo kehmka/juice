@@ -574,7 +574,7 @@ ships in 1.10.0 FIRST so the IDE migrates the two before they disappear.
 — *Gate:* `dart analyze` clean across the family with both gone; the
 examples compile; CHANGELOG names both.
 
-**E · Delete the vendored `Bloc<Event, State>` base** — `bloc.dart`,
+**E ✅ BUILT 2026-10-07 on `v2`** (five files gone; the three interfaces `JuiceBloc` implements kept in `bloc_interfaces.dart`; coverage exclusions dropped; dependency.md's legacy section replaced — its Modular/custom-resolver examples still show 1.x `GlobalBlocResolver().resolver =` lines under a note: DOC DEBT). Original: **Delete the vendored `Bloc<Event, State>` base** — `bloc.dart`,
 `emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
 `global_bloc_resolver.dart`: exported, unused, excluded from the coverage
 gate. No package or example outside core imports them (verified
@@ -601,7 +601,7 @@ neutral.
 — *Gate:* widget tests for both modes; the seam exercised once in an
 example app.
 
-**G · Relay setup errors fail loud.** `StateRelay` / `StatusRelay`
+**G ✅ BUILT 2026-10-07 on `v2`** (both relays call `_initialize()` in the constructor; three tests re-pinned to `throwsA(StateError)`). Original: **Relay setup errors fail loud.** `StateRelay` / `StatusRelay`
 initialised against an unregistered or closed bloc surface only as
 uncaught zone errors today (found in the Tier 0 review). A misconfigured
 relay should throw at registration, where the developer is looking, with
@@ -620,7 +620,7 @@ but it changes listen ordering, so it rides with 2.0 rather than a patch.
 (N+1 today → 1); a parent-rebuild frame scenario in `benchmarks/` to
 price it before/after.
 
-**I · Re-registration on hot reload.** Builders register once at
+**I ✅ DONE 2026-10-07 on `v2` — documented (Kevin's ruling: a hot restart is seconds, the registry stays simple): AGENTS §5 gotcha 10.** Original: **Re-registration on hot reload.** Builders register once at
 construction, so a NEW `UseCaseBuilder` needs a hot restart (AGENTS
 gotcha, from the ecosystem comparison). Decide whether 2.0 supports
 re-registration or documents the restart.

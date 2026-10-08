@@ -22,7 +22,7 @@ import 'core/use_case_registry.dart';
 import 'core/use_case_executor.dart';
 import 'core/status_emitter.dart';
 import 'core/aviator_manager.dart';
-import 'bloc.dart' show Emittable, ErrorSink, StateStreamableSource;
+import 'bloc_interfaces.dart';
 
 /// A bloc that manages state through use cases.
 ///

@@ -317,6 +317,14 @@ instead of rebuilding. Two rules:
    never silently fall back to a default. Multi-sink blocs isolate each sink
    (try/catch per sink) so one failure can't break the rest.
 
+10. **Builders register once, at construction — a NEW `UseCaseBuilder` needs a
+   hot RESTART.** Hot reload keeps the live bloc instance, whose dispatcher
+   table was filled in its constructor; a builder added to the list (or a
+   changed `typeOfEvent`) is not registered until the bloc is constructed
+   again. Edits INSIDE a use case hot-reload fine (the generator builds a
+   fresh instance per event). If an event suddenly reports "No handler
+   registered", restart before debugging.
+
 ---
 
 ## 6. Build & test

@@ -64,17 +64,6 @@ class _MapResolver implements BlocDependencyResolver {
 
 Future<void> _settle() => Future<void>.delayed(const Duration(milliseconds: 5));
 
-/// Runs [body] and collects errors that escape to the zone (e.g. thrown from
-/// a relay's init microtask).
-Future<List<Object>> _zoneErrors(void Function() body) async {
-  final errors = <Object>[];
-  await runZonedGuarded(() async {
-    body();
-    await _settle();
-  }, (e, _) => errors.add(e));
-  return errors;
-}
-
 void main() {
   setUp(BlocScope.reset);
   tearDown(BlocScope.reset);
@@ -107,28 +96,25 @@ void main() {
       expect(BlocScope.diagnostics<_DstBloc>()!.leaseCount, 0);
     });
 
-    test('init failure (unregistered bloc) escapes as a StateError', () async {
-      final errors = await _zoneErrors(() {
-        StateRelay<_SrcBloc, _DstBloc, _Src>(toEvent: (s) => _Record('x'));
-      });
-      expect(errors.single, isA<StateError>());
-      expect((errors.single as StateError).message,
-          contains('StateRelay initialization failed'));
+    test('init failure (unregistered bloc) THROWS at construction (2.0.0)', () {
+      expect(
+          () => StateRelay<_SrcBloc, _DstBloc, _Src>(
+              toEvent: (s) => _Record('x')),
+          throwsA(isA<StateError>().having((e) => e.message, 'message',
+              contains('StateRelay initialization failed'))));
     });
 
-    test('init failure with a closed bloc escapes as a StateError', () async {
+    test('init failure with a closed bloc THROWS at construction', () async {
       final src = _SrcBloc();
       final dst = _DstBloc();
       await src.close();
-      late StateRelay relay;
-      final errors = await _zoneErrors(() {
-        relay = StateRelay<_SrcBloc, _DstBloc, _Src>(
-          toEvent: (s) => _Record('x'),
-          resolver: _MapResolver({_SrcBloc: src, _DstBloc: dst}),
-        );
-      });
-      expect(errors.single.toString(), contains('closed blocs'));
-      expect(relay.isClosed, isFalse);
+      expect(
+          () => StateRelay<_SrcBloc, _DstBloc, _Src>(
+                toEvent: (s) => _Record('x'),
+                resolver: _MapResolver({_SrcBloc: src, _DstBloc: dst}),
+              ),
+          throwsA(isA<StateError>().having(
+              (e) => e.toString(), 'message', contains('closed blocs'))));
       await dst.close();
     });
   });
@@ -195,23 +181,23 @@ void main() {
       await dst.close();
     });
 
-    test('init failures escape as StateError', () async {
-      final errors = await _zoneErrors(() {
-        StatusRelay<_SrcBloc, _DstBloc, _Src>(toEvent: (s) => _Record('x'));
-      });
-      expect((errors.single as StateError).message,
-          contains('StatusRelay initialization failed'));
+    test('init failures THROW at construction (2.0.0)', () async {
+      expect(
+          () => StatusRelay<_SrcBloc, _DstBloc, _Src>(
+              toEvent: (s) => _Record('x')),
+          throwsA(isA<StateError>().having((e) => e.message, 'message',
+              contains('StatusRelay initialization failed'))));
 
       final src = _SrcBloc();
       final dst = _DstBloc();
       await dst.close();
-      final closedErrors = await _zoneErrors(() {
-        StatusRelay<_SrcBloc, _DstBloc, _Src>(
-          toEvent: (s) => _Record('x'),
-          resolver: _MapResolver({_SrcBloc: src, _DstBloc: dst}),
-        );
-      });
-      expect(closedErrors.single.toString(), contains('closed blocs'));
+      expect(
+          () => StatusRelay<_SrcBloc, _DstBloc, _Src>(
+                toEvent: (s) => _Record('x'),
+                resolver: _MapResolver({_SrcBloc: src, _DstBloc: dst}),
+              ),
+          throwsA(isA<StateError>().having(
+              (e) => e.toString(), 'message', contains('closed blocs'))));
       await src.close();
     });
   });

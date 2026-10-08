@@ -19,8 +19,6 @@ import '../use_case_builders/use_case_builder.dart';
 /// ```dart
 /// final context = UseCaseContext(
 ///   bloc: myBloc,
-///   getState: () => myBloc.state,
-///   getOldState: () => myBloc.oldState,
 ///   emitUpdate: (newState, groups) => statusEmitter.emitUpdate(...),
 ///   emitWaiting: (newState, groups) => statusEmitter.emitWaiting(...),
 ///   emitFailure: (newState, groups) => statusEmitter.emitFailure(...),
@@ -31,12 +29,6 @@ import '../use_case_builders/use_case_builder.dart';
 class UseCaseContext<TBloc, TState extends BlocState> {
   /// The bloc instance.
   final TBloc bloc;
-
-  /// Returns the current state.
-  final TState Function() getState;
-
-  /// Returns the previous state.
-  final TState Function() getOldState;
 
   /// Emits an updating status.
   ///
@@ -62,27 +54,19 @@ class UseCaseContext<TBloc, TState extends BlocState> {
   /// Triggers navigation (fire-and-forget).
   ///
   /// If the aviator's navigation is async, this will not wait for completion.
-  /// Use [navigateAsync] if you need to await the navigation.
   final void Function(String? aviator, Map<String, dynamic>? args) navigate;
 
   /// Triggers navigation and awaits completion.
   ///
-  /// Use this when the aviator performs async operations (auth checks,
-  /// data loading) that must complete before proceeding.
-  final Future<void> Function(String? aviator, Map<String, dynamic>? args)
-      navigateAsync;
 
   const UseCaseContext({
     required this.bloc,
-    required this.getState,
-    required this.getOldState,
     required this.emitUpdate,
     required this.emitWaiting,
     required this.emitFailure,
     required this.emitCancel,
     required this.emitEvent,
     required this.navigate,
-    required this.navigateAsync,
   });
 }
 

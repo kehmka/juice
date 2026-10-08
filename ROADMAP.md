@@ -630,6 +630,16 @@ document; a hot restart is seconds and the registry stays simple.
 — *Gate:* if documented, the AGENTS line and the skill sync; if
 supported, a test that a builder added after construction dispatches.
 
+### Coverage to 99 (Kevin, 2026-10-07: "do it now, before the wave. gate at 99")
+
+DONE on `v2`: 94.3% → 99.5%, CI gate 90 → 99. Dead surface deleted instead
+of tested (`UseCaseContext.getState/getOldState/navigateAsync`,
+`JuiceBloc.logger`, `JuiceAsyncBuilder.waiting` — a callback that could
+never fire). One bug found by the new tests and fixed: a stream error
+reverted every widget form to its initial status (`JuiceAsyncBuilder` now
+keeps the last delivered status). The 12 uncovered lines are unreachable by
+construction and stay in the count.
+
 ### Not in 2.0, on purpose
 
 `restartable` (#3) and `bindStream` (F): their gate is design input

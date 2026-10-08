@@ -9,7 +9,11 @@
 #
 # Exclusions are explicit and each has a reason — adding one is a review
 # decision, not a way to make the number go up. (The vendored `bloc` base
-# that was excluded until 2.0.0 is gone; nothing is excluded today.)
+# that was excluded until 2.0.0 is gone; nothing is excluded today.) The
+# gate is 99: the ~12 lines above it are unreachable by construction —
+# private constructors, a release-only branch behind an `assert`, `match`
+# arms a FailureStatus cannot take, a defensive branch the caller guards —
+# and are left in the count rather than excluded.
 set -e
 
 threshold="${1:?usage: tool/coverage_check.sh <min-percent>}"

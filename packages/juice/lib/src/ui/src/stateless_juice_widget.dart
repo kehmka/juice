@@ -98,7 +98,6 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
       initial: b.currentStatus,
       initiator: onInit,
       streamKey: SubscriptionKey([b], groups, key),
-      waiting: (context, status) => _build(context, status),
       builder: (context, status) => _build(context, status),
       error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
@@ -225,7 +224,6 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _build(context, status),
       builder: (context, status) => _build(context, status),
       error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
@@ -364,7 +362,6 @@ abstract class StatelessJuiceWidget3<
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _build(context, status),
       builder: (context, status) => _build(context, status),
       error: (c, status, o, s) => _build(c, status),
       closed: (context, value) => close(context),

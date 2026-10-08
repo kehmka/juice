@@ -101,7 +101,6 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _buildWithPrep(context, status),
       builder: (context, status) => _buildWithPrep(context, status),
       error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
@@ -255,7 +254,6 @@ abstract class JuiceWidgetState2<
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _buildWithPrep(context, status),
       builder: (context, status) => _buildWithPrep(context, status),
       error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
@@ -421,7 +419,6 @@ abstract class JuiceWidgetState3<
         }
         return onStateChange(status);
       }),
-      waiting: (context, status) => _buildWithPrep(context, status),
       builder: (context, status) => _buildWithPrep(context, status),
       error: (c, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),

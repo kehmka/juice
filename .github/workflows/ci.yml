@@ -44,7 +44,7 @@ jobs:
         run: cd benchmarks && flutter pub get && flutter test test/
 
       - name: Core Coverage Gate
-        run: sh tool/coverage_check.sh 90
+        run: sh tool/coverage_check.sh 99
 
       # juice_lint's analyzer-plugin rules on the five canary apps + the
       # fixture suite. `dart analyze` — Flutter 3.47's `flutter analyze` exits

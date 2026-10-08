@@ -36,6 +36,13 @@ lands here as it is built, with its migration in one line.
   constructing the relay; a relay constructed in the same tick as the
   registrations that used to "just work" because of the microtask now has
   to come after them.
+- **Dead surface removed, found by the coverage push to 99%:**
+  `UseCaseContext.getState` / `getOldState` / `navigateAsync` (no use-case
+  path ever called them), `JuiceBloc.logger` (unused), and
+  `JuiceAsyncBuilder.waiting` (the builder never entered
+  `ConnectionState.waiting`, so the callback could not fire — every widget
+  form passed one). *Migration:* drop the arguments; nothing observable
+  changes.
 - **`RelayUseCaseBuilder` removed** (deprecated since 1.x). *Migration:*
   `StateRelay` (state values) or `StatusRelay` (waiting / failure too) —
   `doc/concepts/relay-use-cases.md` shows the before and after.
@@ -69,6 +76,22 @@ lands here as it is built, with its migration in one line.
   `droppable` frees its slot after a failed or dropped run; the span pair
   still closes on success and on error. Async stack traces are two frames
   shorter.
+
+### Fixed
+- **A stream error no longer reverts a Juice widget to its INITIAL status.**
+  `AsyncSnapshot` cannot hold data and an error at once, so on a stream
+  error `JuiceAsyncBuilder` built with `initial` — the widget silently
+  showed its first state again. It now builds with the last status the
+  stream delivered. Found by the coverage tests for the widget forms'
+  `error:` path (every form is pinned: `test/reach/ui_paths_test.dart`).
+
+### Coverage
+- Core line coverage 94.3% → **99.5%**, gate raised from 90% to **99%** in
+  CI (`tool/coverage_check.sh 99`). 37 new tests under `test/reach/`
+  reach every path that was reachable; the 12 lines left are two private
+  constructors, a release-only log branch under an `assert`, four
+  `match` arms a `FailureStatus` can never take, a defensive branch the
+  use case guards before reaching, and one invariant-breach handler.
 
 ### Added
 - **`JuiceBloc.seedState(state, {groups})` — a `@visibleForTesting` seam**

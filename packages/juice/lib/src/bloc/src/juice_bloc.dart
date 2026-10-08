@@ -106,7 +106,6 @@ class JuiceBloc<TState extends BlocState>
 
   /// Internal logger instance
   final JuiceLogger _logger;
-  JuiceLogger get logger => _logger;
 
   final BlocErrorHandler _errorHandler;
 
@@ -601,8 +600,6 @@ class JuiceBloc<TState extends BlocState>
     }
     return UseCaseContext(
       bloc: this,
-      getState: () => state,
-      getOldState: () => oldState,
       emitUpdate: (newState, groups, {bool skipIfSame = false}) =>
           _statusEmitter.emitUpdate(event, newState, groups,
               skipIfSame: skipIfSame),
@@ -620,7 +617,6 @@ class JuiceBloc<TState extends BlocState>
         }
       },
       navigate: _aviatorManager.navigate,
-      navigateAsync: _aviatorManager.navigateAsync,
     );
   }
 
@@ -644,8 +640,6 @@ class JuiceBloc<TState extends BlocState>
 
     return UseCaseContext(
       bloc: this,
-      getState: () => state,
-      getOldState: () => oldState,
       emitUpdate: (newState, groups, {bool skipIfSame = false}) {
         if (fenced('update')) return;
         _statusEmitter.emitUpdate(event, newState, groups,
@@ -674,10 +668,6 @@ class JuiceBloc<TState extends BlocState>
       navigate: (aviator, args) {
         if (fenced('navigate')) return;
         _aviatorManager.navigate(aviator, args);
-      },
-      navigateAsync: (aviator, args) async {
-        if (fenced('navigate')) return;
-        await _aviatorManager.navigateAsync(aviator, args);
       },
     );
   }

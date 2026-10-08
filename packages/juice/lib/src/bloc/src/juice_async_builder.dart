@@ -28,15 +28,11 @@ typedef ErrorReporterFn = void Function(FlutterErrorDetails details);
 ///   stream: bloc.stream,
 ///   initial: bloc.currentStatus,
 ///   builder: (context, status) => Text('Data: ${status.state}'),
-///   waiting: (context, status) => CircularProgressIndicator(),
 ///   error: (context, status, error, stack) => Text('Error: $error'),
 /// )
 /// ```
 class JuiceAsyncBuilder<T> extends StatefulWidget {
   final InitiatorFn<T>? initiator;
-
-  /// The builder that should be called when no data is available.
-  final ValueBuilderFn<T>? waiting;
 
   /// The default value builder.
   final ValueBuilderFn<T> builder;
@@ -84,7 +80,6 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
   /// Creates a widget that builds depending on the state of a [Future] or [Stream].
   const JuiceAsyncBuilder({
     super.key,
-    this.waiting,
     this.initiator,
     required this.builder,
     this.error,
@@ -114,6 +109,13 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
   late final ValueNotifier<AsyncSnapshot<T>> _snapshotNotifier;
 
   StreamSubscription? _subscription;
+
+  /// The last data the stream delivered. An [AsyncSnapshot] cannot hold
+  /// data AND an error, so on a stream error the snapshot's data is gone;
+  /// without this the error branch built with [JuiceAsyncBuilder.initial] —
+  /// the widget silently REVERTED to its initial status (found by the 2.0
+  /// coverage tests, 2026-10-07).
+  T? _lastData;
 
   /// Returns the initial value, throwing if null.
   T get _requiredInitial =>
@@ -187,6 +189,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
           skipFirst = false;
           return;
         }
+        _lastData = event;
         _snapshotNotifier.value =
             AsyncSnapshot<T>.withData(ConnectionState.active, event);
       },
@@ -261,8 +264,9 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
     return ValueListenableBuilder<AsyncSnapshot<T>>(
       valueListenable: _snapshotNotifier,
       builder: (context, snapshot, child) {
-        // Use the default `StreamStatus.initial` if snapshot.data is null
-        T status = (snapshot.data ?? widget.initial) as T;
+        // The snapshot holds no data on an error: fall back to the LAST data
+        // the stream delivered, then to `initial`.
+        T status = (snapshot.data ?? _lastData ?? widget.initial) as T;
 
         if (snapshot.hasError && widget.error != null) {
           return widget.error!(
@@ -277,12 +281,6 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
             snapshot.data != null &&
             widget.closed != null) {
           return widget.closed!(context, status);
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            snapshot.data != null &&
-            widget.waiting != null) {
-          return widget.waiting!(context, status);
         }
 
         return widget.builder(context, status);

@@ -41,6 +41,21 @@ lands here as it is built, with its migration in one line.
   `doc/concepts/relay-use-cases.md` shows the before and after.
 
 ### Changed
+- **A Juice widget keeps its bloc subscription across parent rebuilds.**
+  Every widget form (`StatelessJuiceWidget` ×3, `JuiceWidgetState` ×3)
+  built a new filtered stream in `build`, so each parent rebuild cancelled
+  and re-listened (N+1 listens for N rebuilds). `JuiceAsyncBuilder` gained
+  `streamKey`: the subscription is replaced only when the key changes, and
+  the widgets key it on the bloc instance(s), the rebuild groups and the
+  widget key (`SubscriptionKey`). A rebuild that changes any of those still
+  re-subscribes; one that changes none keeps the subscription. Pinned by
+  `test/ui/resubscribe_test.dart` (11 → 1 listens across 10 rebuilds, both
+  forms; a groups change re-subscribes). The benchmarks' new parent-rebuild
+  scenario prices it at publish time (before 2.0.0: 2,366 µs per parent
+  rebuild of 1,000 leaves on the Mac). One subtlety: the kept
+  subscription's `onStateChange` is the one the FIRST widget instance
+  installed — same class, same behaviour, but an instance-captured value
+  inside an `onStateChange` override is read from that first instance.
 - **The send path has one awaited hop, not four.** `send`, `dispatch` and
   the mode wrappers return the handler's future through; the executor
   keeps the one structural await (it closes the telemetry span). Measured

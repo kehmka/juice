@@ -10,6 +10,7 @@ import 'package:juice/juice.dart' show JuiceLoggerConfig;
 import 'counters.dart';
 import 'dispatch.dart';
 import 'scenarios/all.dart';
+import 'scenarios/parent.dart';
 import 'scenarios/wide.dart';
 import 'stats.dart';
 
@@ -99,6 +100,15 @@ Future<void> _run(ValueNotifier<Widget> host) async {
     wideVariants(),
     'framesWide',
     'frameWideComparisons',
+  );
+  // Parent rebuilds, no emissions: prices the leaf subscription churn that
+  // 2.0.0 removed (docket item H). One variant; compared before vs after.
+  await _frames(
+    host,
+    report,
+    parentVariants(),
+    'framesParent',
+    'frameParentComparisons',
   );
 
   emit('BENCH_JSON_BEGIN');

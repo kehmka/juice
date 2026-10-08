@@ -97,6 +97,7 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
       }),
       initial: b.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([b], groups, key),
       waiting: (context, status) => _build(context, status),
       builder: (context, status) => _build(context, status),
       error: (context, status, o, ex) => _build(context, status),
@@ -217,6 +218,7 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
     return JuiceAsyncBuilder<StreamStatus>(
       initial: b1.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([b1, b2], groups, key),
       stream: MergeStream<StreamStatus>([b1.stream, b2.stream]).where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
           return false;
@@ -354,6 +356,7 @@ abstract class StatelessJuiceWidget3<
     return JuiceAsyncBuilder<StreamStatus>(
       initial: b1.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([b1, b2, b3], groups, key),
       stream: MergeStream<StreamStatus>([b1.stream, b2.stream, b3.stream])
           .where((status) {
         if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:juice/juice.dart';
 
 /// Special marker for indicating rebuild-all behavior
@@ -5,6 +6,43 @@ const String _alwaysRebuild = '*';
 
 /// Special marker for indicating opt-out behavior
 const String _optOut = '-';
+
+/// What a Juice widget's bloc subscription depends on: the bloc instance(s),
+/// the rebuild groups and the widget key. Passed as `JuiceAsyncBuilder`'s
+/// `streamKey`, so a parent rebuild that changes none of these keeps the
+/// subscription (no cancel + re-listen per rebuild, juice ≥ 2.0.0), and one
+/// that changes any of them replaces it.
+class SubscriptionKey {
+  const SubscriptionKey(this.blocs, this.groups, this.key);
+
+  /// The observed bloc instances, compared by identity.
+  final List<Object> blocs;
+
+  /// The widget's rebuild groups, compared as sets.
+  final Set<String>? groups;
+
+  /// The widget key, compared by `==`.
+  final Key? key;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! SubscriptionKey) return false;
+    if (other.blocs.length != blocs.length) return false;
+    for (var i = 0; i < blocs.length; i++) {
+      if (!identical(blocs[i], other.blocs[i])) return false;
+    }
+    if (!setEquals(groups, other.groups)) return false;
+    return key == other.key;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAll(blocs.map(identityHashCode)),
+        groups == null ? null : Object.hashAllUnordered(groups!),
+        key,
+      );
+}
 
 /// Constant for triggering rebuilds in all participating widgets.
 ///

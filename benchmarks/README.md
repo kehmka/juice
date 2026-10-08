@@ -45,6 +45,17 @@ recomputes are counted as selector calls (one O(N) recompute, not an
 O(1) selector). The timing app reports it as
 `framesWide` / `frameWideComparisons`. RESULTS §10.
 
+## The third scenario: parent rebuilds
+
+`lib/scenarios/parent.dart` (2.0 docket item H): N grouped Juice leaves
+under a parent that rebuilds; the bloc never emits. Each "update" bumps the
+parent, which rebuilds all N leaves with fresh widget instances. Before
+2.0.0 every leaf built a new filtered stream in `build`, so a parent rebuild
+cancelled and re-listened N subscriptions; 2.0.0 keeps the subscription
+while the bloc, groups and key are unchanged. The timing app reports it as
+`framesParent`; one variant, compared before vs after (RESULTS §15). The
+count side is pinned in core: `packages/juice/test/ui/resubscribe_test.dart`.
+
 ## What is measured
 
 1. **Rebuild counts** (`test/rebuild_counts_test.dart`,

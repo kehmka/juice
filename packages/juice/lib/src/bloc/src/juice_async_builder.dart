@@ -74,6 +74,13 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
   /// notification with [AutomaticKeepAliveClientMixin].
   final bool keepAlive;
 
+  /// When given, the stream subscription is replaced only when this key
+  /// CHANGES (by `==`), not when the stream OBJECT does. For callers that
+  /// derive a new stream in every `build()` (`bloc.stream.where(...)`): the
+  /// subscription survives parent rebuilds while what it means — the
+  /// source, the filter's inputs — is unchanged (juice ≥ 2.0.0).
+  final Object? streamKey;
+
   /// Creates a widget that builds depending on the state of a [Future] or [Stream].
   const JuiceAsyncBuilder({
     super.key,
@@ -84,6 +91,7 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
     this.closed,
     this.future,
     this.stream,
+    this.streamKey,
     this.initial,
     this.retain = false,
     this.pause = false,
@@ -234,9 +242,11 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
         _initFuture();
       }
     } else if (widget.stream != null) {
-      if (widget.stream != oldWidget.stream) {
-        _initStream();
-      }
+      final keyed = widget.streamKey != null || oldWidget.streamKey != null;
+      final changed = keyed
+          ? widget.streamKey != oldWidget.streamKey
+          : widget.stream != oldWidget.stream;
+      if (changed) _initStream();
     } else {
       _cancel();
     }

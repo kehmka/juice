@@ -93,6 +93,7 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
     return JuiceAsyncBuilder<StreamStatus>(
       initial: _bloc.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([_bloc], groups, widget.key),
       stream: _bloc.stream.where((status) {
         if (denyRebuild(
             event: status.event, key: widget.key, rebuildGroups: groups)) {
@@ -245,6 +246,7 @@ abstract class JuiceWidgetState2<
     return JuiceAsyncBuilder<StreamStatus>(
       initial: _bloc1.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([_bloc1, _bloc2], groups, widget.key),
       stream: MergeStream<StreamStatus>([_bloc1.stream, _bloc2.stream])
           .where((status) {
         if (denyRebuild(
@@ -410,6 +412,7 @@ abstract class JuiceWidgetState3<
     return JuiceAsyncBuilder<StreamStatus>(
       initial: _bloc1.currentStatus,
       initiator: onInit,
+      streamKey: SubscriptionKey([_bloc1, _bloc2, _bloc3], groups, widget.key),
       stream: MergeStream<StreamStatus>(
           [_bloc1.stream, _bloc2.stream, _bloc3.stream]).where((status) {
         if (denyRebuild(

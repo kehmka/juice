@@ -611,7 +611,7 @@ relay inert. Doctrine: fail loudly.
 — *Gate:* a test per case (unregistered, closed) pinning the throw and
 its message.
 
-**H · Stop re-subscribing on every parent rebuild** (tee-up J). Every
+**H ✅ BUILT 2026-10-07 on `v2`** (`JuiceAsyncBuilder.streamKey` + `SubscriptionKey(blocs, groups, key)` on all six forms; gate 11 → 1 listens; parent-rebuild benchmark scenario `benchmarks/lib/scenarios/parent.dart` — before: 2,366 µs [2,256–2,374] per parent rebuild of 1,000 leaves on the Mac; the after number is taken at publish time, with the rest of the benchmarks — Kevin 2026-10-07: benchmarks run before publishing, not per step). Original: **Stop re-subscribing on every parent rebuild** (tee-up J). Every
 Juice widget form builds its filtered stream inside `build`, so a
 parent rebuild cancels and re-listens. Behavioural, not API-breaking,
 but it changes listen ordering, so it rides with 2.0 rather than a patch.
@@ -781,7 +781,7 @@ release-mode gate — a doctrine call.
 | G ✅ | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
 | H | `WaitingStatus.progress`; `isWaitingFor<TEvent>()` / `isRunning(Type)` / `lastFailure(Type)` | S | llm model acquire; permissions' `requestsInFlight` map deletable | riverpod, others |
 | I | DevTools rebuild inspector + state diff + emission rate (`widget_rebuild` event from the accept path) | M | approve the event schema, measure overhead; build with the select measurement | riverpod, signals, dx, others |
-| J | Stop re-subscribing on every parent rebuild (`JuiceWidgetState` builds the filtered stream in `build`) | S | widget test counting `listen()` | signals |
+| J ✅ 2026-10-07 (`v2`, as docket item H) | Stop re-subscribing on every parent rebuild — `streamKey` on `JuiceAsyncBuilder`, keyed on bloc/groups/key; 11 → 1 listens pinned | S | ~~widget test counting `listen()`~~ done | signals |
 | K | Lease `linger` window on `register` | S | a measured cold re-entry in Amoli | riverpod |
 | L | `BlocScope.whenReady/allReady` + test-only `override<T>()` | S | count ordered init awaits in the example apps first | others |
 | M | `juice_feature` mason brick | M | regenerate notes_app's feature to zero diff; delete on first drift | others, dx |

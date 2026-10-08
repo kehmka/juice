@@ -239,22 +239,27 @@ class PostsBloc extends JuiceBloc<PostsState> {
           typeOfEvent: LoadPostsEvent,
           useCaseGenerator: () => LoadPostsUseCase(),
           initialEventBuilder: () => LoadPostsEvent(),
+          concurrency: EventConcurrency.droppable,
         ),
         () => UseCaseBuilder(
           typeOfEvent: SetCachePolicyEvent,
           useCaseGenerator: () => SetCachePolicyUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: LoadPostDetailEvent,
           useCaseGenerator: () => LoadPostDetailUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: DeletePostEvent,
           useCaseGenerator: () => DeletePostUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ClearPostDetailEvent,
           useCaseGenerator: () => ClearPostDetailUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
       ]);
 }

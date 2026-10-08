@@ -171,14 +171,17 @@ class CoalesceBloc extends JuiceBloc<CoalesceState> {
         () => UseCaseBuilder(
           typeOfEvent: FireRequestEvent,
           useCaseGenerator: () => FireRequestUseCase(),
+          concurrency: EventConcurrency.concurrent,
         ),
         () => UseCaseBuilder(
           typeOfEvent: FireBurstEvent,
           useCaseGenerator: () => FireBurstUseCase(),
+          concurrency: EventConcurrency.concurrent,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ResetCoalesceEvent,
           useCaseGenerator: () => ResetCoalesceUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
       ]);
 }

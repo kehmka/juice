@@ -10,6 +10,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
             () => UseCaseBuilder(
                   typeOfEvent: ToggleTemperatureUnitEvent,
                   useCaseGenerator: () => ToggleTemperatureUnitUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [],

@@ -10,6 +10,7 @@ class FormBloc extends JuiceBloc<ExampleFormState> {
             () => UseCaseBuilder(
                   typeOfEvent: SubmitFormEvent,
                   useCaseGenerator: () => SubmitFormUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
           [],

@@ -30,12 +30,14 @@ class NotesBloc extends JuiceBloc<NotesState> {
                   typeOfEvent: LoadNotesEvent,
                   useCaseGenerator: () => LoadNotesUseCase(),
                   initialEventBuilder: () => LoadNotesEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
 
             // Save note — class-based (I/O + error handling)
             () => UseCaseBuilder(
                   typeOfEvent: SaveNoteEvent,
                   useCaseGenerator: () => SaveNoteUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Search — class-based to use skipIfSame (InlineEmitter doesn't
@@ -44,6 +46,7 @@ class NotesBloc extends JuiceBloc<NotesState> {
             () => UseCaseBuilder(
                   typeOfEvent: SearchNotesEvent,
                   useCaseGenerator: () => _SearchUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Toggle pin — trivial toggle, perfect for inline
@@ -63,6 +66,7 @@ class NotesBloc extends JuiceBloc<NotesState> {
                       groups: {NotesGroups.list},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Change note color — trivial mutation, inline
@@ -82,30 +86,35 @@ class NotesBloc extends JuiceBloc<NotesState> {
                       groups: {NotesGroups.list},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Soft delete — class-based (I/O across two Hive boxes + TTL)
             () => UseCaseBuilder(
                   typeOfEvent: MoveToTrashEvent,
                   useCaseGenerator: () => MoveToTrashUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Restore from trash — class-based (I/O across two boxes)
             () => UseCaseBuilder(
                   typeOfEvent: RestoreFromTrashEvent,
                   useCaseGenerator: () => RestoreFromTrashUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Empty trash — CancellableEvent for batch operation
             () => UseCaseBuilder(
                   typeOfEvent: EmptyTrashEvent,
                   useCaseGenerator: () => EmptyTrashUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
 
             // Permanent delete single item
             () => UseCaseBuilder(
                   typeOfEvent: PermanentDeleteEvent,
                   useCaseGenerator: () => PermanentDeleteUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Settings changed — relay from SettingsBloc, just update local state
@@ -121,6 +130,7 @@ class NotesBloc extends JuiceBloc<NotesState> {
                       groups: {NotesGroups.list},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

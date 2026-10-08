@@ -51,7 +51,9 @@ class _B extends JuiceBloc<_S> {
           const _S(),
           [
             () => UseCaseBuilder(
-                typeOfEvent: _Go, useCaseGenerator: () => _GoUC()),
+                typeOfEvent: _Go,
+                useCaseGenerator: () => _GoUC(),
+                concurrency: EventConcurrency.concurrent),
           ],
           aviators,
         );

@@ -12,10 +12,12 @@ class AuthBloc extends JuiceBloc<AuthState> {
             () => UseCaseBuilder(
                   typeOfEvent: LoginEvent,
                   useCaseGenerator: () => LoginUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LogoutEvent,
                   useCaseGenerator: () => LogoutUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [],

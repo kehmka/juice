@@ -156,6 +156,7 @@ class _GuardBloc extends JuiceBloc<_GuardState> {
             () => UseCaseBuilder(
                   typeOfEvent: _GuardEvent,
                   useCaseGenerator: () => _GuardUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],

@@ -73,14 +73,19 @@ class _B extends JuiceBloc<_S> {
   _B()
       : super(const _S(0), [
           () => UseCaseBuilder(
-              typeOfEvent: _Slow, useCaseGenerator: () => _SlowUC()),
+              typeOfEvent: _Slow,
+              useCaseGenerator: () => _SlowUC(),
+              concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder(
-              typeOfEvent: _Quick, useCaseGenerator: () => _QuickUC()),
+              typeOfEvent: _Quick,
+              useCaseGenerator: () => _QuickUC(),
+              concurrency: EventConcurrency.concurrent),
           () => RetryableUseCaseBuilder<_B, _S, _Flaky>(
                 typeOfEvent: _Flaky,
                 useCaseGenerator: () => _AlwaysFails(),
                 maxRetries: 5,
                 backoff: const FixedBackoff(Duration(milliseconds: 40)),
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }

@@ -10,6 +10,7 @@ import 'juice_logger.dart';
 import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'cancellable_event.dart';
+import 'core/event_concurrency.dart';
 import 'use_case_builders/use_case_builder.dart';
 import 'aviators/aviator.dart';
 import 'core/state_manager.dart';
@@ -330,10 +331,12 @@ class JuiceBloc<TState extends BlocState>
     _registerUseCase(UseCaseBuilder(
       typeOfEvent: UpdateEvent,
       useCaseGenerator: () => UpdateUseCase(),
+      concurrency: EventConcurrency.concurrent,
     ));
     _registerUseCase(UseCaseBuilder(
       typeOfEvent: UpdateEvent<TState>,
       useCaseGenerator: () => UpdateUseCase(),
+      concurrency: EventConcurrency.concurrent,
     ));
   }
 

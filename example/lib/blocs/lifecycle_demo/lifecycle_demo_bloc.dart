@@ -31,46 +31,57 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
             () => UseCaseBuilder(
                   typeOfEvent: StartDemoEvent,
                   useCaseGenerator: () => _StartDemoUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: EndDemoEvent,
                   useCaseGenerator: () => _EndDemoUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ToggleSlowCleanupEvent,
                   useCaseGenerator: () => _ToggleSlowCleanupUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateTaskProgressEvent,
                   useCaseGenerator: () => _UpdateTaskProgressUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: TaskCompletedEvent,
                   useCaseGenerator: () => _TaskCompletedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CancelAllTasksEvent,
                   useCaseGenerator: () => _CancelAllTasksUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: AddLogEvent,
                   useCaseGenerator: () => _AddLogUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ScopeEndingEvent,
                   useCaseGenerator: () => _ScopeEndingUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ScopeEndedEvent,
                   useCaseGenerator: () => _ScopeEndedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateDemoStateEvent,
                   useCaseGenerator: () => _UpdateDemoStateUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ResetDemoEvent,
                   useCaseGenerator: () => _ResetDemoUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         ) {
@@ -92,8 +103,7 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
         // Also add slow cleanup if toggled
         if (state.addSlowCleanup) {
           notification.barrier.add(Future.delayed(const Duration(seconds: 5)));
-          send(AddLogEvent(
-              message: 'Added 5s slow cleanup to CleanupBarrier'));
+          send(AddLogEvent(message: 'Added 5s slow cleanup to CleanupBarrier'));
         }
 
         // Update UI to show "ending" state
@@ -110,7 +120,9 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
                 : 'ScopeEndedNotification - Cleanup TIMED OUT (barrier exceeded timeout)'));
       } else if (notification is ScopeStartedNotification &&
           notification.scopeName == 'lifecycle-demo') {
-        send(AddLogEvent(message: 'ScopeStartedNotification - FeatureScope created (${notification.scopeId})'));
+        send(AddLogEvent(
+            message:
+                'ScopeStartedNotification - FeatureScope created (${notification.scopeId})'));
       }
     });
   }
@@ -156,7 +168,8 @@ class LifecycleDemoBloc extends JuiceBloc<LifecycleDemoState> {
     ));
 
     // Log the task spawn
-    send(AddLogEvent(message: 'Spawned $taskCount simulated async tasks (2-8s each)'));
+    send(AddLogEvent(
+        message: 'Spawned $taskCount simulated async tasks (2-8s each)'));
   }
 
   /// Start a timer to simulate task progress.
@@ -300,7 +313,8 @@ class _CancelAllTasksUseCase
 
     // Log the cancellation
     if (activeCount > 0) {
-      bloc.send(AddLogEvent(message: 'Canceled $activeCount in-flight tasks via CleanupBarrier'));
+      bloc.send(AddLogEvent(
+          message: 'Canceled $activeCount in-flight tasks via CleanupBarrier'));
     }
   }
 }
@@ -346,8 +360,7 @@ class _ScopeEndedUseCase
   }
 }
 
-class _ResetDemoUseCase
-    extends BlocUseCase<LifecycleDemoBloc, ResetDemoEvent> {
+class _ResetDemoUseCase extends BlocUseCase<LifecycleDemoBloc, ResetDemoEvent> {
   @override
   Future<void> execute(ResetDemoEvent event) async {
     // Don't reset if a new demo already started

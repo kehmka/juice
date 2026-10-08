@@ -42,6 +42,7 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
                 groups: {groupForm},
               );
             },
+            concurrency: EventConcurrency.sequential,
           ),
       () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState,
               UpdateValueEvent>(
@@ -52,6 +53,7 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
                 groups: {groupForm},
               );
             },
+            concurrency: EventConcurrency.sequential,
           ),
       () => InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState,
               SelectBackendEvent>(
@@ -62,6 +64,7 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
                 groups: {groupForm},
               );
             },
+            concurrency: EventConcurrency.sequential,
           ),
       () =>
           InlineUseCaseBuilder<ArcadeDemoBloc, ArcadeDemoState, UpdateTtlEvent>(
@@ -72,28 +75,34 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
                 groups: {groupForm},
               );
             },
+            concurrency: EventConcurrency.sequential,
           ),
 
       // Storage operations
       () => UseCaseBuilder(
             typeOfEvent: SaveEntryEvent,
             useCaseGenerator: () => _SaveEntryUseCase(),
+            concurrency: EventConcurrency.sequential,
           ),
       () => UseCaseBuilder(
             typeOfEvent: ReadEntryEvent,
             useCaseGenerator: () => _ReadEntryUseCase(),
+            concurrency: EventConcurrency.sequential,
           ),
       () => UseCaseBuilder(
             typeOfEvent: DeleteEntryEvent,
             useCaseGenerator: () => _DeleteEntryUseCase(),
+            concurrency: EventConcurrency.sequential,
           ),
       () => UseCaseBuilder(
             typeOfEvent: SpawnBombsEvent,
             useCaseGenerator: () => _SpawnBombsUseCase(),
+            concurrency: EventConcurrency.sequential,
           ),
       () => UseCaseBuilder(
             typeOfEvent: CleanupCacheEvent,
             useCaseGenerator: () => _CleanupCacheUseCase(),
+            concurrency: EventConcurrency.droppable,
           ),
 
       // Timer tick - StatefulUseCaseBuilder maintains the timer
@@ -101,6 +110,7 @@ class ArcadeDemoBloc extends JuiceBloc<ArcadeDemoState> {
             typeOfEvent: TickEvent,
             useCaseGenerator: () => _TickUseCase(),
             initialEventBuilder: () => TickEvent(),
+            concurrency: EventConcurrency.concurrent,
           ),
     ];
   }

@@ -25,34 +25,41 @@ class FeaturesShowcaseBloc extends JuiceBloc<FeaturesShowcaseState> {
             () => UseCaseBuilder(
                   typeOfEvent: ShowcaseIncrementEvent,
                   useCaseGenerator: () => IncrementUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ShowcaseDecrementEvent,
                   useCaseGenerator: () => DecrementUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             // API simulation with JuiceException and FailureStatus error context
             () => UseCaseBuilder(
                   typeOfEvent: SimulateApiCallEvent,
                   useCaseGenerator: () => SimulateApiUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             // Validation with ValidationException
             () => UseCaseBuilder(
                   typeOfEvent: ValidateInputEvent,
                   useCaseGenerator: () => ValidateInputUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             // Message update with skipIfSame deduplication
             () => UseCaseBuilder(
                   typeOfEvent: UpdateMessageEvent,
                   useCaseGenerator: () => UpdateMessageUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             // Helper use cases
             () => UseCaseBuilder(
                   typeOfEvent: ClearErrorEvent,
                   useCaseGenerator: () => ClearErrorUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ShowcaseResetEvent,
                   useCaseGenerator: () => ResetUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

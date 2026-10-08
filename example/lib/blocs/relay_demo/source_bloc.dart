@@ -13,22 +13,27 @@ class SourceBloc extends JuiceBloc<SourceState> {
             () => UseCaseBuilder(
                   typeOfEvent: IncrementSourceEvent,
                   useCaseGenerator: () => IncrementSourceUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: DecrementSourceEvent,
                   useCaseGenerator: () => DecrementSourceUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SimulateAsyncEvent,
                   useCaseGenerator: () => SimulateAsyncUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SimulateErrorEvent,
                   useCaseGenerator: () => SimulateErrorUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ResetSourceEvent,
                   useCaseGenerator: () => ResetSourceUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [],

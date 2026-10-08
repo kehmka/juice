@@ -131,6 +131,7 @@ void main() {
     final b = UseCaseBuilder(
       typeOfEvent: SeqEvent,
       useCaseGenerator: () => DropUseCase(),
+      concurrency: EventConcurrency.concurrent,
     );
     expect(b.concurrency, EventConcurrency.concurrent);
   });

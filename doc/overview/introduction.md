@@ -23,10 +23,12 @@ class ChatBloc extends JuiceBloc<ChatState> {
       () => UseCaseBuilder(
         typeOfEvent: SendMessageEvent,
         useCaseGenerator: () => SendMessageUseCase(),
+        concurrency: EventConcurrency.sequential,
       ),
       () => UseCaseBuilder(
         typeOfEvent: LoadMessagesEvent,
         useCaseGenerator: () => LoadMessagesUseCase(),
+        concurrency: EventConcurrency.droppable,
       ),
     ],
     [

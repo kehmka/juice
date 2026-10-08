@@ -208,6 +208,7 @@ void main() {
           useCaseGenerator: () => SuccessfulUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -235,6 +236,7 @@ void main() {
           useCaseGenerator: () => FailNTimesUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -263,6 +265,7 @@ void main() {
           useCaseGenerator: () => AlwaysFailingUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -293,6 +296,7 @@ void main() {
           useCaseGenerator: () => NonRetryableUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -322,6 +326,7 @@ void main() {
           useCaseGenerator: () => ThrowingUseCase(),
           maxRetries: 2,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -352,6 +357,7 @@ void main() {
           onRetry: (attempt, error, delay) {
             retryCalls.add((attempt, error, delay));
           },
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -376,7 +382,8 @@ void main() {
           useCaseGenerator: () => AlwaysFailingUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
-          retryWhen: (error) => false, // Never retry
+          retryWhen: (error) =>
+              false, // Never retry, concurrency: EventConcurrency.concurrent
         ),
       );
 
@@ -407,6 +414,7 @@ void main() {
           onRetry: (attempt, error, delay) {
             delays.add(delay);
           },
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 
@@ -434,6 +442,7 @@ void main() {
           useCaseGenerator: () => _CancellableAlwaysFailingUseCase(),
           maxRetries: 10,
           backoff: FixedBackoff(Duration(milliseconds: 50)),
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 

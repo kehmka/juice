@@ -66,14 +66,17 @@ class TestBloc extends JuiceBloc<TestState> {
             () => UseCaseBuilder(
                   typeOfEvent: TestEvent,
                   useCaseGenerator: () => TestUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: IncrementEvent,
                   useCaseGenerator: () => IncrementUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: DecrementEvent,
                   useCaseGenerator: () => DecrementUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],

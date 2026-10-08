@@ -16,14 +16,17 @@ class ContactsBloc extends JuiceBloc<ContactsState> {
                   typeOfEvent: LoadContactsEvent,
                   useCaseGenerator: () => LoadContactsUseCase(),
                   initialEventBuilder: () => LoadContactsEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateContactStatusEvent,
                   useCaseGenerator: () => UpdateContactStatusUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateContactLastMessageEvent,
                   useCaseGenerator: () => UpdateContactLastMessageUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         ) {

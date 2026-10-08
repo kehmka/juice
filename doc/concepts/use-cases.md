@@ -42,6 +42,7 @@ class ChatBloc extends JuiceBloc<ChatState> {
       () => UseCaseBuilder(
         typeOfEvent: SendMessageEvent,
         useCaseGenerator: () => SendMessageUseCase(),
+        concurrency: EventConcurrency.sequential,
       ),
       
       // With initial event
@@ -49,6 +50,7 @@ class ChatBloc extends JuiceBloc<ChatState> {
         typeOfEvent: LoadMessagesEvent,
         useCaseGenerator: () => LoadMessagesUseCase(),
         initialEventBuilder: () => LoadMessagesEvent(),
+        concurrency: EventConcurrency.droppable,
       ),
     ],
     [], // Aviators
@@ -146,6 +148,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
           groups: {CounterGroups.counter},
         );
       },
+      concurrency: EventConcurrency.sequential,
     ),
 
     // Async with waiting state
@@ -161,6 +164,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
           groups: {CounterGroups.counter, CounterGroups.loading},
         );
       },
+      concurrency: EventConcurrency.droppable,
     ),
   ]);
 }

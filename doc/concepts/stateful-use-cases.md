@@ -19,6 +19,7 @@ Here's a typical stateful use case:
 () => StatefulUseCaseBuilder(
   typeOfEvent: ChatEvent,
   useCaseGenerator: () => ChatConnectionUseCase(),
+  concurrency: EventConcurrency.droppable,
 )
 
 // The stateful use case implementation
@@ -276,7 +277,8 @@ void main() {
     connection = MockConnection();
     builder = StatefulUseCaseBuilder(
       typeOfEvent: ConnectionEvent,
-      useCaseGenerator: () => ConnectionUseCase(connection)
+      useCaseGenerator: () => ConnectionUseCase(connection),
+      concurrency: EventConcurrency.droppable,
     );
   });
   

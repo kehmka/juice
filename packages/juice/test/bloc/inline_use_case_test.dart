@@ -52,6 +52,7 @@ class InlineCounterBloc extends JuiceBloc<CounterState> {
                     groups: {CounterGroups.counter},
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
 
           // Simple decrement
@@ -64,6 +65,7 @@ class InlineCounterBloc extends JuiceBloc<CounterState> {
                     groups: {CounterGroups.counter},
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
 
           // Set count with event parameter
@@ -76,6 +78,7 @@ class InlineCounterBloc extends JuiceBloc<CounterState> {
                     groups: {CounterGroups.counter},
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
 
           // Async operation with waiting state
@@ -98,6 +101,7 @@ class InlineCounterBloc extends JuiceBloc<CounterState> {
                     groups: {CounterGroups.counter, CounterGroups.message},
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
 
           // Failing operation
@@ -110,6 +114,7 @@ class InlineCounterBloc extends JuiceBloc<CounterState> {
                     groups: {CounterGroups.message},
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }
@@ -314,6 +319,7 @@ class _EnumGroupBloc extends JuiceBloc<CounterState> {
                     groups: {TestGroups.counter}, // Enum group
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }
@@ -331,6 +337,7 @@ class _StringGroupBloc extends JuiceBloc<CounterState> {
                     groups: {'my-group'}, // String group
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }
@@ -350,6 +357,7 @@ class _ContextTestBloc extends JuiceBloc<CounterState> {
                     newState: ctx.state.copyWith(count: ctx.state.count + 1),
                   );
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }

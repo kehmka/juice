@@ -13,10 +13,12 @@ class DashboardBloc extends JuiceBloc<DashboardState> {
                   typeOfEvent: LoadDashboardEvent,
                   useCaseGenerator: () => LoadDashboardUseCase(),
                   initialEventBuilder: () => LoadDashboardEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RefreshStatsEvent,
                   useCaseGenerator: () => RefreshStatsUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );

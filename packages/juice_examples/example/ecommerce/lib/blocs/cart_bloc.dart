@@ -14,22 +14,27 @@ class CartBloc extends JuiceBloc<CartState> {
                   typeOfEvent: LoadCartEvent,
                   useCaseGenerator: () => LoadCartUseCase(),
                   initialEventBuilder: () => LoadCartEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: AddToCartEvent,
                   useCaseGenerator: () => AddToCartUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RemoveFromCartEvent,
                   useCaseGenerator: () => RemoveFromCartUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateCartQuantityEvent,
                   useCaseGenerator: () => UpdateCartQuantityUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: CheckoutEvent,
                   useCaseGenerator: () => CheckoutUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );

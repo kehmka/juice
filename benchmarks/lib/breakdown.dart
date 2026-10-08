@@ -67,6 +67,7 @@ class _StatefulBloc extends JuiceBloc<_S> {
         () => StatefulUseCaseBuilder(
           typeOfEvent: _Ev,
           useCaseGenerator: () => _StatefulUC(),
+          concurrency: EventConcurrency.concurrent,
         ),
       ]);
 }

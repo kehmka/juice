@@ -29,7 +29,8 @@ class _TimedUC extends BlocUseCase<_TimedBloc, _Timed> {
 class _TimedBloc extends JuiceBloc<_S> {
   _TimedBloc()
       : super(const _S(), [
-          () => UseCaseBuilder.typed(() => _TimedUC()),
+          () => UseCaseBuilder.typed(() => _TimedUC(),
+              concurrency: EventConcurrency.concurrent),
         ]);
 }
 
@@ -51,6 +52,7 @@ class _InlineBloc extends JuiceBloc<_S> {
                     groups: {'f'},
                     aviatorName: 'go',
                   ),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [

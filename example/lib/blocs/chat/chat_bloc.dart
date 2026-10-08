@@ -14,14 +14,16 @@ class ChatBloc extends JuiceBloc<ChatState> {
                   typeOfEvent: ConnectWebSocketEvent,
                   useCaseGenerator: () => InitializeWebSocketUseCase(service),
                   initialEventBuilder: () =>
-                      ConnectWebSocketEvent(), // Startup event
+                      ConnectWebSocketEvent(), // Startup event, concurrency: EventConcurrency.droppable
                 ),
             () => UseCaseBuilder(
                 typeOfEvent: SendMessageEvent,
-                useCaseGenerator: () => SendMessageUseCase(service)),
+                useCaseGenerator: () => SendMessageUseCase(service),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ReceiveMessageEvent,
-                useCaseGenerator: () => ReceiveMessageUseCase()),
+                useCaseGenerator: () => ReceiveMessageUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
           [],
         );

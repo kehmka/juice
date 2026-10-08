@@ -12,13 +12,16 @@ class CounterBloc extends JuiceBloc<CounterState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: IncrementEvent,
-                useCaseGenerator: () => IncrementUseCase()),
+                useCaseGenerator: () => IncrementUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: DecrementEvent,
-                useCaseGenerator: () => DecrementUseCase()),
+                useCaseGenerator: () => DecrementUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ResetEvent,
-                useCaseGenerator: () => ResetUseCase()),
+                useCaseGenerator: () => ResetUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
           [],
         );

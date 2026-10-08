@@ -13,22 +13,27 @@ class DestBloc extends JuiceBloc<DestState> {
             () => UseCaseBuilder(
                   typeOfEvent: StateRelayedEvent,
                   useCaseGenerator: () => StateRelayedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: StatusUpdatingEvent,
                   useCaseGenerator: () => StatusUpdatingUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: StatusWaitingEvent,
                   useCaseGenerator: () => StatusWaitingUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: StatusFailedEvent,
                   useCaseGenerator: () => StatusFailedUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: ClearLogEvent,
                   useCaseGenerator: () => ClearLogUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [],

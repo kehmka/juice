@@ -10,6 +10,7 @@ class FileUploadBloc extends JuiceBloc<FileUploadState> {
             () => UseCaseBuilder(
                   typeOfEvent: UploadFileEvent,
                   useCaseGenerator: () => UploadFileUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
           [],

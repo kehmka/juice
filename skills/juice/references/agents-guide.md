@@ -77,8 +77,8 @@ class LoadFooEvent extends FooEvent {}
 class FooBloc extends JuiceBloc<FooState> {
   late FooConfig _config;
   FooBloc() : super(FooState.initial, [
-    () => UseCaseBuilder(typeOfEvent: InitializeFooEvent, useCaseGenerator: () => InitializeFooUseCase()),
-    () => UseCaseBuilder(typeOfEvent: LoadFooEvent,       useCaseGenerator: () => LoadFooUseCase()),
+    () => UseCaseBuilder(typeOfEvent: InitializeFooEvent, useCaseGenerator: () => InitializeFooUseCase(), concurrency: EventConcurrency.droppable),
+    () => UseCaseBuilder(typeOfEvent: LoadFooEvent,       useCaseGenerator: () => LoadFooUseCase(), concurrency: EventConcurrency.droppable),
   ]);
   factory FooBloc.withConfig(FooConfig config) {           // standard construction
     final b = FooBloc();
@@ -107,7 +107,7 @@ class LoadFooUseCase extends BlocUseCase<FooBloc, LoadFooEvent> {
 `lib/juice_foo.dart` is a barrel that exports `src/*` (and the default provider).
 
 **Type-checked registration (juice ≥ 1.9.0).** `UseCaseBuilder.typed(() =>
-LoadFooUseCase())` infers the event type from the use case — pairing
+LoadFooUseCase(), concurrency: EventConcurrency.droppable)` infers the event type from the use case — pairing
 `typeOfEvent: SaveEvent` with a `LoadUseCase` becomes a compile error instead
 of a dispatch-time cast failure — and checks the use case's bloc type when the
 bloc registers it (wrong bloc → `ArgumentError` from the constructor). Takes

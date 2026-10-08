@@ -200,7 +200,8 @@ class CounterBloc extends JuiceBloc<CounterState> {
     [
       () => UseCaseBuilder(
         typeOfEvent: IncrementEvent,
-        useCaseGenerator: () => IncrementUseCase()
+        useCaseGenerator: () => IncrementUseCase(),
+        concurrency: EventConcurrency.sequential,
       ),
     ],
     [],

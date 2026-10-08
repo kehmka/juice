@@ -59,7 +59,8 @@ class _LogBloc extends JuiceBloc<_S> {
       : super(const _S(7), [
           () => UseCaseBuilder(
               typeOfEvent: _LogEvent,
-              useCaseGenerator: () => _LoggingUseCase()),
+              useCaseGenerator: () => _LoggingUseCase(),
+              concurrency: EventConcurrency.concurrent),
         ]);
 }
 
@@ -107,6 +108,7 @@ class _StatefulBloc extends JuiceBloc<_S> {
                 typeOfEvent: _InitEvent,
                 useCaseGenerator: () => _InitUseCase(),
                 initialEventBuilder: () => _InitEvent(),
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }
@@ -145,16 +147,19 @@ class _InlineBloc extends JuiceBloc<_S> {
                     newState: const _S(1),
                     groups: {const _GroupKey('w')},
                   ),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => InlineUseCaseBuilder<_InlineBloc, _S, _InlineFail>(
                   typeOfEvent: _InlineFail,
                   handler: (ctx, e) async =>
                       ctx.emit.failure(newState: const _S(2), groups: {'f'}),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => InlineUseCaseBuilder<_InlineBloc, _S, _InlineCancel>(
                   typeOfEvent: _InlineCancel,
                   handler: (ctx, e) async =>
                       ctx.emit.cancel(newState: const _S(3), groups: {'c'}),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => InlineUseCaseBuilder<_InlineBloc, _S, _InlineOld>(
                   typeOfEvent: _InlineOld,
@@ -162,6 +167,7 @@ class _InlineBloc extends JuiceBloc<_S> {
                     seenOld = ctx.oldState.n;
                     ctx.emit.update(newState: ctx.state.copyWith(n: 50));
                   },
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => InlineUseCaseBuilder<_InlineBloc, _S, _InlineNavUpdate>(
                   typeOfEvent: _InlineNavUpdate,
@@ -171,6 +177,7 @@ class _InlineBloc extends JuiceBloc<_S> {
                     aviatorName: 'go',
                     aviatorArgs: {'to': 'update'},
                   ),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [
@@ -318,8 +325,10 @@ void main() {
       expect(b.initialEventBuilder, isNull);
       expect(
           StatefulUseCaseBuilder(
-              typeOfEvent: _CountEvent,
-              useCaseGenerator: () => _CountingUseCase()).concurrency,
+                  typeOfEvent: _CountEvent,
+                  useCaseGenerator: () => _CountingUseCase(),
+                  concurrency: EventConcurrency.concurrent)
+              .concurrency,
           EventConcurrency.concurrent);
     });
 
@@ -327,6 +336,7 @@ void main() {
       final b = StatefulUseCaseBuilder(
         typeOfEvent: _CountEvent,
         useCaseGenerator: () => _CountingUseCase(),
+        concurrency: EventConcurrency.concurrent,
       );
       final first = b.generator();
       expect(b.generator(), same(first));
@@ -344,6 +354,7 @@ void main() {
       final b = StatefulUseCaseBuilder(
         typeOfEvent: _CountEvent,
         useCaseGenerator: () => _CountingUseCase(),
+        concurrency: EventConcurrency.concurrent,
       );
       await b.close();
       expect(_CountingUseCase.closed, 0);
@@ -354,6 +365,7 @@ void main() {
       final bloc = _StatefulBloc(StatefulUseCaseBuilder(
         typeOfEvent: _CountEvent,
         useCaseGenerator: () => _CountingUseCase(),
+        concurrency: EventConcurrency.concurrent,
       ));
       // initialEventBuilder fired _InitEvent on construction.
       await Future<void>.delayed(Duration.zero);

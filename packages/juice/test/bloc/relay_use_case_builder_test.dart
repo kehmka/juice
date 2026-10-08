@@ -61,6 +61,7 @@ class RelaySourceBloc extends JuiceBloc<RelaySourceState> {
             () => UseCaseBuilder(
                   typeOfEvent: IncrementSourceEvent,
                   useCaseGenerator: () => IncrementSourceUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],
@@ -75,6 +76,7 @@ class RelayDestBloc extends JuiceBloc<RelayDestState> {
             () => UseCaseBuilder(
                   typeOfEvent: UpdateDestEvent,
                   useCaseGenerator: () => UpdateDestUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],

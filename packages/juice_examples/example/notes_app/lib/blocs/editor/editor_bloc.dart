@@ -45,6 +45,7 @@ class EditorBloc extends JuiceBloc<EditorState> {
                       );
                     }
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Content changes — inline because it's a pure state update.
@@ -70,6 +71,7 @@ class EditorBloc extends JuiceBloc<EditorState> {
                       groups: {EditorGroups.stats},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Color change — inline, trivial mutation
@@ -85,6 +87,7 @@ class EditorBloc extends JuiceBloc<EditorState> {
                       groups: {EditorGroups.content},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Auto-save with debounce — StatefulUseCaseBuilder keeps the
@@ -94,12 +97,14 @@ class EditorBloc extends JuiceBloc<EditorState> {
             () => StatefulUseCaseBuilder(
                   typeOfEvent: AutoSaveEvent,
                   useCaseGenerator: () => AutoSaveUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
 
             // Manual save — validates before saving (ValidationException)
             () => UseCaseBuilder(
                   typeOfEvent: ManualSaveEvent,
                   useCaseGenerator: () => ManualSaveUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

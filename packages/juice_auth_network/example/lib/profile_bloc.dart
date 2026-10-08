@@ -114,6 +114,7 @@ class ProfileBloc extends JuiceBloc<ProfileState> {
             () => UseCaseBuilder(
                   typeOfEvent: LoadProfileEvent,
                   useCaseGenerator: () => LoadProfileUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
           ],
         );

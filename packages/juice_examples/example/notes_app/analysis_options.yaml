@@ -16,6 +16,10 @@ include: package:flutter_lints/flutter.yaml
 plugins:
   juice_lint:
     path: ../../../juice_lint
+    # Policy rule, ON here (2.0 docket item B, 2026-10-07): every builder in
+    # the example apps declares its EventConcurrency mode — these apps teach.
+    diagnostics:
+      juice_missing_concurrency_mode: true
 
 analyzer:
   exclude:

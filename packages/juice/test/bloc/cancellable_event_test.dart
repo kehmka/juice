@@ -51,6 +51,7 @@ class _WorkBloc extends JuiceBloc<_State> {
           () => UseCaseBuilder(
                 typeOfEvent: _WorkEvent,
                 useCaseGenerator: () => _WorkUseCase(),
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }

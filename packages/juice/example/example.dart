@@ -46,10 +46,12 @@ class CounterBloc extends JuiceBloc<CounterState> {
             () => UseCaseBuilder(
                   typeOfEvent: IncrementEvent,
                   useCaseGenerator: () => IncrementUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: DecrementEvent,
                   useCaseGenerator: () => DecrementUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );
@@ -155,6 +157,7 @@ class RowsBloc extends JuiceBloc<RowsState> {
             () => UseCaseBuilder(
                   typeOfEvent: RefreshRowEvent,
                   useCaseGenerator: () => RefreshRowUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
         );

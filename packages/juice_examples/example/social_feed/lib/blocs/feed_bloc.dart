@@ -19,22 +19,27 @@ class FeedBloc extends JuiceBloc<FeedState> {
                   typeOfEvent: LoadFeedEvent,
                   useCaseGenerator: () => LoadFeedUseCase(),
                   initialEventBuilder: () => LoadFeedEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LoadMoreEvent,
                   useCaseGenerator: () => LoadMoreUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LikePostEvent,
                   useCaseGenerator: () => LikePostUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: AddCommentEvent,
                   useCaseGenerator: () => AddCommentUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SelectPostEvent,
                   useCaseGenerator: () => SelectPostUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

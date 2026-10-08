@@ -35,6 +35,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
       () => UseCaseBuilder(
         typeOfEvent: IncrementEvent,
         useCaseGenerator: () => IncrementUseCase(),
+        concurrency: EventConcurrency.sequential,
       ),
     ],
     [], // Aviators (navigation handlers)

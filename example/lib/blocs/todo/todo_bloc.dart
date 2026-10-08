@@ -13,16 +13,20 @@ class TodoBloc extends JuiceBloc<TodoState> {
           [
             () => UseCaseBuilder(
                 typeOfEvent: AddTodoEvent,
-                useCaseGenerator: () => AddTodoUseCase()),
+                useCaseGenerator: () => AddTodoUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: UpdateTodoEvent,
-                useCaseGenerator: () => UpdateTodoUseCase()),
+                useCaseGenerator: () => UpdateTodoUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: RemoveTodoEvent,
-                useCaseGenerator: () => RemoveTodoUseCase()),
+                useCaseGenerator: () => RemoveTodoUseCase(),
+                concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ToggleTodoEvent,
-                useCaseGenerator: () => ToggleTodoUseCase()),
+                useCaseGenerator: () => ToggleTodoUseCase(),
+                concurrency: EventConcurrency.sequential),
           ],
           [],
         );

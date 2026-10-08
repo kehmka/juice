@@ -22,9 +22,13 @@ class _DupBloc extends JuiceBloc<_S> {
   _DupBloc()
       : super(const _S(), [
           () => UseCaseBuilder(
-              typeOfEvent: _A, useCaseGenerator: () => _AUseCase()),
+              typeOfEvent: _A,
+              useCaseGenerator: () => _AUseCase(),
+              concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder(
-              typeOfEvent: _A, useCaseGenerator: () => _AUseCase()),
+              typeOfEvent: _A,
+              useCaseGenerator: () => _AUseCase(),
+              concurrency: EventConcurrency.concurrent),
         ]);
 }
 

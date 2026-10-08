@@ -212,34 +212,42 @@ class InterceptorsBloc extends JuiceBloc<InterceptorsState> {
           typeOfEvent: ConfigureInterceptorsEvent,
           useCaseGenerator: () => ConfigureInterceptorsUseCase(),
           initialEventBuilder: () => ConfigureInterceptorsEvent(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ToggleLoggingEvent,
           useCaseGenerator: () => ToggleLoggingUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ToggleAuthEvent,
           useCaseGenerator: () => ToggleAuthUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ToggleTimingEvent,
           useCaseGenerator: () => ToggleTimingUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: MakeRequestEvent,
           useCaseGenerator: () => MakeRequestUseCase(),
+          concurrency: EventConcurrency.concurrent,
         ),
         () => UseCaseBuilder(
           typeOfEvent: MakeFailingRequestEvent,
           useCaseGenerator: () => MakeFailingRequestUseCase(),
+          concurrency: EventConcurrency.concurrent,
         ),
         () => UseCaseBuilder(
           typeOfEvent: ClearLogsEvent,
           useCaseGenerator: () => ClearLogsUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
         () => UseCaseBuilder(
           typeOfEvent: AddLogEvent,
           useCaseGenerator: () => AddLogUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
       ]);
 

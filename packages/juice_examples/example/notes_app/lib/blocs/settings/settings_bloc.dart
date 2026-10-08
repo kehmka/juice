@@ -26,6 +26,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
                   typeOfEvent: LoadSettingsEvent,
                   useCaseGenerator: () => _LoadSettingsUseCase(),
                   initialEventBuilder: () => LoadSettingsEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
 
             // Toggle grid/list — a one-liner toggle, perfect for inline
@@ -43,6 +44,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
                       groups: {SettingsGroups.viewMode},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
 
             // Change sort order — also simple enough for inline
@@ -58,6 +60,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
                       groups: {SettingsGroups.sort},
                     );
                   },
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         ) {

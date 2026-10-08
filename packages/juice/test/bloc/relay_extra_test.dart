@@ -29,6 +29,7 @@ class _SrcBloc extends JuiceBloc<_Src> {
                   ctx.emit.waiting();
                   ctx.emit.update(newState: _Src(ctx.state.count + 1));
                 },
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }
@@ -40,6 +41,7 @@ class _DstBloc extends JuiceBloc<_Dst> {
                 typeOfEvent: _Record,
                 handler: (ctx, e) async => ctx.emit
                     .update(newState: _Dst([...ctx.state.labels, e.label])),
+                concurrency: EventConcurrency.concurrent,
               ),
         ]);
 }

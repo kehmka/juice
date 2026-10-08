@@ -16,6 +16,7 @@ class MyBloc extends JuiceBloc<MyState> {
       useCaseGenerator: () => FetchDataUseCase(),
       maxRetries: 3,
       backoff: ExponentialBackoff(initial: Duration(seconds: 1)),
+      concurrency: EventConcurrency.droppable,
     ),
   ], []);
 }
@@ -233,6 +234,7 @@ class UserBloc extends JuiceBloc<UserState> {
       onRetry: (attempt, error, delay) {
         print('Retrying user fetch (attempt $attempt)');
       },
+      concurrency: EventConcurrency.droppable,
     ),
   ], []);
 }

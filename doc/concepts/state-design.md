@@ -146,6 +146,7 @@ class AppBloc extends JuiceBloc<AppState> {
       () => UseCaseBuilder(
         typeOfEvent: UpdateThemeEvent,
         useCaseGenerator: () => UpdateThemeUseCase(),
+        concurrency: EventConcurrency.sequential,
       ),
       // Other app-level use cases...
     ],

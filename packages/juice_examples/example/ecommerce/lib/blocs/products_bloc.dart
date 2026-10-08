@@ -17,23 +17,28 @@ class ProductsBloc extends JuiceBloc<ProductsState> {
                   typeOfEvent: LoadProductsEvent,
                   useCaseGenerator: () => LoadProductsUseCase(),
                   initialEventBuilder: () => LoadProductsEvent(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LoadCategoriesEvent,
                   useCaseGenerator: () => LoadCategoriesUseCase(),
                   initialEventBuilder: () => LoadCategoriesEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LoadMoreProductsEvent,
                   useCaseGenerator: () => LoadMoreProductsUseCase(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SearchProductsEvent,
                   useCaseGenerator: () => SearchProductsUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: LoadProductDetailEvent,
                   useCaseGenerator: () => LoadProductDetailUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

@@ -9,6 +9,7 @@ class OnboardingBloc extends JuiceBloc<OnboardingState> {
             () => UseCaseBuilder(
                   typeOfEvent: NextPageEvent,
                   useCaseGenerator: () => NextPageUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
           [],

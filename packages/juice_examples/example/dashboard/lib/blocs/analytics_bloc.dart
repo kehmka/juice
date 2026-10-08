@@ -13,10 +13,12 @@ class AnalyticsBloc extends JuiceBloc<AnalyticsState> {
                   typeOfEvent: LoadAnalyticsEvent,
                   useCaseGenerator: () => LoadAnalyticsUseCase(),
                   initialEventBuilder: () => LoadAnalyticsEvent(),
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: FilterDataEvent,
                   useCaseGenerator: () => FilterDataUseCase(),
+                  concurrency: EventConcurrency.sequential,
                 ),
           ],
         );

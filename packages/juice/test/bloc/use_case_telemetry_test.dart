@@ -35,7 +35,8 @@ class _ThrowingBloc extends JuiceBloc<TestState> {
       : super(TestState(value: 0), [
           () => UseCaseBuilder(
               typeOfEvent: DecrementEvent,
-              useCaseGenerator: () => _ThrowingUseCase()),
+              useCaseGenerator: () => _ThrowingUseCase(),
+              concurrency: EventConcurrency.concurrent),
         ], []);
 }
 

@@ -37,7 +37,8 @@ class _SaveUC extends BlocUseCase<_B, _Save> {
 class _B extends JuiceBloc<_S> {
   _B()
       : super(const _S(0), [
-          () => UseCaseBuilder.typed(() => _LoadUC()),
+          () => UseCaseBuilder.typed(() => _LoadUC(),
+              concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder.typed(() => _SaveUC(),
               concurrency: EventConcurrency.sequential),
         ]);
@@ -46,7 +47,8 @@ class _B extends JuiceBloc<_S> {
 class _Wrong extends JuiceBloc<_S> {
   _Wrong()
       : super(const _S(0), [
-          () => UseCaseBuilder.typed(() => _LoadUC()), // _LoadUC is for _B
+          () => UseCaseBuilder.typed(() => _LoadUC(),
+              concurrency: EventConcurrency.concurrent), // _LoadUC is for _B
         ]);
 }
 
@@ -54,7 +56,8 @@ class _Seeded extends JuiceBloc<_S> {
   _Seeded()
       : super(const _S(0), [
           () => UseCaseBuilder.typed(() => _SeedUC(),
-              initialEventBuilder: () => _Seed()),
+              initialEventBuilder: () => _Seed(),
+              concurrency: EventConcurrency.concurrent),
         ]);
 }
 
@@ -98,8 +101,10 @@ void main() {
   });
 
   test('the plain constructor is unchanged (no registration check)', () async {
-    final builder =
-        UseCaseBuilder(typeOfEvent: _Load, useCaseGenerator: () => _LoadUC());
+    final builder = UseCaseBuilder(
+        typeOfEvent: _Load,
+        useCaseGenerator: () => _LoadUC(),
+        concurrency: EventConcurrency.concurrent);
     expect(builder.eventType, _Load);
     expect(() => builder.checkRegisteredOn(_B()), returnsNormally);
   });

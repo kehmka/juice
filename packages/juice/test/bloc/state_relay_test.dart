@@ -72,10 +72,12 @@ class SourceBloc extends JuiceBloc<SourceState> {
             () => UseCaseBuilder(
                   typeOfEvent: IncrementEvent,
                   useCaseGenerator: () => IncrementUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: SetActiveEvent,
                   useCaseGenerator: () => SetActiveUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],
@@ -90,6 +92,7 @@ class DestBloc extends JuiceBloc<DestState> {
             () => UseCaseBuilder(
                   typeOfEvent: UpdateMessageEvent,
                   useCaseGenerator: () => UpdateMessageUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],

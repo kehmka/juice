@@ -80,6 +80,7 @@ In inline use cases, groups are auto-converted:
       groups: {ProfileGroups.header, ProfileGroups.details}, // Auto-converts
     );
   },
+  concurrency: EventConcurrency.sequential,
 )
 ```
 
@@ -349,6 +350,7 @@ class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
       groups: ProfileGroups.all, // No conversion needed
     );
   },
+  concurrency: EventConcurrency.sequential,
 )
 ```
 

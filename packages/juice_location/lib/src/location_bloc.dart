@@ -25,7 +25,6 @@ import 'use_cases/stop_tracking_use_case.dart';
 /// ```
 class LocationBloc extends JuiceBloc<LocationState> {
   late LocationConfig _config;
-  StreamSubscription<GeoPosition>? _trackingSubscription;
 
   LocationBloc()
       : super(
@@ -78,17 +77,20 @@ class LocationBloc extends JuiceBloc<LocationState> {
   void configure(LocationConfig config) => _config = config;
 
   /// Subscribe to the position stream (called by [StartTrackingEvent]).
+  /// The bloc owns the binding: a second start replaces the first, and
+  /// close cancels it before the use cases close.
   void startTracking() {
-    _trackingSubscription = source.positions().listen((position) {
-      if (!isClosed) send(LocationChangedEvent(position));
-    });
+    bindStream<GeoPosition>(
+      source.positions(),
+      (position) => send(LocationChangedEvent(position)),
+      key: _trackingKey,
+    );
   }
 
   /// Cancel the position subscription (called by [StopTrackingEvent]).
-  void stopTracking() {
-    _trackingSubscription?.cancel();
-    _trackingSubscription = null;
-  }
+  void stopTracking() => unbind(_trackingKey);
+
+  static const _trackingKey = 'tracking';
 
   // === Convenience ===
 
@@ -107,7 +109,6 @@ class LocationBloc extends JuiceBloc<LocationState> {
 
   @override
   Future<void> close() async {
-    await _trackingSubscription?.cancel();
     try {
       await _config.source.dispose();
     } catch (_) {

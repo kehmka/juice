@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:logger/web.dart' show Level;
 
 import 'bloc_state.dart';
 import 'bloc_event.dart';
@@ -11,6 +12,7 @@ import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'cancellable_event.dart';
 import 'core/event_concurrency.dart';
+import 'stream_binding.dart';
 import 'use_case_builders/use_case_builder.dart';
 import 'aviators/aviator.dart';
 import 'core/state_manager.dart';
@@ -104,6 +106,153 @@ class JuiceBloc<TState extends BlocState>
   JuiceLogger get logger => _logger;
 
   final BlocErrorHandler _errorHandler;
+
+  // ============================================================
+  // Stream bindings (juice ≥ 2.0.0)
+  // ============================================================
+
+  /// Every live binding; keyed ones are also in [_keyedBindings].
+  final Set<StreamBinding<dynamic>> _bindings = {};
+  final Map<String, StreamBinding<dynamic>> _keyedBindings = {};
+
+  /// Listen to [stream] for as long as this bloc lives.
+  ///
+  /// [onData] runs for every item while the bloc is open — never once it
+  /// is closing — typically to `send` an event per item. The bloc owns the
+  /// subscription: it is cancelled at the start of [close], before the use
+  /// cases close, so no bloc needs a `StreamSubscription` field, an
+  /// `isClosed` guard, or a manual cancel in its own `close()`.
+  ///
+  /// [key] makes the start idempotent: a later `bindStream` with the same
+  /// key REPLACES the earlier binding (the earlier one is cancelled first),
+  /// and [unbind] stops it by name. Anonymous bindings are stopped through
+  /// the returned [StreamBinding.cancel].
+  ///
+  /// Errors are loud. A stream error goes to [onError] if given, otherwise
+  /// to the bloc's [JuiceBloc.onError] (logged as `bloc_error` and passed
+  /// to the error handler). Either way the binding is then cancelled unless
+  /// [cancelOnError] is false — the same contract as `Stream.listen`. An
+  /// error THROWN BY [onData] goes to the bloc's error handler too, and the
+  /// binding stays active: the stream is not broken, that item was.
+  ///
+  /// [onDone] runs when the stream ends; the binding is then inactive.
+  ///
+  /// Called on a closing or closed bloc, it logs `stream_binding` /
+  /// `refused` and returns an inert binding — the same fence `send` applies
+  /// to a late event — rather than listening to a stream nobody will
+  /// cancel.
+  StreamBinding<T> bindStream<T>(
+    Stream<T> stream,
+    void Function(T item) onData, {
+    String? key,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onDone,
+    bool cancelOnError = true,
+  }) {
+    final chatter = JuiceLoggerConfig.logs(Level.info);
+    if (isClosing) {
+      _logger.log(
+        'Stream binding refused: bloc is ${isClosed ? 'closed' : 'closing'}',
+        level: Level.warning,
+        context: {
+          'type': 'stream_binding',
+          'action': 'refused',
+          'bloc': runtimeType.toString(),
+          'key': key,
+        },
+      );
+      return StreamBinding.inert<T>(key);
+    }
+    if (key != null) unbind(key);
+
+    late final StreamBinding<T> binding;
+    binding = StreamBinding.create<T>(key, (b) {
+      _bindings.remove(b);
+      if (b.key != null && identical(_keyedBindings[b.key!], b)) {
+        _keyedBindings.remove(b.key!);
+      }
+    });
+    _bindings.add(binding);
+    if (key != null) _keyedBindings[key] = binding;
+
+    void fail(Object error, StackTrace stackTrace) {
+      if (onError != null) {
+        onError(error, stackTrace);
+      } else {
+        _logger.logError('Stream binding error', error, stackTrace, context: {
+          'type': 'stream_binding',
+          'action': 'error',
+          'bloc': runtimeType.toString(),
+          'key': key,
+        });
+        this.onError(error, stackTrace);
+      }
+      if (cancelOnError) binding.cancel();
+    }
+
+    StreamBinding.attach(
+      binding,
+      stream.listen(
+        (item) {
+          if (isClosing) return;
+          try {
+            onData(item);
+          } catch (error, stackTrace) {
+            _logger.logError('Stream binding onData threw', error, stackTrace,
+                context: {
+                  'type': 'stream_binding',
+                  'action': 'onData_error',
+                  'bloc': runtimeType.toString(),
+                  'key': key,
+                });
+            this.onError(error, stackTrace);
+          }
+        },
+        onError: fail,
+        onDone: () {
+          StreamBinding.finish(binding);
+          if (chatter) {
+            _logger.log('Stream binding done', context: {
+              'type': 'stream_binding',
+              'action': 'done',
+              'bloc': runtimeType.toString(),
+              'key': key,
+            });
+          }
+          onDone?.call();
+        },
+        cancelOnError: false, // handled in [fail], so onError always runs
+      ),
+    );
+    if (chatter) {
+      _logger.log('Stream bound', context: {
+        'type': 'stream_binding',
+        'action': 'bind',
+        'bloc': runtimeType.toString(),
+        'key': key,
+      });
+    }
+    return binding;
+  }
+
+  /// Cancel the binding registered under [key]. True if there was one.
+  bool unbind(String key) {
+    final binding = _keyedBindings.remove(key);
+    if (binding == null) return false;
+    binding.cancel();
+    return true;
+  }
+
+  /// The bindings currently listening (keyed and anonymous).
+  int get activeBindingCount => _bindings.length;
+
+  /// Cancel every binding and await their subscriptions' cancels — the
+  /// first step of [close], before the use cases close.
+  Future<void> _cancelBindings() async {
+    if (_bindings.isEmpty) return;
+    final cancels = [for (final b in _bindings.toList()) b.cancel()];
+    await Future.wait(cancels);
+  }
 
   // ============================================================
   // Public API
@@ -296,8 +445,10 @@ class JuiceBloc<TState extends BlocState>
       'type': 'bloc_lifecycle',
       'action': 'close',
       'bloc': runtimeType.toString(),
+      'streamBindings': _bindings.length,
     });
 
+    await _cancelBindings();
     await _useCaseRegistry.closeAll();
     await _aviatorManager.closeAll();
     await Future.wait(_eventSubscriptions.map((s) => s.close()));

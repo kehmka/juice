@@ -19,6 +19,7 @@ export 'src/juice_logger.dart';
 export 'src/lifecycle/lifecycle.dart';
 export 'src/result_event.dart';
 export 'src/state_selector.dart';
+export 'src/stream_binding.dart';
 export 'src/stream_status.dart';
 export 'src/use_case_builders/use_case_builder.dart';
 export 'src/usecase.dart';

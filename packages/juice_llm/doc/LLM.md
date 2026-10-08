@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_llm
-version: 0.5.0
+version: 0.6.0
 requires:
-  juice: ">=1.5.0"
+  juice: ">=2.0.0"
 updated: 2026-09-16
 ---
 
@@ -33,7 +33,7 @@ swappable (llama.cpp / Ollama / LiteRT / cloud).
 
 ```yaml
 dependencies:
-  juice_llm: ^0.5.0
+  juice_llm: ^0.6.0
 ```
 
 ## Construct

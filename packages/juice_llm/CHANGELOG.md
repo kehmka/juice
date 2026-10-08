@@ -1,3 +1,14 @@
+## 0.6.0 — unreleased (ships with juice 2.0.0)
+
+- Require `juice ^2.0.0`. The generation stream is a bloc-owned binding
+  (`bindStream(..., key: 'generation', cancelOnError: true)`): the bloc
+  cancels it at close before the use cases close. `stopGeneration` still
+  cancels it early WITHOUT awaiting the provider's teardown (the teardown
+  ceiling is unchanged — `StreamBinding.cancel()` returns the subscription's
+  own cancel future, which the queue tail bounds as before), and `close()`
+  still cancels it explicitly before disposing the provider, so a live
+  stream is never torn down under a disposed runtime. No API change.
+
 ## 0.5.0
 
 - Every builder now declares its `EventConcurrency` mode. Three were bare:

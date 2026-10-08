@@ -48,7 +48,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// The in-flight generation's stream subscription, if any. Cancelling it
   /// stops the provider's runtime (out-of-band) — that's how
   /// [CancelGenerationEvent] works.
-  StreamSubscription<LlmChunk>? _genSub;
+  /// The in-flight generation stream, bound on the bloc (cancelled by
+  /// close before the use cases close; [stopGeneration] cancels it early).
+  StreamBinding<LlmChunk>? _genBinding;
+  static const _generationKey = 'generation';
 
   /// requestId of the generation currently streaming (for the cancel path).
   String? _activeRequestId;
@@ -286,7 +289,8 @@ class LlmBloc extends JuiceBloc<LlmState> {
       if (!firstChunk.isCompleted) firstChunk.complete();
     }
 
-    _genSub = provider.generate(request).listen(
+    _genBinding = bindStream<LlmChunk>(
+      provider.generate(request),
       (c) {
         // The first chunk marks the end of PREFILL — the runtime is now
         // decoding, where cancellation is prompt and safe. The safe-point
@@ -299,8 +303,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
         tokens++;
         onChunk(c);
       },
+      key: _generationKey,
       onDone: () {
-        _genSub = null;
+        _genBinding = null;
         _activeRequestId = null;
         _cancelThrottle();
         settleFirstChunk();
@@ -309,8 +314,8 @@ class LlmBloc extends JuiceBloc<LlmState> {
           outcome.complete(const GenerationOutcome(GenOutcomeKind.done));
         }
       },
-      onError: (Object e) {
-        _genSub = null;
+      onError: (Object e, StackTrace _) {
+        _genBinding = null;
         _activeRequestId = null;
         _cancelThrottle();
         settleFirstChunk();
@@ -379,9 +384,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// requestId, or null if nothing was streaming.
   Future<String?> stopGeneration() async {
     final id = _activeRequestId;
-    final sub = _genSub;
+    final sub = _genBinding;
     final outcome = _genOutcome;
-    _genSub = null;
+    _genBinding = null;
     _activeRequestId = null;
     _genOutcome = null;
     _cancelThrottle();
@@ -502,7 +507,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
   @override
   Future<void> close() async {
     _cancelThrottle();
-    await _genSub?.cancel();
+    // The generation binding is cancelled by the bloc's close as well; it is
+    // cancelled here first so the provider is not disposed under a live
+    // stream (super.close() runs after dispose, by design of this bloc).
+    await _genBinding?.cancel();
     try {
       await _config.provider.dispose();
     } catch (_) {

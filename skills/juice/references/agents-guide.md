@@ -206,7 +206,22 @@ When you *do* stay `concurrent`, follow the discipline:
 
 ---
 
-## 4b. Telemetry (juice ≥ 1.7.0)
+## 4b. Streams a bloc listens to (juice ≥ 2.0.0)
+
+A bloc never holds a `StreamSubscription` field. It binds:
+`bindStream<T>(stream, (item) => send(ItemEvent(item)), key: 'tracking')`
+from a use case or a bloc helper; the bloc owns the binding — cancelled at
+the start of `close()` before the use cases close, `onData` never runs while
+closing, no `isClosed` guard, no manual cancel in `close()`. `key` makes
+start idempotent (a re-bind replaces) and `unbind(key)` is stop; an
+anonymous binding stops through `StreamBinding.cancel()` (returns the
+subscription's own cancel future — bound it if a provider's teardown can
+wedge). Errors are loud: no `onError` → the bloc's error handler, and the
+binding is cancelled unless `cancelOnError: false`; an `onData` that throws
+→ error handler, binding stays. Gotcha: `onData` is for turning items into
+EVENTS — emit from the use case the event dispatches, not from `onData`.
+
+## 4c. Telemetry (juice ≥ 1.7.0)
 
 Every use-case execution logs a structured START (`use_case_execution`) and
 exactly one END sharing its `executionId`: `use_case_completed` (with

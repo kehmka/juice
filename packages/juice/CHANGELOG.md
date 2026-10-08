@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.0.0] - unreleased (the `v2` branch)
+
+The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each item
+lands here as it is built, with its migration in one line.
+
+### Added
+- **`JuiceBloc.bindStream` / `unbind` / `StreamBinding`** — the bloc owns
+  every stream it listens to. `bindStream(stream, onData, {key, onError,
+  onDone, cancelOnError})` runs `onData` per item while the bloc is open
+  (never while closing), is cancelled at the start of `close()` before the
+  use cases close, and a `key` makes the start idempotent (a re-bind
+  replaces, `unbind(key)` stops). Errors are loud: with no `onError` the
+  error goes to the bloc's error handler and the binding is cancelled
+  (`cancelOnError: false` keeps listening); an `onData` that throws is
+  routed to the error handler and the binding stays active. A bind on a
+  closing bloc is refused with a `stream_binding`/`refused` log and an
+  inert binding — the same fence `send` applies. Replaces the
+  `StreamSubscription` field + `isClosed` guard + manual cancel in `close()`
+  every stream-reading bloc hand-rolled (location and llm migrated; the
+  enabler for `restartable`). Pinned by `test/bloc/stream_binding_test.dart`
+  (20 tests, every path).
+
 ## [1.10.0] - 2026-09-29
 
 Includes everything listed under 1.9.1 below, which was never published on

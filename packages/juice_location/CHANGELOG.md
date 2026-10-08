@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - unreleased (ships with juice 2.0.0)
+
+### Changed
+
+- Require `juice ^2.0.0`. Position tracking is a bloc-owned stream binding
+  (`bindStream(..., key: 'tracking')` / `unbind('tracking')`): no
+  `StreamSubscription` field, no `isClosed` guard, no manual cancel in
+  `close()` — the bloc cancels it before the use cases close. A second
+  `StartTrackingEvent` replaces the first binding instead of leaking it.
+  No API change.
+
 ## [0.2.0] - 2026-08-12
 
 ### Changed

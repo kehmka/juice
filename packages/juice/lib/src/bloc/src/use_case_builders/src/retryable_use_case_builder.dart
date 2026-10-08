@@ -78,7 +78,7 @@ class RetryableUseCaseBuilder<
     this.retryWhen,
     this.onRetry,
     UseCaseEventBuilder? initialEventBuilder,
-    this.concurrency = EventConcurrency.concurrent,
+    required this.concurrency,
   })  : backoff =
             backoff ?? ExponentialBackoff(initial: const Duration(seconds: 1)),
         _initialEventBuilder = initialEventBuilder;

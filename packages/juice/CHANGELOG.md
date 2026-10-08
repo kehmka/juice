@@ -5,6 +5,19 @@
 The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each item
 lands here as it is built, with its migration in one line.
 
+### Breaking
+- **`concurrency:` is REQUIRED on every builder** — `UseCaseBuilder`,
+  `UseCaseBuilder.typed`, `StatefulUseCaseBuilder`,
+  `RetryableUseCaseBuilder`, `InlineUseCaseBuilder`. It used to default to
+  `concurrent`; a mode is a decision and the compiler now asks for it.
+  *Migration:* add `concurrency: EventConcurrency.concurrent` where the
+  old behaviour is what you meant, or pick the right one (`sequential` for
+  shared-state mutation, `droppable` for exclusive flows, `restartable`
+  for latest-input-wins). The opt-in lint rule
+  `juice_missing_concurrency_mode` is retired: it has nothing left to say.
+- **`EventConcurrency` gains `restartable`** — an exhaustive `switch` over
+  the enum needs a new case (see Added).
+
 ### Added
 - **`EventConcurrency.restartable` — the fourth mode: latest input wins.**
   A same-type event arriving while one runs supersedes it and starts at

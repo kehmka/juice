@@ -26,7 +26,7 @@ class StatefulUseCaseBuilder extends UseCaseBuilderBase {
       {required this.typeOfEvent,
       required this.useCaseGenerator,
       UseCaseEventBuilder? initialEventBuilder,
-      this.concurrency = EventConcurrency.concurrent})
+      required this.concurrency})
       : _initialEventBuilder = initialEventBuilder;
 
   /// The type of event this use case handles

@@ -13,7 +13,6 @@ import 'src/fixes/add_final_to_state_field.dart';
 import 'src/rules/behavior_in_state.dart';
 import 'src/rules/generic_event.dart';
 import 'src/rules/lease_in_build.dart';
-import 'src/rules/missing_concurrency_mode.dart';
 import 'src/rules/mutable_state_field.dart';
 import 'src/rules/send_in_build.dart';
 import 'src/rules/stale_read_across_await.dart';
@@ -23,10 +22,11 @@ final plugin = JuiceLintPlugin();
 
 /// Registers the juice_lint rules and quick fixes.
 ///
-/// Warning rules are on by default (turn one off with `rule: false` under
-/// `plugins: juice_lint: diagnostics:`). `juice_missing_concurrency_mode` is
-/// a policy rule — "every builder declares its mode" — so it is a lint rule,
-/// off until enabled with `juice_missing_concurrency_mode: true`.
+/// Every rule is a warning, on by default (turn one off with `rule: false`
+/// under `plugins: juice_lint: diagnostics:`). The former opt-in policy rule
+/// `juice_missing_concurrency_mode` was retired with juice 2.0.0: the
+/// compiler enforces it now (`concurrency:` is a required parameter on every
+/// builder).
 class JuiceLintPlugin extends Plugin {
   @override
   String get name => 'juice_lint';
@@ -40,7 +40,6 @@ class JuiceLintPlugin extends Plugin {
       ..registerWarningRule(SendInBuild())
       ..registerWarningRule(LeaseInBuild())
       ..registerWarningRule(StaleReadAcrossAwait())
-      ..registerLintRule(MissingConcurrencyMode())
       ..registerFixForRule(MutableStateField.code, AddFinalToStateField.new);
   }
 }

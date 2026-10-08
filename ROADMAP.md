@@ -529,7 +529,7 @@ row. Then publish 1.10.0.
 
 ### 2.0.0 — the breaking set
 
-**B · `concurrency` becomes REQUIRED on `UseCaseBuilder` / `.typed`.** *Step 1 (the sweep) DONE 2026-10-07 on main, non-breaking: 121 example sites ruled (`doc/CONCURRENCY_RULINGS_2026_09.md`, signed), 60 core sites `concurrent`, 25 doc snippets, rule ON in the five canary apps, lint gate green. Finding: 8 example sites are "latest input wins" — the consumers `restartable` (#3) was waiting for. Step 2 (required parameter, all five constructors) is the 2.0 branch.*
+**B · `concurrency` becomes REQUIRED on `UseCaseBuilder` / `.typed`.** *Step 1 (the sweep) DONE 2026-10-07 on main, non-breaking: 121 example sites ruled (`doc/CONCURRENCY_RULINGS_2026_09.md`, signed), 60 core sites `concurrent`, 25 doc snippets, rule ON in the five canary apps, lint gate green. Finding: 8 example sites are "latest input wins" — the consumers `restartable` (#3) was waiting for. Step 2 DONE 2026-10-07 on `v2`: `concurrency:` required on all five constructors; the lint rule retired (the compiler enforces it); the five canary apps and the lint example no longer enable it; fixtures updated.*
 A declared mode is doctrine (this file, "Concurrency semantics"); a
 default is a decision nobody made. Today the lint rule
 `juice_missing_concurrency_mode` is off by default and the family itself

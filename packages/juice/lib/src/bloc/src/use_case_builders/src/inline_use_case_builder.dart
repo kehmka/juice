@@ -193,7 +193,7 @@ class InlineUseCaseBuilder<
     required this.typeOfEvent,
     required this.handler,
     UseCaseEventBuilder? initialEventBuilder,
-    this.concurrency = EventConcurrency.concurrent,
+    required this.concurrency,
   }) : _initialEventBuilder = initialEventBuilder;
 
   /// The event type this use case handles.

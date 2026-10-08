@@ -382,8 +382,8 @@ void main() {
           useCaseGenerator: () => AlwaysFailingUseCase(),
           maxRetries: 3,
           backoff: FixedBackoff(Duration(milliseconds: 10)),
-          retryWhen: (error) =>
-              false, // Never retry, concurrency: EventConcurrency.concurrent
+          retryWhen: (error) => false, // Never retry
+          concurrency: EventConcurrency.concurrent,
         ),
       );
 

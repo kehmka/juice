@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0] - unreleased (ships with juice 2.0.0)
+
+### Removed
+- `juice_missing_concurrency_mode` (the one opt-in rule). juice 2.0.0 makes
+  `concurrency:` a required parameter on every builder, so a bare builder is
+  a compile error and the rule has nothing left to report. Six warning rules
+  remain, all on by default. The fixtures and the enable snippet are updated.
+
 ## [0.2.0] - 2026-09-26
 
 Ported from `custom_lint` (unmaintained; built on the deprecated legacy

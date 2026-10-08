@@ -1,5 +1,5 @@
 // Fixtures for juice_lint's bloc and use-case rules:
-// juice_missing_concurrency_mode and juice_stale_read_across_await.
+// juice_stale_read_across_await (juice_missing_concurrency_mode retired in 2.0).
 // Same `// expect_lint:` convention as fixtures.dart.
 import 'package:juice/juice.dart';
 
@@ -42,15 +42,17 @@ Future<String> createRemote(String name) async => name;
 class ItemsBloc extends JuiceBloc<ItemsState> {
   ItemsBloc()
     : super(const ItemsState(), [
-        // --- juice_missing_concurrency_mode ---------------------------------
-        // expect_lint: juice_missing_concurrency_mode
+        // juice_missing_concurrency_mode was retired with juice 2.0.0:
+        // `concurrency:` is required, so a bare builder no longer compiles.
         () => UseCaseBuilder(
           typeOfEvent: AddItemEvent,
           useCaseGenerator: () => AddItemUseCase(),
+          concurrency: EventConcurrency.sequential,
         ),
-        // expect_lint: juice_missing_concurrency_mode
-        () => UseCaseBuilder.typed(() => RenameItemUseCase()),
-        // Declared modes → fine.
+        () => UseCaseBuilder.typed(
+          () => RenameItemUseCase(),
+          concurrency: EventConcurrency.sequential,
+        ),
         () => UseCaseBuilder(
           typeOfEvent: RefreshEvent,
           useCaseGenerator: () => RefreshUseCase(),

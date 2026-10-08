@@ -48,9 +48,10 @@ abstract class UseCaseBuilderBase {
 
   /// How same-type events are processed relative to one another.
   ///
-  /// Defaults to [EventConcurrency.concurrent] (events may interleave at awaits).
-  /// Use [EventConcurrency.sequential] for events that mutate shared state, or
-  /// [EventConcurrency.droppable] for exclusive flows.
+  /// Every registration builder takes it as a REQUIRED parameter (2.0.0).
+  /// This base getter answers [EventConcurrency.concurrent] only for the
+  /// fixed-mode builders that override nothing (`EventSubscription`), which
+  /// forward events rather than run a use case of their own.
   EventConcurrency get concurrency => EventConcurrency.concurrent;
 
   /// Cleanup method called when the use case is disposed.
@@ -90,7 +91,7 @@ class UseCaseBuilder implements UseCaseBuilderBase {
     required this.typeOfEvent,
     required this.useCaseGenerator,
     UseCaseEventBuilder? initialEventBuilder,
-    this.concurrency = EventConcurrency.concurrent,
+    required this.concurrency,
   })  : _initialEventBuilder = initialEventBuilder,
         _acceptsBloc = null,
         _useCaseBlocType = null;
@@ -128,7 +129,7 @@ class UseCaseBuilder implements UseCaseBuilderBase {
   static UseCaseBuilder
       typed<TBloc extends JuiceBloc, TEvent extends EventBase>(
     UseCase<TBloc, TEvent> Function() useCaseGenerator, {
-    EventConcurrency concurrency = EventConcurrency.concurrent,
+    required EventConcurrency concurrency,
     TEvent Function()? initialEventBuilder,
   }) {
     return UseCaseBuilder._typed(

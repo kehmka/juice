@@ -8,6 +8,3 @@
 plugins:
   juice_lint:
     path: ..
-    diagnostics:
-      # The one opt-in (lint) rule; enabled here so its fixtures run.
-      juice_missing_concurrency_mode: true

@@ -182,7 +182,7 @@ guard:
 () => UseCaseBuilder(
   typeOfEvent: SaveEvent,
   useCaseGenerator: () => SaveUseCase(),
-  concurrency: EventConcurrency.sequential,   // or .droppable, .restartable, .concurrent
+  concurrency: EventConcurrency.sequential,   // REQUIRED (2.0.0): .sequential, .droppable, .restartable or .concurrent
 ),
 ```
 
@@ -277,10 +277,11 @@ instead of rebuilding. Two rules:
 > plugin results arrive): `juice_generic_event`,
 > `juice_mutable_state_field`, `juice_behavior_in_state`,
 > `juice_send_in_build`, `juice_lease_in_build`,
-> `juice_stale_read_across_await`, plus the opt-in
-> `juice_missing_concurrency_mode`. Enable it with a top-level `plugins:
-> juice_lint:` section in `analysis_options.yaml` (no pubspec dependency);
-> suppress one site with `// ignore: juice_lint/<rule>`.
+> `juice_stale_read_across_await`. (The opt-in
+> `juice_missing_concurrency_mode` was retired in 2.0: `concurrency:` is a
+> required parameter, so the compiler enforces it.) Enable the plugin with a
+> top-level `plugins: juice_lint:` section in `analysis_options.yaml` (no
+> pubspec dependency); suppress one site with `// ignore: juice_lint/<rule>`.
 
 ## 5. Gotchas — what AI models get wrong about Juice
 

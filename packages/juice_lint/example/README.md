@@ -166,25 +166,18 @@ class SearchBloc extends JuiceBloc<SearchState> {
 Callbacks become events: instead of storing `onSubmit`, the widget sends
 `SubmitSearchEvent()` and a use case handles it.
 
-## 4 · `juice_missing_concurrency_mode` (opt-in)
+## 4 · `juice_missing_concurrency_mode` — retired (juice 2.0.0)
 
-**AGENTS.md §4:** pick the concurrency mode per event. This is the one
-rule that is off by default (the `concurrent` default is legitimate for
-independent events); this package enables it under `diagnostics:`.
-
-```dart
-() => UseCaseBuilder(typeOfEvent: AddItemEvent, useCaseGenerator: () => AddItemUseCase()),
-() => UseCaseBuilder.typed(() => RenameItemUseCase()),
-```
-
-Both default to `concurrent`: a second `AddItemEvent` runs while the first
-is suspended at an `await`. That may be right — but it should be a
-decision. The fix is to say which: `sequential` (mutates shared state),
-`droppable` (exclusive flow), or `concurrent` (independent):
+**AGENTS.md §4:** pick the concurrency mode per event. Until 2.0 this was
+an opt-in lint rule, because `concurrency:` defaulted to `concurrent`.
+Since juice 2.0.0 the parameter is **required** on every builder
+(`UseCaseBuilder`, `.typed`, `StatefulUseCaseBuilder`,
+`RetryableUseCaseBuilder`, `InlineUseCaseBuilder`), so a bare builder is a
+compile error and the rule has nothing left to say:
 
 ```dart
 () => UseCaseBuilder.typed(() => AddItemUseCase(),
-    concurrency: EventConcurrency.sequential),
+    concurrency: EventConcurrency.sequential),   // required
 ```
 
 ## 5 · `juice_send_in_build` and 6 · `juice_lease_in_build`

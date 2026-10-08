@@ -31,7 +31,6 @@ all but one are **enabled by default**.
 | `juice_send_in_build` | on | `bloc.send(...)` / `sendCancellable(...)` directly in a `build`/`onBuild` body | dispatches on every rebuild. Calls inside a closure (`onPressed:`, `builder:`) are not flagged |
 | `juice_lease_in_build` | on | `BlocScope.lease(...)` / `leaseAsync(...)` directly in a `build`/`onBuild` body | a new, never-released lease per rebuild — lease in `initState`, release in `dispose` |
 | `juice_stale_read_across_await` | on | a `bloc.state` snapshot, taken before an `await`, used in an emit's `newState:` after it | the #1 latent bug: it clobbers what another event emitted during the await (§4) |
-| `juice_missing_concurrency_mode` | **opt-in** | `UseCaseBuilder(...)` / `UseCaseBuilder.typed(...)` with no `concurrency:` | the default is `concurrent`; a policy that every builder states its mode (§4). Opt-in because the default is legitimate for independent events |
 
 A "build method" is a method named `build` or `onBuild` whose first
 parameter is a Flutter `BuildContext`.
@@ -97,7 +96,6 @@ plugins:
   juice_lint:
     path: ../juice_lint
     diagnostics:
-      juice_missing_concurrency_mode: true   # opt in
       juice_send_in_build: false             # opt out
 ```
 

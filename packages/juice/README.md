@@ -22,7 +22,7 @@ The framework is most compelling when you lean into ownership and lifecycle, not
 ## Core Capabilities
 
 - **Use-case driven business logic**: blocs route events into dedicated use cases
-- **Per-event concurrency**: `EventConcurrency.sequential`/`droppable`/`restartable`/`concurrent` on a `UseCaseBuilder` controls how same-type events interleave (1.5.0; `restartable` — latest input wins, the superseded run fenced — 2.0.0)
+- **Per-event concurrency**: `EventConcurrency.sequential`/`droppable`/`restartable`/`concurrent` on every builder controls how same-type events interleave (1.5.0; `restartable` — latest input wins, the superseded run fenced — 2.0.0). **Required since 2.0.0**: a mode is a decision, and the compiler asks for it
 - **Lifecycle ownership**: `permanent`, `feature`, and `leased` lifecycles via `BlocScope`
 - **Targeted rebuilds**: rebuild groups let widgets subscribe narrowly. Measured against bloc and Riverpod ([benchmarks](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md)): 1 widget rebuilt per update with 0 selector calls, the same counts as a Riverpod provider-per-cell family (selector-based targeting runs one selector per consumer per update); per frame, groups tie the selector forms and the family form alike on a Mac and a clock-pinned iPhone ([§11](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md#11-riverpods-family-form--the-missing-variant-2026-09-29)), and untargeted defaults cost about 2×
 - **Status-aware streams**: `StreamStatus` separates transient workflow state from persistent app state

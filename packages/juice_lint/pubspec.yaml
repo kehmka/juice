@@ -1,6 +1,6 @@
 name: juice_lint
 description: Analyzer plugin for the Juice framework — the AGENTS.md idioms as lint rules, reported by dart analyze.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/kehmka/juice
 publish_to: none  # flip when first published; validate the analysis surface first
 

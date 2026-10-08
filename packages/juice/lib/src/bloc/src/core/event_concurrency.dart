@@ -2,11 +2,14 @@
 ///
 /// Juice dispatches each event independently, so without a policy two events of
 /// the same type can interleave at every `await` inside a use case (the
-/// "read state before an await, write a stale value after" race). Declare a
-/// mode per event on its `UseCaseBuilder` to control this.
+/// "read state before an await, write a stale value after" race). Every
+/// builder DECLARES its mode (`concurrency:` is required since juice 2.0.0;
+/// before that it defaulted to [concurrent]) — a mode is a decision, and the
+/// compiler now asks for it.
 enum EventConcurrency {
-  /// Default — same-type use cases may run concurrently (interleave at awaits).
-  /// Use for genuinely independent events; follow the read-at-emit discipline.
+  /// Same-type use cases may run concurrently (interleave at awaits). Use for
+  /// genuinely independent events; follow the read-at-emit discipline. (The
+  /// implicit default before 2.0.0.)
   concurrent,
 
   /// Same-type events queue and run **one at a time, in order**; each use case

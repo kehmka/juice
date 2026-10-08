@@ -14,7 +14,8 @@ class ChatBloc extends JuiceBloc<ChatState> {
                   typeOfEvent: ConnectWebSocketEvent,
                   useCaseGenerator: () => InitializeWebSocketUseCase(service),
                   initialEventBuilder: () =>
-                      ConnectWebSocketEvent(), // Startup event, concurrency: EventConcurrency.droppable
+                      ConnectWebSocketEvent(), // Startup event
+                  concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
                 typeOfEvent: SendMessageEvent,

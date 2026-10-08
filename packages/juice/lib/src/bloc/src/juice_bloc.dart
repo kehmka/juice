@@ -12,6 +12,7 @@ import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'cancellable_event.dart';
 import 'core/event_concurrency.dart';
+import 'core/execution_run.dart';
 import 'stream_binding.dart';
 import 'use_case_builders/use_case_builder.dart';
 import 'aviators/aviator.dart';
@@ -81,6 +82,8 @@ class JuiceBloc<TState extends BlocState>
 
     _dispatcher = EventDispatcher<EventBase>(
       onUnhandledEvent: _handleUnhandledEvent,
+      onSuperseded: _cancelBindingsOf,
+      logger: _logger,
     );
 
     _initialize(useCases, aviatorBuilders);
@@ -171,7 +174,7 @@ class JuiceBloc<TState extends BlocState>
       if (b.key != null && identical(_keyedBindings[b.key!], b)) {
         _keyedBindings.remove(b.key!);
       }
-    });
+    }, run: ExecutionRun.current);
     _bindings.add(binding);
     if (key != null) _keyedBindings[key] = binding;
 
@@ -245,6 +248,18 @@ class JuiceBloc<TState extends BlocState>
 
   /// The bindings currently listening (keyed and anonymous).
   int get activeBindingCount => _bindings.length;
+
+  /// A `restartable` run was superseded: cancel the bindings it created.
+  void _cancelBindingsOf(ExecutionRun run) {
+    for (final b in _bindings.toList()) {
+      if (identical(b.run, run)) b.cancel();
+    }
+  }
+
+  /// Whether [event]'s `restartable` run has been superseded by a newer
+  /// same-type event. False for any other event. Inside the use case,
+  /// `BlocUseCase.isSuperseded` needs no event.
+  bool isSuperseded(EventBase event) => _dispatcher.isSuperseded(event);
 
   /// Cancel every binding and await their subscriptions' cancels — the
   /// first step of [close], before the use cases close.
@@ -360,7 +375,16 @@ class JuiceBloc<TState extends BlocState>
         .firstWhere((s) => s is! WaitingStatus<TState>)
         .timeout(timeout);
     send(event);
-    return result;
+    if (!_dispatcher.isRestartable(event.runtimeType)) return result;
+    // A superseded restartable run is fenced: it never emits, so the wait
+    // above could only time out. Race it against the supersede signal and
+    // answer with a CancelingStatus for THIS event (not put on the stream).
+    final superseded = _dispatcher
+        .whenSuperseded(event)
+        .then((_) => StreamStatus.canceling(state, oldState, event));
+    final winner = await Future.any([result, superseded]);
+    result.ignore(); // the loser may still time out; nobody is listening
+    return winner;
   }
 
   /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream
@@ -554,6 +578,9 @@ class JuiceBloc<TState extends BlocState>
   // ============================================================
 
   UseCaseContext<JuiceBloc<TState>, TState> _createContext(EventBase event) {
+    if (_dispatcher.isRestartable(event.runtimeType)) {
+      return _fencedContext(event);
+    }
     return UseCaseContext(
       bloc: this,
       getState: () => state,
@@ -576,6 +603,64 @@ class JuiceBloc<TState extends BlocState>
       },
       navigate: _aviatorManager.navigate,
       navigateAsync: _aviatorManager.navigateAsync,
+    );
+  }
+
+  /// The context of a `restartable` run: every emission and navigation is
+  /// dropped once the run is superseded, each drop logged as
+  /// `state_emission_superseded`. Built only for restartable types, so the
+  /// other modes pay nothing for the fence.
+  UseCaseContext<JuiceBloc<TState>, TState> _fencedContext(EventBase event) {
+    bool fenced(String what) {
+      if (!_dispatcher.isSuperseded(event)) return false;
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        _logger.log('Emission dropped: use case superseded', context: {
+          'type': 'state_emission_superseded',
+          'bloc': runtimeType.toString(),
+          'event': event.runtimeType.toString(),
+          'what': what,
+        });
+      }
+      return true;
+    }
+
+    return UseCaseContext(
+      bloc: this,
+      getState: () => state,
+      getOldState: () => oldState,
+      emitUpdate: (newState, groups, {bool skipIfSame = false}) {
+        if (fenced('update')) return;
+        _statusEmitter.emitUpdate(event, newState, groups,
+            skipIfSame: skipIfSame);
+      },
+      emitWaiting: (newState, groups) {
+        if (fenced('waiting')) return;
+        _statusEmitter.emitWaiting(event, newState, groups);
+      },
+      emitFailure: (newState, groups,
+          {Object? error, StackTrace? errorStackTrace}) {
+        if (fenced('failure')) return;
+        _statusEmitter.emitFailure(event, newState, groups,
+            error: error, errorStackTrace: errorStackTrace);
+      },
+      emitCancel: (newState, groups) {
+        if (fenced('cancel')) return;
+        _statusEmitter.emitCancel(event, newState, groups);
+      },
+      emitEvent: (EventBase? e) {
+        if (fenced('event')) return;
+        if (e != null && !_stateManager.isClosed) {
+          _stateManager.emit(currentStatus.copyWith(event: e));
+        }
+      },
+      navigate: (aviator, args) {
+        if (fenced('navigate')) return;
+        _aviatorManager.navigate(aviator, args);
+      },
+      navigateAsync: (aviator, args) async {
+        if (fenced('navigate')) return;
+        await _aviatorManager.navigateAsync(aviator, args);
+      },
     );
   }
 

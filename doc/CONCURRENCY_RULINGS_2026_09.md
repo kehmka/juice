@@ -24,7 +24,7 @@ examples, core (515) and the benchmarks (17) are green.
 |---|---|---|
 | mutate, no await | `sequential` | the use case reads and writes bloc state with no `await`. Atomic either way; ruled sequential because the family's own packages rule these sequential (47 of 55 such sites) and it stays correct if an `await` is added later |
 | mutate across an await | `sequential` | persist-then-write, or append to a list: order matters and the read-before-await race is impossible |
-| latest input wins | `sequential` | search, filter, select, load-by-id. `droppable` would drop the NEWER input; `concurrent` lets an older response land last. Sequential runs every request and finishes on the latest. **These are the consumers `restartable` (#3) was waiting for** |
+| latest input wins | `restartable` (since 2.0.0; `sequential` until then) | search, filter, select, load-by-id. The new input supersedes the in-flight run: its emissions are fenced, its bindings cancelled, a cancellable event cancelled. `droppable` would drop the NEWER input; `concurrent` lets an older response land last; `sequential` (the 1.x ruling) ran every superseded request to completion. **These eight sites were the consumers `restartable` (#3) waited for; re-ruled 2026-10-07 on the `v2` branch** |
 | exclusive flow | `droppable` | init, load, refresh, submit, checkout: a second one while the first runs is redundant |
 | independent | `concurrent` | nothing shared to order; stated per site |
 
@@ -112,7 +112,7 @@ changes behaviour in the example it touches:
 | `UpdateTodoEvent` <sub>blocs/todo/todo_bloc.dart:17</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 | `RemoveTodoEvent` <sub>blocs/todo/todo_bloc.dart:20</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 | `ToggleTodoEvent` <sub>blocs/todo/todo_bloc.dart:23</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
-| `FetchWeatherEvent` <sub>blocs/weather/weather_bloc.dart:10</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `FetchWeatherEvent` <sub>blocs/weather/weather_bloc.dart:10</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 
 ## `packages/juice/example` — 3 sites (2 sequential, 1 concurrent)
 
@@ -132,7 +132,7 @@ changes behaviour in the example it touches:
 
 | event | builder | awaits | mode | why |
 |---|---|---:|---|---|
-| `LoadMessagesEvent` <sub>blocs/chat_bloc.dart:21</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `LoadMessagesEvent` <sub>blocs/chat_bloc.dart:21</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 | `SendMessageEvent` <sub>blocs/chat_bloc.dart:25</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 | `ReceiveMessageEvent` <sub>blocs/chat_bloc.dart:29</sub> | plain | 1 | **sequential** | mutates shared state across an await (persist, then write) |
 | `UpdateTypingEvent` <sub>blocs/chat_bloc.dart:33</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
@@ -145,7 +145,7 @@ changes behaviour in the example it touches:
 | event | builder | awaits | mode | why |
 |---|---|---:|---|---|
 | `LoadAnalyticsEvent` <sub>blocs/analytics_bloc.dart:12</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
-| `FilterDataEvent` <sub>blocs/analytics_bloc.dart:17</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `FilterDataEvent` <sub>blocs/analytics_bloc.dart:17</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 | `LoadDashboardEvent` <sub>blocs/dashboard_bloc.dart:12</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
 | `RefreshStatsEvent` <sub>blocs/dashboard_bloc.dart:17</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
 
@@ -158,11 +158,11 @@ changes behaviour in the example it touches:
 | `RemoveFromCartEvent` <sub>blocs/cart_bloc.dart:22</sub> | plain | 2 | **sequential** | mutates shared state across an await (persist, then write) |
 | `UpdateCartQuantityEvent` <sub>blocs/cart_bloc.dart:26</sub> | plain | 1 | **sequential** | mutates shared state across an await (persist, then write) |
 | `CheckoutEvent` <sub>blocs/cart_bloc.dart:30</sub> | plain | 2 | **droppable** | exclusive flow: a double checkout must not run twice |
-| `LoadProductsEvent` <sub>blocs/products_bloc.dart:16</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `LoadProductsEvent` <sub>blocs/products_bloc.dart:16</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 | `LoadCategoriesEvent` <sub>blocs/products_bloc.dart:21</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
 | `LoadMoreProductsEvent` <sub>blocs/products_bloc.dart:26</sub> | plain | 1 | **droppable** | exclusive flow: replaces the hand-rolled `isLoadingMore` guard |
-| `SearchProductsEvent` <sub>blocs/products_bloc.dart:30</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
-| `LoadProductDetailEvent` <sub>blocs/products_bloc.dart:34</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `SearchProductsEvent` <sub>blocs/products_bloc.dart:30</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
+| `LoadProductDetailEvent` <sub>blocs/products_bloc.dart:34</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 
 ## `juice_examples` · notes_app — 18 sites (14 sequential, 3 droppable, 1 concurrent)
 
@@ -195,7 +195,7 @@ changes behaviour in the example it touches:
 | `LoadMoreEvent` <sub>blocs/feed_bloc.dart:23</sub> | plain | 1 | **droppable** | exclusive flow: replaces the hand-rolled `isLoadingMore` guard |
 | `LikePostEvent` <sub>blocs/feed_bloc.dart:27</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 | `AddCommentEvent` <sub>blocs/feed_bloc.dart:31</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
-| `SelectPostEvent` <sub>blocs/feed_bloc.dart:35</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `SelectPostEvent` <sub>blocs/feed_bloc.dart:35</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 | `LoadProfileEvent` <sub>blocs/profile_bloc.dart:14</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
 
 ## `packages/juice_network/example` — 16 sites (11 sequential, 4 concurrent, 1 droppable)
@@ -215,7 +215,7 @@ changes behaviour in the example it touches:
 | `AddLogEvent` <sub>blocs/interceptors_bloc.dart:240</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 | `LoadPostsEvent` <sub>blocs/posts_bloc.dart:238</sub> | plain | 1 | **droppable** | exclusive flow: a second one while the first runs is redundant |
 | `SetCachePolicyEvent` <sub>blocs/posts_bloc.dart:243</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
-| `LoadPostDetailEvent` <sub>blocs/posts_bloc.dart:247</sub> | plain | 1 | **sequential** | latest input must win; `restartable` is the right mode when it exists (#3) — `droppable` would drop the NEWER input, `concurrent` lets an older response land last |
+| `LoadPostDetailEvent` <sub>blocs/posts_bloc.dart:247</sub> | plain | 1 | **restartable** (2.0.0; was sequential) | latest input must win: the new input supersedes the in-flight run (#3, built 2026-10-07) |
 | `DeletePostEvent` <sub>blocs/posts_bloc.dart:251</sub> | plain | 1 | **sequential** | mutates shared state across an await (persist, then write) |
 | `ClearPostDetailEvent` <sub>blocs/posts_bloc.dart:255</sub> | plain | 0 | **sequential** | mutates bloc state with no await; the family's own packages rule these sequential (47 of 55) |
 

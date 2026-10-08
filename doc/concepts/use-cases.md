@@ -380,7 +380,7 @@ Declare a concurrency mode per event on its builder:
 () => UseCaseBuilder(
   typeOfEvent: SaveEvent,
   useCaseGenerator: () => SaveUseCase(),
-  concurrency: EventConcurrency.sequential,   // or .droppable, or .concurrent
+  concurrency: EventConcurrency.sequential,   // or .droppable, .restartable, .concurrent
 ),
 ```
 

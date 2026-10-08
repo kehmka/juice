@@ -18,10 +18,14 @@ import 'dart:async';
 /// - [key], when given, makes a later `bindStream` with the same key REPLACE
 ///   this one, and `unbind(key)` cancel it.
 class StreamBinding<T> {
-  StreamBinding._(this.key, this._onInactive);
+  StreamBinding._(this.key, this._onInactive, this.run);
 
   /// The replacement/unbind key, or null for an anonymous binding.
   final String? key;
+
+  /// The `restartable` run that created this binding, or null when it was
+  /// not created inside one. A superseded run's bindings are cancelled.
+  final Object? run;
 
   final void Function(StreamBinding<T> binding) _onInactive;
   StreamSubscription<T>? _subscription;
@@ -60,7 +64,7 @@ class StreamBinding<T> {
   /// A binding refused because the bloc was already closing: inert from
   /// birth, [done] already complete, [isActive] false.
   static StreamBinding<T> inert<T>(String? key) {
-    final b = StreamBinding<T>._(key, (_) {});
+    final b = StreamBinding<T>._(key, (_) {}, null);
     b._end();
     return b;
   }
@@ -73,9 +77,10 @@ class StreamBinding<T> {
   /// Create a live binding. Internal to `bindStream`.
   static StreamBinding<T> create<T>(
     String? key,
-    void Function(StreamBinding<T> binding) onInactive,
-  ) =>
-      StreamBinding<T>._(key, onInactive);
+    void Function(StreamBinding<T> binding) onInactive, {
+    Object? run,
+  }) =>
+      StreamBinding<T>._(key, onInactive, run);
 
   /// Mark a binding finished (stream done / error). Internal to `bindStream`.
   static void finish<T>(StreamBinding<T> b) => b._finish();

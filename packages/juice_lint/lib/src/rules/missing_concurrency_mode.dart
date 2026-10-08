@@ -13,7 +13,8 @@ import '../juice_types.dart';
 /// default, `concurrent`, lets a second event's use case run while the first
 /// is suspended at an `await` — the read-before-await race (AGENTS.md §4).
 /// Declaring the mode (`sequential` for shared-state mutation, `droppable`
-/// for exclusive flows, `concurrent` for genuinely independent events) makes
+/// for exclusive flows, `restartable` for latest-input-wins, `concurrent` for
+/// genuinely independent events) makes
 /// the choice explicit and reviewable.
 ///
 /// Flags `UseCaseBuilder(...)` and `UseCaseBuilder.typed(...)` from
@@ -28,8 +29,8 @@ class MissingConcurrencyMode extends AnalysisRule {
         'to concurrent).',
     correctionMessage:
         'Pass `concurrency: EventConcurrency.sequential` (shared-state '
-        'mutation), `.droppable` (exclusive flows), or `.concurrent` '
-        '(independent events).',
+        'mutation), `.droppable` (exclusive flows), `.restartable` (latest '
+        'input wins), or `.concurrent` (independent events).',
     severity: DiagnosticSeverity.WARNING,
   );
 

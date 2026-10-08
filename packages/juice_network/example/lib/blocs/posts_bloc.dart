@@ -249,7 +249,7 @@ class PostsBloc extends JuiceBloc<PostsState> {
         () => UseCaseBuilder(
           typeOfEvent: LoadPostDetailEvent,
           useCaseGenerator: () => LoadPostDetailUseCase(),
-          concurrency: EventConcurrency.sequential,
+          concurrency: EventConcurrency.restartable,
         ),
         () => UseCaseBuilder(
           typeOfEvent: DeletePostEvent,

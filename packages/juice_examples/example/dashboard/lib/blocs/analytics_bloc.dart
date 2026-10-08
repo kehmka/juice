@@ -18,7 +18,7 @@ class AnalyticsBloc extends JuiceBloc<AnalyticsState> {
             () => UseCaseBuilder(
                   typeOfEvent: FilterDataEvent,
                   useCaseGenerator: () => FilterDataUseCase(),
-                  concurrency: EventConcurrency.sequential,
+                  concurrency: EventConcurrency.restartable,
                 ),
           ],
         );

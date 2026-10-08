@@ -39,7 +39,7 @@ class FeedBloc extends JuiceBloc<FeedState> {
             () => UseCaseBuilder(
                   typeOfEvent: SelectPostEvent,
                   useCaseGenerator: () => SelectPostUseCase(),
-                  concurrency: EventConcurrency.sequential,
+                  concurrency: EventConcurrency.restartable,
                 ),
           ],
         );

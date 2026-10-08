@@ -182,7 +182,7 @@ guard:
 () => UseCaseBuilder(
   typeOfEvent: SaveEvent,
   useCaseGenerator: () => SaveUseCase(),
-  concurrency: EventConcurrency.sequential,   // or .droppable, or .concurrent (default)
+  concurrency: EventConcurrency.sequential,   // or .droppable, .restartable, .concurrent
 ),
 ```
 
@@ -191,7 +191,20 @@ guard:
   read-before-await race is impossible.
 - **`droppable`** — for **exclusive flows** (flush, connect, pick): a same-type
   event arriving while one runs is ignored. Replaces a manual `if (_busy) return`.
-- **`concurrent`** (default) — for **genuinely independent** events.
+- **`restartable`** (juice ≥ 2.0.0) — for **latest-input-wins** (search,
+  filter, select, load-by-id, scrubbing): a same-type event arriving while
+  one runs SUPERSEDES it and starts at once. Dart cannot kill the old run, so
+  it is fenced: every emission and navigation it attempts afterwards is
+  dropped (logged `state_emission_superseded`), the stream bindings it
+  created are cancelled, and if its event is a `CancellableEvent` that is
+  cancelled too. Long loops check `isSuperseded` (on `BlocUseCase`, correct
+  after any await) or `event.isCancelled` and return. `sendAndWait` on a
+  superseded event answers with a `CancelingStatus` instead of timing out.
+  **Side effects already performed are NOT rolled back** — restartable
+  fences state, not the world. Gotcha: a run that has RETURNED is not in
+  flight; to tie a stream binding's life to the run, `await binding.done`
+  (or give it a `key`, which replaces regardless of mode).
+- **`concurrent`** — for **genuinely independent** events.
 
 When you *do* stay `concurrent`, follow the discipline:
 

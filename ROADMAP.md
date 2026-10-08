@@ -275,6 +275,11 @@ the emit is atomic — but a read *before* an await, written after, races.
   is impossible.
 - **`droppable`** — a same-type event arriving while one runs is dropped.
   Use for exclusive flows; replaces a hand-rolled guard flag.
+- **`restartable`** (2.0.0) — a same-type event arriving while one runs
+  supersedes it and starts at once; the old run is fenced (emissions and
+  navigation dropped, bindings cancelled, a `CancellableEvent` cancelled).
+  Use for latest-input-wins: search, filter, select, load-by-id. Side
+  effects already performed are not rolled back.
 - **`concurrent`** (default) — for genuinely independent events; follow the
   read-at-emit discipline above.
 
@@ -701,15 +706,23 @@ inside a group's blast radius. Additive; no change to existing widgets.
 Gate: a real rebuild-storm case in an app (Amoli's person grid or well
 counters are candidates), measured before and after.
 
-### 3 · `restartable` as a fourth EventConcurrency mode  📋
-New same-type event supersedes the in-flight one (typeahead, search,
-scrubbing). Dart can't kill an awaited future, so the honest semantics
-are **emission fencing**: an epoch counter per event type; a superseded
-run's `emitUpdate`s become no-ops, and an optional `isSuperseded` check
-lets long loops bail early. Documented loudly: side effects already
-performed are NOT rolled back — restartable fences state, not the world.
-Gate: a real consumer (none of the 25 packages needed it in the
-concurrency migration — that's the tell it ships only when an app asks).
+### 3 · `restartable` as a fourth EventConcurrency mode  ✅ 2026-10-07 (`v2`, juice 2.0.0)
+Built to the text below once the consumers appeared: the concurrency
+sweep (B, step 1) found eight "latest input wins" sites in the example
+apps. Shipped as designed — a per-run token carried in the run's zone
+(`ExecutionRun`), the superseded run's context closures fenced (every
+emission kind and navigation, each logged `state_emission_superseded`),
+its stream bindings cancelled (via the zone token on `StreamBinding.run`),
+its `CancellableEvent` cancelled, `BlocUseCase.isSuperseded` for long
+loops, `sendAndWait` answering `CancelingStatus` for a superseded event
+(raced against the supersede signal, not emitted), the executor's end
+entry flagged `superseded: true`, `use_case_superseded` logged. Kevin's
+rulings: silent fence (no CancelingStatus on the stream), cooperation via
+`CancellableEvent.cancel()`. 14 tests, every path; the eight example sites
+re-ruled. Original text: new same-type event supersedes the in-flight one
+(typeahead, search, scrubbing). Dart can't kill an awaited future, so the
+honest semantics are **emission fencing**; side effects already performed
+are NOT rolled back — restartable fences state, not the world.
 
 ### 4 · `==`-dedup as an emit option  ✅ (already in core)
 ALREADY SHIPPED as `emitUpdate(skipIfSame: true)` — the audit for this

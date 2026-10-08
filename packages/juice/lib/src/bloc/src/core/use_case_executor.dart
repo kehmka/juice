@@ -6,6 +6,7 @@ import '../cancellable_event.dart';
 import '../juice_bloc.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
+import 'execution_run.dart';
 import '../use_case_builders/use_case_builder.dart';
 
 /// Context provided to use cases for state emission.
@@ -173,6 +174,8 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           'event': eventName,
           'executionId': executionId,
           'elapsedMicros': stopwatch.elapsedMicroseconds,
+          // A restartable run that was superseded still closes its span.
+          if (ExecutionRun.current?.isSuperseded ?? false) 'superseded': true,
         });
       }
     } catch (error, stackTrace) {
@@ -186,6 +189,7 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           'event': eventName,
           'executionId': executionId,
           'elapsedMicros': stopwatch.elapsedMicroseconds,
+          if (ExecutionRun.current?.isSuperseded ?? false) 'superseded': true,
         },
       );
       _onError(error, stackTrace, event);

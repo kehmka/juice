@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:logger/web.dart';
 
+import '../cancellable_event.dart';
 import '../juice_logger.dart';
 import 'event_concurrency.dart';
+import 'execution_run.dart';
 
 /// Signature for async event handlers.
 typedef EventHandler<E> = Future<void> Function(E event);
@@ -30,11 +32,33 @@ class EventDispatcher<Event> {
   ///
   /// [onUnhandledEvent] is called when an event has no registered handler.
   /// If not provided, dispatching an unhandled event throws a [StateError].
-  EventDispatcher({void Function(Event event)? onUnhandledEvent})
-      : _onUnhandledEvent = onUnhandledEvent;
+  EventDispatcher({
+    void Function(Event event)? onUnhandledEvent,
+    void Function(ExecutionRun run)? onSuperseded,
+    JuiceLogger? logger,
+  })  : _onUnhandledEvent = onUnhandledEvent,
+        _onSuperseded = onSuperseded,
+        _logger = logger;
+
+  /// The owning bloc's logger; the global one when constructed bare.
+  final JuiceLogger? _logger;
+  JuiceLogger get _log => _logger ?? JuiceLoggerConfig.logger;
 
   final _handlers = <Type, EventHandler<Event>>{};
   final void Function(Event event)? _onUnhandledEvent;
+
+  /// Called when a `restartable` run is superseded, after its event is
+  /// cancelled and before the new run starts — the bloc cancels the run's
+  /// stream bindings here.
+  final void Function(ExecutionRun run)? _onSuperseded;
+
+  /// Event types registered `restartable`, and their in-flight run.
+  final _restartableTypes = <Type>{};
+  final _current = <Type, ExecutionRun>{};
+
+  /// The run executing each restartable event (identity keyed; an event
+  /// that was never dispatched restartable has none).
+  final _runOf = Expando<ExecutionRun>('juice.run');
 
   /// Per-type FIFO tails for [EventConcurrency.sequential].
   final _tails = <Type, Future<void>>{};
@@ -78,7 +102,61 @@ class EventDispatcher<Event> {
           _sequential(eventType, raw, event),
       EventConcurrency.droppable => (event) =>
           _droppable(eventType, raw, event),
+      EventConcurrency.restartable => (event) =>
+          _restartable(eventType, raw, event),
     };
+    if (concurrency == EventConcurrency.restartable) {
+      _restartableTypes.add(eventType);
+    }
+  }
+
+  /// Whether [eventType] is registered `restartable` — the bloc builds the
+  /// emission fence into a run's context only then.
+  bool isRestartable(Type eventType) => _restartableTypes.contains(eventType);
+
+  /// Whether [event]'s run has been superseded by a newer same-type event.
+  /// False for an event that is not restartable or not in flight.
+  bool isSuperseded(Event event) =>
+      event == null ? false : (_runOf[event as Object]?.isSuperseded ?? false);
+
+  /// Completes if [event]'s run is superseded; never completes otherwise
+  /// (race it against the result you are waiting for).
+  Future<void> whenSuperseded(Event event) {
+    final run = event == null ? null : _runOf[event as Object];
+    return run?.whenSuperseded ?? Completer<void>().future;
+  }
+
+  /// `restartable`: supersede the in-flight run of [type] (fence it, cancel
+  /// its CancellableEvent, hand it to [_onSuperseded]) and run [event] at
+  /// once inside a zone that carries its [ExecutionRun].
+  Future<void> _restartable(
+      Type type, EventHandler<Event> handler, Event event) async {
+    if (_disposed) return;
+    final run = ExecutionRun(event as Object);
+    _runOf[event] = run;
+    final previous = _current[type];
+    _current[type] = run;
+    if (previous != null) _supersede(type, previous);
+    try {
+      await runZoned(() => handler(event),
+          zoneValues: {ExecutionRun.zoneKey: run});
+    } finally {
+      if (identical(_current[type], run)) _current.remove(type);
+    }
+  }
+
+  void _supersede(Type type, ExecutionRun previous) {
+    previous.supersede();
+    final event = previous.event;
+    if (event is CancellableEvent) event.cancel();
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      _log.log('Use case superseded', context: {
+        'type': 'use_case_superseded',
+        'event': type.toString(),
+        'cancellable': event is CancellableEvent,
+      });
+    }
+    _onSuperseded?.call(previous);
   }
 
   /// Queue [event] behind any in-flight/queued same-type runs; one at a time.
@@ -143,5 +221,7 @@ class EventDispatcher<Event> {
     _handlers.clear();
     _tails.clear();
     _running.clear();
+    _restartableTypes.clear();
+    _current.clear();
   }
 }

@@ -6,6 +6,21 @@ The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each item
 lands here as it is built, with its migration in one line.
 
 ### Added
+- **`EventConcurrency.restartable` — the fourth mode: latest input wins.**
+  A same-type event arriving while one runs supersedes it and starts at
+  once. The superseded run is fenced: every `emitUpdate` / `emitWaiting` /
+  `emitFailure` / `emitCancel` / `emitEvent` / `navigate` it attempts is
+  dropped (logged `state_emission_superseded`), the stream bindings it
+  created are cancelled, and a `CancellableEvent` is cancelled so a loop can
+  bail; `BlocUseCase.isSuperseded` is the check for any other event (read
+  from the run's zone, correct after any await). `sendAndWait` on a
+  superseded event answers with a `CancelingStatus` for that event instead
+  of timing out (not emitted to the stream). The run's telemetry span still
+  closes, flagged `superseded: true`; the supersede logs
+  `use_case_superseded`. **Side effects already performed are NOT rolled
+  back.** The other three modes pay nothing: the fence is built only into
+  restartable runs' contexts. Breaking only for an exhaustive `switch` over
+  the enum. Pinned by `test/bloc/restartable_test.dart` (14 tests).
 - **`JuiceBloc.bindStream` / `unbind` / `StreamBinding`** — the bloc owns
   every stream it listens to. `bindStream(stream, onData, {key, onError,
   onDone, cancelOnError})` runs `onData` per item while the bloc is open

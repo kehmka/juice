@@ -2,6 +2,8 @@
 
 import 'package:juice/juice.dart';
 
+import 'core/execution_run.dart';
+
 /// Base class for bloc-specific use cases that provides logging and naming capabilities.
 ///
 /// [TBloc] - The type of bloc this use case works with
@@ -25,6 +27,14 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
   /// This method must be implemented by concrete use cases to define their behavior.
   @override
   Future<void> execute(TEvent event);
+
+  /// Under `EventConcurrency.restartable`: true once a newer same-type
+  /// event has superseded this run (juice ≥ 2.0.0). Every emission after
+  /// that point is dropped, so a long loop checks this (or its
+  /// `CancellableEvent.isCancelled`, which supersede sets too) and returns.
+  /// Always false under the other modes. Read from the run's zone, so it is
+  /// correct after any `await`.
+  bool get isSuperseded => ExecutionRun.current?.isSuperseded ?? false;
 
   /// Logs a message with the use case name as prefix.
   ///

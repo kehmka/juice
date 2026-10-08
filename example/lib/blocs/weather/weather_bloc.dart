@@ -10,7 +10,7 @@ class WeatherBloc extends JuiceBloc<WeatherState> {
             () => UseCaseBuilder(
                   typeOfEvent: FetchWeatherEvent,
                   useCaseGenerator: () => FetchWeatherUseCase(),
-                  concurrency: EventConcurrency.sequential,
+                  concurrency: EventConcurrency.restartable,
                 ),
           ],
           [],

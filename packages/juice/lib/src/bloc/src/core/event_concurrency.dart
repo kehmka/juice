@@ -18,5 +18,16 @@ enum EventConcurrency {
   /// Replaces hand-rolled "busy" guard flags for exclusive flows.
   droppable,
 
-  // restartable — planned (1.6): cancel the in-flight run and start the new one.
+  /// A same-type event arriving **while one is running supersedes it** and
+  /// starts immediately (juice ≥ 2.0.0): typeahead, search, filter, select —
+  /// the latest input must win. Dart cannot kill the superseded run, so it
+  /// is FENCED: its `emitUpdate` / `emitWaiting` / `emitFailure` /
+  /// `emitCancel` / `emitEvent` / `navigate` become no-ops (each logged as
+  /// `state_emission_superseded`), the stream bindings it created are
+  /// cancelled, and if its event is a `CancellableEvent` it is cancelled so
+  /// the run can bail early (`BlocUseCase.isSuperseded` is the check for
+  /// any other event). **Side effects already performed are NOT rolled
+  /// back** — restartable fences state, not the world. `sendAndWait` on a
+  /// superseded event returns a `CancelingStatus` instead of timing out.
+  restartable,
 }

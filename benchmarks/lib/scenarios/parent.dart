@@ -4,13 +4,12 @@ import '../counters.dart';
 import 'cells_juice.dart';
 import 'variant.dart';
 
-/// THE PARENT-REBUILD SCENARIO (2.0 docket item H): N Juice leaf widgets
-/// under a parent that rebuilds. The bloc never emits; every "update" bumps
-/// the parent, which rebuilds all N leaves with fresh widget instances. Before
-/// 2.0.0 each leaf built a NEW filtered stream in `build`, so every parent
-/// rebuild cancelled and re-listened N subscriptions; 2.0.0 keeps the
-/// subscription while the bloc, groups and key are unchanged. The frame cost
-/// per parent rebuild is what this prices — before and after.
+/// THE PARENT-REBUILD SCENARIO: N Juice leaf widgets under a parent that
+/// rebuilds. The bloc never emits; every "update" bumps the parent, which
+/// rebuilds all N leaves with fresh widget instances. A leaf keeps its bloc
+/// subscription across those rebuilds (keyed on the bloc instance), and the
+/// frame cost of a parent rebuild over N kept subscriptions is what this
+/// prices.
 class _Leaf extends StatelessJuiceWidget<CellsBloc> {
   _Leaf(this.index, {super.groups});
   final int index;
@@ -32,11 +31,12 @@ class ParentJuiceGroupsVariant extends Variant {
       'N grouped leaves under a parent that rebuilds; the bloc is silent';
 
   late CellsBloc bloc;
-  final tick = ValueNotifier<int>(0);
+  late ValueNotifier<int> tick;
 
   @override
   void setUp(int cells) {
     bloc = CellsBloc(cells);
+    tick = ValueNotifier<int>(0);
     BlocScope.register<CellsBloc>(() => bloc);
   }
 
@@ -55,7 +55,10 @@ class ParentJuiceGroupsVariant extends Variant {
   Future<void> update(int index, int value) async => tick.value++;
 
   @override
-  Future<void> tearDown() => BlocScope.endAll();
+  Future<void> tearDown() async {
+    tick.dispose();
+    await BlocScope.endAll();
+  }
 }
 
 List<Variant> parentVariants() => [ParentJuiceGroupsVariant()];

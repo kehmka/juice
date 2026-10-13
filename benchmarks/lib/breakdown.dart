@@ -20,15 +20,17 @@ import 'stats.dart';
 /// - `telemetry maps`      — building the three context maps one event logs
 ///                           (span start, emission, span end) + the two type
 ///                           names, with nothing consuming them;
-/// - `4 async hops`        — four nested awaited async calls, the depth of
-///                           send → dispatcher → executor → execute().
+/// - `4 async hops`        — four nested awaited async calls: the 1.x send
+///                           depth (send → dispatcher → executor →
+///                           execute()). A send now awaits once, so this
+///                           row is the reference the send rows are read
+///                           against, not their model.
 ///
-/// BURST shape (2026-09-29): the dispatch benchmark found Juice's burst
-/// (fire all, await the last) SLOWER per event than its sequential shape,
-/// on every machine, while bloc and Riverpod get cheaper in burst. These
-/// rows fire the same ops without awaiting each one, at two sizes: a cost
-/// that grows with the size is depth (microtask queue, allocation/GC), a
-/// flat one is per event.
+/// BURST shape: the dispatch benchmark found Juice's burst (fire all, await
+/// the last) SLOWER per event than its sequential shape, on every machine,
+/// while bloc and Riverpod get cheaper in burst. These rows fire the same
+/// ops without awaiting each one, at two sizes: a cost that grows with the
+/// size is depth (microtask queue, allocation/GC), a flat one is per event.
 ///
 /// All with the silent logger, µs per operation, every round kept.
 
@@ -88,10 +90,13 @@ class _StatefulBloc extends JuiceBloc<_S> {
       ]);
 }
 
+/// Whether a row times real Juice code or a synthetic stand-in.
+enum RowKind { real, synthetic }
+
 class BreakdownRow {
   BreakdownRow(this.layer, this.kind, this.micros);
   final String layer;
-  final String kind; // 'real' | 'synthetic'
+  final RowKind kind;
   final double micros;
 }
 
@@ -99,13 +104,51 @@ class BreakdownRow {
 class BreakdownResult {
   BreakdownResult(this.layer, this.kind, this.sample);
   final String layer;
-  final String kind;
+  final RowKind kind;
   final Sample sample;
   Map<String, Object> toJson() => {
     'layer': layer,
-    'kind': kind,
+    'kind': kind.name,
     ...sample.toJson('microsPerOp'),
   };
+}
+
+/// Runs [body] with the framework's telemetry floor at [level], restoring
+/// the previous floor whatever happens.
+Future<T> _withMinLevel<T>(Level level, Future<T> Function() body) async {
+  final saved = JuiceLoggerConfig.minLevel;
+  JuiceLoggerConfig.minLevel = level;
+  try {
+    return await body();
+  } finally {
+    JuiceLoggerConfig.minLevel = saved;
+  }
+}
+
+/// Runs [body] with [logger] configured, restoring the previous logger
+/// whatever happens.
+Future<T> _withLogger<T>(JuiceLogger logger, Future<T> Function() body) async {
+  final saved = JuiceLoggerConfig.logger;
+  JuiceLoggerConfig.configureLogger(logger);
+  try {
+    return await body();
+  } finally {
+    JuiceLoggerConfig.configureLogger(saved);
+  }
+}
+
+/// Times [n] sends on a fresh [bloc], then closes it.
+Future<double> _sends(JuiceBloc<_S> bloc, int n) async {
+  final micros = await _timeAsync(n, (_) => bloc.send(_Ev()));
+  await bloc.close();
+  return micros;
+}
+
+/// The burst shape of [_sends].
+Future<double> _burst(JuiceBloc<_S> bloc, int n) async {
+  final micros = await _timeBurst(n, (_) => bloc.send(_Ev()));
+  await bloc.close();
+  return micros;
 }
 
 Future<double> _timeAsync(int n, Future<void> Function(int i) op) async {
@@ -145,10 +188,6 @@ Future<void> _hop2(int i) async => await _hop1(i);
 Future<void> _hop1(int i) async => await _hop0(i);
 Future<void> _hop0(int i) async {}
 
-/// Written by the synthetic map benchmark so the maps can't be optimized
-/// away; read by [runBreakdown]'s result.
-Object? sink;
-
 Future<List<BreakdownRow>> _once(int n) async {
   final rows = <BreakdownRow>[];
 
@@ -160,7 +199,7 @@ Future<List<BreakdownRow>> _once(int n) async {
   rows.add(
     BreakdownRow(
       'stateManager.emit',
-      'real',
+      RowKind.real,
       _timeSync(n, (i) {
         sm.emit(StreamStatus.updating(_S(i), const _S(0), null));
       }),
@@ -177,7 +216,7 @@ Future<List<BreakdownRow>> _once(int n) async {
   rows.add(
     BreakdownRow(
       'statusEmitter.emitUpdate',
-      'real',
+      RowKind.real,
       _timeSync(n, (i) {
         emitter.emitUpdate(_Ev(), _S(i), {'g'});
       }),
@@ -187,23 +226,25 @@ Future<List<BreakdownRow>> _once(int n) async {
   await sub.cancel();
   await sm.close();
 
-  // 3. Telemetry maps alone (synthetic).
+  // 3. Telemetry maps alone (synthetic). The maps are consumed (their key
+  //    counts summed and checked) so the compiler cannot drop them.
   final uc = _UC();
   final ev = _Ev();
+  var keys = 0;
   rows.add(
     BreakdownRow(
       'telemetry maps (3 per event)',
-      'synthetic',
+      RowKind.synthetic,
       _timeSync(n, (i) {
         final useCaseName = uc.runtimeType.toString();
         final eventName = ev.runtimeType.toString();
-        sink = {
+        final start = {
           'type': 'use_case_execution',
           'useCase': useCaseName,
           'event': eventName,
           'executionId': i,
         };
-        sink = {
+        final emission = {
           'type': 'state_emission',
           'status': 'update',
           'state': i,
@@ -211,157 +252,131 @@ Future<List<BreakdownRow>> _once(int n) async {
           'groups': const {'g'},
           'event': eventName,
         };
-        sink = {
+        final end = {
           'type': 'use_case_completed',
           'useCase': useCaseName,
           'event': eventName,
           'executionId': i,
           'elapsedMicros': i,
         };
+        keys += start.length + emission.length + end.length;
       }),
     ),
   );
+  if (keys != n * 15) {
+    throw StateError('the synthetic maps were not built: $keys keys');
+  }
 
   // 4. Async hop depth alone (synthetic).
   rows.add(
     BreakdownRow(
       '4 awaited async hops',
-      'synthetic',
+      RowKind.synthetic,
       await _timeAsync(n, _hop4),
     ),
   );
 
   // 5. Full send, one reused use-case instance.
-  final stateful = _StatefulBloc();
   rows.add(
     BreakdownRow(
       'send · StatefulUseCaseBuilder (reused instance)',
-      'real',
-      await _timeAsync(n, (_) => stateful.send(_Ev())),
+      RowKind.real,
+      await _sends(_StatefulBloc(), n),
     ),
   );
-  await stateful.close();
 
   // 6. Full send, fresh instance per event (the normal registration).
-  final fresh = _FreshBloc();
   rows.add(
     BreakdownRow(
       'send · UseCaseBuilder (fresh instance)',
-      'real',
-      await _timeAsync(n, (_) => fresh.send(_Ev())),
+      RowKind.real,
+      await _sends(_FreshBloc(), n),
     ),
   );
-  await fresh.close();
 
   // 7. The same send with the framework's chatter NOT BUILT
-  //    (JuiceLoggerConfig.minLevel = Level.warning, juice ≥ 1.10.0) — the
-  //    one knob the breakdown priced.
-  final savedLevel = JuiceLoggerConfig.minLevel;
-  JuiceLoggerConfig.minLevel = Level.warning;
-  final quiet = _FreshBloc();
+  //    (JuiceLoggerConfig.minLevel = Level.warning) — the one knob the
+  //    breakdown priced.
   rows.add(
     BreakdownRow(
       'send · fresh instance, minLevel = warning (chatter not built)',
-      'real',
-      await _timeAsync(n, (_) => quiet.send(_Ev())),
+      RowKind.real,
+      await _withMinLevel(Level.warning, () => _sends(_FreshBloc(), n)),
     ),
   );
-  await quiet.close();
-  JuiceLoggerConfig.minLevel = savedLevel;
 
-  // 7b. The same send with NOTHING configured but the default logger
-  //     (juice ≥ 1.10.0): DefaultJuiceLogger declares what its filter
-  //     keeps — nothing outside debug — so in a release build this row
-  //     should land on row 7 with no knob set.
-  final configured = JuiceLoggerConfig.logger;
-  JuiceLoggerConfig.configureLogger(DefaultJuiceLogger());
-  final unconfigured = _FreshBloc();
+  // 7b. The same send with NOTHING configured but the default logger:
+  //     DefaultJuiceLogger declares what its filter keeps — nothing outside
+  //     debug — so in a release build this row should land on row 7 with
+  //     no knob set.
   rows.add(
     BreakdownRow(
       'send · fresh instance, DefaultJuiceLogger, no knob set',
-      'real',
-      await _timeAsync(n, (_) => unconfigured.send(_Ev())),
+      RowKind.real,
+      await _withLogger(DefaultJuiceLogger(), () => _sends(_FreshBloc(), n)),
     ),
   );
-  await unconfigured.close();
-  JuiceLoggerConfig.configureLogger(configured);
 
   // 7c. The restartable mode's own cost: a zone fork per send plus the
-  //     per-run token (2.0.0). Same fresh-instance send, registered
-  //     restartable, chatter not built — compare with row 7.
-  JuiceLoggerConfig.minLevel = Level.warning;
-  final restartable = _RestartableBloc();
+  //     per-run token. Same fresh-instance send, registered restartable,
+  //     chatter not built — compare with row 7.
   rows.add(
     BreakdownRow(
       'send · fresh instance, restartable, minLevel = warning',
-      'real',
-      await _timeAsync(n, (_) => restartable.send(_Ev())),
+      RowKind.real,
+      await _withMinLevel(Level.warning, () => _sends(_RestartableBloc(), n)),
     ),
   );
-  await restartable.close();
-  JuiceLoggerConfig.minLevel = savedLevel;
 
   // 8. BURST shape, two sizes each: the hop depth alone, then the full
-  //    send (fresh instance) and the full send with chatter not built.
+  //    send (fresh instance), the reused instance, and the full send with
+  //    chatter not built.
   for (final size in [n ~/ 10, n]) {
     rows.add(
       BreakdownRow(
         '4 awaited async hops · burst n=$size',
-        'synthetic',
+        RowKind.synthetic,
         await _timeBurst(size, _hop4),
       ),
     );
-    final b = _FreshBloc();
     rows.add(
       BreakdownRow(
         'send · fresh instance · burst n=$size',
-        'real',
-        await _timeBurst(size, (_) => b.send(_Ev())),
+        RowKind.real,
+        await _burst(_FreshBloc(), size),
       ),
     );
-    await b.close();
-    final s = _StatefulBloc();
     rows.add(
       BreakdownRow(
         'send · reused instance · burst n=$size',
-        'real',
-        await _timeBurst(size, (_) => s.send(_Ev())),
+        RowKind.real,
+        await _burst(_StatefulBloc(), size),
       ),
     );
-    await s.close();
-    JuiceLoggerConfig.minLevel = Level.warning;
-    final q = _FreshBloc();
     rows.add(
       BreakdownRow(
         'send · fresh, minLevel = warning · burst n=$size',
-        'real',
-        await _timeBurst(size, (_) => q.send(_Ev())),
+        RowKind.real,
+        await _withMinLevel(Level.warning, () => _burst(_FreshBloc(), size)),
       ),
     );
-    await q.close();
-    JuiceLoggerConfig.minLevel = savedLevel;
   }
 
   return rows;
 }
 
 /// Warm-up, then EVERY round per layer (median + range in the report).
-Future<List<BreakdownResult>> runBreakdown({
-  int n = 20000,
-  int rounds = 5,
-}) async {
-  final previous = JuiceLoggerConfig.logger;
-  JuiceLoggerConfig.configureLogger(SilentJuiceLogger());
-  await _once(n);
-  final all = <String, (String, List<double>)>{};
-  for (var r = 0; r < rounds; r++) {
-    for (final row in await _once(n)) {
-      all.putIfAbsent(row.layer, () => (row.kind, [])).$2.add(row.micros);
-    }
-  }
-  JuiceLoggerConfig.configureLogger(previous);
-  return [
-    for (final e in all.entries)
-      BreakdownResult(e.key, e.value.$1, Sample(e.value.$2)),
-  ];
-}
+Future<List<BreakdownResult>> runBreakdown({int n = 20000, int rounds = 5}) =>
+    _withLogger(SilentJuiceLogger(), () async {
+      await _once(n);
+      final all = <String, (RowKind, List<double>)>{};
+      for (var r = 0; r < rounds; r++) {
+        for (final row in await _once(n)) {
+          all.putIfAbsent(row.layer, () => (row.kind, [])).$2.add(row.micros);
+        }
+      }
+      return [
+        for (final e in all.entries)
+          BreakdownResult(e.key, e.value.$1, Sample(e.value.$2)),
+      ];
+    });

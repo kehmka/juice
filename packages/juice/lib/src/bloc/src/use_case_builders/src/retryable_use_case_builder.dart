@@ -1,4 +1,5 @@
 import '../../../bloc.dart';
+import '../../core/execution_run.dart';
 
 /// Callback invoked before each retry attempt.
 ///
@@ -188,6 +189,10 @@ class _RetryableUseCase<
           emitCancel();
           return;
         }
+
+        // Superseded (restartable) during the backoff: every emission is
+        // fenced and every retry would repeat the side effects for nothing.
+        if (ExecutionRun.current?.isSuperseded ?? false) return;
 
         // The bloc closed during the backoff (the user left): re-running the
         // work against a dead bloc is pointless and has side effects.

@@ -717,7 +717,7 @@ Gate: a real rebuild-storm case in an app (Amoli's person grid or well
 counters are candidates), measured before and after.
 
 ### 3 · `restartable` as a fourth EventConcurrency mode  ✅ 2026-10-07 (`v2`, juice 2.0.0)
-Built to the text below once the consumers appeared: the concurrency
+Reviewed adversarially 2026-10-13 (Kevin: 'critical … thorough, tested and efficient'): nine findings from an independent review + three of my own, all fixed and pinned (per-run fence; zone isolation for nested dispatches; no bindings for a superseded run; completed runs not superseded; guarded supersede; retry stops; tap-based sendAndWait with no leaked listener, deterministic race, loud close; per-run binding list). Built to the text below once the consumers appeared: the concurrency
 sweep (B, step 1) found eight "latest input wins" sites in the example
 apps. Shipped as designed — a per-run token carried in the run's zone
 (`ExecutionRun`), the superseded run's context closures fenced (every

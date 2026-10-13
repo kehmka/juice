@@ -165,16 +165,33 @@ class JuiceBloc<TState extends BlocState>
       );
       return StreamBinding.inert<T>(key);
     }
+    final run = ExecutionRun.current;
+    if (run?.isSuperseded ?? false) {
+      // The run was superseded before it got here (a callback it scheduled,
+      // an await it was behind): its bindings were cancelled at the
+      // supersede, and a new one would outlive the fence unowned. Refuse.
+      if (chatter) {
+        _logger.log('Stream binding refused: run superseded', context: {
+          'type': 'stream_binding',
+          'action': 'superseded',
+          'bloc': runtimeType.toString(),
+          'key': key,
+        });
+      }
+      return StreamBinding.inert<T>(key);
+    }
     if (key != null) unbind(key);
 
     late final StreamBinding<T> binding;
     binding = StreamBinding.create<T>(key, (b) {
       _bindings.remove(b);
+      run?.bindings.remove(b);
       if (b.key != null && identical(_keyedBindings[b.key!], b)) {
         _keyedBindings.remove(b.key!);
       }
-    }, run: ExecutionRun.current);
+    }, run: run);
     _bindings.add(binding);
+    run?.bindings.add(binding);
     if (key != null) _keyedBindings[key] = binding;
 
     void fail(Object error, StackTrace stackTrace) {
@@ -248,10 +265,27 @@ class JuiceBloc<TState extends BlocState>
   /// The bindings currently listening (keyed and anonymous).
   int get activeBindingCount => _bindings.length;
 
-  /// A `restartable` run was superseded: cancel the bindings it created.
+  /// A `restartable` run was superseded: cancel the bindings it created —
+  /// exactly those, from the run's own list.
   void _cancelBindingsOf(ExecutionRun run) {
-    for (final b in _bindings.toList()) {
-      if (identical(b.run, run)) b.cancel();
+    for (final b in run.bindings.toList()) {
+      _safeCancel(b as StreamBinding<dynamic>, 'at supersede');
+    }
+  }
+
+  /// Cancel a binding; a subscription whose cancel throws — synchronously
+  /// or through its future — is logged, never an uncaught error and never
+  /// a reason to stop cancelling the rest.
+  Future<void> _safeCancel(StreamBinding<dynamic> b, String where) async {
+    try {
+      await b.cancel();
+    } catch (e, st) {
+      _logger.logError('Stream binding cancel failed $where', e, st, context: {
+        'type': 'stream_binding',
+        'action': 'cancel_error',
+        'bloc': runtimeType.toString(),
+        'key': b.key,
+      });
     }
   }
 
@@ -279,8 +313,11 @@ class JuiceBloc<TState extends BlocState>
   /// first step of [close], before the use cases close.
   Future<void> _cancelBindings() async {
     if (_bindings.isEmpty) return;
-    final cancels = [for (final b in _bindings.toList()) b.cancel()];
-    await Future.wait(cancels);
+    // One binding's failing cancel must not abort the close of everything
+    // else: each failure is logged, the rest still awaited.
+    await Future.wait([
+      for (final b in _bindings.toList()) _safeCancel(b, 'at close'),
+    ]);
   }
 
   // ============================================================
@@ -384,25 +421,52 @@ class JuiceBloc<TState extends BlocState>
           'sendAndWait(${event.runtimeType}) on a closed or closing '
           '$runtimeType');
     }
-    // Listen BEFORE sending: `send` completes only after the use case has
-    // finished emitting, and the stream does not replay, so subscribing
-    // afterwards missed the event's own result and always timed out.
-    final result = stream
-        .where((s) => identical(s.event, event))
-        .firstWhere((s) => s is! WaitingStatus<TState>)
-        .timeout(timeout);
+    // Observe emissions SYNCHRONOUSLY through the state manager's tap, not a
+    // stream subscription: the tap sees the event's result in the same
+    // tick it is emitted (a stream listener is a microtask behind, which
+    // let a supersede signal win a race the emission had already decided),
+    // and it is removed on every exit, so a superseded or timed-out wait
+    // leaves nothing listening (a `firstWhere` + `timeout` did).
+    final done = Completer<StreamStatus<TState>>();
+    void Function()? untap;
+    Timer? timer;
+    void finish([StreamStatus<TState>? status, Object? error]) {
+      if (done.isCompleted) return;
+      untap?.call();
+      timer?.cancel();
+      _pendingWaits.remove(done);
+      if (error != null) {
+        done.completeError(error);
+      } else {
+        done.complete(status);
+      }
+    }
+
+    untap = tapEmissions((s) {
+      if (identical(s.event, event) && s is! WaitingStatus<TState>) finish(s);
+    });
+    timer = Timer(timeout, () {
+      finish(
+          null, TimeoutException('sendAndWait(${event.runtimeType})', timeout));
+    });
+    _pendingWaits.add(done);
     send(event);
-    if (!_dispatcher.isRestartable(event.runtimeType)) return result;
-    // A superseded restartable run is fenced: it never emits, so the wait
-    // above could only time out. Race it against the supersede signal and
-    // answer with a CancelingStatus for THIS event (not put on the stream).
-    final superseded = _dispatcher
-        .whenSuperseded(event)
-        .then((_) => StreamStatus.canceling(state, oldState, event));
-    final winner = await Future.any([result, superseded]);
-    result.ignore(); // the loser may still time out; nobody is listening
-    return winner;
+    if (_dispatcher.isRestartable(event.runtimeType)) {
+      // A superseded restartable run is fenced: it never emits. Answer with
+      // a CancelingStatus for THIS event (not put on the stream) — unless
+      // the tap already recorded its result, which then wins.
+      _dispatcher.whenSuperseded(event).then((_) {
+        if (!done.isCompleted) {
+          finish(StreamStatus.canceling(state, oldState, event));
+        }
+      });
+    }
+    return done.future;
   }
+
+  /// Waits a `sendAndWait` has open; a close fails them loudly instead of
+  /// leaving them to time out.
+  final Set<Completer<StreamStatus<TState>>> _pendingWaits = {};
 
   /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream
   /// delivery). Returns the remover. Framework-internal — `sendAndWaitResult`
@@ -490,6 +554,13 @@ class JuiceBloc<TState extends BlocState>
     });
 
     await _cancelBindings();
+    for (final w in _pendingWaits.toList()) {
+      if (!w.isCompleted) {
+        w.completeError(
+            StateError('$runtimeType closed while sendAndWait was pending'));
+      }
+    }
+    _pendingWaits.clear();
     await _useCaseRegistry.closeAll();
     await _aviatorManager.closeAll();
     await Future.wait(_eventSubscriptions.map((s) => s.close()));
@@ -625,8 +696,19 @@ class JuiceBloc<TState extends BlocState>
   /// `state_emission_superseded`. Built only for restartable types, so the
   /// other modes pay nothing for the fence.
   UseCaseContext<JuiceBloc<TState>, TState> _fencedContext(EventBase event) {
+    // The RUN, not the event, is what gets superseded: the same event
+    // instance sent twice is two runs, and only the first is fenced. The
+    // context is created inside the run's zone (the executor runs there),
+    // so this is that run; a field read per emit, no lookup.
+    final run = ExecutionRun.current;
+    if (run == null) {
+      throw StateError(
+          'A restartable use case for ${event.runtimeType} is executing '
+          'outside its run zone — the dispatcher did not wrap it. This is a '
+          'framework bug; it must never be silently unfenced.');
+    }
     bool fenced(String what) {
-      if (!_dispatcher.isSuperseded(event)) return false;
+      if (!run.isSuperseded) return false;
       if (JuiceLoggerConfig.logs(Level.info)) {
         _logger.log('Emission dropped: use case superseded', context: {
           'type': 'state_emission_superseded',
@@ -666,6 +748,9 @@ class JuiceBloc<TState extends BlocState>
         }
       },
       navigate: (aviator, args) {
+        // Every emit closure also calls navigate (with null when no aviator
+        // was named): nothing to drop, nothing to log.
+        if (aviator == null) return;
         if (fenced('navigate')) return;
         _aviatorManager.navigate(aviator, args);
       },

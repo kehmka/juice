@@ -96,12 +96,21 @@ class EventDispatcher<Event> {
       throw StateError('Handler already registered for $eventType');
     }
     Future<void> raw(Event event) => handler(event as E);
+    // A dispatch made from INSIDE a restartable run (a nested send, a
+    // queued sequential run, a stream listener the run created) would
+    // inherit that run's zone — its bindings would be tagged as the outer
+    // run's, its `isSuperseded` would be the outer run's, its span flagged.
+    // Shadow the token for the nested handler; costs a zone fork only when
+    // nested, nothing on the plain path.
+    Future<void> isolated(Event event) => ExecutionRun.current == null
+        ? raw(event)
+        : runZoned(() => raw(event), zoneValues: {ExecutionRun.zoneKey: null});
     _handlers[eventType] = switch (concurrency) {
-      EventConcurrency.concurrent => raw,
+      EventConcurrency.concurrent => isolated,
       EventConcurrency.sequential => (event) =>
-          _sequential(eventType, raw, event),
+          _sequential(eventType, isolated, event),
       EventConcurrency.droppable => (event) =>
-          _droppable(eventType, raw, event),
+          _droppable(eventType, isolated, event),
       EventConcurrency.restartable => (event) =>
           _restartable(eventType, raw, event),
     };
@@ -136,25 +145,45 @@ class EventDispatcher<Event> {
     _runOf[event] = run;
     final previous = _current[type];
     _current[type] = run;
-    if (previous != null) _supersede(type, previous);
+    // A run whose use case already RETURNED has nothing left to fence and
+    // its bindings belong to the bloc; the dispatcher's whenComplete that
+    // clears _current lags that return by a few microtasks.
+    if (previous != null && !previous.isComplete) {
+      _supersede(type, previous, event);
+    }
     return runZoned(() => handler(event),
         zoneValues: {ExecutionRun.zoneKey: run}).whenComplete(() {
       if (identical(_current[type], run)) _current.remove(type);
     });
   }
 
-  void _supersede(Type type, ExecutionRun previous) {
+  void _supersede(Type type, ExecutionRun previous, Object newEvent) {
     previous.supersede();
     final event = previous.event;
-    if (event is CancellableEvent) event.cancel();
-    if (JuiceLoggerConfig.logs(Level.info)) {
-      _log.log('Use case superseded', context: {
+    // Nothing in here may throw into the sender's frame or leave the new
+    // run un-started: a user-overridden cancel(), the logger, the bloc's
+    // binding cancel are all guarded. Loud, then on with the new run.
+    try {
+      // The same instance re-sent: cancelling it would cancel the NEW run
+      // too (cancel() is permanent). The fence is per run, so skip it.
+      if (event is CancellableEvent && !identical(event, newEvent)) {
+        event.cancel();
+      }
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        _log.log('Use case superseded', context: {
+          'type': 'use_case_superseded',
+          'event': type.toString(),
+          'cancellable': event is CancellableEvent,
+        });
+      }
+      _onSuperseded?.call(previous);
+    } catch (e, st) {
+      _log.logError('Error while superseding a run', e, st, context: {
         'type': 'use_case_superseded',
+        'action': 'error',
         'event': type.toString(),
-        'cancellable': event is CancellableEvent,
       });
     }
-    _onSuperseded?.call(previous);
   }
 
   /// Queue [event] behind any in-flight/queued same-type runs; one at a time.

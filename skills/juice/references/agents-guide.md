@@ -201,9 +201,14 @@ guard:
   after any await) or `event.isCancelled` and return. `sendAndWait` on a
   superseded event answers with a `CancelingStatus` instead of timing out.
   **Side effects already performed are NOT rolled back** — restartable
-  fences state, not the world. Gotcha: a run that has RETURNED is not in
-  flight; to tie a stream binding's life to the run, `await binding.done`
-  (or give it a `key`, which replaces regardless of mode).
+  fences state, not the world. Gotchas: a run that has RETURNED is not in
+  flight (to tie a stream binding's life to the run, `await binding.done`,
+  or give it a `key`, which replaces regardless of mode); a `send` made from
+  inside the run is its OWN run (not fenced with the outer one), while a
+  Timer / Future.delayed / listener the run created IS the run; an event
+  instance is single-use — re-sending the same instance is a new run that
+  supersedes the old, and `sendAndWait` / `bloc.isSuperseded(event)` then
+  answer for the latest run.
 - **`concurrent`** — for **genuinely independent** events.
 
 When you *do* stay `concurrent`, follow the discipline:

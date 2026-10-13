@@ -114,7 +114,27 @@ lands here as it is built, with its migration in one line.
   `use_case_superseded`. **Side effects already performed are NOT rolled
   back.** The other three modes pay nothing: the fence is built only into
   restartable runs' contexts. Breaking only for an exhaustive `switch` over
-  the enum. Pinned by `test/bloc/restartable_test.dart` (14 tests).
+  the enum. Pinned by `test/bloc/restartable_test.dart` (14 tests), and
+  hardened by an adversarial review (2026-10-13; `restartable_adversarial_test`
+  + `restartable_review_test`, 20 more pins): the fence is per RUN, so the
+  same event instance re-sent is two runs and only the first is fenced (and
+  a re-sent `CancellableEvent` is not pre-cancelled for its new run); a
+  dispatch made from INSIDE a restartable run (a nested send, a queued
+  sequential run, a listener the run created) is its own — it does not
+  inherit the run's zone, so its bindings, `isSuperseded` and span are its
+  own; a run that was superseded can no longer acquire a stream binding
+  (refused, logged `stream_binding`/`superseded`); a run whose use case
+  RETURNED is not superseded by a same-type send in the next microtasks
+  (its bindings belong to the bloc); a throwing `cancel()`, logger or
+  binding cancel cannot stop the new run or leave a phantom (logged);
+  `RetryableUseCaseBuilder` stops retrying a superseded run; `sendAndWait`
+  observes emissions through the synchronous emission tap instead of a
+  stream subscription — an emission that landed before the supersede wins
+  over `CancelingStatus` even in the same tick, a superseded or timed-out
+  wait leaves NO listener behind (it did), and a `close()` while a wait is
+  pending fails it with a `StateError` instead of letting it time out.
+  A supersede cancels exactly the run's own bindings (kept per run), not a
+  scan of every binding the bloc holds.
 - **`JuiceBloc.bindStream` / `unbind` / `StreamBinding`** — the bloc owns
   every stream it listens to. `bindStream(stream, onData, {key, onError,
   onDone, cancelOnError})` runs `onData` per item while the bloc is open

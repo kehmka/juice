@@ -61,6 +61,22 @@ class _FreshBloc extends JuiceBloc<_S> {
       ]);
 }
 
+class _RestartableUC extends BlocUseCase<_RestartableBloc, _Ev> {
+  @override
+  Future<void> execute(_Ev e) async =>
+      emitUpdate(newState: _S(bloc.state.n + 1), groupsToRebuild: {'g'});
+}
+
+class _RestartableBloc extends JuiceBloc<_S> {
+  _RestartableBloc()
+    : super(const _S(0), [
+        () => UseCaseBuilder.typed(
+          () => _RestartableUC(),
+          concurrency: EventConcurrency.restartable,
+        ),
+      ]);
+}
+
 class _StatefulBloc extends JuiceBloc<_S> {
   _StatefulBloc()
     : super(const _S(0), [
@@ -269,6 +285,21 @@ Future<List<BreakdownRow>> _once(int n) async {
   );
   await unconfigured.close();
   JuiceLoggerConfig.configureLogger(configured);
+
+  // 7c. The restartable mode's own cost: a zone fork per send plus the
+  //     per-run token (2.0.0). Same fresh-instance send, registered
+  //     restartable, chatter not built — compare with row 7.
+  JuiceLoggerConfig.minLevel = Level.warning;
+  final restartable = _RestartableBloc();
+  rows.add(
+    BreakdownRow(
+      'send · fresh instance, restartable, minLevel = warning',
+      'real',
+      await _timeAsync(n, (_) => restartable.send(_Ev())),
+    ),
+  );
+  await restartable.close();
+  JuiceLoggerConfig.minLevel = savedLevel;
 
   // 8. BURST shape, two sizes each: the hop depth alone, then the full
   //    send (fresh instance) and the full send with chatter not built.

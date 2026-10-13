@@ -151,6 +151,7 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       // mode swallowed by the dispatcher with no log at all.
       _wireUseCase(useCase, context);
       await useCase.execute(event);
+      ExecutionRun.current?.complete();
       if (chatter) {
         _logger.log('Use case completed', context: {
           'type': 'use_case_completed',
@@ -176,6 +177,7 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           if (ExecutionRun.current?.isSuperseded ?? false) 'superseded': true,
         },
       );
+      ExecutionRun.current?.complete();
       _onError(error, stackTrace, event);
     } finally {
       // The work is over: a still-running timeout must not fire later and

@@ -31,6 +31,21 @@ class ExecutionRun {
     _supersededCompleter.complete();
   }
 
+  /// True once the run's use case has RETURNED — marked by the executor,
+  /// synchronously, so a same-type event arriving in the microtasks before
+  /// the dispatcher's `whenComplete` fires does not "supersede" a run that
+  /// is already done (and cancel bindings that now belong to the bloc).
+  bool get isComplete => _complete;
+  bool _complete = false;
+
+  /// Mark the use case returned. Idempotent.
+  void complete() => _complete = true;
+
+  /// The stream bindings this run created, so a supersede cancels exactly
+  /// them (no scan of every binding the bloc holds). Bindings remove
+  /// themselves when they end.
+  final Set<Object> bindings = {};
+
   /// The zone key a restartable run is carried under.
   static const Symbol zoneKey = #juice.executionRun;
 

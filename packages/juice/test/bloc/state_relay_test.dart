@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 
+import '../support/capture_logger.dart';
+
 // Test States
 class SourceState extends BlocState {
   final int counter;
@@ -153,14 +155,13 @@ void main() {
         resolver: resolver,
       );
 
-      // Wait for async initialization
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Send event to source bloc
       await sourceBloc.send(IncrementEvent());
 
       // Wait for relay to process
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Verify dest bloc received transformed event
       expect(destBloc.state.message, 'count: 1');
@@ -176,32 +177,32 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Send event when not active - should not relay
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'initial'); // Unchanged
 
       // Set active
       await sourceBloc.send(SetActiveEvent(active: true));
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'active: 1'); // Now relayed
 
       // Another increment while active
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'active: 2');
 
       // Set inactive
       await sourceBloc.send(SetActiveEvent(active: false));
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       // Message updated to show the state when setActive event processed
       // but now isActive is false
 
       // Increment when not active - should not relay
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       // Should not have updated to count: 3
       expect(destBloc.state.message.contains('3'), isFalse);
 
@@ -214,7 +215,7 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Close should not throw
       await relay.close();
@@ -231,11 +232,11 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Initial relay works
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'count: 1');
 
       // Close relay
@@ -243,11 +244,11 @@ void main() {
 
       // Reset dest bloc state
       await destBloc.send(UpdateMessageEvent(message: 'reset'));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
 
       // Send another event to source - should not relay
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Dest should still be 'reset'
       expect(destBloc.state.message, 'reset');
@@ -267,23 +268,23 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // First event should work
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'count: 1');
       expect(callCount, 1);
 
       // Second event triggers error - relay should continue (not close)
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(callCount, 2);
       expect(destBloc.state.message, 'count: 1'); // Unchanged due to error
 
       // Third event should work again
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(callCount, 3);
       expect(destBloc.state.message, 'count: 3');
 
@@ -323,10 +324,10 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(destBloc.state.message, 'updating: 1');
 
@@ -341,10 +342,10 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(destBloc.state.message, 'count: 1');
 
@@ -357,7 +358,7 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await relay.close();
       expect(relay.isClosed, isTrue);
@@ -373,19 +374,19 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
       expect(destBloc.state.message, 'count: 1');
 
       await relay.close();
 
       await destBloc.send(UpdateMessageEvent(message: 'reset'));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(destBloc.state.message, 'reset');
     });
@@ -409,7 +410,7 @@ void main() {
       await relay.close();
 
       // Wait for any pending microtasks
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await resolver.disposeAll();
     });
@@ -440,10 +441,10 @@ void main() {
         resolver: resolver2,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(destBloc1.state.message, 'relay1: 1');
       expect(destBloc2.state.message, 'relay2: 1');
@@ -451,7 +452,7 @@ void main() {
       await relay1.close();
 
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(destBloc1.state.message, 'relay1: 1'); // Unchanged
       expect(destBloc2.state.message, 'relay2: 2'); // Updated
@@ -475,14 +476,14 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Close dest bloc
       await destBloc.close();
 
       // Send event to source - relay should detect closed dest and close
       await sourceBloc.send(IncrementEvent());
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(relay.isClosed, isTrue);
 
@@ -502,11 +503,11 @@ void main() {
         resolver: resolver,
       );
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Close source bloc
       await sourceBloc.close();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       expect(relay.isClosed, isTrue);
 

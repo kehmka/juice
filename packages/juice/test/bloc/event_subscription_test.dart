@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 
+import '../support/capture_logger.dart';
+
 // Test States
 class SourceState extends BlocState {
   final int value;
@@ -154,14 +156,13 @@ void main() {
       // Initialize subscription
       subscription.initialize();
 
-      // Wait for async initialization
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Send event to source bloc
       await sourceBloc.send(SourceEvent(delta: 5));
 
       // Wait for propagation
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Verify dest bloc received transformed event
       expect(destBloc.state.message, 'value: 5');
@@ -179,7 +180,7 @@ void main() {
 
       subscription.setEventHandler((event) {});
       subscription.initialize();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Close should not throw
       await subscription.close();
@@ -205,16 +206,16 @@ void main() {
       });
 
       subscription.initialize();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Send event with delta <= 3 (should be filtered)
       await sourceBloc.send(SourceEvent(delta: 2));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
       expect(eventCount, 0);
 
       // Send event with delta > 3 (should pass through)
       await sourceBloc.send(SourceEvent(delta: 5));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
       expect(eventCount, 1);
 
       await subscription.close();
@@ -230,13 +231,13 @@ void main() {
 
       subscription.setEventHandler((event) {});
       subscription.initialize();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Close source bloc
       await sourceBloc.close();
 
       // Wait for subscription to handle the close
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Should complete without error
       await subscription.close();
@@ -273,23 +274,23 @@ void main() {
       });
 
       subscription.initialize();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Send valid event
       await sourceBloc.send(SourceEvent(delta: 1));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
       expect(eventCount, 1);
 
       // Send event that causes transformer to throw
       await sourceBloc.send(SourceEvent(delta: -1));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
 
       // Should still be at 1 (error was caught)
       expect(eventCount, 1);
 
       // Send another valid event - subscription should still work
       await sourceBloc.send(SourceEvent(delta: 2));
-      await Future.delayed(const Duration(milliseconds: 50));
+      await pump();
       expect(eventCount, 2);
 
       await subscription.close();
@@ -315,7 +316,7 @@ void main() {
       await subscription.close();
 
       // Wait to ensure any pending microtasks complete
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pump();
 
       // Should not throw
       await sourceBloc.close();
@@ -335,7 +336,7 @@ void main() {
 
         subscription.setEventHandler((event) {});
         subscription.initialize();
-        await Future.delayed(const Duration(milliseconds: 10));
+        await pump();
         await subscription.close();
       }
 

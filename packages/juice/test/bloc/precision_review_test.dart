@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart' hide EventDispatcher;
 import 'package:juice/juice.dart';
 import 'package:juice/src/bloc/src/core/event_dispatcher.dart';
 import 'package:juice/testing.dart';
+import '../support/capture_logger.dart';
 
 /// Pins for the pre-2.0 precision review, one group per finding:
 ///
@@ -72,28 +73,7 @@ class _Fetch extends _Gated {
   _Fetch(super.gate);
 }
 
-class _Log implements JuiceLogger {
-  final entries = <Map<String, dynamic>>[];
-  @override
-  void log(String m,
-          {Level level = Level.info, Map<String, dynamic>? context}) =>
-      entries.add({'message': m, 'level': level, ...?context});
-  @override
-  void logError(String m, Object e, StackTrace s,
-          {Map<String, dynamic>? context}) =>
-      entries
-          .add({'message': m, 'error': e, 'level': Level.error, ...?context});
-  Iterable<Map<String, dynamic>> typed(String type) =>
-      entries.where((e) => e['type'] == type);
-}
-
 final _quiet = BlocErrorHandler(onError: (m, {error, stackTrace}) {});
-
-Future<void> pump([int n = 1]) async {
-  for (var i = 0; i < n; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
 
 // --- P1: a bloc that builds a relay on ITSELF in its constructor.
 
@@ -425,7 +405,7 @@ void main() {
   group('P6 failures outside the use case body', () {
     test('a throwing generator is a use-case error with a span-closer',
         () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       await b.send(_NoGen());
       expect(b.errors.single, isA<StateError>());
@@ -439,7 +419,7 @@ void main() {
     test(
         'a sequential failure that escapes the executor is logged; the '
         'queue goes on', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log, rethrowErrors: true);
       await b.send(_Boom());
       final escaped = log.entries.where(
@@ -463,7 +443,7 @@ void main() {
   group('P7 bindStream hardening', () {
     test('a throwing onError is the bloc\'s error; the binding is cancelled',
         () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       final c = StreamController<int>();
       final binding = b.bindStream<int>(c.stream, (_) {},
@@ -482,7 +462,7 @@ void main() {
     });
 
     test('a throwing onDone is the bloc\'s error', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       final c = StreamController<int>();
       b.bindStream<int>(c.stream, (_) {},
@@ -523,7 +503,7 @@ void main() {
     });
 
     test('unbind: a cancel that fails is logged as cancel_error', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       final c = StreamController<int>(
           onCancel: () => throw StateError('cancel broke'));
@@ -540,7 +520,7 @@ void main() {
     });
 
     test('a bloc that has started closing refuses with its reason', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       final closing = b.close();
       final c = StreamController<int>();
@@ -561,7 +541,7 @@ void main() {
   group('P8 emitEvent after close', () {
     test('is dropped through the close fence, logged with status event',
         () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       final gate = Completer<void>();
       final run = b.send(_LateEvent(gate.future));
@@ -596,7 +576,7 @@ void main() {
 
   group('P10 sendCancellable', () {
     test('on a closed bloc is refused like send, at warning', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       await b.close();
       final e = b.sendCancellable(_Cancellable());
@@ -626,7 +606,7 @@ void main() {
   group('P12 one error, two lines', () {
     test('a thrown use-case error logs one span-closer and one bloc_error',
         () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _W(logger: log);
       await b.send(_Boom());
       expect(log.typed('use_case_error').length, 1);

@@ -54,6 +54,58 @@ class _B extends JuiceBloc<_S> {
       _CountingStream(super.stream, () => listens++);
 }
 
+/// Second and third bloc types for the two- and three-bloc widget forms.
+class _B2 extends _B {}
+
+class _B3 extends _B {}
+
+class _Leaf2 extends StatelessJuiceWidget2<_B, _B2> {
+  _Leaf2({super.groups});
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) =>
+      Text('${bloc1.state.n}+${bloc2.state.n}',
+          textDirection: TextDirection.ltr);
+}
+
+class _Leaf3 extends StatelessJuiceWidget3<_B, _B2, _B3> {
+  _Leaf3({super.groups});
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) =>
+      Text('${bloc1.state.n}+${bloc2.state.n}+${bloc3.state.n}',
+          textDirection: TextDirection.ltr);
+}
+
+class _StatefulLeaf2 extends StatefulWidget {
+  const _StatefulLeaf2(this.tick);
+  final int tick;
+  @override
+  State<_StatefulLeaf2> createState() => _StatefulLeaf2State();
+}
+
+class _StatefulLeaf2State extends JuiceWidgetState2<_B, _B2, _StatefulLeaf2> {
+  _StatefulLeaf2State() : super(groups: {'g'});
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) =>
+      Text('${bloc1.state.n}+${bloc2.state.n}',
+          textDirection: TextDirection.ltr);
+}
+
+class _StatefulLeaf3 extends StatefulWidget {
+  const _StatefulLeaf3(this.tick);
+  final int tick;
+  @override
+  State<_StatefulLeaf3> createState() => _StatefulLeaf3State();
+}
+
+class _StatefulLeaf3State
+    extends JuiceWidgetState3<_B, _B2, _B3, _StatefulLeaf3> {
+  _StatefulLeaf3State() : super(groups: {'g'});
+  @override
+  Widget onBuild(BuildContext context, StreamStatus status) =>
+      Text('${bloc1.state.n}+${bloc2.state.n}+${bloc3.state.n}',
+          textDirection: TextDirection.ltr);
+}
+
 class _Leaf extends StatelessJuiceWidget<_B> {
   _Leaf({super.groups});
   @override
@@ -93,9 +145,15 @@ class _ParentState extends State<_Parent> {
 
 void main() {
   late _B bloc;
+  late _B2 bloc2;
+  late _B3 bloc3;
   setUp(() {
     bloc = _B();
+    bloc2 = _B2();
+    bloc3 = _B3();
     BlocScope.register<_B>(() => bloc);
+    BlocScope.register<_B2>(() => bloc2);
+    BlocScope.register<_B3>(() => bloc3);
   });
   tearDown(() async {
     await BlocScope.endAll();
@@ -153,5 +211,56 @@ void main() {
     await bloc.send(_Bump()); // group 'g' — the widget now listens to 'other'
     await tester.pump();
     expect(find.text('0'), findsOneWidget, reason: 'filtered out');
+  });
+
+  group('two- and three-bloc forms', () {
+    Future<void> tenRebuilds(_ParentState parent, WidgetTester tester) async {
+      for (var i = 0; i < 10; i++) {
+        parent.rebuild();
+        await tester.pump();
+      }
+    }
+
+    testWidgets('StatelessJuiceWidget2 keeps ONE subscription per bloc',
+        (tester) async {
+      final parent = await mount(tester, (_) => _Leaf2(groups: const {'g'}));
+      await tenRebuilds(parent, tester);
+      expect(bloc.listens, 1);
+      expect(bloc2.listens, 1);
+      await bloc2.send(_Bump());
+      await tester.pump();
+      expect(find.text('0+1'), findsOneWidget);
+    });
+
+    testWidgets('StatelessJuiceWidget3 keeps ONE subscription per bloc',
+        (tester) async {
+      final parent = await mount(tester, (_) => _Leaf3(groups: const {'g'}));
+      await tenRebuilds(parent, tester);
+      expect([bloc.listens, bloc2.listens, bloc3.listens], [1, 1, 1]);
+      await bloc3.send(_Bump());
+      await tester.pump();
+      expect(find.text('0+0+1'), findsOneWidget);
+    });
+
+    testWidgets('JuiceWidgetState2 keeps ONE subscription per bloc',
+        (tester) async {
+      final parent = await mount(tester, (tick) => _StatefulLeaf2(tick));
+      await tenRebuilds(parent, tester);
+      expect(bloc.listens, 1);
+      expect(bloc2.listens, 1);
+      await bloc2.send(_Bump());
+      await tester.pump();
+      expect(find.text('0+1'), findsOneWidget);
+    });
+
+    testWidgets('JuiceWidgetState3 keeps ONE subscription per bloc',
+        (tester) async {
+      final parent = await mount(tester, (tick) => _StatefulLeaf3(tick));
+      await tenRebuilds(parent, tester);
+      expect([bloc.listens, bloc2.listens, bloc3.listens], [1, 1, 1]);
+      await bloc3.send(_Bump());
+      await tester.pump();
+      expect(find.text('0+0+1'), findsOneWidget);
+    });
   });
 }

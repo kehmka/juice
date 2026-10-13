@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
+import '../support/capture_logger.dart';
 
 /// The adversarial review of `restartable` (2026-10-13): the cases a
 /// first-pass test suite does not think of. Each test states the contract it
@@ -110,26 +111,6 @@ class _B extends JuiceBloc<_S> {
   }
 }
 
-class _Log implements JuiceLogger {
-  final entries = <Map<String, dynamic>>[];
-  @override
-  void log(String m,
-          {Level level = Level.info, Map<String, dynamic>? context}) =>
-      entries.add({'message': m, ...?context});
-  @override
-  void logError(String m, Object e, StackTrace s,
-          {Map<String, dynamic>? context}) =>
-      entries.add({'message': m, 'error': e, ...?context});
-  Iterable<Map<String, dynamic>> typed(String t) =>
-      entries.where((e) => e['type'] == t);
-}
-
-Future<void> pump([int n = 2]) async {
-  for (var i = 0; i < n; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
-
 void main() {
   late JuiceLogger saved;
   setUp(() => saved = JuiceLoggerConfig.logger);
@@ -138,7 +119,7 @@ void main() {
   test(
       '1. the same event INSTANCE sent twice: the first run is superseded '
       'and fenced, the second emits once', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gate = Completer<void>();
     final e = _Outer(gate.future);
     final first = b.send(e);
@@ -154,22 +135,22 @@ void main() {
       '2. a nested dispatch from inside a restartable run is its own: its '
       'binding survives the outer supersede, it is not "superseded", its '
       'span is not flagged', () async {
-    final log = _Log();
+    final log = CaptureLogger();
     JuiceLoggerConfig.configureLogger(log);
     final b = _B(log);
     final innerGate = Completer<void>();
     final outerGate = Completer<void>();
     final outer1 =
         b.send(_Outer(outerGate.future, nested: _Inner(innerGate.future)));
-    await pump();
+    await pump(2);
     expect(b.activeBindingCount, 1, reason: 'the inner binding exists');
-    final outer2 =
-        b.send(_Outer(Completer<void>().future)); // supersedes outer1
-    await pump();
+    final outer2Gate = Completer<void>();
+    final outer2 = b.send(_Outer(outer2Gate.future)); // supersedes outer1
+    await pump(2);
     expect(b.activeBindingCount, 1,
         reason: 'the INNER run created the binding, not the superseded outer');
     innerGate.complete();
-    await pump();
+    await pump(2);
     expect(b.innerSawSuperseded, [false], reason: 'inner is not superseded');
     expect(b.state.log, contains('inner'));
     final innerEnd = log
@@ -181,57 +162,62 @@ void main() {
     await outer1;
     b.unbind('inner');
     await b.close();
-    outer2.ignore();
+    outer2Gate.complete();
+    await outer2;
   });
 
   test('3. a sequential event queued from inside a restartable run is its own',
       () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final seqGate = Completer<void>();
     final outerGate = Completer<void>();
     final outer1 =
         b.send(_Outer(outerGate.future, nested: _Seq(seqGate.future)));
-    await pump();
-    final outer2 = b.send(_Outer(Completer<void>().future));
-    await pump();
+    await pump(2);
+    final outer2Gate = Completer<void>();
+    final outer2 = b.send(_Outer(outer2Gate.future));
+    await pump(2);
     seqGate.complete();
-    await pump();
+    await pump(2);
     expect(b.seqSawSuperseded, [false]);
     expect(b.state.log, contains('seq'));
     outerGate.complete();
     await outer1;
     await b.close();
-    outer2.ignore();
+    outer2Gate.complete();
+    await outer2;
   });
 
   test(
       '4. a binding created by a callback the run scheduled belongs to the '
       'run and is cancelled with it (zone semantics)', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gate = Completer<void>();
     final run1 = b.send(_Outer(gate.future, scheduleBinding: true));
     await pump(3);
     expect(b.activeBindingCount, 1);
-    final run2 = b.send(_Outer(Completer<void>().future));
-    await pump();
+    final gate2 = Completer<void>();
+    final run2 = b.send(_Outer(gate2.future));
+    await pump(2);
     expect(b.activeBindingCount, 0,
         reason: 'the scheduled binding was the run\'s');
     gate.complete();
     await run1;
     await b.close();
-    run2.ignore();
+    gate2.complete();
+    await run2;
   });
 
   test(
       '5. sendAndWait: an event that emitted and is THEN superseded answers '
       'with its emission', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final w = b.sendAndWait(_Outer(Future.value()));
     final status = await w;
     expect(status, isA<UpdatingStatus<_S>>());
     b.send(
         _Outer(Completer<void>().future)); // supersedes a finished run: no-op
-    await pump();
+    await pump(2);
     expect(b.state.log, ['outer']);
     await b.close();
   });
@@ -239,7 +225,7 @@ void main() {
   test(
       '6. stress: 50 rapid events completed in reverse leave one emission '
       'and no live bindings', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gates = [for (var i = 0; i < 50; i++) Completer<void>()];
     final sends = [
       for (final g in gates) b.send(_Outer(g.future, scheduleBinding: true))
@@ -260,7 +246,7 @@ void main() {
 
   test('7. close() mid-run cancels the run\'s bindings and nothing emits after',
       () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gate = Completer<void>();
     final run = b.send(_Outer(gate.future, scheduleBinding: true));
     await pump(3);
@@ -333,7 +319,7 @@ void fenceMain() {
       '1b. the FENCE, not cooperation: the same instance sent twice, the '
       'use case never checks isSuperseded — the first run\'s emit is dropped',
       () async {
-    final log = _Log();
+    final log = CaptureLogger();
     final b = _BlindBloc(log);
     final gate = Completer<void>();
     final e = _Blind(gate.future);
@@ -350,11 +336,12 @@ void fenceMain() {
   test(
       '8. a run that binds a stream AFTER it was superseded gets an inert '
       'binding, logged — no orphan outlives the fence', () async {
-    final log = _Log();
+    final log = CaptureLogger();
     final b = _BlindBloc(log);
     final gate = Completer<void>();
     final first = b.send(_Bind(gate.future));
-    final second = b.send(_Bind(Completer<void>().future)); // supersedes first
+    final gate2 = Completer<void>();
+    final second = b.send(_Bind(gate2.future)); // supersedes first
     gate.complete();
     await first;
     expect(b.lateBindings.single.isActive, isFalse);
@@ -365,6 +352,7 @@ void fenceMain() {
             .where((e) => e['reason'] == 'run superseded'),
         hasLength(1));
     await b.close();
-    second.ignore();
+    gate2.complete();
+    await second;
   });
 }

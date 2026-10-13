@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
+import '../support/capture_logger.dart';
 
 /// `JuiceBloc.bindStream` / `unbind` / `StreamBinding` (2.0.0): the bloc
 /// owns every stream it listens to. Every path is pinned here: delivery,
@@ -73,26 +74,6 @@ class _B extends JuiceBloc<_S> {
     super.onError(error, stackTrace);
   }
 }
-
-class _Log implements JuiceLogger {
-  final entries = <Map<String, dynamic>>[];
-  final errors = <String>[];
-  @override
-  void log(String m,
-          {Level level = Level.info, Map<String, dynamic>? context}) =>
-      entries.add({'message': m, 'level': level, ...?context});
-  @override
-  void logError(String m, Object e, StackTrace s,
-      {Map<String, dynamic>? context}) {
-    errors.add(m);
-    entries.add({'message': m, 'error': e, ...?context});
-  }
-
-  Iterable<Map<String, dynamic>> bindings(String action) => entries
-      .where((e) => e['type'] == 'stream_binding' && e['action'] == action);
-}
-
-Future<void> pump() => Future<void>.delayed(Duration.zero);
 
 /// Swallows the default handler's print; the tests assert on [_B.errors].
 final _quiet = BlocErrorHandler(onError: (m, {error, stackTrace}) {});
@@ -292,7 +273,7 @@ void main() {
 
     test('bindStream on a closed bloc is refused: inert binding, loud log',
         () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       await b.close();
       final c = StreamController<int>();
@@ -315,7 +296,7 @@ void main() {
     });
 
     test('the close log carries the number of live bindings', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final c = StreamController<int>();
       b.bindStream<int>(c.stream, (_) {});
@@ -331,7 +312,7 @@ void main() {
     test(
         'a stream error with no onError goes to the bloc error handler, '
         'is logged, and cancels the binding', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final handled = <Object?>[];
       final b = _B(
           logger: log,
@@ -354,7 +335,7 @@ void main() {
     });
 
     test('cancelOnError: false keeps listening after a logged error', () async {
-      final b = _B(logger: _Log(), errorHandler: _quiet);
+      final b = _B(logger: CaptureLogger(), errorHandler: _quiet);
       final c = StreamController<int>();
       final got = <int>[];
       final binding =
@@ -372,7 +353,7 @@ void main() {
     test(
         'a custom onError receives the error instead of the bloc handler, '
         'and the binding is still cancelled by default', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c = StreamController<int>();
       final seen = <Object>[];
       final binding =
@@ -388,7 +369,7 @@ void main() {
 
     test('a custom onError with cancelOnError: false keeps the binding',
         () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c = StreamController<int>();
       final seen = <Object>[];
       final binding = b.bindStream<int>(c.stream, (_) {},
@@ -405,7 +386,7 @@ void main() {
     test(
         'an onData that throws is routed to the bloc error handler and the '
         'binding stays active', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final c = StreamController<int>();
       final got = <int>[];
@@ -433,7 +414,7 @@ void main() {
     test(
         'bind and done are chatter: logged at the default level, not '
         'built below it', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       JuiceLoggerConfig.configureLogger(log);
       final b = _B(logger: log);
       final c = StreamController<int>();
@@ -444,7 +425,7 @@ void main() {
       expect(log.bindings('done').single['key'], 'k');
       await b.close();
 
-      final quiet = _Log();
+      final quiet = CaptureLogger();
       JuiceLoggerConfig.configureLogger(quiet);
       JuiceLoggerConfig.minLevel = Level.warning;
       final b2 = _B(logger: quiet);
@@ -462,7 +443,7 @@ void main() {
     test(
         'bind in one use case, items become events, a later use case '
         'unbinds, close is clean', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c = StreamController<int>();
       await b.send(_Start(c.stream));
       expect(b.activeBindingCount, 1);
@@ -488,7 +469,7 @@ void main() {
     test(
         'a binding started by a use case is cancelled by close, and an '
         'item arriving afterwards is not sent', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c = StreamController<int>();
       await b.send(_Start(c.stream));
       await b.close();

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
+import '../support/capture_logger.dart';
 
 /// Pins for the independent review of `restartable` (2026-10-13). Each test
 /// is one finding; the number is the finding's.
@@ -195,27 +196,6 @@ class _B extends JuiceBloc<_S> {
   }
 }
 
-class _Log implements JuiceLogger {
-  final entries = <Map<String, dynamic>>[];
-  @override
-  void log(String m,
-          {Level level = Level.info, Map<String, dynamic>? context}) =>
-      entries.add({'message': m, ...?context});
-  @override
-  void logError(String m, Object e, StackTrace s,
-          {Map<String, dynamic>? context}) =>
-      entries.add({'message': m, 'error': e, ...?context});
-  Iterable<Map<String, dynamic>> where(String type, [String? action]) =>
-      entries.where((e) =>
-          e['type'] == type && (action == null || e['action'] == action));
-}
-
-Future<void> pump([int n = 2]) async {
-  for (var i = 0; i < n; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
-
 /// Wraps a stream so every subscription's cancel() completes with an error.
 class _FailingCancelStream extends StreamView<int> {
   _FailingCancelStream(super.inner);
@@ -259,7 +239,7 @@ void main() {
   test(
       'R1 the same CancellableEvent instance re-sent: the NEW run is not '
       'pre-cancelled; only the old run is fenced', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gate = Completer<void>();
     final e = _Scrub(gate.future);
     final first = b.send(e);
@@ -273,7 +253,7 @@ void main() {
   });
 
   test('R2 sendAndWait twice with the same instance resolves both', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final gate = Completer<void>();
     final e = _Search(gate.future);
     final w1 = b.sendAndWait(e, timeout: const Duration(seconds: 2));
@@ -285,7 +265,7 @@ void main() {
   });
 
   test('R3 sendAndWait holds no stream listener; a timeout is clean', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final before = b.listens;
     final pending = b.sendAndWait(_Search(Completer<void>().future));
     b.send(_Search(Completer<void>().future)); // supersedes the first
@@ -300,7 +280,7 @@ void main() {
   });
 
   test('R5 a retried restartable run stops retrying once superseded', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final first = b.send(_Flaky());
     await pump();
     expect(b.attempts, 1);
@@ -312,17 +292,15 @@ void main() {
     expect(b.attempts, 2,
         reason: 'the superseded run did not retry; the new run ran once');
     b.flakyGate.complete();
-    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await Future.wait([first, second]); // the new run retries to exhaustion
     await b.close();
-    first.ignore();
-    second.ignore();
   });
 
   test(
       'R6 a run that RETURNED is not superseded by a send in the next '
       'microtask: its binding survives, same as with a pump between', () async {
     for (final withPump in [false, true]) {
-      final b = _B(_Log());
+      final b = _B(CaptureLogger());
       final first = b.send(_Quick());
       await first; // returned; _current is cleared a few microtasks later
       if (withPump) await pump();
@@ -336,7 +314,7 @@ void main() {
 
   test('R7 a throwing cancel() cannot stop the new run; the error is logged',
       () async {
-    final log = _Log();
+    final log = CaptureLogger();
     final b = _B(log);
     final g1 = Completer<void>();
     final g2 = Completer<void>();
@@ -354,7 +332,7 @@ void main() {
   test(
       'R8 an emission that landed before the supersede wins over Canceling, '
       'even in the same synchronous block', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final w = b.sendAndWait(_Search(Completer<void>().future, emitFirst: true));
     b.send(_Search(Completer<void>().future)); // same tick: supersedes
     final status = await w;
@@ -364,13 +342,13 @@ void main() {
   });
 
   test('R9 a nested restartable of another type keeps its own run', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final innerGate = Completer<void>();
     final outerGate = Completer<void>();
     final outer1 = b.send(_Outer(outerGate.future, _Inner(innerGate.future)));
     await pump();
-    final outer2 =
-        b.send(_Outer(Completer<void>().future)); // supersedes outer1
+    final outer2Gate = Completer<void>();
+    final outer2 = b.send(_Outer(outer2Gate.future)); // supersedes outer1
     await pump();
     innerGate.complete();
     await pump();
@@ -378,11 +356,12 @@ void main() {
     outerGate.complete();
     await outer1;
     await b.close();
-    outer2.ignore();
+    outer2Gate.complete();
+    await outer2;
   });
 
   test('R10 close() while sendAndWait is pending fails it loudly', () async {
-    final b = _B(_Log());
+    final b = _B(CaptureLogger());
     final w = b.sendAndWait(_Search(Completer<void>().future));
     final failsLoudly = expectLater(w, throwsA(isA<StateError>()));
     await b.close();
@@ -392,19 +371,20 @@ void main() {
   test(
       'R11 a binding whose cancel throws is logged at supersede and at '
       'close; neither path breaks', () async {
-    final log = _Log();
+    final log = CaptureLogger();
     final b = _B(log);
     final g1 = Completer<void>();
     final first = b.send(_BadBind(g1.future));
     await pump();
-    final second =
-        b.send(_BadBind(Completer<void>().future)); // cancels the bad binding
+    final g2 = Completer<void>();
+    final second = b.send(_BadBind(g2.future)); // cancels the bad binding
     await pump();
     expect(log.where('stream_binding', 'cancel_error'), hasLength(1));
     g1.complete();
     await first;
     await b.close(); // the second run's bad binding cancels at close
     expect(log.where('stream_binding', 'cancel_error'), hasLength(2));
-    second.ignore();
+    g2.complete();
+    await second;
   });
 }

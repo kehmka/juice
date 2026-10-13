@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
+import '../support/capture_logger.dart';
 
 /// `EventConcurrency.restartable` (2.0.0): a new same-type event supersedes
 /// the in-flight run and starts at once. The superseded run is FENCED —
@@ -171,26 +172,6 @@ class _B extends JuiceBloc<_S> {
 /// Navigations the test aviator saw (reset per test).
 int _navigated = 0;
 
-class _Log implements JuiceLogger {
-  final entries = <Map<String, dynamic>>[];
-  @override
-  void log(String m,
-          {Level level = Level.info, Map<String, dynamic>? context}) =>
-      entries.add({'message': m, ...?context});
-  @override
-  void logError(String m, Object e, StackTrace s,
-          {Map<String, dynamic>? context}) =>
-      entries.add({'message': m, 'error': e, ...?context});
-  Iterable<Map<String, dynamic>> typed(String type) =>
-      entries.where((e) => e['type'] == type);
-}
-
-Future<void> pump([int n = 1]) async {
-  for (var i = 0; i < n; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
-
 void main() {
   late JuiceLogger savedLogger;
   late Level savedLevel;
@@ -209,7 +190,7 @@ void main() {
     test(
         'a new same-type event starts at once and the old run is fenced: '
         'only the latest result lands', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final g1 = Completer<void>();
       final g2 = Completer<void>();
       final first = b.send(_Search('a', g1.future));
@@ -233,7 +214,7 @@ void main() {
     test(
         'three rapid events: only the last run emits, in whichever order '
         'the requests return', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final gates = [for (var i = 0; i < 3; i++) Completer<void>()];
       final sends = [
         for (var i = 0; i < 3; i++) b.send(_Search('q$i', gates[i].future))
@@ -250,7 +231,7 @@ void main() {
     test(
         'every emission kind and navigation attempted by a superseded run '
         'is dropped and logged with what was dropped', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final g1 = Completer<void>();
       final g2 = Completer<void>();
@@ -278,7 +259,7 @@ void main() {
     test(
         'a superseded CancellableEvent is cancelled, so a cooperative loop '
         'bails early', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       var ticks = 0;
       final tickGate = <Completer<void>>[];
       Future<void> tick() {
@@ -308,7 +289,7 @@ void main() {
     test(
         'a run that errors after being superseded still closes its span, '
         'flagged superseded', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final g1 = Completer<void>();
       final old = b.send(_Fail(g1.future));
@@ -324,7 +305,7 @@ void main() {
     test(
         'a completed superseded run flags its end entry; the winner does '
         'not', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final g1 = Completer<void>();
       final g2 = Completer<void>();
@@ -340,7 +321,7 @@ void main() {
     });
 
     test('the supersede itself is logged', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       b.send(_Search('a', Completer<void>().future));
       await b.send(_Search('b', Future.value()));
@@ -361,7 +342,7 @@ void main() {
     });
 
     test('supersede chatter is not built below the telemetry floor', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       JuiceLoggerConfig.configureLogger(log);
       JuiceLoggerConfig.minLevel = Level.warning;
       final b = _B(logger: log);
@@ -381,7 +362,7 @@ void main() {
     test(
         'bindings created by the superseded run are cancelled; the '
         'winner\'s survive', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c1 = StreamController<int>();
       final c2 = StreamController<int>();
       final first = b.send(_Watch(c1.stream));
@@ -406,7 +387,7 @@ void main() {
     test(
         'a binding made outside any restartable run is untouched by a '
         'supersede', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final c = StreamController<int>();
       final binding = b.bindStream<int>(c.stream, (_) {});
       b.send(_Search('a', Completer<void>().future));
@@ -421,7 +402,7 @@ void main() {
     test(
         'answers a superseded event with a CancelingStatus for THAT event, '
         'without putting it on the stream, and the winner normally', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final emitted = <StreamStatus<_S>>[];
       final sub = b.stream.listen(emitted.add);
       final g1 = Completer<void>();
@@ -444,7 +425,7 @@ void main() {
 
     test('a restartable event that is never superseded resolves normally',
         () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final status = await b.sendAndWait(_Search('solo', Future.value()));
       expect(status, isA<UpdatingStatus<_S>>());
       expect(status.state.value, 'solo');
@@ -456,7 +437,7 @@ void main() {
     test(
         'sequential is untouched: isSuperseded is false and every run '
         'emits', () async {
-      final b = _B(logger: _Log());
+      final b = _B(logger: CaptureLogger());
       final g = Completer<void>();
       final first = b.send(_Seq(g.future));
       final second = b.send(_Seq(Future.value()));
@@ -472,7 +453,7 @@ void main() {
     test(
         'a restartable run in flight at close hits the close fence; a '
         'restartable event sent after close is ignored', () async {
-      final log = _Log();
+      final log = CaptureLogger();
       final b = _B(logger: log);
       final g = Completer<void>();
       final inFlight = b.send(_Search('late', g.future));

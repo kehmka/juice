@@ -360,7 +360,9 @@ void fenceMain() {
     expect(b.lateBindings.single.isActive, isFalse);
     expect(b.activeBindingCount, 0);
     expect(
-        log.typed('stream_binding').where((e) => e['action'] == 'superseded'),
+        log
+            .typed('stream_binding')
+            .where((e) => e['reason'] == 'run superseded'),
         hasLength(1));
     await b.close();
     second.ignore();

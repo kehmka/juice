@@ -71,11 +71,15 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
   final bool keepAlive;
 
   /// When given, the stream subscription is replaced only when this key
-  /// CHANGES (by `==`), not when the stream OBJECT does. For callers that
-  /// derive a new stream in every `build()` (`bloc.stream.where(...)`): the
-  /// subscription survives parent rebuilds while what it means — the
-  /// source, the filter's inputs — is unchanged (juice ≥ 2.0.0).
+  /// CHANGES (by `==`), not when the stream OBJECT does: the subscription
+  /// survives parent rebuilds while its source is unchanged.
   final Object? streamKey;
+
+  /// Items for which this returns false are not delivered. Read from the
+  /// CURRENT widget on every item, so a rebuilt widget's filter applies to
+  /// a subscription kept across the rebuild (the stream's own `.where`
+  /// would freeze the first widget's).
+  final bool Function(T value)? where;
 
   /// Creates a widget that builds depending on the state of a [Future] or [Stream].
   const JuiceAsyncBuilder({
@@ -87,6 +91,7 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
     this.future,
     this.stream,
     this.streamKey,
+    this.where,
     this.initial,
     this.retain = false,
     this.pause = false,
@@ -98,7 +103,11 @@ class JuiceAsyncBuilder<T> extends StatefulWidget {
         assert(!((future != null) && (stream != null)),
             'AsyncBuilder should be given either a stream or future'),
         assert(future == null || closed == null,
-            'AsyncBuilder should not be given both a future and closed builder');
+            'AsyncBuilder should not be given both a future and closed builder'),
+        assert(streamKey == null || stream != null,
+            'streamKey keys a stream subscription; give a stream'),
+        assert(where == null || stream != null,
+            'where filters a stream; give a stream');
 
   @override
   State<StatefulWidget> createState() => _JuiceAsyncBuilderState<T>();
@@ -110,11 +119,9 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
 
   StreamSubscription? _subscription;
 
-  /// The last data the stream delivered. An [AsyncSnapshot] cannot hold
-  /// data AND an error, so on a stream error the snapshot's data is gone;
-  /// without this the error branch built with [JuiceAsyncBuilder.initial] —
-  /// the widget silently REVERTED to its initial status (found by the 2.0
-  /// coverage tests, 2026-10-07).
+  /// The last data the CURRENT subscription delivered. An [AsyncSnapshot]
+  /// holds data OR an error, so on a stream error the error branch builds
+  /// with this rather than reverting to [JuiceAsyncBuilder.initial].
   T? _lastData;
 
   /// Returns the initial value, throwing if null.
@@ -177,8 +184,10 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
         AsyncSnapshot<T>.withData(ConnectionState.none, _requiredInitial);
 
     bool skipFirst = false;
+    _lastData = null;
     if (stream is ValueStream<T> && stream.hasValue) {
       skipFirst = true;
+      _lastData = stream.value;
       _snapshotNotifier.value =
           AsyncSnapshot<T>.withData(ConnectionState.active, stream.value);
     }
@@ -189,6 +198,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
           skipFirst = false;
           return;
         }
+        if (!(widget.where?.call(event) ?? true)) return;
         _lastData = event;
         _snapshotNotifier.value =
             AsyncSnapshot<T>.withData(ConnectionState.active, event);
@@ -231,6 +241,7 @@ class _JuiceAsyncBuilderState<T> extends State<JuiceAsyncBuilder<T>>
     _subscription?.cancel();
     _subscription = null;
     if (!widget.retain) {
+      _lastData = null;
       _snapshotNotifier.value =
           AsyncSnapshot<T>.withData(ConnectionState.none, _requiredInitial);
     }

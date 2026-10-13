@@ -89,15 +89,13 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
 
   Widget _buildAsyncBuilder(TBloc b) {
     return JuiceAsyncBuilder<StreamStatus>(
-      stream: b.stream.where((status) {
-        if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
-          return false;
-        }
-        return onStateChange(status);
-      }),
+      stream: b.stream,
+      where: (status) =>
+          !denyRebuild(event: status.event, rebuildGroups: groups) &&
+          onStateChange(status),
       initial: b.currentStatus,
       initiator: onInit,
-      streamKey: SubscriptionKey([b], groups, key),
+      streamKey: SubscriptionKey([b]),
       builder: (context, status) => _build(context, status),
       error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
@@ -217,13 +215,11 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
     return JuiceAsyncBuilder<StreamStatus>(
       initial: b1.currentStatus,
       initiator: onInit,
-      streamKey: SubscriptionKey([b1, b2], groups, key),
-      stream: MergeStream<StreamStatus>([b1.stream, b2.stream]).where((status) {
-        if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
-          return false;
-        }
-        return onStateChange(status);
-      }),
+      streamKey: SubscriptionKey([b1, b2]),
+      stream: MergeStream<StreamStatus>([b1.stream, b2.stream]),
+      where: (status) =>
+          !denyRebuild(event: status.event, rebuildGroups: groups) &&
+          onStateChange(status),
       builder: (context, status) => _build(context, status),
       error: (context, status, o, ex) => _build(context, status),
       closed: (context, value) => close(context),
@@ -354,14 +350,11 @@ abstract class StatelessJuiceWidget3<
     return JuiceAsyncBuilder<StreamStatus>(
       initial: b1.currentStatus,
       initiator: onInit,
-      streamKey: SubscriptionKey([b1, b2, b3], groups, key),
-      stream: MergeStream<StreamStatus>([b1.stream, b2.stream, b3.stream])
-          .where((status) {
-        if (denyRebuild(event: status.event, key: key, rebuildGroups: groups)) {
-          return false;
-        }
-        return onStateChange(status);
-      }),
+      streamKey: SubscriptionKey([b1, b2, b3]),
+      stream: MergeStream<StreamStatus>([b1.stream, b2.stream, b3.stream]),
+      where: (status) =>
+          !denyRebuild(event: status.event, rebuildGroups: groups) &&
+          onStateChange(status),
       builder: (context, status) => _build(context, status),
       error: (c, status, o, s) => _build(c, status),
       closed: (context, value) => close(context),

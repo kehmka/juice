@@ -260,7 +260,7 @@ void main() {
         'onUpdate re-emits the CURRENT state as UpdatingStatus under the '
         'event\'s groups (an UpdateEvent carries no state since 2.0.0)',
         () async {
-      await bloc.send(UpdateEvent<_S>(groupsToRebuild: {'g'}));
+      await bloc.send(UpdateEvent(groupsToRebuild: {'g'}));
       expect(bloc.currentStatus, isA<UpdatingStatus<_S>>());
       expect(bloc.state.n, 7, reason: 'unchanged');
       expect(bloc.currentStatus.event!.groupsToRebuild, contains('g'));
@@ -275,7 +275,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(bloc.state.n, 1);
       expect(seen.single, isA<UpdatingStatus<_S>>());
-      expect(seen.single.event, isA<UpdateEvent<_S>>());
+      expect(seen.single.event, isA<UpdateEvent>());
       expect(seen.single.event!.groupsToRebuild, contains('g'));
       await sub.cancel();
       await bloc.close();
@@ -290,7 +290,7 @@ void main() {
     });
 
     test('onFailure emits FailureStatus and keeps the state', () async {
-      await bloc.send(UpdateEvent<_S>(
+      await bloc.send(UpdateEvent(
         resetStatusTo: ResetStreamType.onFailure,
       ));
       expect(bloc.currentStatus, isA<FailureStatus<_S>>());

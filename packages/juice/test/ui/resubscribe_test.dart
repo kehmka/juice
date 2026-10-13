@@ -142,14 +142,14 @@ void main() {
   });
 
   testWidgets(
-      'a parent rebuild that CHANGES the groups re-subscribes, and '
-      'the new filter applies', (tester) async {
+      'a parent rebuild that CHANGES the groups keeps the subscription, and '
+      'the NEW widget\'s filter applies to it', (tester) async {
     final parent = await mount(tester,
         (tick) => _Leaf(groups: tick == 0 ? const {'g'} : const {'other'}));
     expect(bloc.listens, 1);
-    parent.rebuild(); // groups change → the subscription must be replaced
+    parent.rebuild(); // groups change → same subscription, live filter
     await tester.pump();
-    expect(bloc.listens, 2);
+    expect(bloc.listens, 1, reason: 'the filter is read per item, not keyed');
     await bloc.send(_Bump()); // group 'g' — the widget now listens to 'other'
     await tester.pump();
     expect(find.text('0'), findsOneWidget, reason: 'filtered out');

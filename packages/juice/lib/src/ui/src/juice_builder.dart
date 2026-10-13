@@ -116,7 +116,6 @@ class _JuiceBuilderState<TBloc extends JuiceBloc>
     // Check rebuild groups
     if (denyRebuild(
       event: status.event,
-      key: widget.key,
       rebuildGroups: widget.groups,
     )) {
       return false;
@@ -248,7 +247,6 @@ class _JuiceBuilder2State<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc>
   bool _shouldRebuild(StreamStatus status) {
     if (denyRebuild(
       event: status.event,
-      key: widget.key,
       rebuildGroups: widget.groups,
     )) {
       return false;
@@ -410,7 +408,6 @@ class _JuiceMultiBuilderState extends State<JuiceMultiBuilder> {
   bool _shouldRebuild(StreamStatus status) {
     if (denyRebuild(
       event: status.event,
-      key: widget.key,
       rebuildGroups: widget.groups,
     )) {
       return false;

@@ -115,6 +115,9 @@ void main() {
 
     setUp(() {
       sourceBloc = SourceBloc();
+      // The subscription resolves its source IN the constructor (2.0.0), so
+      // the source is resolvable before the subscribing bloc is built.
+      resolver = TestEventResolver({SourceBloc: sourceBloc});
       destBloc = DestBloc(builders: [
         () => UseCaseBuilder(
               typeOfEvent: DestEvent,
@@ -124,12 +127,10 @@ void main() {
         () => EventSubscription<SourceBloc, SourceEvent, DestEvent>(
               toEvent: (e) => DestEvent(message: 'received: ${e.delta}'),
               useCaseGenerator: () => DestUseCase(),
+              resolver: resolver,
             ),
       ]);
-      resolver = TestEventResolver({
-        SourceBloc: sourceBloc,
-        DestBloc: destBloc,
-      });
+      resolver.blocs[DestBloc] = destBloc;
     });
 
     tearDown(() async {
@@ -241,22 +242,15 @@ void main() {
       await subscription.close();
     });
 
-    test('EventSubscription does not initialize when already closed', () async {
+    test('EventSubscription refuses to initialize once closed', () async {
       final subscription =
           EventSubscription<SourceBloc, SourceEvent, DestEvent>(
         toEvent: (e) => DestEvent(message: 'test'),
         useCaseGenerator: () => DestUseCase(),
         resolver: resolver,
       );
-
-      // Close before initializing
       await subscription.close();
-
-      // Initialize after close - should be no-op
-      subscription.initialize();
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Should not throw or cause issues
+      expect(() => subscription.initialize(), throwsStateError);
     });
 
     test('EventSubscription handles transformer errors gracefully', () async {

@@ -250,7 +250,7 @@ class _InlineUseCase<TBloc extends JuiceBloc<TState>, TState extends BlocState,
         newState: newState,
         groupsToRebuild: groups,
       ),
-      navigate: (aviator, args) => bloc.navigateAviator(aviator, args),
+      navigate: navigate,
     );
 
     final context = InlineContext<TBloc, TState>(

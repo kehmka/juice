@@ -56,6 +56,14 @@ class EventDispatcher<Event> {
   final _restartableTypes = <Type>{};
   final _current = <Type, ExecutionRun>{};
 
+  /// Events a `droppable` wrapper dropped (identity keyed), so a waiter
+  /// can fail fast instead of waiting for an emission that never comes.
+  final _dropped = Expando<bool>('juice.dropped');
+
+  /// Whether [event] was dropped by its `droppable` wrapper.
+  bool wasDropped(Event event) =>
+      event == null ? false : (_dropped[event as Object] ?? false);
+
   /// The run executing each restartable event (identity keyed; an event
   /// that was never dispatched restartable has none).
   final _runOf = Expando<ExecutionRun>('juice.run');
@@ -90,7 +98,7 @@ class EventDispatcher<Event> {
   void register<E extends Event>(
     EventHandler<E> handler, {
     required Type eventType,
-    EventConcurrency concurrency = EventConcurrency.concurrent,
+    required EventConcurrency concurrency,
   }) {
     if (_handlers.containsKey(eventType)) {
       throw StateError('Handler already registered for $eventType');
@@ -102,15 +110,15 @@ class EventDispatcher<Event> {
     // run's, its `isSuperseded` would be the outer run's, its span flagged.
     // Shadow the token for the nested handler; costs a zone fork only when
     // nested, nothing on the plain path.
-    Future<void> isolated(Event event) => ExecutionRun.current == null
+    Future<void> outsideRun(Event event) => ExecutionRun.current == null
         ? raw(event)
         : runZoned(() => raw(event), zoneValues: {ExecutionRun.zoneKey: null});
     _handlers[eventType] = switch (concurrency) {
-      EventConcurrency.concurrent => isolated,
+      EventConcurrency.concurrent => outsideRun,
       EventConcurrency.sequential => (event) =>
-          _sequential(eventType, isolated, event),
+          _sequential(eventType, outsideRun, event),
       EventConcurrency.droppable => (event) =>
-          _droppable(eventType, isolated, event),
+          _droppable(eventType, outsideRun, event),
       EventConcurrency.restartable => (event) =>
           _restartable(eventType, raw, event),
     };
@@ -193,8 +201,12 @@ class EventDispatcher<Event> {
       if (_disposed) {
         return null; // queued after close → skip (no emit-after-close)
       }
-      // The executor already routes use-case errors via its own onError.
-      return handler(event).catchError((_) {});
+      // The executor routes a use case's errors through onError; anything
+      // that escapes it (a throwing generator) is logged here, not dropped.
+      return handler(event).catchError((Object e, StackTrace st) {
+        _log.logError('Sequential run failed outside the executor', e, st,
+            context: {'type': 'use_case_error', 'event': type.toString()});
+      });
     });
     _tails[type] = run;
     return run; // dispatch()/send() await full processing
@@ -202,7 +214,10 @@ class EventDispatcher<Event> {
 
   /// Drop [event] if a same-type run is already in flight.
   Future<void> _droppable(Type type, EventHandler<Event> handler, Event event) {
-    if (_running[type] == true) return Future<void>.value();
+    if (_running[type] == true) {
+      _dropped[event as Object] = true;
+      return Future<void>.value();
+    }
     if (_disposed) return Future<void>.value();
     _running[type] = true;
     return handler(event).whenComplete(() => _running[type] = false);
@@ -216,11 +231,9 @@ class EventDispatcher<Event> {
 
   /// Dispatches an event to its registered handler.
   ///
-  /// Returns a Future that completes when the handler finishes.
-  ///
-  /// If no handler is registered:
-  /// - Calls [onUnhandledEvent] if provided
-  /// - Otherwise throws [StateError]
+  /// Returns a Future that completes when the handler finishes. With no
+  /// handler registered it calls [onUnhandledEvent] if provided, otherwise
+  /// the returned future fails with a [StateError].
   Future<void> dispatch(Event event) {
     // Not `async`: the handler's future is returned through (one hop less).
     // The no-handler error is still delivered ASYNCHRONOUSLY, as a failed
@@ -233,7 +246,11 @@ class EventDispatcher<Event> {
           'No handler registered for ${event.runtimeType}, using fallback handler',
           level: Level.warning,
         );
-        _onUnhandledEvent(event);
+        try {
+          _onUnhandledEvent(event);
+        } catch (e, st) {
+          return Future<void>.error(e, st);
+        }
         return Future<void>.value();
       }
       return Future<void>.error(

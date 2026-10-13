@@ -44,8 +44,10 @@ class StateManager<State> {
       throw StateError('Cannot emit state after StateManager is closed');
     }
     _state = state;
-    for (final tap in List.of(_taps)) {
-      tap(state);
+    if (_taps.isNotEmpty) {
+      for (final tap in List.of(_taps)) {
+        tap(state);
+      }
     }
     _controller.add(state);
   }

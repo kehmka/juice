@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart';
 import 'package:juice_location/juice_location.dart';
 
 /// Pure-Dart fake — drives the bloc without a device.
@@ -23,13 +22,29 @@ class FakeLocationSource implements LocationSource {
   @override
   Stream<GeoPosition> positions() => _controller.stream;
 
+  Object? disposeError;
+
   @override
   Future<void> dispose() async {
     disposed = true;
+    if (disposeError != null) throw disposeError!;
     await _controller.close();
   }
 
   void emit(GeoPosition p) => _controller.add(p);
+  void fail(Object error) => _controller.addError(error);
+  Future<void> end() => _controller.close();
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 GeoPosition pos(double lat, double lng) =>
@@ -147,6 +162,68 @@ void main() {
 
       await bloc.close();
       expect(src.disposed, isTrue);
+    });
+  });
+
+  group('LocationBloc review pins (2.0.0)', () {
+    test('a positions stream error ends tracking, with the error in state',
+        () async {
+      final src = FakeLocationSource();
+      final bloc = LocationBloc.withConfig(LocationConfig(source: src));
+      await settle();
+      bloc.startTrackingUpdates();
+      await settle();
+      src.fail(StateError('gps lost'));
+      await settle();
+      expect(bloc.state.tracking, isFalse);
+      expect(bloc.state.lastError, contains('gps lost'));
+      await bloc.close();
+    });
+
+    test('a positions stream that ends on its own ends tracking', () async {
+      final src = FakeLocationSource();
+      final bloc = LocationBloc.withConfig(LocationConfig(source: src));
+      await settle();
+      bloc.startTrackingUpdates();
+      await settle();
+      await src.end();
+      await settle();
+      expect(bloc.state.tracking, isFalse);
+      expect(bloc.state.lastError, isNull);
+      await bloc.close();
+    });
+
+    test('close cancels the tracking binding before disposing the source',
+        () async {
+      final src = FakeLocationSource();
+      final bloc = LocationBloc.withConfig(LocationConfig(source: src));
+      await settle();
+      bloc.startTrackingUpdates();
+      await settle();
+      await bloc.close();
+      expect(src.disposed, isTrue);
+      // The source's dispose closes its stream; had the binding still been
+      // listening, that onDone would have reached the bloc.
+      expect(bloc.state.tracking, isTrue, reason: 'frozen as it was');
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = LocationBloc();
+      expect(() => bloc.source, throwsStateError);
+      await bloc.close();
+    });
+
+    test('a source whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final src = FakeLocationSource()..disposeError = StateError('gps busy');
+      final bloc = LocationBloc.withConfig(LocationConfig(source: src));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('gps busy'));
     });
   });
 }

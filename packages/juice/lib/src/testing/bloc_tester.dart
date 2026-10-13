@@ -49,21 +49,13 @@ class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
     await Future.delayed(delay ?? const Duration(milliseconds: 10));
   }
 
-  /// Sends an event and waits until a non-waiting status is emitted.
-  ///
-  /// Useful for testing async operations that go through waiting states.
-  ///
-  /// [event] - The event to send.
-  /// [timeout] - Maximum time to wait (default 5 seconds).
+  /// Sends an event and returns its terminal status — [JuiceBloc.sendAndWait]
+  /// with a shorter default timeout.
   Future<StreamStatus<TState>> sendAndWaitForResult(
     EventBase event, {
     Duration timeout = const Duration(seconds: 5),
-  }) async {
-    final future =
-        bloc.stream.firstWhere((s) => s is! WaitingStatus).timeout(timeout);
-    await bloc.send(event);
-    return await future;
-  }
+  }) =>
+      bloc.sendAndWait(event, timeout: timeout);
 
   /// The current state of the bloc.
   TState get state => bloc.state;

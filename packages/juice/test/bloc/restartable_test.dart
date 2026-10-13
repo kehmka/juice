@@ -260,8 +260,10 @@ void main() {
       await old;
       expect(b.state.log, isEmpty, reason: 'nothing from the old run');
       expect(_navigated, 0, reason: 'navigation fenced too');
-      final dropped =
-          log.typed('state_emission_superseded').map((e) => e['what']).toList();
+      final dropped = log
+          .typed('state_emission_superseded')
+          .map((e) => e['status'])
+          .toList();
       expect(
           dropped,
           containsAll(
@@ -402,12 +404,11 @@ void main() {
     });
 
     test(
-        'a binding made outside any restartable run has no run and is '
-        'untouched by a supersede', () async {
+        'a binding made outside any restartable run is untouched by a '
+        'supersede', () async {
       final b = _B(logger: _Log());
       final c = StreamController<int>();
       final binding = b.bindStream<int>(c.stream, (_) {});
-      expect(binding.run, isNull);
       b.send(_Search('a', Completer<void>().future));
       await b.send(_Search('b', Future.value()));
       expect(binding.isActive, isTrue);

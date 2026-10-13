@@ -44,7 +44,7 @@ class EventSubscription<
   /// * [useCaseGenerator] - Creates the use case that handles the local event.
   /// * [when] - Optional predicate to filter which source events trigger execution.
   /// * [statusTypes] - Which status types to listen for. Defaults to [UpdatingStatus] only.
-  /// * [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// * [resolver] - Optional custom bloc resolver. If not provided, uses BlocScope.
   /// * [scope] - Optional scope key for resolving scoped bloc instances.
   EventSubscription({
     required this.toEvent,
@@ -71,7 +71,6 @@ class EventSubscription<
   /// Optional scope key for resolving scoped bloc instances.
   final Object? scope;
 
-  /// Custom resolver for legacy compatibility.
   final BlocDependencyResolver? _customResolver;
 
   /// The source bloc to subscribe to.
@@ -82,9 +81,6 @@ class EventSubscription<
 
   /// Subscription to the source bloc's stream.
   StreamSubscription<dynamic>? _subscription;
-
-  /// Whether the subscription has been initialized.
-  bool _isInitialized = false;
 
   /// Whether the subscription has been closed.
   bool _isClosed = false;
@@ -99,11 +95,17 @@ class EventSubscription<
     _onEvent = handler;
   }
 
-  /// Initializes the subscription. Called by JuiceBloc.
+  /// Initializes the subscription. Called by JuiceBloc at registration.
+  ///
+  /// Synchronous: a subscription to an unregistered or closed bloc throws
+  /// HERE, from the subscribing bloc's constructor, where the developer is
+  /// looking — not as an uncaught error from a microtask nobody awaits.
   void initialize() {
-    if (!_isInitialized && !_isClosed) {
-      Future.microtask(() => _initialize());
+    if (_isClosed) {
+      throw StateError(
+          'EventSubscription<$TSourceBloc, $TSourceEvent> is closed');
     }
+    _initialize();
   }
 
   // ============================================================
@@ -133,16 +135,10 @@ class EventSubscription<
   Type get sourceBlocType => TSourceBloc;
 
   void _initialize() {
-    // Guard against race condition: close() may have been called
-    // after initialize() scheduled this microtask but before it executed
-    if (_isClosed) return;
-
     try {
       if (_customResolver != null) {
-        // Legacy path: use custom resolver directly
         _sourceBloc = _customResolver.resolve<TSourceBloc>();
       } else {
-        // New path: use BlocScope with lease for proper lifecycle management
         _sourceLease = BlocScope.lease<TSourceBloc>(scope: scope);
         _sourceBloc = _sourceLease!.bloc;
       }
@@ -152,7 +148,6 @@ class EventSubscription<
       }
 
       _setupSubscription();
-      _isInitialized = true;
 
       JuiceLoggerConfig.logger.log(
         'EventSubscription initialized',
@@ -165,11 +160,15 @@ class EventSubscription<
         },
       );
     } catch (e, stackTrace) {
+      _isClosed = true;
+      _sourceLease?.dispose();
+      _sourceLease = null;
       JuiceLoggerConfig.logger.logError(
         'Failed to initialize EventSubscription for $TSourceBloc.$TSourceEvent',
         e,
         stackTrace,
       );
+      rethrow;
     }
   }
 

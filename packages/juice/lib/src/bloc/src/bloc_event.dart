@@ -94,7 +94,7 @@ abstract class EventBase extends Object {
 /// ```dart
 /// bloc.send(SetCountEvent(count: 5));
 /// ```
-class UpdateEvent<TState extends BlocState> extends EventBase {
+class UpdateEvent extends EventBase {
   UpdateEvent({
     this.aviatorName,
     this.aviatorArgs,

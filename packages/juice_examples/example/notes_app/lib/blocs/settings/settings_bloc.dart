@@ -2,21 +2,18 @@
 // - [InlineUseCaseBuilder]: View mode toggle and sort order change are
 //   trivial state mutations — perfect for inline lambdas instead of
 //   separate use case class files.
-// - [StateRelay]: When settings change, a [SettingsChangedEvent] auto-
-//   dispatches to [NotesBloc] so it re-sorts/re-layouts. Zero manual
-//   event forwarding — the relay watches this bloc's state and fires
-//   events to NotesBloc automatically.
+// - [StateRelay] (wired in main.dart): when settings change, a
+//   [SettingsChangedEvent] auto-dispatches to [NotesBloc] so it re-sorts /
+//   re-layouts — zero manual event forwarding. The relay leases both blocs,
+//   so it is built in the composition root, never inside a bloc's own
+//   constructor.
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 import '../rebuild_groups.dart';
-import '../notes/notes_bloc.dart';
-import '../notes/notes_events.dart';
 import 'settings_state.dart';
 import 'settings_events.dart';
 
 class SettingsBloc extends JuiceBloc<SettingsState> {
-  late final StateRelay<SettingsBloc, NotesBloc, SettingsState> _settingsRelay;
-
   SettingsBloc()
       : super(
           const SettingsState(),
@@ -63,22 +60,7 @@ class SettingsBloc extends JuiceBloc<SettingsState> {
                   concurrency: EventConcurrency.sequential,
                 ),
           ],
-        ) {
-    // StateRelay: when SettingsBloc state changes, auto-dispatch to NotesBloc.
-    // This is cross-bloc reactivity with zero manual wiring.
-    _settingsRelay = StateRelay<SettingsBloc, NotesBloc, SettingsState>(
-      toEvent: (state) => SettingsChangedEvent(
-        sortOrder: state.sortOrder,
-        viewMode: state.viewMode,
-      ),
-    );
-  }
-
-  @override
-  Future<void> close() async {
-    await _settingsRelay.close();
-    await super.close();
-  }
+        );
 }
 
 /// Loads persisted view mode and sort order from SharedPreferences.

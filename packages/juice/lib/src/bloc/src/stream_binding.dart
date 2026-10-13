@@ -18,14 +18,10 @@ import 'dart:async';
 /// - [key], when given, makes a later `bindStream` with the same key REPLACE
 ///   this one, and `unbind(key)` cancel it.
 class StreamBinding<T> {
-  StreamBinding._(this.key, this._onInactive, this.run);
+  StreamBinding._(this.key, this._onInactive);
 
   /// The replacement/unbind key, or null for an anonymous binding.
   final String? key;
-
-  /// The `restartable` run that created this binding, or null when it was
-  /// not created inside one. A superseded run's bindings are cancelled.
-  final Object? run;
 
   final void Function(StreamBinding<T> binding) _onInactive;
   StreamSubscription<T>? _subscription;
@@ -41,12 +37,18 @@ class StreamBinding<T> {
 
   /// Stop listening. Returns the subscription's cancel future, so a caller
   /// that must not block on a provider's teardown can bound or chain it.
+  /// Every call returns that same future: a second caller awaits the one
+  /// teardown, not a completed stand-in.
   Future<void> cancel() {
+    final pending = _cancelFuture;
+    if (pending != null) return pending;
     if (!_active) return Future<void>.value();
     final subscription = _subscription;
     _end();
-    return subscription?.cancel() ?? Future<void>.value();
+    return _cancelFuture = subscription?.cancel() ?? Future<void>.value();
   }
+
+  Future<void>? _cancelFuture;
 
   /// The stream ended or errored out: the binding is over, nothing to cancel.
   void _finish() {
@@ -64,7 +66,7 @@ class StreamBinding<T> {
   /// A binding refused because the bloc was already closing: inert from
   /// birth, [done] already complete, [isActive] false.
   static StreamBinding<T> inert<T>(String? key) {
-    final b = StreamBinding<T>._(key, (_) {}, null);
+    final b = StreamBinding<T>._(key, (_) {});
     b._end();
     return b;
   }
@@ -77,10 +79,9 @@ class StreamBinding<T> {
   /// Create a live binding. Internal to `bindStream`.
   static StreamBinding<T> create<T>(
     String? key,
-    void Function(StreamBinding<T> binding) onInactive, {
-    Object? run,
-  }) =>
-      StreamBinding<T>._(key, onInactive, run);
+    void Function(StreamBinding<T> binding) onInactive,
+  ) =>
+      StreamBinding<T>._(key, onInactive);
 
   /// Mark a binding finished (stream done / error). Internal to `bindStream`.
   static void finish<T>(StreamBinding<T> b) => b._finish();

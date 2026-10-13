@@ -43,7 +43,7 @@ class GenerationOutcome {
 /// // a widget binds LlmGroups.gen('r1') and reads session.text as it streams
 /// ```
 class LlmBloc extends JuiceBloc<LlmState> {
-  late LlmConfig _config;
+  LlmConfig? _config;
 
   /// The in-flight generation's stream subscription, if any. Cancelling it
   /// stops the provider's runtime (out-of-band) — that's how
@@ -118,9 +118,15 @@ class LlmBloc extends JuiceBloc<LlmState> {
   // === Config (used by use cases) ===
 
   void configure(LlmConfig config) => _config = config;
-  LlmConfig get config => _config;
-  LlmProvider get provider => _config.provider;
-  ModelSource? get modelSource => _config.modelSource;
+
+  /// The config [InitializeLlmEvent] applied. Throws before that.
+  LlmConfig get config =>
+      _config ??
+      (throw StateError(
+          'LlmBloc is not initialized: send InitializeLlmEvent (or use '
+          'LlmBloc.withConfig) first'));
+  LlmProvider get provider => config.provider;
+  ModelSource? get modelSource => config.modelSource;
 
   // === Generation lifecycle (resources live here) ===
 
@@ -130,7 +136,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
   String? get activeRequestId => _activeRequestId;
 
   /// One compact line to the configured engine trace (no-op when unset).
-  void _trace(String event) => _config.onEngineTrace?.call(event);
+  void _trace(String event) => _config?.onEngineTrace?.call(event);
   bool get isGenerating => _activeRequestId != null;
 
   /// Begin streaming [request] through the provider, forwarding each chunk to
@@ -157,6 +163,11 @@ class LlmBloc extends JuiceBloc<LlmState> {
     if (_wedged) {
       _trace('refused ${request.requestId} (engine wedged)');
       return Future.value(_wedgedOutcome);
+    }
+    if (isClosing) {
+      _trace('refused ${request.requestId} (bloc closing)');
+      return Future.value(GenerationOutcome(GenOutcomeKind.error,
+          error: StateError('LlmBloc is closing')));
     }
     _trace('queue ${request.requestId} '
         '(active=${_activeRequestId ?? '-'} leased=$engineLeased)');
@@ -198,7 +209,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
     _wedged = true;
     _wedgedBy = id;
     _trace('wedged ${id ?? '-'} — teardown never returned '
-        '(${_config.teardownPatience.inSeconds}s); the native runtime is '
+        '(${config.teardownPatience.inSeconds}s); the native runtime is '
         'stuck mid-call. Restart required; all engine work now fails fast.');
   }
 
@@ -326,6 +337,17 @@ class LlmBloc extends JuiceBloc<LlmState> {
       },
       cancelOnError: true,
     );
+    if (!_genBinding!.isActive) {
+      // The bloc was closing: bindStream refused (inert binding, no
+      // callbacks). The outcome completes here, so the caller never waits
+      // on a stream that was never listened to.
+      _genBinding = null;
+      _activeRequestId = null;
+      settleFirstChunk();
+      _trace('refused ${request.requestId} (bloc closing)');
+      outcome.complete(GenerationOutcome(GenOutcomeKind.error,
+          error: StateError('LlmBloc is closing')));
+    }
     return outcome.future;
   }
 
@@ -413,10 +435,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
       // queue tail RESOLVES so everything behind it can fail fast instead
       // of waiting forever (the poisoned queue, 2026-08-01).
       _genTail = _genTail
-          .then(
-              (_) => teardown.timeout(_config.teardownPatience, onTimeout: () {
-                    _declareWedged(id);
-                  }))
+          .then((_) => teardown.timeout(config.teardownPatience, onTimeout: () {
+                _declareWedged(id);
+              }))
           .then((_) {}, onError: (_) {});
     }
     if (outcome != null && !outcome.isCompleted) {
@@ -442,7 +463,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
     }
     if (!isClosed) emit(); // leading edge
     _pendingEmit = null;
-    _throttleTimer = Timer(_config.streamThrottle, () {
+    _throttleTimer = Timer(config.streamThrottle, () {
       final pending = _pendingEmit;
       _pendingEmit = null;
       _throttleTimer = null;
@@ -472,7 +493,7 @@ class LlmBloc extends JuiceBloc<LlmState> {
     final next = Map<String, GenerationSession>.from(state.sessions);
     next[s.requestId] = s;
     final terminal = next.values.where((x) => x.isTerminal).toList();
-    final overflow = terminal.length - _config.maxRetainedSessions;
+    final overflow = terminal.length - config.maxRetainedSessions;
     if (overflow > 0) {
       for (var i = 0; i < overflow; i++) {
         next.remove(terminal[i].requestId);
@@ -504,19 +525,31 @@ class LlmBloc extends JuiceBloc<LlmState> {
     return event.result;
   }
 
+  /// Order matters. [stopGeneration] first: it cancels the generation
+  /// binding WITHOUT awaiting the provider's teardown (that waits on the
+  /// queue tail, under the wedge ceiling), so the bloc's close never blocks
+  /// on a wedged runtime; the in-flight outcome completes `cancelled`. Then
+  /// the bloc closes — synchronously marking itself closing, so a
+  /// generation that arrives from here on is refused at once — and the
+  /// provider is disposed only once the teardown is over.
   @override
-  Future<void> close() async {
-    _cancelThrottle();
-    // The generation binding is cancelled by the bloc's close as well; it is
-    // cancelled here first so the provider is not disposed under a live
-    // stream (super.close() runs after dispose, by design of this bloc).
-    await _genBinding?.cancel();
+  Future<void> close() =>
+      _closeOnce ??= _close(stopGeneration(), super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> stopped, Future<void> closing) async {
+    await stopped;
+    await closing;
+    await _genTail;
+    final config = _config;
+    if (config == null) return;
     try {
-      await _config.provider.dispose();
-    } catch (_) {
-      // Config may never have been applied; ignore.
+      await config.provider.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'LlmProvider dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'LlmBloc'});
     }
-    await super.close();
   }
 }
 

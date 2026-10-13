@@ -10,6 +10,7 @@ import 'use_cases/location_changed_use_case.dart';
 import 'use_cases/set_permission_status_use_case.dart';
 import 'use_cases/start_tracking_use_case.dart';
 import 'use_cases/stop_tracking_use_case.dart';
+import 'use_cases/tracking_ended_use_case.dart';
 
 /// Bloc that owns the device's location — one-shot reads and continuous tracking.
 ///
@@ -24,7 +25,7 @@ import 'use_cases/stop_tracking_use_case.dart';
 /// location.startTracking();   // continuous
 /// ```
 class LocationBloc extends JuiceBloc<LocationState> {
-  late LocationConfig _config;
+  LocationConfig? _config;
 
   LocationBloc()
       : super(
@@ -51,6 +52,11 @@ class LocationBloc extends JuiceBloc<LocationState> {
                   concurrency: EventConcurrency.sequential,
                 ),
             () => UseCaseBuilder(
+                  typeOfEvent: TrackingEndedEvent,
+                  useCaseGenerator: () => TrackingEndedUseCase(),
+                  concurrency: EventConcurrency.sequential,
+                ),
+            () => UseCaseBuilder(
                   typeOfEvent: LocationChangedEvent,
                   useCaseGenerator: () => LocationChangedUseCase(),
                   concurrency: EventConcurrency.sequential,
@@ -71,19 +77,30 @@ class LocationBloc extends JuiceBloc<LocationState> {
   }
 
   /// The active source. Valid after initialization.
-  LocationSource get source => _config.source;
+  LocationSource get source => config.source;
+
+  /// The config [InitializeLocationEvent] applied. Throws before that.
+  LocationConfig get config =>
+      _config ??
+      (throw StateError(
+          'LocationBloc is not initialized: send InitializeLocationEvent '
+          '(or use LocationBloc.withConfig) first'));
 
   /// Store config during initialization.
   void configure(LocationConfig config) => _config = config;
 
   /// Subscribe to the position stream (called by [StartTrackingEvent]).
   /// The bloc owns the binding: a second start replaces the first, and
-  /// close cancels it before the use cases close.
+  /// close cancels it before the use cases close. A stream that errors or
+  /// ends is no longer tracking: the state says so, with the error.
   void startTracking() {
     bindStream<GeoPosition>(
       source.positions(),
       (position) => send(LocationChangedEvent(position)),
       key: _trackingKey,
+      onError: (error, stackTrace) =>
+          send(TrackingEndedEvent(error: error.toString())),
+      onDone: () => send(TrackingEndedEvent()),
     );
   }
 
@@ -109,11 +126,17 @@ class LocationBloc extends JuiceBloc<LocationState> {
 
   @override
   Future<void> close() async {
-    try {
-      await _config.source.dispose();
-    } catch (_) {
-      // Source may never have been configured; ignore.
-    }
+    // The bloc closes first: its tracking binding is cancelled before the
+    // source it listens to is disposed. An uninitialized bloc has no source.
     await super.close();
+    final config = _config;
+    if (config == null) return;
+    try {
+      await config.source.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'LocationSource dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'LocationBloc'});
+    }
   }
 }

@@ -95,8 +95,6 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   /// Subscription to the source bloc's stream.
   StreamSubscription<dynamic>? _subscription;
 
-  /// Whether the relay has been initialized.
-
   /// Whether the relay has been closed.
   bool _isClosed = false;
 
@@ -104,8 +102,6 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   bool get isClosed => _isClosed;
 
   void _initialize() {
-    if (_isClosed) return;
-
     try {
       if (_customResolver != null) {
         _sourceBloc = _customResolver.resolve<TSourceBloc>();
@@ -123,12 +119,19 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
 
       _setupRelay();
     } catch (e, stackTrace) {
+      // Nothing half-built survives: the leases go back before the error
+      // (the real one, with its trace) reaches the constructor's caller.
+      _isClosed = true;
+      _sourceLease?.dispose();
+      _sourceLease = null;
+      _destLease?.dispose();
+      _destLease = null;
       JuiceLoggerConfig.logger.logError(
         'Failed to initialize StateRelay between $TSourceBloc and $TDestBloc',
         e,
         stackTrace,
       );
-      throw StateError('StateRelay initialization failed: $e');
+      rethrow;
     }
   }
 
@@ -260,8 +263,6 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   bool get isClosed => _isClosed;
 
   void _initialize() {
-    if (_isClosed) return;
-
     try {
       if (_customResolver != null) {
         _sourceBloc = _customResolver.resolve<TSourceBloc>();
@@ -279,12 +280,19 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
 
       _setupRelay();
     } catch (e, stackTrace) {
+      // Nothing half-built survives: the leases go back before the error
+      // (the real one, with its trace) reaches the constructor's caller.
+      _isClosed = true;
+      _sourceLease?.dispose();
+      _sourceLease = null;
+      _destLease?.dispose();
+      _destLease = null;
       JuiceLoggerConfig.logger.logError(
         'Failed to initialize StatusRelay between $TSourceBloc and $TDestBloc',
         e,
         stackTrace,
       );
-      throw StateError('StatusRelay initialization failed: $e');
+      rethrow;
     }
   }
 

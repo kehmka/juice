@@ -100,8 +100,8 @@ void main() {
       expect(
           () => StateRelay<_SrcBloc, _DstBloc, _Src>(
               toEvent: (s) => _Record('x')),
-          throwsA(isA<StateError>().having((e) => e.message, 'message',
-              contains('StateRelay initialization failed'))));
+          throwsA(isA<StateError>().having(
+              (e) => e.message, 'message', contains('not registered'))));
     });
 
     test('init failure with a closed bloc THROWS at construction', () async {
@@ -185,8 +185,8 @@ void main() {
       expect(
           () => StatusRelay<_SrcBloc, _DstBloc, _Src>(
               toEvent: (s) => _Record('x')),
-          throwsA(isA<StateError>().having((e) => e.message, 'message',
-              contains('StatusRelay initialization failed'))));
+          throwsA(isA<StateError>().having(
+              (e) => e.message, 'message', contains('not registered'))));
 
       final src = _SrcBloc();
       final dst = _DstBloc();

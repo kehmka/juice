@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 import '../bloc.dart';
 
 /// Base class for implementing use cases in the Juice framework.
@@ -112,6 +114,13 @@ abstract class UseCase<TBloc extends JuiceBloc, TEvent extends EventBase> {
   ///
   /// [event] - The event to emit
   late void Function({EventBase? event}) emitEvent;
+
+  /// Runs the named aviator without emitting a status — the navigation
+  /// half of `emitUpdate(aviatorName:)`, under the same fence. Wired by the
+  /// executor; the inline builder's emitter calls it.
+  @internal
+  late void Function(String? aviatorName, Map<String, dynamic>? aviatorArgs)
+      navigate;
 
   /// Performs cleanup when the use case is no longer needed.
   ///

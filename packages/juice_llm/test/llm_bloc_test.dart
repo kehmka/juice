@@ -22,6 +22,7 @@ class FakeLlmProvider implements LlmProvider {
   Object? generateError; // set → generate stream errors after first chunk
   bool loaded = false;
   bool disposed = false;
+  int disposeCalls = 0;
   int generateCalls = 0;
 
   /// Completes when a generate stream is cancelled (listener cancel).
@@ -66,7 +67,10 @@ class FakeLlmProvider implements LlmProvider {
   }
 
   @override
-  Future<void> dispose() async => disposed = true;
+  Future<void> dispose() async {
+    disposeCalls++;
+    disposed = true;
+  }
 }
 
 LlmModel _model({Set<LlmCapability> caps = const {LlmCapability.text}}) =>
@@ -837,6 +841,63 @@ void concurrencyModeTests() {
       await settle();
       expect(bloc.state.modelStatus, LlmModelStatus.absent);
       await bloc.close();
+    });
+  });
+
+  group('LlmBloc close review pins (2.0.0)', () {
+    Future<void> ready(LlmBloc bloc) async {
+      bloc.loadModel(_model());
+      await settle();
+      expect(bloc.state.isReady, isTrue);
+    }
+
+    test(
+        'close during a streaming generation: outcome cancelled, provider '
+        'disposed, no hang', () async {
+      final fake = FakeLlmProvider(
+          scriptedWords: List.filled(50, 'w'),
+          perToken: const Duration(milliseconds: 20));
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await ready(bloc);
+      final out = bloc.beginGeneration(
+        const LlmRequest(requestId: 'r1', messages: [LlmMessage.user('a')]),
+        onChunk: (_) {},
+      );
+      await settle(50);
+      await bloc.close().timeout(const Duration(seconds: 5));
+      expect((await out).kind, GenOutcomeKind.cancelled);
+      expect(fake.disposed, isTrue);
+      expect(bloc.isClosed, isTrue);
+    });
+
+    test('a generation begun once close has started fails at once', () async {
+      final fake = FakeLlmProvider();
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await ready(bloc);
+      final closing = bloc.close();
+      final out = await bloc.beginGeneration(
+        const LlmRequest(requestId: 'r2', messages: [LlmMessage.user('a')]),
+        onChunk: (_) {},
+      );
+      expect(out.kind, GenOutcomeKind.error);
+      expect(out.error, isA<StateError>());
+      expect(fake.generateCalls, 0);
+      await closing;
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = LlmBloc();
+      expect(() => bloc.config, throwsStateError);
+      await bloc.close();
+    });
+
+    test('close is idempotent: the provider is disposed once', () async {
+      final fake = FakeLlmProvider();
+      final bloc = LlmBloc.withConfig(LlmConfig(provider: fake));
+      await ready(bloc);
+      await Future.wait([bloc.close(), bloc.close()]);
+      expect(fake.disposeCalls, 1);
     });
   });
 }

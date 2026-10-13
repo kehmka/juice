@@ -393,4 +393,94 @@ void main() {
       expect(_texts(tester), 'v7');
     });
   });
+
+  group('review pins (2.0.0)', () {
+    testWidgets(
+        'a source swap resets the last data: an error on the new stream '
+        'shows the new initial, not the old stream\'s data', (tester) async {
+      final c1 = StreamController<int>();
+      final c2 = StreamController<int>();
+      JuiceAsyncBuilder<int> b(StreamController<int> c, int initial) =>
+          JuiceAsyncBuilder<int>(
+            stream: c.stream,
+            initial: initial,
+            builder: (_, v) => Text('v$v'),
+            error: (_, v, e, s) => Text('err@$v'),
+          );
+      await tester.pumpWidget(_host(b(c1, 1)));
+      c1.add(9);
+      await _flush(tester);
+      expect(_texts(tester), 'v9');
+      await tester.pumpWidget(_host(b(c2, 5)));
+      c2.addError(StateError('x'));
+      await _flush(tester);
+      expect(_texts(tester), 'err@5');
+      unawaited(c1.close());
+      unawaited(c2.close());
+    });
+
+    testWidgets('a ValueStream\'s seed is what the error builder sees',
+        (tester) async {
+      final subject = BehaviorSubject<int>.seeded(7);
+      await tester.pumpWidget(_host(JuiceAsyncBuilder<int>(
+        stream: subject,
+        initial: 0,
+        builder: (_, v) => Text('v$v'),
+        error: (_, v, e, s) => Text('err@$v'),
+      )));
+      expect(_texts(tester), 'v7');
+      subject.addError(StateError('x'));
+      await _flush(tester);
+      expect(_texts(tester), 'err@7');
+      unawaited(subject.close());
+    });
+
+    testWidgets(
+        'where is read from the current widget: a rebuilt filter applies to '
+        'the kept subscription', (tester) async {
+      final c = StreamController<int>();
+      var listens = 0;
+      final stream = c.stream.asBroadcastStream(onListen: (_) => listens++);
+      JuiceAsyncBuilder<int> b(bool Function(int) where) =>
+          JuiceAsyncBuilder<int>(
+            stream: stream,
+            streamKey: 'k',
+            where: where,
+            initial: 0,
+            builder: (_, v) => Text('v$v'),
+          );
+      await tester.pumpWidget(_host(b((v) => v.isEven)));
+      c.add(1);
+      await _flush(tester);
+      expect(_texts(tester), 'v0', reason: 'odd, filtered');
+      c.add(2);
+      await _flush(tester);
+      expect(_texts(tester), 'v2');
+      await tester.pumpWidget(_host(b((v) => v.isOdd)));
+      expect(listens, 1, reason: 'same key: the subscription is kept');
+      c.add(4);
+      await _flush(tester);
+      expect(_texts(tester), 'v2', reason: 'even, filtered by the NEW where');
+      c.add(3);
+      await _flush(tester);
+      expect(_texts(tester), 'v3');
+      unawaited(c.close());
+    });
+
+    testWidgets('streamKey or where without a stream is rejected',
+        (tester) async {
+      expect(
+          () => JuiceAsyncBuilder<int>(
+              future: Future.value(1),
+              streamKey: 'k',
+              builder: (_, v) => Text('v$v')),
+          throwsAssertionError);
+      expect(
+          () => JuiceAsyncBuilder<int>(
+              future: Future.value(1),
+              where: (_) => true,
+              builder: (_, v) => Text('v$v')),
+          throwsAssertionError);
+    });
+  });
 }

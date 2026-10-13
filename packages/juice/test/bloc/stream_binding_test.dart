@@ -306,6 +306,7 @@ void main() {
       final refused = log.bindings('refused').single;
       expect(refused['level'], Level.warning);
       expect(refused['key'], 'late');
+      expect(refused['reason'], 'bloc is closed');
       c.add(1);
       await pump();
       expect(got, isEmpty);
@@ -419,8 +420,9 @@ void main() {
       await pump();
       expect(got, [1, 3]);
       expect(b.errors.single, isA<ArgumentError>());
-      expect(log.bindings('onData_error').single['message'],
-          'Stream binding onData threw');
+      final threw = log.bindings('callback_error').single;
+      expect(threw['message'], 'Stream binding onData threw');
+      expect(threw['callback'], 'onData');
       expect(binding.isActive, isTrue);
       await c.close();
       await b.close();

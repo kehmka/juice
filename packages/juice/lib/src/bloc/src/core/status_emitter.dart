@@ -103,7 +103,15 @@ class StatusEmitter<TState extends BlocState> {
     Object? error,
     StackTrace? errorStackTrace,
   }) {
-    _emitFailure(event, newState, groups, error, errorStackTrace);
+    _emit(
+      (state, oldState, event) => StreamStatus.failure(state, oldState, event,
+          error: error, errorStackTrace: errorStackTrace),
+      'failure',
+      event,
+      newState,
+      groups,
+      error: error,
+    );
   }
 
   /// Emits a canceling status.
@@ -113,11 +121,16 @@ class StatusEmitter<TState extends BlocState> {
     _emit(StreamStatus.canceling, 'cancel', event, newState, groups);
   }
 
+  /// Re-emits the current status carrying [event] — no state change, no
+  /// groups: a signal to listeners that watch events.
+  void emitEvent(EventBase event) {
+    if (_droppedAfterClose('event', event)) return;
+    _stateManager.emit(_stateManager.current.copyWith(event: event));
+  }
+
   /// The close fence. A use case still running when its bloc closes (the
   /// user left mid-fetch) must not crash on its next emit — that emit is
-  /// dropped, and logged as `emission_after_close` so it stays visible. It
-  /// used to throw `StateError`, which surfaced as a bloc error and, under
-  /// `RetryableUseCaseBuilder`, was retried against the closed bloc.
+  /// dropped, and logged as `emission_after_close` so it stays visible.
   bool _droppedAfterClose(String statusName, EventBase event, {Object? error}) {
     if (!_stateManager.isClosed) return false;
     _logger.log('Emission after close dropped', level: Level.warning, context: {
@@ -135,11 +148,13 @@ class StatusEmitter<TState extends BlocState> {
     String statusName,
     EventBase event,
     TState? newState,
-    Set<String>? groupsToRebuild,
-  ) {
-    if (_droppedAfterClose(statusName, event)) return;
+    Set<String>? groupsToRebuild, {
+    Object? error,
+  }) {
+    if (_droppedAfterClose(statusName, event, error: error)) return;
 
-    if (JuiceLoggerConfig.logs(Level.info)) {
+    // A failure emission is never chatter: it is logged whatever the floor.
+    if (statusName == 'failure' || JuiceLoggerConfig.logs(Level.info)) {
       _logger.log('Emitting $statusName', context: {
         'type': 'state_emission',
         'status': statusName,
@@ -149,66 +164,18 @@ class StatusEmitter<TState extends BlocState> {
         'bloc': _blocName,
         'groups': groupsToRebuild,
         'event': event.runtimeType.toString(),
+        if (error != null) 'error': error.toString(),
       });
     }
 
-    // Apply default groups if not specified
     final groups = groupsToRebuild ?? rebuildAlways;
-
-    // Validate group constraints
     assert(
       !groups.contains('*') || groups.length == 1,
       "Cannot mix '*' with other groups",
     );
-
     // Merge groups onto the event
     event.groupsToRebuild = {...?event.groupsToRebuild, ...groups};
 
-    // Emit the status
     _stateManager.emit(factory(newState ?? state, state, event));
-  }
-
-  /// Internal helper for emitting failure status with error context.
-  void _emitFailure(
-    EventBase event,
-    TState? newState,
-    Set<String>? groupsToRebuild,
-    Object? error,
-    StackTrace? errorStackTrace,
-  ) {
-    if (_droppedAfterClose('failure', event, error: error)) return;
-
-    _logger.log('Emitting failure', context: {
-      'type': 'state_emission',
-      'status': 'failure',
-      // Objects, not strings: a logger that prints stringifies them itself;
-      // one that drops the line (release, a silent sink) pays nothing.
-      'state': newState ?? state,
-      'bloc': _blocName,
-      'groups': groupsToRebuild,
-      'event': event.runtimeType.toString(),
-      'error': error?.toString(),
-    });
-
-    // Apply default groups if not specified
-    final groups = groupsToRebuild ?? rebuildAlways;
-
-    // Validate group constraints
-    assert(
-      !groups.contains('*') || groups.length == 1,
-      "Cannot mix '*' with other groups",
-    );
-
-    // Merge groups onto the event
-    event.groupsToRebuild = {...?event.groupsToRebuild, ...groups};
-
-    // Emit the failure status with error context
-    _stateManager.emit(StreamStatus.failure(
-      newState ?? state,
-      state,
-      event,
-      error: error,
-      errorStackTrace: errorStackTrace,
-    ));
   }
 }

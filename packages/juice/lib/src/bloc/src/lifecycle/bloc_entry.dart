@@ -18,6 +18,10 @@ class BlocEntry<T extends JuiceBloc<BlocState>> {
   final BlocLifecycle lifecycle;
 
   /// The current bloc instance, if created.
+  /// True while the factory runs: a resolution of the same bloc from inside
+  /// its own constructor is re-entrant and fails loudly instead of recursing.
+  bool constructing = false;
+
   T? instance;
 
   /// Number of active leases on this bloc.

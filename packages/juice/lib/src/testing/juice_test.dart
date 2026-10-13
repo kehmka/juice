@@ -61,8 +61,10 @@ class JuiceEmission<TState extends BlocState> {
 ///   emission, in order — use [isUpdatingStatus], [isWaitingStatus],
 ///   [isFailureStatus], [isCancelingStatus]. [skip] drops that many leading
 ///   emissions first.
-/// - [errors] returns the expected use-case errors (the `use_case_error`
-///   spans, in order). Without it, any use-case error fails the test.
+/// - [errors] returns the expected errors, in order: use-case errors (the
+///   `use_case_error` spans) and stream-binding errors (a stream's error, an
+///   `onData`/`onError`/`onDone` that threw, a cancel that failed). Without
+///   it, any such error fails the test.
 /// - [verify] runs last, with the closed bloc, for further checks.
 /// - The bloc is closed BEFORE asserting. The test fails if a use case was
 ///   still running when the bloc closed (a telemetry START without its END —
@@ -125,7 +127,7 @@ Future<List<JuiceEmission<TState>>>
   final emissions = <JuiceEmission<TState>>[];
   void Function()? untap;
   var inFlightAtClose = 0;
-  late final TBloc bloc;
+  TBloc? bloc;
   try {
     bloc = build();
     if (seed != null) {
@@ -147,8 +149,9 @@ Future<List<JuiceEmission<TState>>>
     inFlightAtClose = recorder.openSpans.length;
     // Close BEFORE asserting: nothing emitted from here on can leak into
     // another test; in-flight work and late emissions are reported below.
+    // (A build() that threw left no bloc to close; its error propagates.)
     try {
-      await bloc.close();
+      await bloc?.close();
     } finally {
       JuiceLoggerConfig.configureLogger(previousLogger);
     }
@@ -293,6 +296,8 @@ class _RecordingLogger implements JuiceLogger {
         context!.containsKey('executionId')) {
       useCaseErrors.add(error);
       openSpans.remove(context['executionId']);
+    } else if (context?['type'] == 'stream_binding') {
+      useCaseErrors.add(error);
     }
     _inner.logError(message, error, stackTrace, context: context);
   }

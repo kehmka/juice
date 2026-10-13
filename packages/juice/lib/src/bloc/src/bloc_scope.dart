@@ -316,7 +316,18 @@ class BlocScope {
 
     // Create instance if needed
     if (entry.instance == null) {
-      entry.instance = entry.factory();
+      if (entry.constructing) {
+        throw StateError(
+            'Bloc ${id.type} resolved while its own factory is still running '
+            '— a relay or lease of ${id.type} inside its constructor. Create '
+            'relays after construction (an initial event\'s use case).');
+      }
+      entry.constructing = true;
+      try {
+        entry.instance = entry.factory();
+      } finally {
+        entry.constructing = false;
+      }
       entry.createdAt = DateTime.now();
 
       // Track bloc creation for leak detection

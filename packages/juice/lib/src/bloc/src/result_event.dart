@@ -95,52 +95,26 @@ class OperationResult<TResult, TState extends BlocState> {
 extension ResultEventOps<TState extends BlocState> on JuiceBloc<TState> {
   /// Sends [event] and returns its terminal status plus typed value.
   ///
-  /// Fails loud instead of waiting out [timeout] when the outcome is already
-  /// known to be missing:
-  /// - the bloc is closed or closing → [StateError] (the event is refused);
-  /// - processing finished without a terminal status for this event (it was
-  ///   dropped by a `droppable` builder, or the use case emitted nothing) →
-  ///   [StateError];
-  /// - the use case emitted success but never called `succeed` → the wait on
-  ///   the value is bounded by [timeout].
+  /// The wait is [JuiceBloc.sendAndWait]'s, with its fail-loud rules: a
+  /// closed or closing bloc, a close during the wait, an event dropped by a
+  /// `droppable` builder or whose use case emitted nothing, all throw
+  /// [StateError] (the event's `result` is failed with it too); a
+  /// superseded `restartable` run answers canceled. On success the wait on
+  /// the value is bounded by [timeout] as well, in case the use case
+  /// emitted success but never called `succeed`.
   ///
-  /// On failure or cancel the event's `result` is failed too (if the use case
-  /// didn't), so any other awaiter of `event.result` is released.
+  /// On failure or cancel the event's `result` is failed too (if the use
+  /// case didn't), so any other awaiter of `event.result` is released.
   Future<OperationResult<TResult, TState>> sendAndWaitResult<TResult>(
     ResultEvent<TResult> event, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (isClosed || isClosing) {
-      throw StateError(
-          'sendAndWaitResult(${event.runtimeType}) on a closed or closing '
-          '$runtimeType');
-    }
-
-    // Observe emissions synchronously, not through the stream: stream
-    // delivery can land after send() completes, and waiting for it would mean
-    // guessing (a timer, which also hangs fake-async tests).
-    StreamStatus<TState>? terminal;
-    final untap = tapEmissions((s) {
-      if (terminal == null &&
-          identical(s.event, event) &&
-          s is! WaitingStatus<TState>) {
-        terminal = s;
-      }
-    });
+    final StreamStatus<TState> status;
     try {
-      // send() completes when processing is over, in every concurrency mode.
-      await send(event).timeout(timeout);
-    } finally {
-      untap();
-    }
-
-    final status = terminal;
-    if (status == null) {
-      final error = StateError(
-          '${event.runtimeType} finished without a terminal status — dropped '
-          'by a droppable builder, or its use case emitted nothing');
-      event.fail(error);
-      throw error;
+      status = await sendAndWait(event, timeout: timeout);
+    } catch (error, stackTrace) {
+      event.fail(error, stackTrace);
+      rethrow;
     }
 
     if (status is FailureStatus<TState> || status is CancelingStatus<TState>) {

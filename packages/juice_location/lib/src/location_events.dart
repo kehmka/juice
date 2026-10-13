@@ -24,6 +24,13 @@ class StartTrackingEvent extends LocationEvent {}
 /// Stop continuous tracking.
 class StopTrackingEvent extends LocationEvent {}
 
+/// Internal: the position stream ended on its own — it closed, or it
+/// errored ([error] set). Tracking is over without a [StopTrackingEvent].
+class TrackingEndedEvent extends LocationEvent {
+  final String? error;
+  TrackingEndedEvent({this.error});
+}
+
 /// Internal: a new position arrived (one-shot or stream).
 class LocationChangedEvent extends LocationEvent {
   final GeoPosition position;

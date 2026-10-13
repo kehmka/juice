@@ -50,6 +50,17 @@ class _ClosingBuilder extends UseCaseBuilderBase {
   Future<void> close() async => closes++;
 }
 
+class _Log implements JuiceLogger {
+  final errors = <Map<String, dynamic>>[];
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add({'message': m, 'error': e, ...?context});
+}
+
 void main() {
   group('UseCaseRegistry', () {
     test('register/lookup/enumerate builders by event type', () {
@@ -101,8 +112,10 @@ void main() {
     test('routes by exact runtime type and reports handler count', () async {
       final d = EventDispatcher<EventBase>();
       final seen = <String>[];
-      d.register<_A>((e) async => seen.add('a'), eventType: _A);
-      d.register<_B>((e) async => seen.add('b'), eventType: _B);
+      d.register<_A>((e) async => seen.add('a'),
+          eventType: _A, concurrency: EventConcurrency.concurrent);
+      d.register<_B>((e) async => seen.add('b'),
+          eventType: _B, concurrency: EventConcurrency.concurrent);
       expect(d.handlerCount, 2);
       expect(d.hasHandler(_A), isTrue);
       expect(d.hasHandler(_C), isFalse);
@@ -114,9 +127,11 @@ void main() {
 
     test('registering a second handler for a type throws', () {
       final d = EventDispatcher<EventBase>();
-      d.register<_A>((e) async {}, eventType: _A);
+      d.register<_A>((e) async {},
+          eventType: _A, concurrency: EventConcurrency.concurrent);
       expect(
-        () => d.register<_A>((e) async {}, eventType: _A),
+        () => d.register<_A>((e) async {},
+            eventType: _A, concurrency: EventConcurrency.concurrent),
         throwsA(isA<StateError>().having(
             (e) => e.message, 'message', contains('already registered'))),
       );
@@ -141,15 +156,17 @@ void main() {
 
     test('clear() removes handlers so later dispatch is unhandled', () async {
       final d = EventDispatcher<EventBase>();
-      d.register<_A>((e) async {}, eventType: _A);
+      d.register<_A>((e) async {},
+          eventType: _A, concurrency: EventConcurrency.concurrent);
       d.clear();
       expect(d.handlerCount, 0);
       await expectLater(d.dispatch(_A()), throwsStateError);
     });
 
-    test('sequential handler errors are swallowed and the queue continues',
+    test('a failed sequential handler is logged and the queue continues',
         () async {
-      final d = EventDispatcher<EventBase>();
+      final log = _Log();
+      final d = EventDispatcher<EventBase>(logger: log);
       var calls = 0;
       d.register<_A>((e) async {
         calls++;
@@ -158,6 +175,8 @@ void main() {
       await d.dispatch(_A());
       await d.dispatch(_A());
       expect(calls, 2);
+      expect(log.errors.single['type'], 'use_case_error');
+      expect(log.errors.single['event'], '_A');
     });
   });
 }

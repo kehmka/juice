@@ -123,35 +123,29 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
   /// `use_case_completed` (with `elapsedMicros`) or `use_case_error` (also
   /// with `elapsedMicros`). A span consumer closes on whichever arrives.
   Future<void> execute(UseCaseBuilderBase builder, EventBase event) async {
-    final useCase = builder.generator();
-    final context = _contextFactory(event);
     final executionId = _nextExecutionId++;
-    // Named once per execution (runtimeType.toString() isn't free, and the
-    // span logs it up to three times).
-    final useCaseName = useCase.runtimeType.toString();
     final eventName = event.runtimeType.toString();
-
-    // Chatter (the span pair) is built only above JuiceLoggerConfig.minLevel;
-    // the error end of a span is never gated.
     final chatter = JuiceLoggerConfig.logs(Level.info);
-    if (chatter) {
-      _logger.log('Executing use case', context: {
-        'type': 'use_case_execution',
-        'useCase': useCaseName,
-        'event': eventName,
-        'executionId': executionId,
-      });
-    }
-
     final stopwatch = Stopwatch()..start();
+    final run = ExecutionRun.current;
+    String useCaseName = builder.runtimeType.toString();
     try {
-      // Wiring is INSIDE the span: a wiring failure (a use case registered on
-      // the wrong bloc fails its setBloc cast) used to escape before the try —
-      // a START with no END, the error skipping onError, and in sequential
-      // mode swallowed by the dispatcher with no log at all.
+      // The generator and the context are inside the try: a throwing
+      // generator (a DI lookup) is a use-case error, not a silent miss.
+      final useCase = builder.generator();
+      useCaseName = useCase.runtimeType.toString();
+      final context = _contextFactory(event);
+      if (chatter) {
+        _logger.log('Executing use case', context: {
+          'type': 'use_case_execution',
+          'useCase': useCaseName,
+          'event': eventName,
+          'executionId': executionId,
+        });
+      }
       _wireUseCase(useCase, context);
       await useCase.execute(event);
-      ExecutionRun.current?.complete();
+      run?.complete();
       if (chatter) {
         _logger.log('Use case completed', context: {
           'type': 'use_case_completed',
@@ -159,11 +153,11 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           'event': eventName,
           'executionId': executionId,
           'elapsedMicros': stopwatch.elapsedMicroseconds,
-          // A restartable run that was superseded still closes its span.
-          if (ExecutionRun.current?.isSuperseded ?? false) 'superseded': true,
+          if (run?.isSuperseded ?? false) 'superseded': true,
         });
       }
     } catch (error, stackTrace) {
+      run?.complete();
       _logger.logError(
         'Use case execution failed',
         error,
@@ -174,10 +168,9 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
           'event': eventName,
           'executionId': executionId,
           'elapsedMicros': stopwatch.elapsedMicroseconds,
-          if (ExecutionRun.current?.isSuperseded ?? false) 'superseded': true,
+          if (run?.isSuperseded ?? false) 'superseded': true,
         },
       );
-      ExecutionRun.current?.complete();
       _onError(error, stackTrace, event);
     } finally {
       // The work is over: a still-running timeout must not fire later and
@@ -238,5 +231,6 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
     };
 
     useCase.emitEvent = ({EventBase? event}) => context.emitEvent(event);
+    useCase.navigate = context.navigate;
   }
 }

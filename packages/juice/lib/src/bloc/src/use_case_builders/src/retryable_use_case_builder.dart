@@ -165,6 +165,11 @@ class _RetryableUseCase<
     for (var attempt = 0; attempt <= maxRetries; attempt++) {
       // Handle backoff delay for retries
       if (attempt > 0) {
+        // Superseded (restartable): every emission is fenced and every
+        // retry would repeat the side effects for nothing. Checked before
+        // the callback and the delay, and again after the delay.
+        if (ExecutionRun.current?.isSuperseded ?? false) return;
+
         final delay = backoff.delay(attempt - 1);
 
         // Invoke retry callback
@@ -190,8 +195,6 @@ class _RetryableUseCase<
           return;
         }
 
-        // Superseded (restartable) during the backoff: every emission is
-        // fenced and every retry would repeat the side effects for nothing.
         if (ExecutionRun.current?.isSuperseded ?? false) return;
 
         // The bloc closed during the backoff (the user left): re-running the
@@ -288,6 +291,7 @@ class _RetryableUseCase<
       innerUseCase.emitEvent = ({EventBase? event}) {
         emitEvent(event: event);
       };
+      innerUseCase.navigate = navigate;
 
       // Execute the inner use case
       try {

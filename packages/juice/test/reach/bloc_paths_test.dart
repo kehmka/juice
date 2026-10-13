@@ -301,21 +301,23 @@ void main() {
       await dst.close();
     });
 
-    test('a closed source bloc is refused at initialisation (logged)',
-        () async {
+    test(
+        'a closed source bloc is refused at construction: thrown from the '
+        'subscribing bloc\'s constructor, and logged', () async {
       final log = _Log();
       final saved = JuiceLoggerConfig.logger;
       JuiceLoggerConfig.configureLogger(log);
       addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
       final src = _Src();
       await src.close();
-      final dst = _Dst(resolver: _Map({_Src: src}));
-      await pump();
+      expect(
+          () => _Dst(resolver: _Map({_Src: src})),
+          throwsA(isA<StateError>()
+              .having((e) => e.message, 'message', contains('closed bloc'))));
       expect(
           log.errors
               .any((e) => e.contains('Failed to initialize EventSubscription')),
           isTrue);
-      await dst.close();
     });
   });
 
@@ -323,7 +325,7 @@ void main() {
     test('a source stream error closes the relay (StateRelay and StatusRelay)',
         () async {
       final src = _Src();
-      final dst = _Dst();
+      final dst = _Dst(resolver: _Map({_Src: src}));
       final r = _Map({_Src: src, _Dst: dst});
       final state = StateRelay<_Src, _Dst, _S>(
           toEvent: (s) => _Local('state'), resolver: r);
@@ -339,7 +341,7 @@ void main() {
 
     test('a source stream ending closes the relay', () async {
       final src = _Src();
-      final dst = _Dst();
+      final dst = _Dst(resolver: _Map({_Src: src}));
       final r = _Map({_Src: src, _Dst: dst});
       final state = StateRelay<_Src, _Dst, _S>(
           toEvent: (s) => _Local('state'), resolver: r);

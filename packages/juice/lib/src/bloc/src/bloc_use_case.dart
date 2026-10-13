@@ -1,8 +1,6 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'package:juice/juice.dart';
 
-import 'core/execution_run.dart';
+import 'core/restartable_run.dart';
 
 /// Base class for bloc-specific use cases that provides logging and naming capabilities.
 ///
@@ -34,7 +32,7 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
   /// `CancellableEvent.isCancelled`, which supersede sets too) and returns.
   /// Always false under the other modes. Read from the run's zone, so it is
   /// correct after any `await`.
-  bool get isSuperseded => ExecutionRun.current?.isSuperseded ?? false;
+  bool get isSuperseded => RestartableRun.current?.isSuperseded ?? false;
 
   /// Logs a message with the use case name as prefix.
   ///

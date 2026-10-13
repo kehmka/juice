@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'package:juice/juice.dart';
 
 /// Specifies which [StreamStatus] type to emit when using [UpdateEvent].

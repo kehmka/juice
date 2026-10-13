@@ -46,13 +46,9 @@ abstract class UseCaseBuilderBase {
   /// Creates the use case instance that will handle events.
   UseCaseGenerator get generator;
 
-  /// How same-type events are processed relative to one another.
-  ///
-  /// Every registration builder takes it as a REQUIRED parameter (2.0.0).
-  /// This base getter answers [EventConcurrency.concurrent] only for the
-  /// fixed-mode builders that override nothing (`EventSubscription`), which
-  /// forward events rather than run a use case of their own.
-  EventConcurrency get concurrency => EventConcurrency.concurrent;
+  /// How same-type events are processed relative to one another. Every
+  /// builder declares it; a mode is a decision, never a default.
+  EventConcurrency get concurrency;
 
   /// Cleanup method called when the use case is disposed.
   ///

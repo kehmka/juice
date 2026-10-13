@@ -70,10 +70,12 @@ class _B extends JuiceBloc<_S> {
   static int navigated = 0;
 }
 
-/// A minimal UseCaseBuilderBase: inherits the base concurrency and close.
+/// A minimal UseCaseBuilderBase: inherits the base close.
 class _BareBuilder extends UseCaseBuilderBase {
   @override
   Type get eventType => _Fail;
+  @override
+  EventConcurrency get concurrency => EventConcurrency.concurrent;
   @override
   UseCaseGenerator get generator => () => _FailUC();
   @override

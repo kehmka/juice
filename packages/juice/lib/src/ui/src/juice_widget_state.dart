@@ -99,7 +99,7 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
           !denyRebuild(event: status.event, rebuildGroups: groups) &&
           onStateChange(status),
       builder: (context, status) => _buildWithPrep(context, status),
-      error: (c, status, o, s) => _buildWithPrep(context, status),
+      error: (context, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
   }
@@ -248,7 +248,7 @@ abstract class JuiceWidgetState2<
           !denyRebuild(event: status.event, rebuildGroups: groups) &&
           onStateChange(status),
       builder: (context, status) => _buildWithPrep(context, status),
-      error: (c, status, o, s) => _buildWithPrep(context, status),
+      error: (context, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
   }
@@ -410,7 +410,7 @@ abstract class JuiceWidgetState3<
           !denyRebuild(event: status.event, rebuildGroups: groups) &&
           onStateChange(status),
       builder: (context, status) => _buildWithPrep(context, status),
-      error: (c, status, o, s) => _buildWithPrep(context, status),
+      error: (context, status, o, s) => _buildWithPrep(context, status),
       closed: (context, value) => close(context),
     );
   }

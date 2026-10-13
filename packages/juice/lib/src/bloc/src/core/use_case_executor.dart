@@ -6,7 +6,7 @@ import '../cancellable_event.dart';
 import '../juice_bloc.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
-import 'execution_run.dart';
+import 'restartable_run.dart';
 import '../use_case_builders/use_case_builder.dart';
 
 /// Context provided to use cases for state emission.
@@ -55,9 +55,6 @@ class UseCaseContext<TBloc, TState extends BlocState> {
   ///
   /// If the aviator's navigation is async, this will not wait for completion.
   final void Function(String? aviator, Map<String, dynamic>? args) navigate;
-
-  /// Triggers navigation and awaits completion.
-  ///
 
   const UseCaseContext({
     required this.bloc,
@@ -127,7 +124,7 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
     final eventName = event.runtimeType.toString();
     final chatter = JuiceLoggerConfig.logs(Level.info);
     final stopwatch = Stopwatch()..start();
-    final run = ExecutionRun.current;
+    final run = RestartableRun.current;
     String useCaseName = builder.runtimeType.toString();
     try {
       // The generator and the context are inside the try: a throwing

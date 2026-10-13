@@ -10,8 +10,8 @@ import 'package:meta/meta.dart';
 ///
 /// Internal. Reached by `BlocUseCase.isSuperseded` and `JuiceBloc` only.
 @internal
-class ExecutionRun {
-  ExecutionRun(this.event);
+class RestartableRun {
+  RestartableRun(this.event);
 
   /// The event this run is executing.
   final Object event;
@@ -47,9 +47,10 @@ class ExecutionRun {
   final Set<Object> bindings = {};
 
   /// The zone key a restartable run is carried under.
-  static const Symbol zoneKey = #juice.executionRun;
+  static const Symbol zoneKey = #juice.restartableRun;
 
   /// The run the current zone belongs to, or null outside a restartable
   /// run.
-  static ExecutionRun? get current => Zone.current[zoneKey] as ExecutionRun?;
+  static RestartableRun? get current =>
+      Zone.current[zoneKey] as RestartableRun?;
 }

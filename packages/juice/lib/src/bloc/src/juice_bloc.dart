@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:logger/web.dart' show Level;
@@ -12,7 +10,7 @@ import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'cancellable_event.dart';
 import 'core/event_concurrency.dart';
-import 'core/execution_run.dart';
+import 'core/restartable_run.dart';
 import 'stream_binding.dart';
 import 'use_case_builders/use_case_builder.dart';
 import 'aviators/aviator.dart';
@@ -156,7 +154,7 @@ class JuiceBloc<TState extends BlocState>
           key, 'bloc is ${isClosed ? 'closed' : 'closing'}',
           level: Level.warning);
     }
-    final run = ExecutionRun.current;
+    final run = RestartableRun.current;
     if (run?.isSuperseded ?? false) {
       // The run was superseded before it got here (a callback it scheduled,
       // an await it was behind): its bindings were cancelled at the
@@ -262,7 +260,7 @@ class JuiceBloc<TState extends BlocState>
 
   /// A `restartable` run was superseded: cancel the bindings it created —
   /// exactly those, from the run's own list.
-  void _cancelBindingsOf(ExecutionRun run) {
+  void _cancelBindingsOf(RestartableRun run) {
     for (final b in run.bindings.toList()) {
       _cancelLogged(b as StreamBinding<dynamic>, 'at supersede');
     }
@@ -721,7 +719,7 @@ class JuiceBloc<TState extends BlocState>
     // instance sent twice is two runs, and only the first is fenced. The
     // context is created inside the run's zone (the executor runs there),
     // so this is that run; a field read per emit, no lookup.
-    final run = ExecutionRun.current;
+    final run = RestartableRun.current;
     if (run == null) {
       throw StateError(
           'A restartable use case for ${event.runtimeType} is executing '

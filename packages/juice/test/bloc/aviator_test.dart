@@ -74,16 +74,15 @@ void main() {
   });
 
   group('AviatorManager', () {
-    test('register / lookup / replace by name', () {
+    test('register / replace by name: the last registration wins', () {
+      final hits = <String>[];
       final m = AviatorManager();
-      expect(m.aviatorCount, 0);
-      m.register(Aviator(name: 'a', navigateWhere: (_) {}));
-      m.register(Aviator(name: 'b', navigateWhere: (_) {}));
-      m.register(Aviator(name: 'a', navigateWhere: (_) {}));
-      expect(m.aviatorCount, 2);
-      expect(m.hasAviator('a'), isTrue);
-      expect(m.hasAviator('zzz'), isFalse);
-      expect(m.aviatorNames, unorderedEquals(['a', 'b']));
+      m.register(Aviator(name: 'a', navigateWhere: (_) => hits.add('a1')));
+      m.register(Aviator(name: 'b', navigateWhere: (_) => hits.add('b')));
+      m.register(Aviator(name: 'a', navigateWhere: (_) => hits.add('a2')));
+      m.navigate('a', null);
+      m.navigate('b', null);
+      expect(hits, ['a2', 'b']);
     });
 
     test('navigate invokes the named aviator; null args become {}', () {
@@ -107,7 +106,7 @@ void main() {
       expect(hits, 0);
     });
 
-    test('navigateAsync awaits async navigation', () async {
+    test('navigate runs an async aviator without awaiting it', () async {
       final log = <String>[];
       final m = AviatorManager()
         ..register(Aviator(
@@ -116,20 +115,10 @@ void main() {
               await Future<void>.delayed(const Duration(milliseconds: 5));
               log.add('done:${args['n']}');
             }));
-      await m.navigateAsync('slow', {'n': 1});
+      m.navigate('slow', {'n': 1});
+      expect(log, isEmpty, reason: 'not awaited');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(log, ['done:1']);
-      await m.navigateAsync('slow', null);
-      expect(log, ['done:1', 'done:null']);
-      await m.navigateAsync(null, {'n': 2});
-      await m.navigateAsync('missing', {'n': 3});
-      expect(log, hasLength(2));
-    });
-
-    test('navigateAsync propagates navigation errors', () async {
-      final m = AviatorManager()
-        ..register(Aviator(
-            name: 'bad', navigateWhere: (_) async => throw StateError('no')));
-      await expectLater(m.navigateAsync('bad', {}), throwsStateError);
     });
 
     test('closeAll closes every aviator and clears the registry', () async {
@@ -140,8 +129,9 @@ void main() {
         ..register(_PlainAviator()); // default close() must not throw
       await m.closeAll();
       expect(log, unorderedEquals(['close:x', 'close:y']));
-      expect(m.aviatorCount, 0);
-      expect(m.hasAviator('x'), isFalse);
+      m.navigate('x', null);
+      expect(log, unorderedEquals(['close:x', 'close:y']),
+          reason: 'the registry is empty: a no-op');
     });
   });
 
@@ -252,7 +242,7 @@ void main() {
       expect(nav, isEmpty);
     });
 
-    test('driven through AviatorManager.navigateAsync', () async {
+    test('driven through AviatorManager.navigate', () async {
       final nav = <Map<String, dynamic>>[];
       final m = AviatorManager()
         ..register(DeepLinkAviator(
@@ -260,7 +250,8 @@ void main() {
           navigate: nav.add,
           config: const DeepLinkConfig(authRoute: 'login', routes: routes),
         ));
-      await m.navigateAsync('dl', {'deepLink': 'shop/item'});
+      m.navigate('dl', {'deepLink': 'shop/item'});
+      await Future<void>.delayed(Duration.zero);
       expect(nav.last['route'], 'item');
     });
   });

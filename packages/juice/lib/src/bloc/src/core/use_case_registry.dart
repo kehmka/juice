@@ -44,9 +44,6 @@ class UseCaseRegistry {
   /// Checks if a builder exists for the event type.
   bool hasBuilder(Type eventType) => _builders.containsKey(eventType);
 
-  /// The number of registered builders.
-  int get builderCount => _builders.length;
-
   /// All registered builders.
   ///
   /// Returns an unmodifiable view of the builders.

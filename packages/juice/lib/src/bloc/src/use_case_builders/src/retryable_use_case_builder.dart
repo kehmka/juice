@@ -1,5 +1,5 @@
 import '../../../bloc.dart';
-import '../../core/execution_run.dart';
+import '../../core/restartable_run.dart';
 
 /// Callback invoked before each retry attempt.
 ///
@@ -168,7 +168,7 @@ class _RetryableUseCase<
         // Superseded (restartable): every emission is fenced and every
         // retry would repeat the side effects for nothing. Checked before
         // the callback and the delay, and again after the delay.
-        if (ExecutionRun.current?.isSuperseded ?? false) return;
+        if (RestartableRun.current?.isSuperseded ?? false) return;
 
         final delay = backoff.delay(attempt - 1);
 
@@ -195,7 +195,7 @@ class _RetryableUseCase<
           return;
         }
 
-        if (ExecutionRun.current?.isSuperseded ?? false) return;
+        if (RestartableRun.current?.isSuperseded ?? false) return;
 
         // The bloc closed during the backoff (the user left): re-running the
         // work against a dead bloc is pointless and has side effects.

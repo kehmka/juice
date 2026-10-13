@@ -5,7 +5,7 @@ import 'package:logger/web.dart';
 import '../cancellable_event.dart';
 import '../juice_logger.dart';
 import 'event_concurrency.dart';
-import 'execution_run.dart';
+import 'restartable_run.dart';
 
 /// Signature for async event handlers.
 typedef EventHandler<E> = Future<void> Function(E event);
@@ -23,18 +23,20 @@ typedef EventHandler<E> = Future<void> Function(E event);
 /// dispatcher.register<IncrementEvent>(
 ///   (event) async => print('Increment by ${event.amount}'),
 ///   eventType: IncrementEvent,
+///   concurrency: EventConcurrency.concurrent,
 /// );
 ///
 /// await dispatcher.dispatch(IncrementEvent(amount: 5));
 /// ```
-class EventDispatcher<Event> {
+class EventDispatcher<Event extends Object> {
   /// Creates an EventDispatcher.
   ///
   /// [onUnhandledEvent] is called when an event has no registered handler.
-  /// If not provided, dispatching an unhandled event throws a [StateError].
+  /// Without it, dispatching an unhandled event returns a future that fails
+  /// with a [StateError].
   EventDispatcher({
     void Function(Event event)? onUnhandledEvent,
-    void Function(ExecutionRun run)? onSuperseded,
+    void Function(RestartableRun run)? onSuperseded,
     JuiceLogger? logger,
   })  : _onUnhandledEvent = onUnhandledEvent,
         _onSuperseded = onSuperseded,
@@ -50,23 +52,22 @@ class EventDispatcher<Event> {
   /// Called when a `restartable` run is superseded, after its event is
   /// cancelled and before the new run starts — the bloc cancels the run's
   /// stream bindings here.
-  final void Function(ExecutionRun run)? _onSuperseded;
+  final void Function(RestartableRun run)? _onSuperseded;
 
   /// Event types registered `restartable`, and their in-flight run.
   final _restartableTypes = <Type>{};
-  final _current = <Type, ExecutionRun>{};
+  final _current = <Type, RestartableRun>{};
 
   /// Events a `droppable` wrapper dropped (identity keyed), so a waiter
   /// can fail fast instead of waiting for an emission that never comes.
   final _dropped = Expando<bool>('juice.dropped');
 
   /// Whether [event] was dropped by its `droppable` wrapper.
-  bool wasDropped(Event event) =>
-      event == null ? false : (_dropped[event as Object] ?? false);
+  bool wasDropped(Event event) => _dropped[event] ?? false;
 
   /// The run executing each restartable event (identity keyed; an event
   /// that was never dispatched restartable has none).
-  final _runOf = Expando<ExecutionRun>('juice.run');
+  final _runOf = Expando<RestartableRun>('juice.run');
 
   /// Per-type FIFO tails for [EventConcurrency.sequential].
   final _tails = <Type, Future<void>>{};
@@ -91,10 +92,11 @@ class EventDispatcher<Event> {
   /// dispatcher.register<MyEvent>(
   ///   (event) async => handleEvent(event),
   ///   eventType: MyEvent,
+  ///   concurrency: EventConcurrency.sequential,
   /// );
   /// ```
-  /// [concurrency] controls how same-type events are processed relative to one
-  /// another (default [EventConcurrency.concurrent] — today's behavior).
+  /// [concurrency] is how same-type events are processed relative to one
+  /// another; every registration declares it.
   void register<E extends Event>(
     EventHandler<E> handler, {
     required Type eventType,
@@ -110,9 +112,10 @@ class EventDispatcher<Event> {
     // run's, its `isSuperseded` would be the outer run's, its span flagged.
     // Shadow the token for the nested handler; costs a zone fork only when
     // nested, nothing on the plain path.
-    Future<void> outsideRun(Event event) => ExecutionRun.current == null
+    Future<void> outsideRun(Event event) => RestartableRun.current == null
         ? raw(event)
-        : runZoned(() => raw(event), zoneValues: {ExecutionRun.zoneKey: null});
+        : runZoned(() => raw(event),
+            zoneValues: {RestartableRun.zoneKey: null});
     _handlers[eventType] = switch (concurrency) {
       EventConcurrency.concurrent => outsideRun,
       EventConcurrency.sequential => (event) =>
@@ -133,23 +136,20 @@ class EventDispatcher<Event> {
 
   /// Whether [event]'s run has been superseded by a newer same-type event.
   /// False for an event that is not restartable or not in flight.
-  bool isSuperseded(Event event) =>
-      event == null ? false : (_runOf[event as Object]?.isSuperseded ?? false);
+  bool isSuperseded(Event event) => _runOf[event]?.isSuperseded ?? false;
 
   /// Completes if [event]'s run is superseded; never completes otherwise
   /// (race it against the result you are waiting for).
-  Future<void> whenSuperseded(Event event) {
-    final run = event == null ? null : _runOf[event as Object];
-    return run?.whenSuperseded ?? Completer<void>().future;
-  }
+  Future<void> whenSuperseded(Event event) =>
+      _runOf[event]?.whenSuperseded ?? Completer<void>().future;
 
   /// `restartable`: supersede the in-flight run of [type] (fence it, cancel
   /// its CancellableEvent, hand it to [_onSuperseded]) and run [event] at
-  /// once inside a zone that carries its [ExecutionRun].
+  /// once inside a zone that carries its [RestartableRun].
   Future<void> _restartable(
       Type type, EventHandler<Event> handler, Event event) {
     if (_disposed) return Future<void>.value();
-    final run = ExecutionRun(event as Object);
+    final run = RestartableRun(event);
     _runOf[event] = run;
     final previous = _current[type];
     _current[type] = run;
@@ -160,12 +160,12 @@ class EventDispatcher<Event> {
       _supersede(type, previous, event);
     }
     return runZoned(() => handler(event),
-        zoneValues: {ExecutionRun.zoneKey: run}).whenComplete(() {
+        zoneValues: {RestartableRun.zoneKey: run}).whenComplete(() {
       if (identical(_current[type], run)) _current.remove(type);
     });
   }
 
-  void _supersede(Type type, ExecutionRun previous, Object newEvent) {
+  void _supersede(Type type, RestartableRun previous, Object newEvent) {
     previous.supersede();
     final event = previous.event;
     // Nothing in here may throw into the sender's frame or leave the new
@@ -215,7 +215,7 @@ class EventDispatcher<Event> {
   /// Drop [event] if a same-type run is already in flight.
   Future<void> _droppable(Type type, EventHandler<Event> handler, Event event) {
     if (_running[type] == true) {
-      _dropped[event as Object] = true;
+      _dropped[event] = true;
       return Future<void>.value();
     }
     if (_disposed) return Future<void>.value();
@@ -225,9 +225,6 @@ class EventDispatcher<Event> {
 
   /// Checks if a handler is registered for the given event type.
   bool hasHandler(Type eventType) => _handlers.containsKey(eventType);
-
-  /// The number of registered handlers.
-  int get handlerCount => _handlers.length;
 
   /// Dispatches an event to its registered handler.
   ///

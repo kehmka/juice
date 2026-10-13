@@ -47,6 +47,9 @@ class _ClosingBuilder extends UseCaseBuilderBase {
   UseCaseEventBuilder? get initialEventBuilder => null;
 
   @override
+  EventConcurrency get concurrency => EventConcurrency.concurrent;
+
+  @override
   Future<void> close() async => closes++;
 }
 
@@ -67,11 +70,11 @@ void main() {
       final registry = UseCaseRegistry();
       final a = _ClosingBuilder(_A);
       final b = _ClosingBuilder(_B);
-      expect(registry.builderCount, 0);
+      expect(registry.builders, isEmpty);
       registry.register(a);
       registry.register(b);
 
-      expect(registry.builderCount, 2);
+      expect(registry.builders, hasLength(2));
       expect(registry.hasBuilder(_A), isTrue);
       expect(registry.hasBuilder(_C), isFalse);
       expect(registry.getBuilder(_A), same(a));
@@ -99,7 +102,7 @@ void main() {
       await registry.closeAll();
       expect(a.closes, 1);
       expect(b.closes, 1);
-      expect(registry.builderCount, 0);
+      expect(registry.builders, isEmpty);
       expect(registry.hasBuilder(_A), isFalse);
     });
 
@@ -116,7 +119,6 @@ void main() {
           eventType: _A, concurrency: EventConcurrency.concurrent);
       d.register<_B>((e) async => seen.add('b'),
           eventType: _B, concurrency: EventConcurrency.concurrent);
-      expect(d.handlerCount, 2);
       expect(d.hasHandler(_A), isTrue);
       expect(d.hasHandler(_C), isFalse);
 
@@ -159,7 +161,7 @@ void main() {
       d.register<_A>((e) async {},
           eventType: _A, concurrency: EventConcurrency.concurrent);
       d.clear();
-      expect(d.handlerCount, 0);
+      expect(d.hasHandler(_A), isFalse);
       await expectLater(d.dispatch(_A()), throwsStateError);
     });
 

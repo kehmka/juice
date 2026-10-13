@@ -37,8 +37,8 @@ class AviatorManager {
   ///
   /// [args] are passed to the aviator's navigate function.
   ///
-  /// Note: If the aviator's navigation is async, this method will not wait
-  /// for it to complete. Use [navigateAsync] if you need to await completion.
+  /// An async navigation is not awaited (nothing awaits an emit's
+  /// navigation).
   ///
   /// A failure in async navigation (an unknown deep link, a failing auth
   /// check) is logged as `aviator_error`. Nobody awaits this call — it runs
@@ -69,33 +69,6 @@ class AviatorManager {
       'aviator': aviatorName,
     });
   }
-
-  /// Navigates using the named aviator and awaits completion.
-  ///
-  /// If [aviatorName] is null or no aviator exists with that name,
-  /// this method completes immediately.
-  ///
-  /// [args] are passed to the aviator's navigate function.
-  ///
-  /// Use this when you need to wait for async navigation (e.g., auth checks,
-  /// data loading) to complete before proceeding.
-  Future<void> navigateAsync(
-      String? aviatorName, Map<String, dynamic>? args) async {
-    if (aviatorName == null) return;
-    final aviator = _aviators[aviatorName];
-    if (aviator != null) {
-      await aviator.navigateWhere.call(args ?? {});
-    }
-  }
-
-  /// Checks if an aviator exists with the given name.
-  bool hasAviator(String name) => _aviators.containsKey(name);
-
-  /// The number of registered aviators.
-  int get aviatorCount => _aviators.length;
-
-  /// All registered aviator names.
-  Iterable<String> get aviatorNames => _aviators.keys;
 
   /// Closes all aviators and clears the registry.
   ///

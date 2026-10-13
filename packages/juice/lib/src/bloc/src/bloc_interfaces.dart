@@ -1,9 +1,6 @@
 import 'dart:async';
 
-/// The interfaces `JuiceBloc` implements. These are the only survivors of
-/// the `bloc` library base that juice 1.x vendored (`Bloc`, `BlocBase`,
-/// `Emitter`, `BlocEventSink`, `GlobalBlocResolver` — exported, unused,
-/// removed in 2.0.0).
+/// The interfaces `JuiceBloc` implements.
 
 /// An object that provides access to a stream of states over time.
 abstract class Streamable<State extends Object?> {

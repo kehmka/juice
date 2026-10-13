@@ -30,7 +30,7 @@ class EndScopeEvent extends ResultEvent<EndScopeResult> {
   /// Scope ID (preferred) - unambiguous, always correct.
   final String? scopeId;
 
-  /// Scope name (legacy convenience) - AMBIGUOUS when multiple scopes
+  /// Scope name (convenience) - AMBIGUOUS when multiple scopes
   /// share the same name. When used, returns the first active scope found.
   /// For correctness, always prefer ending by scopeId.
   final String? scopeName;

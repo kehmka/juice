@@ -364,7 +364,7 @@ class WellOrganizedWidgetState extends JuiceWidgetState<DataBloc, WellOrganizedW
   
   Widget _buildInputSection() {
     return _input.build(
-      onChanged: (value) => bloc.send(UpdateEvent(value))
+      onChanged: (value) => bloc.send(SetInputEvent(value))
     );
   }
   

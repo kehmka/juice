@@ -1,155 +1,160 @@
 # Changelog
 
-## [2.0.0] - unreleased (the `v2` branch)
+## [2.0.0] - unreleased
 
-The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each item
-lands here as it is built, with its migration in one line.
+The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each entry
+states the contract and, where code must change, the migration.
 
 ### Breaking
-- **`concurrency:` is REQUIRED on every builder** — `UseCaseBuilder`,
-  `UseCaseBuilder.typed`, `StatefulUseCaseBuilder`,
-  `RetryableUseCaseBuilder`, `InlineUseCaseBuilder`. It used to default to
-  `concurrent`; a mode is a decision and the compiler now asks for it.
-  *Migration:* add `concurrency: EventConcurrency.concurrent` where the
-  old behaviour is what you meant, or pick the right one (`sequential` for
-  shared-state mutation, `droppable` for exclusive flows, `restartable`
-  for latest-input-wins). The opt-in lint rule
-  `juice_missing_concurrency_mode` is retired: it has nothing left to say.
+- **`concurrency:` is required on every builder** — `UseCaseBuilder`,
+  `UseCaseBuilder.typed`, `StatefulUseCaseBuilder`, `RetryableUseCaseBuilder`,
+  `InlineUseCaseBuilder`; `UseCaseBuilderBase.concurrency` is abstract. A mode
+  is a decision, and the compiler asks for it. *Migration:* add
+  `concurrency: EventConcurrency.concurrent` where that is what you meant,
+  or pick `sequential` (shared-state mutation), `droppable` (exclusive
+  flows) or `restartable` (latest input wins). The opt-in lint rule
+  `juice_missing_concurrency_mode` is retired.
 - **`EventConcurrency` gains `restartable`** — an exhaustive `switch` over
-  the enum needs a new case (see Added).
-- **`UpdateEvent.newState` removed** (deprecated since 1.x). `UpdateEvent`
-  re-emits the bloc's current state under the groups / status / aviator it
-  names; a state CHANGE is an event a use case handles. *Migration:* `dart
-  fix` removes the argument (`lib/fix_data.yaml`); where a value was
-  passed, send the event of the use case that should produce it.
-- **The vendored `bloc` base is gone**: `Bloc`, `BlocBase`, `Emitter`,
-  `BlocEventSink`, `EventTransformer` / `EventMapper`, `GlobalBlocResolver`
-  (exported, unused by the framework, excluded from its own coverage gate).
+  the enum needs the case (see Added).
+- **`UpdateEvent` carries no state and no type parameter.** `newState` is
+  gone and `UpdateEvent<TState>` is `UpdateEvent`; it re-emits the bloc's
+  current state under the groups / status / aviator it names. A state
+  change is an event a use case handles. *Migration:* a 1.x
+  `UpdateEvent(newState: x)` fails to compile — on purpose, with no `dart
+  fix`: send the event whose use case produces `x`. Tests seed a state with
+  `JuiceBloc.seedState`.
+- **The vendored `bloc` base is gone** — `Bloc`, `BlocBase`, `Emitter`,
+  `BlocEventSink`, `EventTransformer` / `EventMapper`, `GlobalBlocResolver`.
   `JuiceBloc` still implements `StateStreamableSource`, `Emittable` and
-  `ErrorSink` (now in `bloc_interfaces.dart`, still exported). *Migration:*
-  code that extended the vendored `Bloc` was never Juice; `GlobalBlocResolver`
-  users register with `BlocScope` (`doc/concepts/dependency.md`).
-- **`StateRelay` / `StatusRelay` initialise synchronously and THROW at
-  construction** (`StateError`) when a bloc is unregistered or closed —
-  not as an uncaught error from a microtask nobody awaits. *Migration:*
-  register both blocs with `BlocScope` (or pass `resolver:`) BEFORE
-  constructing the relay; a relay constructed in the same tick as the
-  registrations that used to "just work" because of the microtask now has
-  to come after them.
-- **Dead surface removed, found by the coverage push to 99%:**
-  `UseCaseContext.getState` / `getOldState` / `navigateAsync` (no use-case
-  path ever called them), `JuiceBloc.logger` (unused), and
-  `JuiceAsyncBuilder.waiting` (the builder never entered
-  `ConnectionState.waiting`, so the callback could not fire — every widget
-  form passed one). *Migration:* drop the arguments; nothing observable
-  changes.
-- **`RelayUseCaseBuilder` removed** (deprecated since 1.x). *Migration:*
-  `StateRelay` (state values) or `StatusRelay` (waiting / failure too) —
-  `doc/concepts/relay-use-cases.md` shows the before and after.
+  `ErrorSink` (`bloc_interfaces.dart`). *Migration:* register with
+  `BlocScope` (`doc/concepts/dependency.md`); a `BlocDependencyResolver` is
+  passed explicitly where an API takes one.
+- **`StateRelay`, `StatusRelay` and `EventSubscription` initialise
+  synchronously and throw** (`StateError`) when a bloc is unregistered or
+  closed — from the constructor (for `EventSubscription`, the subscribing
+  bloc's constructor), not as an uncaught error from a microtask nobody
+  awaits. A failed initialisation holds no lease. *Migration:* register the
+  blocs before constructing the relay. Never build a relay inside a bloc's
+  own constructor: a bloc leased while its own factory runs fails at the
+  scope with a `StateError`; wire relays in the composition root. Two blocs
+  that subscribe to each other through `EventSubscription` cannot be
+  constructed — subscribe one way.
+- **`sendAndWait` fails loud.** It throws `StateError` (through the
+  returned future) the moment processing ends with no terminal status for
+  the event — dropped by a `droppable` builder, no use case registered, a
+  use case that emitted nothing, a close during the wait — instead of
+  waiting out the timeout; on a closed or closing bloc the returned future
+  fails (the call no longer throws). `sendAndWaitResult`, `sendForResult`
+  and `BlocTester.sendAndWaitForResult` are built on it:
+  `sendAndWaitForResult` answers for THAT event, not for the first
+  non-waiting status of any event. *Migration:* a test that relied on the
+  timeout gets the error at once.
+- **`StatefulUseCaseBuilder` cannot be `restartable`** (`ArgumentError` at
+  registration): one instance serves every run and cannot be fenced per
+  run.
+- **Dead surface removed:** `UseCaseContext.getState` / `getOldState` /
+  `navigateAsync`, `JuiceBloc.logger`, `JuiceAsyncBuilder.waiting` (could
+  never fire), `AviatorManager.navigateAsync` / `hasAviator` /
+  `aviatorCount` / `aviatorNames`, `UseCaseRegistry.builderCount`,
+  `EventDispatcher.handlerCount`, `denyRebuild`'s unused `key`, and
+  `RelayUseCaseBuilder` (`StateRelay` / `StatusRelay` replace it —
+  `doc/concepts/relay-use-cases.md`). *Migration:* drop the arguments and
+  calls; nothing observable changes.
+- **Telemetry vocabulary.** `stream_binding` / `refused` carries `reason`
+  (`bloc is closed`, `bloc is closing`, `run superseded`); a binding
+  callback that throws is `stream_binding` / `callback_error` with
+  `callback` (`onData`, `onError`, `onDone`); `state_emission_superseded`
+  carries `status`. A thrown use-case error is two lines — `use_case_error`
+  (the executor's span-closer, with `executionId`) and `bloc_error` — not
+  three. A refused `send` logs at warning.
 
 ### Changed
 - **A Juice widget keeps its bloc subscription across parent rebuilds.**
-  Every widget form (`StatelessJuiceWidget` ×3, `JuiceWidgetState` ×3)
-  built a new filtered stream in `build`, so each parent rebuild cancelled
-  and re-listened (N+1 listens for N rebuilds). `JuiceAsyncBuilder` gained
-  `streamKey`: the subscription is replaced only when the key changes, and
-  the widgets key it on the bloc instance(s), the rebuild groups and the
-  widget key (`SubscriptionKey`). A rebuild that changes any of those still
-  re-subscribes; one that changes none keeps the subscription. Pinned by
-  `test/ui/resubscribe_test.dart` (11 → 1 listens across 10 rebuilds, both
-  forms; a groups change re-subscribes). The benchmarks' new parent-rebuild
-  scenario prices it at publish time (before 2.0.0: 2,366 µs per parent
-  rebuild of 1,000 leaves on the Mac). One subtlety: the kept
-  subscription's `onStateChange` is the one the FIRST widget instance
-  installed — same class, same behaviour, but an instance-captured value
-  inside an `onStateChange` override is read from that first instance.
-- **The send path has one awaited hop, not four.** `send`, `dispatch` and
-  the mode wrappers return the handler's future through; the executor
-  keeps the one structural await (it closes the telemetry span). Measured
-  on the Mac (release, median of 5): a send with the chatter not built
-  1.74 → 1.60 µs (−8%, ranges apart); 20,000 sends in flight 3.76 → 2.82
-  µs each (−25%) — the burst depth cost scales with hops × in-flight
-  (benchmarks §14). Contracts kept, each pinned: an un-awaited send of an
-  unhandled event never throws into the caller's frame (the error arrives
-  on the future, as `async` delivered it); `send` on a closed bloc returns
-  a completed future; `sequential` keeps order past a failed run;
-  `droppable` frees its slot after a failed or dropped run; the span pair
-  still closes on success and on error. Async stack traces are two frames
-  shorter.
+  Every widget form keys its subscription on the bloc instance(s)
+  (`SubscriptionKey`); the rebuild groups and `onStateChange` are applied
+  through `JuiceAsyncBuilder`'s `where`, read from the CURRENT widget on
+  every emission — a rebuilt widget's filter applies to the kept
+  subscription.
+- **The send path has one awaited hop.** `send`, `dispatch` and the mode
+  wrappers return the handler's future through; the executor keeps the one
+  structural await (it closes the telemetry span). Contracts kept: an
+  un-awaited send of an unhandled event fails its future and never throws
+  into the caller's frame; `send` on a closed bloc returns a completed
+  future; `sequential` keeps order past a failed run; `droppable` frees its
+  slot after a failed or dropped run; the span pair closes on success and
+  on error. Async stack traces are shorter.
+- `sendCancellable` always goes through `send` (a refusal is logged, never
+  silent). `RetryableUseCaseBuilder` stops before `onRetry` and the backoff
+  once its run is superseded. `BlocScope` fails loud on a bloc resolved
+  while its own factory runs.
 
 ### Fixed
-- **A stream error no longer reverts a Juice widget to its INITIAL status.**
-  `AsyncSnapshot` cannot hold data and an error at once, so on a stream
-  error `JuiceAsyncBuilder` built with `initial` — the widget silently
-  showed its first state again. It now builds with the last status the
-  stream delivered. Found by the coverage tests for the widget forms'
-  `error:` path (every form is pinned: `test/reach/ui_paths_test.dart`).
-
-### Coverage
-- Core line coverage 94.3% → **99.5%**, gate raised from 90% to **99%** in
-  CI (`tool/coverage_check.sh 99`). 37 new tests under `test/reach/`
-  reach every path that was reachable; the 12 lines left are two private
-  constructors, a release-only log branch under an `assert`, four
-  `match` arms a `FailureStatus` can never take, a defensive branch the
-  use case guards before reaching, and one invariant-breach handler.
+- A stream error no longer reverts a Juice widget to its initial status:
+  `JuiceAsyncBuilder` builds the error with the last status the current
+  subscription delivered (a `ValueStream`'s seed counts), reset on every
+  re-subscribe.
+- A use-case generator that throws (a failing DI lookup) is a use-case
+  error with its span and reaches `onError`; it was a silent miss. A
+  `sequential` run whose failure escapes the executor is logged and the
+  queue goes on. An unhandled-event fallback that throws fails the send.
+- `bindStream`: a throwing `onError` / `onDone` is the bloc's error; a
+  stream whose `listen` throws leaves no binding behind; every cancel —
+  unbind, replace, on error, at supersede, at close — is logged if it
+  fails; `StreamBinding.cancel()` is memoized, so every caller awaits the
+  one teardown.
+- `emitEvent` goes through the close fence like every other emission
+  (`emission_after_close`, status `event`).
+- `juiceTest` reports a `build()` that throws as that error, and counts
+  stream-binding errors (`errors:` to expect them).
+- `StateManager` allocates nothing per emit when nothing taps it.
 
 ### Added
-- **`JuiceBloc.seedState(state, {groups})` — a `@visibleForTesting` seam**
-  that puts a bloc into a state without running a use case, as a normal
-  `UpdatingStatus` emission carrying an `UpdateEvent`. It is what
-  `juiceTest(seed:)` now uses (it used the removed `UpdateEvent.newState`).
-  Throws on a closed or closing bloc. Production code changes state through
-  a use case, never this.
-- **`EventConcurrency.restartable` — the fourth mode: latest input wins.**
-  A same-type event arriving while one runs supersedes it and starts at
-  once. The superseded run is fenced: every `emitUpdate` / `emitWaiting` /
-  `emitFailure` / `emitCancel` / `emitEvent` / `navigate` it attempts is
-  dropped (logged `state_emission_superseded`), the stream bindings it
-  created are cancelled, and a `CancellableEvent` is cancelled so a loop can
-  bail; `BlocUseCase.isSuperseded` is the check for any other event (read
-  from the run's zone, correct after any await). `sendAndWait` on a
-  superseded event answers with a `CancelingStatus` for that event instead
-  of timing out (not emitted to the stream). The run's telemetry span still
-  closes, flagged `superseded: true`; the supersede logs
-  `use_case_superseded`. **Side effects already performed are NOT rolled
-  back.** The other three modes pay nothing: the fence is built only into
-  restartable runs' contexts. Breaking only for an exhaustive `switch` over
-  the enum. Pinned by `test/bloc/restartable_test.dart` (14 tests), and
-  hardened by an adversarial review (2026-10-13; `restartable_adversarial_test`
-  + `restartable_review_test`, 20 more pins): the fence is per RUN, so the
-  same event instance re-sent is two runs and only the first is fenced (and
-  a re-sent `CancellableEvent` is not pre-cancelled for its new run); a
-  dispatch made from INSIDE a restartable run (a nested send, a queued
-  sequential run, a listener the run created) is its own — it does not
-  inherit the run's zone, so its bindings, `isSuperseded` and span are its
-  own; a run that was superseded can no longer acquire a stream binding
-  (refused, logged `stream_binding`/`superseded`); a run whose use case
-  RETURNED is not superseded by a same-type send in the next microtasks
-  (its bindings belong to the bloc); a throwing `cancel()`, logger or
-  binding cancel cannot stop the new run or leave a phantom (logged);
-  `RetryableUseCaseBuilder` stops retrying a superseded run; `sendAndWait`
-  observes emissions through the synchronous emission tap instead of a
-  stream subscription — an emission that landed before the supersede wins
-  over `CancelingStatus` even in the same tick, a superseded or timed-out
-  wait leaves NO listener behind (it did), and a `close()` while a wait is
-  pending fails it with a `StateError` instead of letting it time out.
-  A supersede cancels exactly the run's own bindings (kept per run), not a
-  scan of every binding the bloc holds.
+- **`EventConcurrency.restartable` — latest input wins.** A same-type event
+  arriving while one runs supersedes it and starts at once. The superseded
+  run is fenced: every emit and navigation it attempts is dropped (logged
+  `state_emission_superseded`), the stream bindings it created are
+  cancelled, and a `CancellableEvent` is cancelled so a loop can bail;
+  `BlocUseCase.isSuperseded` is the check for any other event (read from
+  the run's zone, correct after any await). `sendAndWait` on a superseded
+  event answers with a `CancelingStatus` for that event (not emitted);
+  `sendAndWaitResult` answers canceled and fails the event's result. The
+  span still closes, flagged `superseded: true`; the supersede logs
+  `use_case_superseded`. **Side effects already performed are not rolled
+  back.** The fence is per RUN: the same event instance re-sent is two runs
+  and only the first is fenced (a re-sent `CancellableEvent` is not
+  pre-cancelled); a dispatch made from inside a run — a nested send, a
+  queued sequential run, a listener the run created — is its own run; a
+  superseded run can no longer bind a stream (refused); a run whose use
+  case RETURNED is not superseded by a later same-type send. The other
+  modes pay nothing: the fence is built only into restartable runs'
+  contexts.
 - **`JuiceBloc.bindStream` / `unbind` / `StreamBinding`** — the bloc owns
   every stream it listens to. `bindStream(stream, onData, {key, onError,
-  onDone, cancelOnError})` runs `onData` per item while the bloc is open
-  (never while closing), is cancelled at the start of `close()` before the
-  use cases close, and a `key` makes the start idempotent (a re-bind
-  replaces, `unbind(key)` stops). Errors are loud: with no `onError` the
-  error goes to the bloc's error handler and the binding is cancelled
-  (`cancelOnError: false` keeps listening); an `onData` that throws is
-  routed to the error handler and the binding stays active. A bind on a
-  closing bloc is refused with a `stream_binding`/`refused` log and an
-  inert binding — the same fence `send` applies. Replaces the
-  `StreamSubscription` field + `isClosed` guard + manual cancel in `close()`
-  every stream-reading bloc hand-rolled (location and llm migrated; the
-  enabler for `restartable`). Pinned by `test/bloc/stream_binding_test.dart`
-  (20 tests, every path).
+  onDone, cancelOnError})` runs `onData` per item while the bloc is open,
+  is cancelled at the start of `close()` before the use cases close, and a
+  `key` makes the start idempotent (a re-bind replaces, `unbind(key)`
+  stops). Errors are loud: with no `onError` the error goes to the bloc's
+  error handler and the binding is cancelled (`cancelOnError: false` keeps
+  listening); an `onData`, `onError` or `onDone` that throws goes to the
+  error handler (`callback_error`), and an `onData` throw leaves the
+  binding active. A bind on a closing bloc or from a superseded run is
+  refused with an inert binding. Replaces the `StreamSubscription` field,
+  `isClosed` guard and manual cancel every stream-reading bloc hand-rolled
+  (location and llm migrated).
+- **`JuiceBloc.seedState(state, {groups})`** — a `@visibleForTesting` seam
+  that puts a bloc into a state without running a use case, as a normal
+  `UpdatingStatus` emission carrying an `UpdateEvent`; `juiceTest(seed:)`
+  uses it. Throws on a closed or closing bloc.
+- **`JuiceAsyncBuilder.streamKey` and `where`** — the subscription is
+  replaced only when the key changes; `where` filters items live.
+- **`UseCase.navigate`** (`@internal`) — the navigation half of
+  `emitUpdate(aviatorName:)`, wired by the executor; inline use cases
+  navigate through it, under the restartable fence.
+
+### Coverage
+- Core line coverage gate raised from 90% to 99% in CI
+  (`tool/coverage_check.sh 99`); the lines left uncovered are unreachable by
+  construction and stay in the count.
 
 ## [1.10.0] - 2026-09-29
 

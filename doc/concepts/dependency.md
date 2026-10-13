@@ -94,10 +94,6 @@ of `BlocScope`) was removed in 2.0.0 together with the rest of the vendored
 passed explicitly where an API takes one (`StateRelay` / `StatusRelay`
 `resolver:`); there is no global slot to assign it to any more.
 
-> The Modular and custom-resolver examples below predate 2.0.0 where they
-> assign `GlobalBlocResolver().resolver`: read those lines as "register the
-> same blocs with `BlocScope`".
-
 ## Integration with Flutter Modular
 
 ### Complete Modular Setup
@@ -194,8 +190,10 @@ class ModularBlocResolver implements BlocDependencyResolver {
 
 // Application setup
 void main() {
-  // Set up Modular as the resolver
-  GlobalBlocResolver().resolver = const ModularBlocResolver();
+  // There is no global resolver slot: a Juice widget that should resolve
+  // through Modular takes the resolver explicitly —
+  //   ProfileView(resolver: const ModularBlocResolver())
+  // — and everything else registers with BlocScope.
   
   runApp(ModularApp(
     module: AppModule(),
@@ -216,8 +214,7 @@ class MyApp extends StatelessWidget {
           onPopInvoked: (bool didPop) {
             // Clean up blocs when navigating back
             if (didPop) {
-              (GlobalBlocResolver().resolver as ModularBlocResolver)
-                .disposeBlocs();
+              const ModularBlocResolver().disposeBlocs();
             }
             return didPop;
           },

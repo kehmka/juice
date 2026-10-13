@@ -14,7 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `StreamSubscription` field, no `isClosed` guard, no manual cancel in
   `close()` — the bloc cancels it before the use cases close. A second
   `StartTrackingEvent` replaces the first binding instead of leaking it.
-  No API change.
+- `close()` closes the bloc first (its tracking binding is cancelled) and
+  disposes the source after; a dispose failure is logged, never swallowed;
+  an uninitialised bloc closes cleanly.
+- A positions stream that errors or ends on its own ends tracking:
+  `TrackingEndedEvent` sets `tracking: false` (and `lastError` on an error,
+  on the `error` group). Before, the state kept saying `tracking: true`.
+- `source` / `config` before `InitializeLocationEvent` throw a named
+  `StateError` instead of a late-initialisation error.
 
 ## [0.2.0] - 2026-08-12
 

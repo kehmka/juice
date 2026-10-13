@@ -9,7 +9,7 @@ import '../bloc/bloc.dart';
 /// it carried AT EMIT TIME — exactly what widgets' group filter saw for it.
 ///
 /// Snapshotted at emit time because groups accumulate on the event object
-/// across a multi-emit use case (AGENTS gotcha 4): reading
+/// across a multi-emit use case: reading
 /// `status.event?.groupsToRebuild` after the test shows the union of EVERY
 /// emit, while this shows the set as of this emission (its own groups plus
 /// those of the same event's earlier emits).

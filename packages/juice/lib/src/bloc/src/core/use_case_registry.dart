@@ -13,6 +13,7 @@ import '../use_case_builders/use_case_builder.dart';
 /// registry.register(UseCaseBuilder(
 ///   typeOfEvent: IncrementEvent,
 ///   useCaseGenerator: () => IncrementUseCase(),
+///   concurrency: EventConcurrency.sequential,
 /// ));
 ///
 /// final builder = registry.getBuilder(IncrementEvent);

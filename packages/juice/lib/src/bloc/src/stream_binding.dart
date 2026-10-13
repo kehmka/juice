@@ -1,14 +1,13 @@
 import 'dart:async';
 
 /// A stream the bloc listens to for as long as the bloc lives — or until it
-/// is cancelled, replaced, or the stream ends (juice ≥ 2.0.0).
+/// is cancelled, replaced, or the stream ends.
 ///
 /// Created by `JuiceBloc.bindStream`; never constructed directly. The bloc
 /// owns the subscription: every binding is cancelled at the start of the
 /// bloc's `close()`, before its use cases close, and `onData` never runs
-/// once the bloc is closing. That replaces the `StreamSubscription` field,
-/// the `if (!isClosed)` guard and the manual cancel in `close()` that every
-/// stream-reading bloc used to hand-roll.
+/// once the bloc is closing. No `StreamSubscription` field, no `isClosed`
+/// guard, no manual cancel in `close()`.
 ///
 /// - [cancel] stops listening. Idempotent; returns the subscription's own
 ///   cancel future (a provider's teardown, for callers that must bound it).

@@ -145,7 +145,11 @@ final foo = BlocScope.get<FooBloc>();    // imperative access outside a widget
 // lifecycles: BlocLifecycle.permanent | feature | leased (use BlocScope.lease for leased)
 ```
 
-**Hot cells: `JuiceSelector` inside groups (juice ≥ 1.8.0).** Groups remain
+A widget's bloc subscription is kept across parent rebuilds (keyed on the
+bloc instances); its groups and `onStateChange` are read from the CURRENT
+widget on every emission.
+
+**Hot cells: `JuiceSelector` inside groups.** Groups remain
 the invalidation vocabulary — cross-widget, intent-named. For a LEAF that
 rebuilds too often inside a group's blast radius (one field of a list row,
 a ticker), select it: `JuiceSelector<FooBloc, FooState, int>(groups:
@@ -172,17 +176,17 @@ hand-rolled `Set<busyId>` (no failure surface; leak-prone). Hold an
 
 ## 4. Concurrency (critical)
 
-By default Juice runs same-type use cases **`concurrent`**ly: when an `execute()`
-suspends at an `await`, another event's use case of the same type can run during
-that suspension. Pick the right **concurrency mode** per event on its
-`UseCaseBuilder` (juice ≥ 1.5.0) — this is the primary fix, not a hand-rolled
-guard:
+Every builder DECLARES how same-type events interleave — `concurrency:` is
+required; a mode is a decision, never a default. Under `concurrent`, when an
+`execute()` suspends at an `await`, another event's use case of the same type
+can run during that suspension. Pick the mode per event — this is the
+primary fix, not a hand-rolled guard:
 
 ```dart
 () => UseCaseBuilder(
   typeOfEvent: SaveEvent,
   useCaseGenerator: () => SaveUseCase(),
-  concurrency: EventConcurrency.sequential,   // REQUIRED (2.0.0): .sequential, .droppable, .restartable or .concurrent
+  concurrency: EventConcurrency.sequential,   // required: .sequential, .droppable, .restartable or .concurrent
 ),
 ```
 
@@ -191,7 +195,7 @@ guard:
   read-before-await race is impossible.
 - **`droppable`** — for **exclusive flows** (flush, connect, pick): a same-type
   event arriving while one runs is ignored. Replaces a manual `if (_busy) return`.
-- **`restartable`** (juice ≥ 2.0.0) — for **latest-input-wins** (search,
+- **`restartable`** — for **latest-input-wins** (search,
   filter, select, load-by-id, scrubbing): a same-type event arriving while
   one runs SUPERSEDES it and starts at once. Dart cannot kill the old run, so
   it is fenced: every emission and navigation it attempts afterwards is
@@ -208,8 +212,16 @@ guard:
   Timer / Future.delayed / listener the run created IS the run; an event
   instance is single-use — re-sending the same instance is a new run that
   supersedes the old, and `sendAndWait` / `bloc.isSuperseded(event)` then
-  answer for the latest run.
+  answer for the latest run. `StatefulUseCaseBuilder` cannot be restartable
+  (one instance cannot be fenced per run; refused at registration).
 - **`concurrent`** — for **genuinely independent** events.
+
+**Waiting on an event.** `sendAndWait(event)` returns the terminal status
+emitted FOR THAT EVENT. It fails loud (`StateError`) the moment processing
+ends with no terminal status — dropped by `droppable`, no use case, a use
+case that emitted nothing, a close mid-wait — instead of waiting out the
+timeout. `sendAndWaitResult` / `sendForResult` (typed `ResultEvent`s) and
+`BlocTester.sendAndWaitForResult` are built on it.
 
 When you *do* stay `concurrent`, follow the discipline:
 
@@ -224,7 +236,7 @@ When you *do* stay `concurrent`, follow the discipline:
 
 ---
 
-## 4b. Streams a bloc listens to (juice ≥ 2.0.0)
+## 4b. Streams a bloc listens to
 
 A bloc never holds a `StreamSubscription` field. It binds:
 `bindStream<T>(stream, (item) => send(ItemEvent(item)), key: 'tracking')`
@@ -236,17 +248,21 @@ anonymous binding stops through `StreamBinding.cancel()` (returns the
 subscription's own cancel future — bound it if a provider's teardown can
 wedge). Errors are loud: no `onError` → the bloc's error handler, and the
 binding is cancelled unless `cancelOnError: false`; an `onData` that throws
-→ error handler, binding stays. Gotcha: `onData` is for turning items into
-EVENTS — emit from the use case the event dispatches, not from `onData`.
+→ error handler, binding stays; an `onError` / `onDone` that throws → error
+handler too (`stream_binding`/`callback_error`). A bind on a closing bloc or
+from a superseded restartable run is refused: an inert binding, logged
+`stream_binding`/`refused` with its `reason`. Gotcha: `onData` is for turning
+items into EVENTS — emit from the use case the event dispatches, not from
+`onData`.
 
-## 4c. Telemetry (juice ≥ 1.7.0)
+## 4c. Telemetry
 
 Every use-case execution logs a structured START (`use_case_execution`) and
 exactly one END sharing its `executionId`: `use_case_completed` (with
 `elapsedMicros`) or `use_case_error` (also stamped). Mirror everything to
 DevTools with `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`
 (`juice_observability ≥ 0.3.0`). The chatter costs about a third of a
-dispatch to BUILD, so the cost follows the consumer (juice ≥ 1.10.0): a
+dispatch to BUILD, so the cost follows the consumer: a
 logger that implements `LevelAwareJuiceLogger` (`Level get minLevel`)
 declares what it keeps and nothing below that is built. `DefaultJuiceLogger`
 declares everything in debug and nothing in profile/release (what its
@@ -254,12 +270,12 @@ filter keeps); `DevtoolsJuiceLogger` (≥ 0.5.1) declares everything while a
 listener is attached. A custom logger that only `implements JuiceLogger`
 keeps everything — implement the interface, or set the global floor
 `JuiceLoggerConfig.minLevel = Level.warning`. Errors, ignored events and
-failure emissions stay loud regardless. Gotcha: `use_case_error` has TWO sources
-sharing the type — the executor's span-closer (has `executionId`) and
-`BlocErrorHandler`'s summary (has `bloc`/`state`). Span consumers key on
-`executionId` presence.
+failure emissions stay loud regardless. A thrown use-case error is two
+lines: `use_case_error` (the executor's span-closer, with `executionId`) and
+`bloc_error` (the bloc's `onError` hook, with `bloc`/`state`). Span consumers
+key on `use_case_error`; error counters on `bloc_error`.
 
-## 4c. Skipping duplicate emits (`skipIfSame`)
+## 4d. Skipping duplicate emits (`skipIfSame`)
 
 `emitUpdate(newState: …, groupsToRebuild: …, skipIfSame: true)` suppresses
 the emission when `newState == state`, logging `state_emission_skipped`
@@ -313,11 +329,12 @@ instead of rebuilding. Two rules:
 7. **Seam, not vendor import.** To support Firebase/Sentry/Dio/etc., implement
    the package's seam interface in the app; do NOT add the vendor dep to the
    feature bloc. Ship a default impl + a fake.
-8. **`close()` must release everything** it created — cancel every subscription
-   and timer, dispose seams — before `super.close()`. You do NOT need to guard
-   emits against a closed bloc (juice ≥ 1.9.0): an in-flight use case's emit
-   after close is dropped and logged (`emission_after_close`), and events sent
-   once `close()` starts are refused (`bloc.isClosing`).
+8. **`close()` releases what the bloc created** — timers, seams — before
+   `super.close()`; streams bound with `bindStream` are cancelled for you at
+   the start of close. You do NOT need to guard emits against a closed bloc:
+   an in-flight use case's emit after close is dropped and logged
+   (`emission_after_close`), and events sent once `close()` starts are refused
+   (`bloc.isClosing`).
 9. **Fail loud.** Missing/invalid input → `emitFailure` or throw with a reason;
    never silently fall back to a default. Multi-sink blocs isolate each sink
    (try/catch per sink) so one failure can't break the rest.
@@ -329,6 +346,14 @@ instead of rebuilding. Two rules:
    again. Edits INSIDE a use case hot-reload fine (the generator builds a
    fresh instance per event). If an event suddenly reports "No handler
    registered", restart before debugging.
+
+11. **Never build a relay, or lease a bloc, inside a bloc's own constructor.**
+   `StateRelay` / `StatusRelay` / `EventSubscription` resolve their blocs
+   synchronously; a bloc that leases ITSELF while its factory runs fails at
+   the scope with a `StateError`. Wire relays in the composition root, after
+   the registrations. An `EventSubscription` in a builder list leases its
+   SOURCE from the constructor — fine, unless two blocs subscribe to each
+   other.
 
 ---
 
@@ -343,8 +368,8 @@ flutter pub publish --dry-run     # 0 warnings expected (a pubspec_overrides hin
 ```
 
 Tests are headless: implement a fake of the seam, drive the bloc, assert on
-what it emitted. Prefer **`juiceTest`** (`package:juice/testing.dart`, juice ≥
-1.9.0) over sleeping:
+what it emitted. Prefer **`juiceTest`** (`package:juice/testing.dart`) over
+sleeping:
 
 ```dart
 juiceTest<FooBloc, FooState>(
@@ -361,7 +386,8 @@ juiceTest<FooBloc, FooState>(
 
 `act` returns the `send()` futures (no `settle()`), the bloc is closed before
 asserting, each emission's groups are snapshotted at emit time (gotcha 4), an
-unexpected use-case error fails the test (`errors:` to expect one), and a use
+unexpected use-case or stream-binding error fails the test (`errors:` to
+expect them), and a use
 case still running at close fails it. `wait:` is only for deliberate timers or
 debounces. Construct with the plain constructor and send the init event in
 `act` — `withConfig` fires it without returning the future.

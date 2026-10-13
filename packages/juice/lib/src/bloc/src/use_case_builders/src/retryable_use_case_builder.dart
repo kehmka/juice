@@ -27,6 +27,7 @@ typedef OnRetryCallback = void Function(
 ///       useCaseGenerator: () => FetchDataUseCase(),
 ///       maxRetries: 3,
 ///       backoff: ExponentialBackoff(initial: Duration(seconds: 1)),
+///       concurrency: EventConcurrency.droppable,
 ///     ),
 ///   ], []);
 /// }
@@ -51,6 +52,7 @@ typedef OnRetryCallback = void Function(
 /// RetryableUseCaseBuilder(
 ///   // ...
 ///   retryWhen: (error) => error is NetworkException,
+///   concurrency: EventConcurrency.droppable,
 /// )
 /// ```
 ///

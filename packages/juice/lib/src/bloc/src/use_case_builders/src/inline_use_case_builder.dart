@@ -160,12 +160,14 @@ typedef InlineHandler<TBloc extends JuiceBloc<TState>, TState extends BlocState,
 ///           groups: {CounterGroups.counter},
 ///         );
 ///       },
+///       concurrency: EventConcurrency.sequential,
 ///     ),
 ///
 ///     // Complex fetch - use class-based
 ///     () => UseCaseBuilder(
 ///       typeOfEvent: FetchDataEvent,
 ///       useCaseGenerator: () => FetchDataUseCase(),
+///       concurrency: EventConcurrency.droppable,
 ///     ),
 ///   ]);
 /// }

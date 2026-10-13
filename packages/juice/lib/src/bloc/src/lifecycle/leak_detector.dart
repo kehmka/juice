@@ -270,8 +270,8 @@ class LeakDetector {
 /// Key for tracking individual leases.
 ///
 /// Keyed by a monotonic [sequence], not a timestamp: two leases acquired in
-/// the same clock tick used to share a key, the second overwrote the first,
-/// and a real leak went unreported.
+/// the same clock tick would share a timestamp key, the second overwriting
+/// the first, and a real leak would go unreported.
 class _LeakKey {
   final BlocId blocId;
   final int sequence;

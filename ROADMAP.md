@@ -564,7 +564,7 @@ a fire-and-forget send.
 order holds; span pair closes on success AND error) + the breakdown's
 hop and send rows show the drop.
 
-**D ✅ BUILT 2026-10-07 on `v2`** (`lib/fix_data.yaml` ships with 2.0.0 for the parameter; the builder has no mechanical migration — the docs show it). Original: **Remove the deprecated members** — `UpdateEvent.newState` (state
+**D ✅ BUILT 2026-10-07 on `v2`** (no `fix_data.yaml` — pre-wave review ruling 2026-10-13: a 1.x `UpdateEvent(newState:)` must fail to compile, never become a silent no-op; the docs show the migration). Original: **Remove the deprecated members** — `UpdateEvent.newState` (state
 changes go through a use case; the parameter bypasses the pattern) and
 `RelayUseCaseBuilder` (replaced by `StateRelay` / `StatusRelay`). Both
 say "removed in v2.0.0" in their annotations. Tee-up D (`fix_data.yaml`)
@@ -630,26 +630,36 @@ document; a hot restart is seconds and the registry stays simple.
 — *Gate:* if documented, the AGENTS line and the skill sync; if
 supported, a test that a builder added after construction dispatches.
 
-### Coverage to 99 (Kevin, 2026-10-07: "do it now, before the wave. gate at 99")
+### Coverage to 99 (Kevin, 2026-10-07)
 
-DONE on `v2`: 94.3% → 99.5%, CI gate 90 → 99. Dead surface deleted instead
-of tested (`UseCaseContext.getState/getOldState/navigateAsync`,
-`JuiceBloc.logger`, `JuiceAsyncBuilder.waiting` — a callback that could
-never fire). One bug found by the new tests and fixed: a stream error
-reverted every widget form to its initial status (`JuiceAsyncBuilder` now
-keeps the last delivered status). The 12 uncovered lines are unreachable by
+DONE on `v2`: CI gate 90 → 99 (`tool/coverage_check.sh 99`). Dead surface
+was deleted rather than tested; the lines left uncovered are unreachable by
 construction and stay in the count.
+
+### Pre-wave review (Kevin, 2026-10-13)
+
+"Before the family wave, do another thorough review. Make sure all juice
+principles are followed without exception. Make sure code is precise and
+clean." Three independent reviews (doctrine, adversarial correctness,
+precision); every finding fixed on `v2` in batches — correctness (pinned in
+`test/bloc/precision_review_test.dart`), dead code and naming, docs, tests,
+benchmarks — one commit each, every added rule named in its commit message
+and in the CHANGELOG for veto. Rulings that need Kevin's eye: `sendAndWait`
+fails loud instead of timing out; `EventSubscription` initialises
+synchronously (two blocs cannot subscribe to each other); `Stateful` +
+`restartable` refused; no `fix_data.yaml`; a relay cannot be built inside
+its own bloc's constructor (the notes example's moved to `main.dart`).
 
 ### Not in 2.0, on purpose
 
-`restartable` (#3) and `bindStream` (F): their gate is design input
-from a real use case, not compatibility — they stay parked. `lease
-linger` (K), `whenReady` (L), `progress` (H): additive, can ride any
-minor. Pub package-skills (A), mason brick (M): tooling, not core.
+`lease linger` (K), `whenReady` (L), `progress` (H): additive, can ride
+any minor. Pub package-skills (A), mason brick (M): tooling, not core.
+(`restartable` and `bindStream` were pulled INTO 2.0 and are built on
+`v2`.)
 
 ### Sequence
 
-1. 1.10.0: A + tee-up D's `fix_data.yaml`; publish on Kevin's word.
+1. 1.10.0: A — published 2026-09-30.
 2. 2.0.0 on a branch off main: B, C, D, E, F, G, H, (I) — each behind
    its ruling, each with its gate green, CHANGELOG written as it goes
    (a "Breaking" section per item with the migration in one line).
@@ -785,7 +795,7 @@ release-mode gate — a doctrine call.
 | A | Skill via pub's package-skills channel (`packages/juice/skills/juice-framework/`, emitted by sync_skill.sh; installs with `dart run skills@ get` into Claude Code / Cursor / Gemini / Cline / Copilot — verified on dart.dev) | S | `skills@ get` accepts the name on a scratch consumer | dx |
 | B ✅ | Port `juice_lint` to Dart's official `analysis_server_plugin` (reports via `dart analyze` — NOT Flutter 3.47's `flutter analyze`; quick fixes) — closes the CLI limitation found dogfooding | M | docket-5 sentinel proof under the new host | dx |
 | C ✅ (partly) | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
-| D ✅ 2026-10-07 (`v2`) | `fix_data.yaml` for the removed `UpdateEvent.newState` (the only removal `dart fix` can do mechanically); `RelayUseCaseBuilder` migrates by hand per the docs | S | ~~confirm the v2.0.0 removal list~~ two members, not three | dx |
+| D ✅ 2026-10-07 (`v2`) | no mechanical fix by decision (2026-10-13): `UpdateEvent.newState` fails to compile; `RelayUseCaseBuilder` migrates by hand per the docs | S | ~~confirm the v2.0.0 removal list~~ two members, not three | dx |
 | E | State hydration seam (`StatePersistence<TState>` + `hydrate`; storage default + fake; versioned FAIL-LOUD migration) | M | migrating theme + i18n must net-delete code | bloc, riverpod |
 | F ✅ 2026-10-07 (`v2`) | `JuiceBloc.bindStream` / `unbind` / `StreamBinding` — on the BLOC, which owns the lifetime (Kevin's ruling; the family's nine sites all start from bloc helpers): cancelled at the start of close before the use cases close, keyed replacement, loud errors, refused on a closing bloc. Location and llm migrated (location's close body shrank; llm keeps one explicit cancel so the provider is never disposed under a live stream). 20 tests, every path; coverage of the new code 100%. Seven sites remain for the family wave: connectivity, power, lifecycle, notifications, realtime, media (per-item), llm's throttle | M | ~~migrate location + llm~~ | bloc |
 | G ✅ | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
@@ -797,17 +807,17 @@ release-mode gate — a doctrine call.
 | M | `juice_feature` mason brick | M | regenerate notes_app's feature to zero diff; delete on first drift | others, dx |
 | N ✅ 2026-10-07 (`v2`, as docket item C) | Collapse the send hop depth: `send` and `dispatch` return the future through instead of awaiting it, leaving the executor's await (closes the span, routes errors) as the one structural await — 4 hops → 2, ~0.2 µs of a 1.1–1.8 µs knob-on send (~15–20%), and the burst depth cost scales with hops × in-flight (RESULTS §12). Changes error TIMING (an un-awaited send's "no handler" / closed-bloc error would surface synchronously unless wrapped), microtask ordering of a send's completion, and async stack-trace depth — the ordering risk lives in consumer code and cannot be tested from the framework | S | not before a consumer dispatches enough events per frame to notice, or the 2.0 dispatcher work (vendored Bloc removal) touches this code anyway; then the existing suite + three pins (un-awaited error stays async; sequential queue order; span pair closes on success and error) + the breakdown's hop and send rows as the number | benchmarks §12 |
 
-`restartable` (#3) stays parked but is now validated by two external
-implementations (bloc_concurrency's switchMap fence; BlocSignal 1.3.0's
-generation token) — build to the text below when a consumer appears; F is
-the enabler. A `lane` key for cross-type FIFO waits on a juice_sync
+`restartable` (#3) ✅ built on `v2` for 2.0 (the eight latest-input-wins
+example sites were its consumers; `bindStream` (F), its enabler, built
+alongside — both validated against bloc_concurrency's switchMap fence and
+BlocSignal 1.3.0's generation token). A `lane` key for cross-type FIFO waits on a juice_sync
 consumer (its Retry↔Discard window is the waiting defect).
 
 ## Work docket — cleanup while #2 and #3 wait (2026-09-02)
 
 State at survey: 28 packages, `main` 5 commits ahead of origin, tree
-clean. Items 1 and 4 above are done; #2 (select-rebuilds) and #3
-(`restartable`) stay parked on their gates by decision. What remains is
+clean. Items 1 and 4 above are done; #2 (select-rebuilds) stays parked on
+its gate by decision, #3 (`restartable`) is built for 2.0. What remains is
 integrity and distribution debt, ordered by priority.
 
 ### 1 · `juice_storage` version-integrity drift  🔴

@@ -29,6 +29,7 @@
 ///     () => UseCaseBuilder(
 ///       typeOfEvent: IncrementEvent,
 ///       useCaseGenerator: () => IncrementUseCase(),
+///       concurrency: EventConcurrency.sequential,
 ///     ),
 ///   ]);
 /// }

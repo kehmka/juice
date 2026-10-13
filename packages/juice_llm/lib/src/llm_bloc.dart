@@ -149,10 +149,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
   ///
   /// SERIALIZED at the resource: one runtime context ⇒ one stream at a time,
   /// no matter who calls. `GenerateEvent` already queues, but service-layer
-  /// callers await this method directly — two of those used to race straight
-  /// into the provider (fine while nothing generated in the background;
-  /// constant collisions once a phone enriches its well continuously,
-  /// 2026-07-14). A call made mid-generation now waits its turn.
+  /// callers await this method directly, and two of those would otherwise
+  /// race straight into the provider. A call made mid-generation waits its
+  /// turn.
   Future<GenerationOutcome> beginGeneration(
     LlmRequest request, {
     required void Function(LlmChunk) onChunk,
@@ -191,8 +190,8 @@ class LlmBloc extends JuiceBloc<LlmState> {
   /// within [LlmConfig.teardownPatience] — a native thread is stuck
   /// mid-call and no in-process remedy exists. Once true, every queued and
   /// future generation fails fast, [acquireEngine] throws, and recovery is
-  /// an app restart — UNLESS the stuck teardown eventually completes
-  /// (0.4.1): a late return proves the native thread came back, so the
+  /// an app restart — UNLESS the stuck teardown eventually completes: a
+  /// late return proves the native thread came back, so the
   /// wedge lifts and the engine serves again. Loud by construction either
   /// way: the alternative was the poisoned queue, where everything waited
   /// forever in silence.
@@ -213,10 +212,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
         'stuck mid-call. Restart required; all engine work now fails fast.');
   }
 
-  /// THE LATE-TEARDOWN UN-WEDGE (0.4.1, from a field log 2026-08-08): a
-  /// mid-prefill stop wedged the engine, then its teardown returned 89s
-  /// later — the native runtime had RECOVERED, but the sticky flag kept a
-  /// healthy engine condemned until restart. A wedge is a claim ("this
+  /// The late-teardown un-wedge: a mid-prefill stop can wedge the engine
+  /// and then have its teardown return much later — the native runtime
+  /// RECOVERED, and a sticky flag would keep a healthy engine condemned
+  /// until restart. A wedge is a claim ("this
   /// native call never returns"); when the call returns, the claim is
   /// falsified and the flag must lift. Only the wedging teardown's own
   /// completion counts.
@@ -361,12 +360,11 @@ class LlmBloc extends JuiceBloc<LlmState> {
 
   /// Preempt the active generation at the next SAFE point.
   ///
-  /// Cancelling a provider mid-PREFILL can wedge the native runtime (LiteRT
-  /// wedged on exactly this, Amoli 2026-07-26) — and a wedged generator can
-  /// never reach the yield boundary a cancel needs, so the old blind
-  /// stop-then-generate pattern hung its caller forever (the Read button,
-  /// 2026-07-29). Once tokens stream, every chunk is a yield boundary and
-  /// cancellation is prompt.
+  /// Cancelling a provider mid-PREFILL can wedge the native runtime
+  /// (LiteRT does) — and a wedged generator can never reach the yield
+  /// boundary a cancel needs, so a blind stop-then-generate hangs its
+  /// caller forever. Once tokens stream, every chunk is a yield boundary
+  /// and cancellation is prompt.
   ///
   /// So: already decoding → cancel now. Still prefilling → wait for the
   /// first chunk (the prefill's own duration bounds the wait), then cancel.
@@ -414,9 +412,9 @@ class LlmBloc extends JuiceBloc<LlmState> {
     _cancelThrottle();
     // The CALLER must never block on the provider's teardown: an async*
     // generator cancel only completes at a yield boundary, and a runtime
-    // wedged mid-native-call has none — `await sub.cancel()` here hung a
-    // caller FOREVER, outside every watchdog (Amoli's Read button,
-    // 2026-07-29). The QUEUE still waits: one live session per model means
+    // wedged mid-native-call has none — an awaited cancel here would hang
+    // the caller forever, outside every watchdog. The QUEUE still waits:
+    // one live session per model means
     // the next generation may not touch the provider until teardown truly
     // finishes — so the teardown chains onto [_genTail] instead, and queued
     // work behind a wedged teardown surfaces through its callers' own
@@ -430,10 +428,10 @@ class LlmBloc extends JuiceBloc<LlmState> {
             '${_wedged ? ' (late — after wedge declaration)' : ''}');
         _unwedgeOnLateTeardown(id);
       });
-      // THE TEARDOWN CEILING (0.4.0): a cancel with no yield boundary never
+      // The teardown ceiling: a cancel with no yield boundary never
       // returns; past the ceiling the engine is declared wedged and the
       // queue tail RESOLVES so everything behind it can fail fast instead
-      // of waiting forever (the poisoned queue, 2026-08-01).
+      // of waiting forever (the poisoned queue).
       _genTail = _genTail
           .then((_) => teardown.timeout(config.teardownPatience, onTimeout: () {
                 _declareWedged(id);

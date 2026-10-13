@@ -44,7 +44,7 @@ abstract class JuiceLogger {
       {Map<String, dynamic>? context});
 }
 
-/// A [JuiceLogger] that DECLARES the lowest level it keeps (juice ≥ 1.10.0).
+/// A [JuiceLogger] that DECLARES the lowest level it keeps.
 ///
 /// The framework's per-event chatter — the use-case span pair and the
 /// emission entry, all at [Level.info] — costs about a third of a dispatch
@@ -124,7 +124,7 @@ class DefaultJuiceLogger implements LevelAwareJuiceLogger {
   /// With the default [Logger]: `Logger.level` when asserts are enabled,
   /// [Level.off] otherwise — what its filter keeps. With a caller-supplied
   /// [Logger] the filter is unknown (the package exposes no way to read
-  /// it), so everything is declared kept, as before 1.10.0; wrap it in your
+  /// it), so everything is declared kept; wrap it in your
   /// own [LevelAwareJuiceLogger] to declare its real level.
   @override
   Level get minLevel =>
@@ -174,8 +174,7 @@ class JuiceLoggerConfig {
     _logger = logger;
   }
 
-  /// The global FLOOR for the framework's own per-event chatter
-  /// (juice ≥ 1.10.0).
+  /// The global FLOOR for the framework's own per-event chatter.
   ///
   /// Every use-case execution logs a span pair and every emission logs an
   /// entry, at [Level.info]; building those context maps is about a third

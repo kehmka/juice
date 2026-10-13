@@ -213,7 +213,7 @@ StateRelay<AuthBloc, ProfileBloc, AuthState>(
 ### 4. Keep Transformers Simple
 ```dart
 // Simple and clear transformer
-toEvent: (state) => UpdateEvent(value: state.value),
+toEvent: (state) => SetValueEvent(state.value),
 
 // If logic is complex, move to a helper method
 toEvent: _transformState,

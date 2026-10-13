@@ -50,7 +50,7 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   ///   If not provided, all state changes are relayed.
   /// * [sourceScope] - Optional scope key for resolving source bloc.
   /// * [destScope] - Optional scope key for resolving destination bloc.
-  /// * [resolver] - Optional custom resolver (legacy). If not provided, uses BlocScope.
+  /// * [resolver] - Optional resolver. If not provided, uses BlocScope.
   StateRelay({
     required this.toEvent,
     this.when,
@@ -58,9 +58,9 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
     this.destScope,
     BlocDependencyResolver? resolver,
   }) : _customResolver = resolver {
-    // Synchronous (2.0.0): a relay against an unregistered or closed bloc
-    // throws HERE, at construction, where the developer is looking — not
-    // as an uncaught error from a microtask nobody awaits.
+    // Synchronous: a relay against an unregistered or closed bloc throws
+    // HERE, at construction, where the developer is looking — not as an
+    // uncaught error from a microtask nobody awaits.
     _initialize();
   }
 
@@ -77,7 +77,7 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   /// Optional scope key for resolving destination bloc.
   final Object? destScope;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// The source bloc whose states will be transformed.
@@ -223,7 +223,7 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   /// * [when] - Optional predicate to filter which status changes trigger relay.
   /// * [sourceScope] - Optional scope key for resolving source bloc.
   /// * [destScope] - Optional scope key for resolving destination bloc.
-  /// * [resolver] - Optional custom resolver (legacy). If not provided, uses BlocScope.
+  /// * [resolver] - Optional resolver. If not provided, uses BlocScope.
   StatusRelay({
     required this.toEvent,
     this.when,
@@ -231,9 +231,9 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
     this.destScope,
     BlocDependencyResolver? resolver,
   }) : _customResolver = resolver {
-    // Synchronous (2.0.0): a relay against an unregistered or closed bloc
-    // throws HERE, at construction, where the developer is looking — not
-    // as an uncaught error from a microtask nobody awaits.
+    // Synchronous: a relay against an unregistered or closed bloc throws
+    // HERE, at construction, where the developer is looking — not as an
+    // uncaught error from a microtask nobody awaits.
     _initialize();
   }
 
@@ -249,7 +249,7 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
   /// Optional scope key for resolving destination bloc.
   final Object? destScope;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   late TSourceBloc _sourceBloc;

@@ -27,7 +27,7 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
   Future<void> execute(TEvent event);
 
   /// Under `EventConcurrency.restartable`: true once a newer same-type
-  /// event has superseded this run (juice ≥ 2.0.0). Every emission after
+  /// event has superseded this run. Every emission after
   /// that point is dropped, so a long loop checks this (or its
   /// `CancellableEvent.isCancelled`, which supersede sets too) and returns.
   /// Always false under the other modes. Read from the run's zone, so it is

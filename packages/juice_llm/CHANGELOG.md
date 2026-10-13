@@ -1,13 +1,20 @@
 ## 0.6.0 — unreleased (ships with juice 2.0.0)
 
 - Require `juice ^2.0.0`. The generation stream is a bloc-owned binding
-  (`bindStream(..., key: 'generation', cancelOnError: true)`): the bloc
-  cancels it at close before the use cases close. `stopGeneration` still
-  cancels it early WITHOUT awaiting the provider's teardown (the teardown
-  ceiling is unchanged — `StreamBinding.cancel()` returns the subscription's
-  own cancel future, which the queue tail bounds as before), and `close()`
-  still cancels it explicitly before disposing the provider, so a live
-  stream is never torn down under a disposed runtime. No API change.
+  (`bindStream(..., key: 'generation', cancelOnError: true)`).
+  `stopGeneration` still cancels it early WITHOUT awaiting the provider's
+  teardown (`StreamBinding.cancel()` returns the subscription's own cancel
+  future, which the queue tail bounds under the teardown ceiling as before).
+- `close()` stops the in-flight generation first (its outcome completes
+  `cancelled`), then closes the bloc — from that moment `beginGeneration`
+  fails at once with `GenOutcomeKind.error` — then disposes the provider
+  once the teardown is over, so a live stream is never torn down under a
+  disposed runtime and a wedged runtime never blocks the close. Close is
+  idempotent (the provider is disposed once); a dispose failure is logged;
+  an uninitialised bloc closes cleanly. A generation whose binding was
+  refused (the bloc closing) completes its outcome instead of hanging.
+- `config` / `provider` before `InitializeLlmEvent` throw a named
+  `StateError`.
 
 ## 0.5.0
 

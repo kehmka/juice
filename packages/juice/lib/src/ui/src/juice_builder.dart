@@ -92,10 +92,10 @@ class _JuiceBuilderState<TBloc extends JuiceBloc>
   void initState() {
     super.initState();
     if (widget.resolver != null) {
-      // Legacy path: use custom resolver directly
+      // A resolver
       _bloc = widget.resolver!.resolve<TBloc>();
     } else {
-      // New path: use BlocScope with lease for proper lifecycle management
+      // BlocScope: a lease for the widget's lifetime
       _lease = BlocScope.lease<TBloc>();
       _bloc = _lease!.bloc;
     }
@@ -220,11 +220,11 @@ class _JuiceBuilder2State<TBloc1 extends JuiceBloc, TBloc2 extends JuiceBloc>
   void initState() {
     super.initState();
     if (widget.resolver != null) {
-      // Legacy path: use custom resolver directly
+      // A resolver
       _bloc1 = widget.resolver!.resolve<TBloc1>();
       _bloc2 = widget.resolver!.resolve<TBloc2>();
     } else {
-      // New path: use BlocScope with lease for proper lifecycle management
+      // BlocScope: a lease for the widget's lifetime
       _lease1 = BlocScope.lease<TBloc1>();
       _lease2 = BlocScope.lease<TBloc2>();
       _bloc1 = _lease1!.bloc;

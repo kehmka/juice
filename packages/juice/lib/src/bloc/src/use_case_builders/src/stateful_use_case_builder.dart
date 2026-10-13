@@ -13,6 +13,7 @@ import '../../../bloc.dart';
 /// StatefulUseCaseBuilder(
 ///   typeOfEvent: ChatEvent,
 ///   useCaseGenerator: () => ChatConnectionUseCase(webSocketService),
+///   concurrency: EventConcurrency.sequential, // never restartable: one instance
 /// )
 /// ```
 class StatefulUseCaseBuilder extends UseCaseBuilderBase {

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 
-/// One run of a `restartable` use case (juice ≥ 2.0.0): the token the
+/// One run of a `restartable` use case: the token the
 /// dispatcher hands the run, carried in its zone for the length of the run
 /// (across every `await`), so the framework can tell a superseded run from
 /// the current one at any point — when it emits, when it binds a stream,

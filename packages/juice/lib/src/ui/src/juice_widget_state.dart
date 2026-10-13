@@ -35,7 +35,7 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState with optional dependency resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   ///   Note: When using a custom resolver, the bloc lifecycle is not managed
   ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
@@ -58,7 +58,7 @@ abstract class JuiceWidgetState<TBloc extends JuiceBloc<BlocState>,
   /// Optional scope key for resolving scoped bloc instances.
   final Object? scope;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// Cached bloc instance, initialized in initState.
@@ -173,7 +173,7 @@ abstract class JuiceWidgetState2<
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState2 with optional resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   ///   Note: When using a custom resolver, the bloc lifecycle is not managed
   ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
@@ -199,7 +199,7 @@ abstract class JuiceWidgetState2<
   final Object? scope1;
   final Object? scope2;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// Cached bloc instances, initialized in initState.
@@ -323,7 +323,7 @@ abstract class JuiceWidgetState3<
     TWidget extends StatefulWidget> extends State<TWidget> {
   /// Creates a JuiceWidgetState3 with optional resolver and rebuild groups.
   ///
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   ///   Note: When using a custom resolver, the bloc lifecycle is not managed
   ///   (no lease/dispose). The resolver is responsible for bloc lifecycle.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
@@ -352,7 +352,7 @@ abstract class JuiceWidgetState3<
   final Object? scope2;
   final Object? scope3;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// Cached bloc instances, initialized in initState.

@@ -76,10 +76,10 @@ abstract class EventBase extends Object {
 /// - Resetting stream status (e.g., from failure back to updating)
 ///
 /// **State changes go through a dedicated use case.** `UpdateEvent` carries
-/// no state (its `newState` parameter was removed in 2.0.0): it re-emits the
-/// bloc's CURRENT state under the groups / status / aviator it names.
+/// no state: it re-emits the bloc's CURRENT state under the groups / status
+/// / aviator it names.
 ///
-/// Example (correct usage):
+/// Example:
 /// ```dart
 /// // Navigation trigger
 /// bloc.send(UpdateEvent(aviatorName: 'home'));

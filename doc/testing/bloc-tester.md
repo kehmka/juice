@@ -55,7 +55,12 @@ await tester.send(SlowEvent(), delay: Duration(milliseconds: 100));
 
 ### Awaiting Results
 
-For async operations that emit `WaitingStatus` before completing:
+`sendAndWaitForResult` is `JuiceBloc.sendAndWait` with a shorter default
+timeout: it returns the terminal status emitted FOR THAT EVENT (updating,
+failure or canceling), ignoring other events' emissions. It fails loud with
+a `StateError` — at once, not after the timeout — when the event is dropped
+by a `droppable` builder, has no use case, or its use case emitted nothing,
+and with a `TimeoutException` when a terminal status never arrives.
 
 ```dart
 test('API call completes successfully', () async {
@@ -214,7 +219,8 @@ test('shows loading state during API call', () async {
 });
 
 test('sendAndWaitForResult with timeout', () async {
-  // Will throw TimeoutException if operation takes too long
+  // TimeoutException if no terminal status arrives in time; StateError at
+  // once if the event is dropped, unhandled, or emits nothing.
   final status = await tester.sendAndWaitForResult(
     SlowOperationEvent(),
     timeout: Duration(seconds: 10),
@@ -269,7 +275,7 @@ test('multi-phase test', () async {
 ### 3. Use sendAndWaitForResult for Async Operations
 
 ```dart
-// Better than send() for async operations
+// The event's own terminal status, however long the work takes
 final status = await tester.sendAndWaitForResult(AsyncEvent());
 
 // Instead of

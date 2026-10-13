@@ -499,8 +499,8 @@ class BlocScope {
       await entry.closingFuture;
     } catch (e, st) {
       // Reported, then rethrown to the caller — but the entry is still
-      // cleared below. A close() that throws used to leave closingFuture set
-      // forever: every later get/lease threw "is closing" and the bloc could
+      // cleared below: a close() that throws must not leave closingFuture
+      // set, or every later get/lease throws "is closing" and the bloc can
       // never be recreated.
       JuiceLoggerConfig.logger.logError('Bloc close failed', e, st, context: {
         'type': 'bloc_close_error',

@@ -102,7 +102,6 @@ class EndScopeUseCase extends BlocUseCase<ScopeLifecycleBloc, EndScopeEvent> {
     if (event.scopeName != null) {
       // AMBIGUOUS: When multiple scopes share the same name, returns the
       // first active one found. For correctness, prefer ending by scopeId.
-      // This is provided as legacy convenience only.
       return bloc.state.scopes.values
           .where(
               (s) => s.name == event.scopeName && s.phase == ScopePhase.active)

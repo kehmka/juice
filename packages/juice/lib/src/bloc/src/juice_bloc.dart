@@ -38,6 +38,7 @@ import 'bloc_interfaces.dart';
 ///       () => UseCaseBuilder(
 ///         typeOfEvent: IncrementEvent,
 ///         useCaseGenerator: () => IncrementUseCase(),
+///         concurrency: EventConcurrency.sequential,
 ///       ),
 ///     ],
 ///   );
@@ -108,7 +109,7 @@ class JuiceBloc<TState extends BlocState>
   final BlocErrorHandler _errorHandler;
 
   // ============================================================
-  // Stream bindings (juice ≥ 2.0.0)
+  // Stream bindings
   // ============================================================
 
   /// Every live binding; keyed ones are also in [_keyedBindings].
@@ -279,9 +280,8 @@ class JuiceBloc<TState extends BlocState>
     }
   }
 
-  /// TEST SEAM: put the bloc into [state] without running a use case
-  /// (juice ≥ 2.0.0; replaces the removed `UpdateEvent.newState` for
-  /// seeding). Emits an `UpdatingStatus` carrying an `UpdateEvent` with
+  /// TEST SEAM: put the bloc into [state] without running a use case.
+  /// Emits an `UpdatingStatus` carrying an `UpdateEvent` with
   /// [groups], exactly as a use case's `emitUpdate` would, so widgets and
   /// listeners see a normal emission. Throws on a closed or closing bloc.
   /// Production code changes state through a use case — never this.
@@ -348,8 +348,8 @@ class JuiceBloc<TState extends BlocState>
   /// If the bloc is closed, the event is ignored and a warning is logged.
   Future<void> send(EventBase event) {
     // Not `async`: the dispatcher's future is returned through, not awaited
-    // here — one microtask hop less per send (2.0.0, RESULTS §12/§14). The
-    // executor keeps the one structural await (it closes the span).
+    // here — one microtask hop less per send. The executor keeps the one
+    // structural await (it closes the span).
     if (isClosed || _closing) {
       _logger.log(
         isClosed

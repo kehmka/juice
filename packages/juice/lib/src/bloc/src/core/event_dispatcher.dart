@@ -235,7 +235,7 @@ class EventDispatcher<Event extends Object> {
     // Not `async`: the handler's future is returned through (one hop less).
     // The no-handler error is still delivered ASYNCHRONOUSLY, as a failed
     // future, so an un-awaited send never throws into its caller's frame —
-    // the contract `async` gave for free, kept on purpose (2.0.0).
+    // the contract `async` gave for free, kept on purpose.
     final handler = _handlers[event.runtimeType];
     if (handler == null) {
       if (_onUnhandledEvent != null) {

@@ -28,7 +28,7 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// Creates a StatelessJuiceWidget with optional resolver and rebuild groups.
   ///
   /// [key] - Optional widget key
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds
   /// [scope] - Optional scope key for resolving scoped bloc instances
   ///
@@ -53,14 +53,13 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   /// Optional scope key for resolving scoped bloc instances.
   final Object? scope;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// The bloc instance this widget observes.
   ///
-  /// For legacy resolver path: resolved directly from resolver.
-  /// For BlocScope path: accessed via peekExisting() after lease holder
-  /// has ensured the instance exists.
+  /// With a resolver: resolved from it. With BlocScope: read through
+  /// peekExisting() after the lease holder has ensured the instance exists.
   @protected
   TBloc get bloc {
     if (_customResolver != null) {
@@ -74,12 +73,12 @@ abstract class StatelessJuiceWidget<TBloc extends JuiceBloc<BlocState>>
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: resolve once and pass to builder
+      // A resolver: resolve once and pass to the builder
       final b = _customResolver.resolve<TBloc>();
       return _buildAsyncBuilder(b);
     }
 
-    // New path: use BlocScope with lease holder for proper lifecycle management.
+    // BlocScope: a lease holder owns the bloc for the widget's lifetime.
     // The lease holder ensures the bloc instance exists before building.
     return _BlocLeaseHolder<TBloc>(
       scope: scope,
@@ -142,7 +141,7 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// Creates a widget that observes two blocs for state changes.
   ///
   /// [key] - Optional widget key.
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
   /// [scope1] - Optional scope key for first bloc.
   /// [scope2] - Optional scope key for second bloc.
@@ -171,7 +170,7 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   /// Optional scope key for second bloc.
   final Object? scope2;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// First bloc instance observed by this widget.
@@ -197,13 +196,13 @@ abstract class StatelessJuiceWidget2<TBloc1 extends JuiceBloc<BlocState>,
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: resolve once and pass to builder
+      // A resolver: resolve once and pass to the builder
       final b1 = _customResolver.resolve<TBloc1>();
       final b2 = _customResolver.resolve<TBloc2>();
       return _buildAsyncBuilder(b1, b2);
     }
 
-    // New path: use BlocScope with lease holders
+    // BlocScope: lease holders own the blocs for the widget's lifetime.
     return _BlocLeaseHolder2<TBloc1, TBloc2>(
       scope1: scope1,
       scope2: scope2,
@@ -265,7 +264,7 @@ abstract class StatelessJuiceWidget3<
   /// Creates a widget that observes three blocs for state changes.
   ///
   /// [key] - Optional widget key.
-  /// [resolver] - Optional custom bloc resolver (legacy). If not provided, uses BlocScope.
+  /// [resolver] - Optional bloc resolver. If not provided, uses BlocScope.
   /// [groups] - Set of rebuild group names that control when this widget rebuilds.
   /// [scope1] - Optional scope key for first bloc.
   /// [scope2] - Optional scope key for second bloc.
@@ -295,7 +294,7 @@ abstract class StatelessJuiceWidget3<
   final Object? scope2;
   final Object? scope3;
 
-  /// Custom resolver for legacy compatibility.
+  /// The resolver, when not BlocScope.
   final BlocDependencyResolver? _customResolver;
 
   /// First bloc instance observed by this widget.
@@ -330,14 +329,14 @@ abstract class StatelessJuiceWidget3<
   @mustCallSuper
   Widget build(BuildContext context) {
     if (_customResolver != null) {
-      // Legacy path: resolve once and pass to builder
+      // A resolver: resolve once and pass to the builder
       final b1 = _customResolver.resolve<TBloc1>();
       final b2 = _customResolver.resolve<TBloc2>();
       final b3 = _customResolver.resolve<TBloc3>();
       return _buildAsyncBuilder(b1, b2, b3);
     }
 
-    // New path: use BlocScope with lease holders
+    // BlocScope: lease holders own the blocs for the widget's lifetime.
     return _BlocLeaseHolder3<TBloc1, TBloc2, TBloc3>(
       scope1: scope1,
       scope2: scope2,

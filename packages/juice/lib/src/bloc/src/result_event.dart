@@ -6,11 +6,6 @@ import 'juice_bloc.dart';
 import 'stream_status.dart';
 
 // Events that return a typed value, and the one way to await them.
-//
-// Promoted to core in 1.9.0 from juice_storage (StorageResultEvent,
-// OperationResult, sendAndWaitResult/sendForResult), where it was the complete
-// version of a pattern the family had re-derived four ways. juice_storage now
-// builds on these.
 
 /// Base class for events that return typed results.
 ///

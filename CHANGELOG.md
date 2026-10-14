@@ -1,5 +1,9 @@
 # Changelog
 
+This file is the pre-monorepo history of the `juice` package (up to 1.1.3).
+Every package's current changelog lives at `packages/<package>/CHANGELOG.md`;
+the core's is `packages/juice/CHANGELOG.md`.
+
 ## [1.1.3] - 2025-01-10
 
 ### Fixes

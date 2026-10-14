@@ -53,8 +53,17 @@ class LifecycleBloc extends JuiceBloc<LifecycleState> {
           'LifecycleBloc is not initialized: send InitializeLifecycleEvent '
           '(or use LifecycleBloc.withConfig) first'));
 
-  /// Store config during initialization.
-  void configure(LifecycleConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeLifecycleEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(LifecycleConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'LifecycleBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// Subscribe to provider changes. The bloc owns the binding: a second
   /// start replaces the first, and close cancels it before the use cases

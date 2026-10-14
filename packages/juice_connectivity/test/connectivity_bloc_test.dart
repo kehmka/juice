@@ -320,7 +320,46 @@ void main() {
       await settle();
       await Future.wait([bloc.close(), bloc.close()]);
       await bloc.close();
+      expect(bloc.activeBindingCount, 0);
       expect(p.log.where((e) => e == 'dispose').length, 1);
+    });
+
+    test(
+        'a second initialization after the first is refused; the first '
+        'provider stays', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final first = FakeConnectivityProvider();
+      final second = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(cfg(first));
+      await settle();
+      await bloc.send(InitializeConnectivityEvent(config: cfg(second)));
+      await settle();
+      // Two entries by the 2.0 contract: the span's `use_case_error` and the
+      // `bloc_error`.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('already initialized')));
+      expect(bloc.provider, same(first));
+      await bloc.close();
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse, reason: 'never owned');
+    });
+
+    test('close during the first check still disposes the provider', () async {
+      final p = FakeConnectivityProvider();
+      final gate = Completer<ConnectivitySnapshot>();
+      p.checkGate = gate;
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle(1); // configured, listening, waiting on the check
+      final closing = bloc.close();
+      await settle(1);
+      p.checkGate = null;
+      gate.complete(const ConnectivitySnapshot(type: ConnectionType.none));
+      await closing;
+      expect(p.disposed, isTrue);
+      expect(p.log, ['listen', 'cancel', 'dispose']);
     });
   });
 }

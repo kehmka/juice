@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once).
 - `service` / `config` before `InitializeNotificationsEvent` throw a named
   `StateError` instead of a late-initialisation error.
+- A second `InitializeNotificationsEvent` after the first completed is refused
+  with a `StateError` through the use case's error path (logged as
+  `use_case_error` and `bloc_error`); the bloc owns one service for its life,
+  and the first stays live. Before, the config was silently replaced and the
+  first service never disposed.
+- `close()` waits for a service operation still in flight (a schedule, a cancel)
+  before disposing the service.
 
 ## [0.2.0] - 2026-08-12
 

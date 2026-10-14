@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uninitialised bloc closes cleanly; a second `close()` awaits the first.
 - `source` / `uploader` / `config` before `InitializeMediaEvent` throw a named
   `StateError` instead of a late-initialisation error.
+- A second `InitializeMediaEvent` after the first completed is refused with a
+  `StateError` through the use case's error path (logged as `use_case_error` and
+  `bloc_error`); the bloc owns one source for its life, and the first stays
+  live. Before, the config was silently replaced and the first source never
+  disposed.
+- Stale upload callbacks are dropped by handle identity, not item id: a
+  cancelled upload's late result error can no longer fail a new upload of the
+  same item started meanwhile. `beginUpload` refuses a second live upload of the
+  same item with a `StateError` (the use case already guards by state).
 
 ## [0.6.0] - 2026-09-16
 

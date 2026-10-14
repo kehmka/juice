@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `error` group). Before, the state kept saying `tracking: true`.
 - `source` / `config` before `InitializeLocationEvent` throw a named
   `StateError` instead of a late-initialisation error.
+- A second `InitializeLocationEvent` after the first completed is refused with a
+  `StateError` through the use case's error path (logged as `use_case_error` and
+  `bloc_error`); the bloc owns one source for its life, and the first stays
+  live. Before, the config was silently replaced and the first source never
+  disposed.
 
 ## [0.2.0] - 2026-08-12
 

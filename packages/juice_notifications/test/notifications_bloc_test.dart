@@ -304,7 +304,54 @@ void main() {
       await settle();
       await Future.wait([bloc.close(), bloc.close()]);
       await bloc.close();
+      expect(bloc.activeBindingCount, 0);
       expect(svc.log.where((e) => e == 'dispose').length, 1);
+    });
+
+    test(
+        'a second initialization after the first is refused; the first '
+        'provider stays', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final first = FakeNotificationService();
+      final second = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: first));
+      await settle();
+      await bloc.send(InitializeNotificationsEvent(
+          config: NotificationsConfig(service: second)));
+      await settle();
+      // Two entries by the 2.0 contract: the span's `use_case_error` and the
+      // `bloc_error`.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('already initialized')));
+      expect(bloc.service, same(first));
+      await bloc.close();
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse, reason: 'never owned');
+    });
+
+    test('close waits for an in-flight service operation before disposing',
+        () async {
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      svc.scheduleGate = Completer<void>();
+      bloc.schedule(notif(1), DateTime(2030));
+      await settle();
+      expect(svc.operations.last, 'schedule:1:start');
+
+      final closing = bloc.close();
+      await settle();
+      expect(svc.disposed, isFalse, reason: 'the schedule is still running');
+
+      svc.scheduleGate!.complete();
+      await closing;
+      expect(svc.disposed, isTrue);
+      expect(svc.operations.last, 'schedule:1:end');
     });
   });
 }

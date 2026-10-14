@@ -69,8 +69,17 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
           'InitializeConnectivityEvent (or use ConnectivityBloc.withConfig) '
           'first'));
 
-  /// Store config during initialization.
-  void configure(ConnectivityConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeConnectivityEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(ConnectivityConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'ConnectivityBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// Subscribe to provider changes, debounced to absorb network flapping.
   /// The bloc owns the binding: a second start replaces the first, and

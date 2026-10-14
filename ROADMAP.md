@@ -748,12 +748,17 @@ realtime) → 2 auth, network, i18n, sync, theme → 3 auth_network,
 auth_routing. Skip llm_llamacpp (unchanged, in range), lint / examples /
 devtools extension (`publish_to: none`). Before: date the 24 `unreleased`
 headings, push, let CI run the lint gate; after: tag `<pkg>-v<ver>` and
-push tags. Pre-existing, left for a ruling: a second `Initialize…Event`
-after the first completed replaces the config and never disposes the old
-provider (all six); realtime's `openConnection` drops a stale
-connection's close error silently; media's stale-callback guard checks
-the item id, not the handle; notifications' close disposes the service
-without awaiting an in-flight service operation.
+push tags. The pre-existing items the review surfaced are fixed too
+(Kevin 2026-10-13: "fix everything the reviews found"): a second
+`Initialize…Event` after the first completed is refused loudly (seven
+blocs; the first provider stays owned); realtime logs a superseded
+attempt's failure; media drops stale callbacks by handle identity and
+`beginUpload` refuses a live duplicate; notifications' close drains the
+in-flight service operation before disposing; the example directories
+keep `pubspec_overrides.yaml` out of the archives; the two app lockfiles
+are refreshed; the untagged past publishes are tagged retroactively at
+their version-bump commits (annotated as such; delete before `git push
+--tags` if a tag should not exist).
 
 ### Sequence
 

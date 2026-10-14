@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `startPolling` cancels the previous poll timer before starting another.
 - `provider` / `config` before `InitializePowerEvent` throw a named `StateError`
   instead of a late-initialisation error.
+- A second `InitializePowerEvent` after the first completed is refused with a
+  `StateError` through the use case's error path (logged as `use_case_error` and
+  `bloc_error`); the bloc owns one provider for its life, and the first stays
+  live. Before, the config was silently replaced and the first provider never
+  disposed.
 
 ## [0.1.0] - 2026-07-25
 

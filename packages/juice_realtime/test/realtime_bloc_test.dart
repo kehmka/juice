@@ -424,8 +424,74 @@ void main() {
       await settle();
       await Future.wait([bloc.close(), bloc.close()]);
       await bloc.close();
+      expect(bloc.activeBindingCount, 0);
       expect(conn.disposeCalls, 1);
       expect(conn.latest.closeCalls, 1);
+    });
+
+    test(
+        'a second initialization after the first is refused; the first '
+        'provider stays', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final first = FakeRealtimeConnector();
+      final second = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(first));
+      await settle();
+      await bloc.send(InitializeRealtimeEvent(config: cfg(second)));
+      await settle();
+      // Two entries by the 2.0 contract: the span's `use_case_error` and the
+      // `bloc_error`.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('already initialized')));
+      expect(bloc.config.connector, same(first));
+      await bloc.close();
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse, reason: 'never owned');
+    });
+
+    test('a connect that resolves after close closes the socket; one close',
+        () async {
+      final gate = Completer<void>();
+      final conn = FakeRealtimeConnector()..connectGate = gate;
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+
+      final closing = bloc.close();
+      await settle();
+      gate.complete();
+      await closing;
+      await settle();
+      expect(conn.connections.single.closeCalls, 1);
+      expect(conn.connections.single.log, ['close'], reason: 'never bound');
+      expect(bloc.hasConnection, isFalse);
+    });
+
+    test('a superseded connection attempt that fails is logged, not dropped',
+        () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final gate = Completer<void>();
+      final conn = FakeRealtimeConnector()
+        ..connectGate = gate
+        ..failConnect = true;
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+      bloc.disconnect(); // supersedes the pending attempt
+      await settle();
+      gate.complete();
+      await settle();
+      expect(log.errors.single, contains('connect failed'));
+      expect(bloc.state.status, RealtimeStatus.disconnected);
+      await bloc.close();
     });
   });
 }

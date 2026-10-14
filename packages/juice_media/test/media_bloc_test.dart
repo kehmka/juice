@@ -68,11 +68,18 @@ class FakeMediaUpload implements MediaUpload {
   Stream<double> get progress => _progress.stream;
   @override
   Future<String> get result => _result.future;
+
+  /// A real uploader fails the result on cancel a tick or more later; false
+  /// lets a test deliver that late failure itself.
+  bool failResultOnCancel = true;
+
   @override
   void cancel() {
     log.add('handle-cancel');
     cancelled = true;
-    if (!_result.isCompleted) _result.completeError(StateError('cancelled'));
+    if (failResultOnCancel && !_result.isCompleted) {
+      _result.completeError(StateError('cancelled'));
+    }
   }
 }
 
@@ -241,6 +248,8 @@ void main() {
       await settle();
 
       expect(up.uploads['a']!.cancelled, isTrue);
+      expect(up.uploads['a']!.log, ['listen', 'handle-cancel', 'cancel'],
+          reason: 'the handle is cancelled, then its progress binding unbound');
       expect(bloc.state.uploads['a']!.status, UploadStatus.cancelled);
       await bloc.close();
     });
@@ -530,7 +539,78 @@ void main() {
       await settle();
       await Future.wait([bloc.close(), bloc.close()]);
       await bloc.close();
+      expect(bloc.activeBindingCount, 0);
       expect(src.disposeCalls, 1);
+    });
+
+    test(
+        'a second initialization after the first is refused; the first '
+        'provider stays', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final first = FakeMediaSource();
+      final second = FakeMediaSource();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: first));
+      await settle();
+      await bloc
+          .send(InitializeMediaEvent(config: MediaConfig(source: second)));
+      await settle();
+      // Two entries by the 2.0 contract: the span's `use_case_error` and the
+      // `bloc_error`.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('already initialized')));
+      expect(bloc.source, same(first));
+      await bloc.close();
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse, reason: 'never owned');
+    });
+
+    test(
+        'a cancelled upload\'s late failure never touches a re-upload of '
+        'the same item', () async {
+      final src = FakeMediaSource([img('a')]);
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      bloc.pickFromGallery();
+      await settle();
+      bloc.upload('a');
+      await settle();
+      final first = up.uploads['a']!..failResultOnCancel = false;
+
+      bloc.cancelUpload('a');
+      await settle();
+      expect(bloc.state.uploads['a']!.status, UploadStatus.cancelled);
+      bloc.upload('a');
+      await settle();
+      final second = up.uploads['a']!;
+      expect(identical(first, second), isFalse);
+      expect(bloc.state.uploads['a']!.status, UploadStatus.uploading);
+
+      first.fail(StateError('cancelled, late'));
+      await settle();
+      expect(bloc.state.uploads['a']!.status, UploadStatus.uploading,
+          reason: 'the stale handle\'s error is not the new upload\'s');
+      second.emit(0.5);
+      await settle();
+      expect(bloc.state.uploads['a']!.progress, 0.5);
+      await bloc.close();
+    });
+
+    test('beginUpload refuses a second live upload of the same item', () async {
+      final src = FakeMediaSource([img('a')]);
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      bloc.pickFromGallery();
+      await settle();
+      bloc.upload('a');
+      await settle();
+      expect(() => bloc.beginUpload(img('a')), throwsStateError);
+      expect(up.uploads.length, 1);
+      await bloc.close();
     });
   });
 }

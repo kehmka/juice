@@ -180,7 +180,9 @@ step-by-step guide is
   replaced only when the key changes; `where` filters items live.
 - **`UseCase.navigate`** (`@internal`) — the navigation half of
   `emitUpdate(aviatorName:)`, wired by the executor; inline use cases
-  navigate through it, under the restartable fence.
+  navigate through it, under the restartable fence. A wrapper use case
+  that forwards an inner use case's emits by hand must forward `navigate`
+  too if the inner one navigates directly.
 - **`JuiceTelemetry`, `JuiceTelemetryKind`, `EmissionKind`** — the typed
   telemetry vocabulary (`packages/juice/doc/TELEMETRY.md`); `EmissionKind`
   is the `status` an emission entry carries (`update`, `waiting`,

@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   second `close()` awaits the first.
 - `config` before `InitializeRealtimeEvent` throws a named `StateError` instead
   of a late-initialisation error.
+- A second `InitializeRealtimeEvent` after the first completed is refused with a
+  `StateError` through the use case's error path (logged as `use_case_error` and
+  `bloc_error`); the bloc owns one connector for its life, and the first stays
+  live. Before, the config was silently replaced and the first connector never
+  disposed.
+- A connection attempt that fails after it was superseded (a disconnect, a
+  reconnect or close overtook it) is logged as a bloc error; before, the failure
+  was dropped.
 
 ## [0.2.0] - 2026-08-12
 

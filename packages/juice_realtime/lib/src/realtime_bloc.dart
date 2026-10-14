@@ -90,7 +90,17 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
 
   // === Config (used by use cases) ===
 
-  void configure(RealtimeConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeRealtimeEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(RealtimeConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'RealtimeBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// The config [InitializeRealtimeEvent] applied. Throws before that.
   RealtimeConfig get config =>
@@ -193,12 +203,20 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
           connectionEpoch: connectionEpoch,
         ));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (isCurrentConnectionEpoch(connectionEpoch)) {
         await send(ConnectionLostEvent(
           e,
           connectionEpoch: connectionEpoch,
         ));
+      } else {
+        // The attempt was superseded (disconnect, reconnect, close) before it
+        // failed: nobody is waiting for it, but the failure is not swallowed.
+        JuiceLoggerConfig.logger.logError(
+            'RealtimeBloc: a superseded connection attempt failed',
+            e,
+            stackTrace,
+            context: {'type': 'bloc_error', 'bloc': 'RealtimeBloc'});
       }
     }
   }

@@ -86,8 +86,17 @@ class LocationBloc extends JuiceBloc<LocationState> {
           'LocationBloc is not initialized: send InitializeLocationEvent '
           '(or use LocationBloc.withConfig) first'));
 
-  /// Store config during initialization.
-  void configure(LocationConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeLocationEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(LocationConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'LocationBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// Subscribe to the position stream (called by [StartTrackingEvent]).
   /// The bloc owns the binding: a second start replaces the first, and

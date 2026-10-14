@@ -88,8 +88,17 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
           'InitializeNotificationsEvent (or use NotificationsBloc.withConfig) '
           'first'));
 
-  /// Store config during initialization.
-  void configure(NotificationsConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeNotificationsEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(NotificationsConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'NotificationsBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// Run one service mutation at a time across every notification event type.
   ///
@@ -158,6 +167,9 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
     await closing;
     final config = _config;
     if (config == null) return;
+    // A service operation still in flight (a schedule, a cancel) finishes
+    // before the service it runs on is disposed.
+    await _serviceOperationTail;
     try {
       await config.service.dispose();
     } catch (error, stackTrace) {

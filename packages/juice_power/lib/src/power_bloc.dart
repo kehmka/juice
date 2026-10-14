@@ -77,8 +77,17 @@ class PowerBloc extends JuiceBloc<PowerState> {
           'PowerBloc is not initialized: send InitializePowerEvent '
           '(or use PowerBloc.withConfig) first'));
 
-  /// Store config during initialization.
-  void configure(PowerConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializePowerEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(PowerConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'PowerBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
 
   /// Subscribe to provider changes.
   ///

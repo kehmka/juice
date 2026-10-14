@@ -120,7 +120,18 @@ class MediaBloc extends JuiceBloc<MediaState> {
 
   // === Config (used by use cases) ===
 
-  void configure(MediaConfig config) => _config = config;
+  /// Store the config during initialization. One per bloc: a second
+  /// `InitializeMediaEvent` after the first completed is refused here (the
+  /// first provider stays owned and live), loudly, through the use case's
+  /// error path.
+  void configure(MediaConfig config) {
+    if (_config != null) {
+      throw StateError(
+          'MediaBloc is already initialized; it owns one config for its life');
+    }
+    _config = config;
+  }
+
   MediaSource get source => config.source;
   MediaUploader? get uploader => config.uploader;
 
@@ -139,34 +150,32 @@ class MediaBloc extends JuiceBloc<MediaState> {
   /// unbound by [cleanupUpload], ended by a stream error (which fails the
   /// upload).
   void beginUpload(MediaItem item) {
+    if (_active.containsKey(item.id)) {
+      throw StateError('MediaBloc: an upload is already active for ${item.id}');
+    }
     final handle = uploader!.upload(item);
     _active[item.id] = handle;
-    // The `_active` membership guard drops stale callbacks: a cancel cleans up
-    // *before* the handle's result errors, so a cancelled upload's error never
-    // overwrites the cancelled status (cleanup-before-callback). A real
-    // completion/failure fires before its use case cleans up, so it passes.
+    // The identity guard drops stale callbacks: a cancel cleans up *before*
+    // the handle's result errors, so a cancelled upload's error never
+    // overwrites the cancelled status — and never fails a NEW upload of the
+    // same item that started meanwhile (the guard is the handle, not the id).
+    // A real completion/failure fires before its use case cleans up, so it
+    // passes.
+    bool live() => identical(_active[item.id], handle);
     bindStream<double>(
       handle.progress,
       (p) {
-        if (_active.containsKey(item.id)) {
-          send(UploadProgressEvent(item.id, p));
-        }
+        if (live()) send(UploadProgressEvent(item.id, p));
       },
       key: _progressKey(item.id),
       onError: (e, _) {
-        if (_active.containsKey(item.id)) {
-          send(UploadFailedEvent(item.id, e));
-        }
+        if (live()) send(UploadFailedEvent(item.id, e));
       },
     );
     handle.result.then((url) {
-      if (!isClosing && _active.containsKey(item.id)) {
-        send(UploadCompletedEvent(item.id, url));
-      }
+      if (!isClosing && live()) send(UploadCompletedEvent(item.id, url));
     }).catchError((Object e) {
-      if (!isClosing && _active.containsKey(item.id)) {
-        send(UploadFailedEvent(item.id, e));
-      }
+      if (!isClosing && live()) send(UploadFailedEvent(item.id, e));
     });
   }
 

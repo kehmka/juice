@@ -6,23 +6,20 @@ import 'package:juice/juice.dart';
 /// the Dart VM's extension-event stream (`dart:developer` `postEvent`), where
 /// DevTools and any VM-service listener can consume them live.
 ///
-/// The framework already attaches a structured `context` map — with a `type`
-/// discriminator — at every load-bearing point: `use_case_execution`,
-/// `state_emission`, `state_emission_skipped`, `bloc_lifecycle`,
-/// `use_case_completed`, `event_subscription`, `unhandled_event`,
-/// `use_case_error`, `bloc_error`,
-/// `error_handler_error`, `leak_detection`. This logger is a mirror on that
-/// existing seam, not new instrumentation: every typed entry is posted as an
-/// extension event of kind `juice:<type>`; untyped chatter stays
-/// console-only. Errors without a typed context post as `juice:error` —
-/// an error is always worth surfacing.
+/// The framework hands every load-bearing entry to [record] as a typed
+/// [JuiceTelemetry] (juice ≥ 2.0.0): the use-case span, every emission,
+/// lifecycle, bindings, errors — see [JuiceTelemetryKind]. This logger is a
+/// mirror on that seam, not new instrumentation: every entry is posted as an
+/// extension event of kind `juice:<type>` with the entry's fields. Free-form
+/// lines ([log] / [logError]) post only when their context carries a
+/// `type`; untyped chatter stays console-only. Errors without a type post as
+/// `juice:error` — an error is always worth surfacing.
 ///
 /// SPANS: from juice 1.7.0 the core logs a `use_case_completed` end entry
 /// (and stamps `use_case_error`) sharing the start's `executionId`, with
 /// `elapsedMicros` — so a consumer can pair `juice:use_case_execution` with
 /// its end event into an honest duration span, even when same-type events
-/// overlap under `concurrent`. (`use_case_error` has two sources sharing
-/// the type; the span-closing one carries `executionId`.)
+/// overlap under `concurrent`.
 ///
 /// COST FOLLOWS THE LISTENER (0.5.1, juice ≥ 1.10.0): this logger declares
 /// its level ([LevelAwareJuiceLogger]) and builds payloads only while the
@@ -86,6 +83,23 @@ class DevtoolsJuiceLogger implements LevelAwareJuiceLogger {
   /// document. Values are capped, not dropped — the head of a state dump is
   /// the useful part.
   static const int maxFieldLength = 512;
+
+  /// The framework's telemetry: posted as `juice:<type>` with the entry's
+  /// fields (its pre-2.0 map shape, `type` stripped), message and level,
+  /// plus `error` / `stackTrace` for error entries. Built only with a
+  /// listener.
+  @override
+  void record(JuiceTelemetry entry) {
+    _inner.record(entry);
+    if (!_hasListener()) return;
+    final error = entry.error;
+    _post('juice:${entry.kind.type}', {
+      ..._payload(entry.message, entry.level, entry.toMap()),
+      if (error != null) 'error': _clip(error.toString()),
+      if (entry.stackTrace != null)
+        'stackTrace': _clip(entry.stackTrace.toString()),
+    });
+  }
 
   @override
   void log(String message,

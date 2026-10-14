@@ -303,7 +303,7 @@ void main() {
       await b.close();
       final close = log.entries.firstWhere(
           (e) => e['type'] == 'bloc_lifecycle' && e['action'] == 'close');
-      expect(close['streamBindings'], 1);
+      expect(close['count'], 1);
       await c.close();
     });
   });

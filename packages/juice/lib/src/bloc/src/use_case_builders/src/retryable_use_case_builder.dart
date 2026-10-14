@@ -1,5 +1,6 @@
 import '../../../bloc.dart';
 import '../../core/restartable_run.dart';
+import '../../core/type_names.dart';
 
 /// Callback invoked before each retry attempt.
 ///
@@ -202,14 +203,11 @@ class _RetryableUseCase<
         // The bloc closed during the backoff (the user left): re-running the
         // work against a dead bloc is pointless and has side effects.
         if (bloc.isClosed || bloc.isClosing) {
-          JuiceLoggerConfig.logger.log(
-            'Retry abandoned: bloc closed',
-            context: {
-              'type': 'retry_abandoned',
-              'attempt': attempt,
-              'bloc': bloc.runtimeType.toString(),
-            },
-          );
+          JuiceLoggerConfig.logger.record(JuiceTelemetry(
+            JuiceTelemetryKind.retryAbandoned,
+            attempt: attempt,
+            bloc: typeName(bloc.runtimeType),
+          ));
           return;
         }
       }

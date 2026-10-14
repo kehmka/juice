@@ -10,6 +10,9 @@ import '../test_helpers.dart';
 /// what lets a DevTools consumer draw honest duration spans, including when
 /// two events of the same type overlap under `concurrent`.
 class _RecordingLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) => entries.add(e.toMap());
+
   final entries = <Map<String, dynamic>>[];
 
   @override

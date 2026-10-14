@@ -264,7 +264,8 @@ class _EmissionMatcher<S> extends m.Matcher {
 }
 
 /// Forwards everything to the app's logger while counting what juiceTest
-/// asserts on: use-case error spans and emissions after close.
+/// asserts on: use-case spans and errors, binding errors, emissions after
+/// close.
 class _RecordingLogger implements JuiceLogger {
   _RecordingLogger(this._inner);
   final JuiceLogger _inner;
@@ -274,31 +275,34 @@ class _RecordingLogger implements JuiceLogger {
   int emissionsAfterClose = 0;
 
   @override
-  void log(String message,
-      {Level level = Level.info, Map<String, dynamic>? context}) {
-    switch (context?['type']) {
-      case 'emission_after_close':
+  void record(JuiceTelemetry entry) {
+    switch (entry.kind) {
+      case JuiceTelemetryKind.emissionAfterClose:
         emissionsAfterClose++;
-      case 'use_case_execution':
-        openSpans.add(context!['executionId']);
-      case 'use_case_completed':
-        openSpans.remove(context!['executionId']);
+      case JuiceTelemetryKind.useCaseStarted:
+        openSpans.add(entry.executionId);
+      case JuiceTelemetryKind.useCaseCompleted:
+        openSpans.remove(entry.executionId);
+      case JuiceTelemetryKind.useCaseFailed:
+        useCaseErrors.add(entry.error!);
+        openSpans.remove(entry.executionId);
+      case JuiceTelemetryKind.streamBindingError ||
+            JuiceTelemetryKind.streamBindingCallbackError ||
+            JuiceTelemetryKind.streamBindingCancelError:
+        useCaseErrors.add(entry.error!);
+      default:
+        break;
     }
-    _inner.log(message, level: level, context: context);
+    _inner.record(entry);
   }
 
   @override
+  void log(String message,
+          {Level level = Level.info, Map<String, dynamic>? context}) =>
+      _inner.log(message, level: level, context: context);
+
+  @override
   void logError(String message, Object error, StackTrace stackTrace,
-      {Map<String, dynamic>? context}) {
-    // The executor's span-closer carries executionId; BlocErrorHandler's
-    // summary shares the type without it (AGENTS §4b) — count each error once.
-    if (context?['type'] == 'use_case_error' &&
-        context!.containsKey('executionId')) {
-      useCaseErrors.add(error);
-      openSpans.remove(context['executionId']);
-    } else if (context?['type'] == 'stream_binding') {
-      useCaseErrors.add(error);
-    }
-    _inner.logError(message, error, stackTrace, context: context);
-  }
+          {Map<String, dynamic>? context}) =>
+      _inner.logError(message, error, stackTrace, context: context);
 }

@@ -298,6 +298,43 @@ Future<List<BreakdownRow>> _once(int n) async {
     throw StateError('the synthetic maps were not built: $keys keys');
   }
 
+  // 3a. The same three entries as typed records (what 2.0.0 builds): one
+  //     object each, no map, names from the memo.
+  var ids = 0;
+  rows.add(
+    BreakdownRow(
+      'telemetry records (3 per event)',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        final useCaseName = typeName(uc.runtimeType);
+        final eventName = typeName(ev.runtimeType);
+        final start = JuiceTelemetry(
+          JuiceTelemetryKind.useCaseStarted,
+          useCase: useCaseName,
+          event: eventName,
+          executionId: i,
+        );
+        final emission = JuiceTelemetry(
+          JuiceTelemetryKind.stateEmitted,
+          status: 'update',
+          state: i,
+          bloc: '_FreshBloc',
+          groups: const {'g'},
+          event: eventName,
+        );
+        final end = JuiceTelemetry(
+          JuiceTelemetryKind.useCaseCompleted,
+          useCase: useCaseName,
+          event: eventName,
+          executionId: i,
+          elapsedMicros: i,
+        );
+        ids += start.executionId! + end.executionId! + (emission.state as int);
+      }),
+    ),
+  );
+  if (ids == 0 && n > 1) throw StateError('the records were not built');
+
   // 3b. The per-send allocations the send path makes besides the maps
   //     (synthetic, each alone): the three Type.toString() calls (event
   //     name, use-case name in the executor, use-case name in BlocUseCase's

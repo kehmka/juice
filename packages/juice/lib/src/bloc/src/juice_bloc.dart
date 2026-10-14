@@ -12,6 +12,8 @@ import 'cancellable_event.dart';
 import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
 import 'stream_binding.dart';
+import 'telemetry.dart';
+import 'core/type_names.dart';
 import 'use_case_builders/use_case_builder.dart';
 import 'aviators/aviator.dart';
 import 'core/state_manager.dart';
@@ -106,6 +108,9 @@ class JuiceBloc<TState extends BlocState>
   /// Internal logger instance
   final JuiceLogger _logger;
 
+  /// This bloc's type name, for telemetry.
+  late final String _name = typeName(runtimeType);
+
   final BlocErrorHandler _errorHandler;
 
   // ============================================================
@@ -180,12 +185,14 @@ class JuiceBloc<TState extends BlocState>
       try {
         callback();
       } catch (error, stackTrace) {
-        _logger.logError(
-            'Stream binding $callbackName threw', error, stackTrace,
-            context: {
-              ..._bindingContext('callback_error', key),
-              'callback': callbackName,
-            });
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.streamBindingCallbackError,
+          bloc: _name,
+          key: key,
+          callback: callbackName,
+          error: error,
+          stackTrace: stackTrace,
+        ));
         this.onError(error, stackTrace);
       }
     }
@@ -194,8 +201,13 @@ class JuiceBloc<TState extends BlocState>
       if (onError != null) {
         guarded('onError', () => onError(error, stackTrace));
       } else {
-        _logger.logError('Stream binding error', error, stackTrace,
-            context: _bindingContext('error', key));
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.streamBindingError,
+          bloc: _name,
+          key: key,
+          error: error,
+          stackTrace: stackTrace,
+        ));
         this.onError(error, stackTrace);
       }
       if (cancelOnError) _cancelLogged(binding, 'on error');
@@ -210,8 +222,8 @@ class JuiceBloc<TState extends BlocState>
       onDone: () {
         StreamBinding.finish(binding);
         if (JuiceLoggerConfig.logs(Level.info)) {
-          _logger.log('Stream binding done',
-              context: _bindingContext('done', key));
+          _logger.record(JuiceTelemetry(JuiceTelemetryKind.streamBindingDone,
+              bloc: _name, key: key));
         }
         if (onDone != null) guarded('onDone', onDone);
       },
@@ -222,17 +234,11 @@ class JuiceBloc<TState extends BlocState>
     run?.bindings.add(binding);
     if (key != null) _keyedBindings[key] = binding;
     if (JuiceLoggerConfig.logs(Level.info)) {
-      _logger.log('Stream bound', context: _bindingContext('bind', key));
+      _logger.record(JuiceTelemetry(JuiceTelemetryKind.streamBound,
+          bloc: _name, key: key));
     }
     return binding;
   }
-
-  Map<String, dynamic> _bindingContext(String action, String? key) => {
-        'type': 'stream_binding',
-        'action': action,
-        'bloc': runtimeType.toString(),
-        'key': key,
-      };
 
   /// A binding `bindStream` will not create: logged as `stream_binding` /
   /// `refused` with the [reason], returned inert (already done, never
@@ -240,10 +246,13 @@ class JuiceBloc<TState extends BlocState>
   StreamBinding<T> _refuseBinding<T>(String? key, String reason,
       {Level level = Level.info}) {
     if (JuiceLoggerConfig.logs(level)) {
-      _logger.log('Stream binding refused: $reason', level: level, context: {
-        ..._bindingContext('refused', key),
-        'reason': reason,
-      });
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.streamBindingRefused,
+        level: level,
+        bloc: _name,
+        key: key,
+        reason: reason,
+      ));
     }
     return StreamBinding.inert<T>(key);
   }
@@ -275,8 +284,14 @@ class JuiceBloc<TState extends BlocState>
     try {
       await b.cancel();
     } catch (e, st) {
-      _logger.logError('Stream binding cancel failed $where', e, st,
-          context: _bindingContext('cancel_error', b.key));
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.streamBindingCancelError,
+        bloc: _name,
+        key: b.key,
+        reason: where,
+        error: e,
+        stackTrace: st,
+      ));
     }
   }
 
@@ -351,18 +366,12 @@ class JuiceBloc<TState extends BlocState>
     // here — one microtask hop less per send. The executor keeps the one
     // structural await (it closes the span).
     if (isClosed || _closing) {
-      _logger.log(
-        isClosed
-            ? 'Event ignored: bloc is closed'
-            : 'Event ignored: bloc is closing',
-        level: Level.warning,
-        context: {
-          'type': 'bloc_lifecycle',
-          'action': 'event_ignored',
-          'bloc': runtimeType.toString(),
-          'event': event.runtimeType.toString(),
-        },
-      );
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventIgnored,
+        bloc: _name,
+        event: typeName(event.runtimeType),
+        reason: isClosed ? 'bloc is closed' : 'bloc is closing',
+      ));
       return Future<void>.value();
     }
     return _dispatcher.dispatch(event);
@@ -525,11 +534,13 @@ class JuiceBloc<TState extends BlocState>
   @protected
   @mustCallSuper
   void onError(Object error, StackTrace stackTrace) {
-    _logger.logError('Bloc error', error, stackTrace, context: {
-      'type': 'bloc_error',
-      'bloc': runtimeType.toString(),
-      'state': state.toString(),
-    });
+    _logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.blocError,
+      bloc: _name,
+      state: state,
+      error: error,
+      stackTrace: stackTrace,
+    ));
 
     try {
       _errorHandler.handleError(
@@ -538,11 +549,12 @@ class JuiceBloc<TState extends BlocState>
         stackTrace: stackTrace,
       );
     } catch (e, handlerStackTrace) {
-      _logger.logError('Error in custom errorHandler', e, handlerStackTrace,
-          context: {
-            'type': 'error_handler_error',
-            'bloc': runtimeType.toString()
-          });
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.errorHandlerFailed,
+        bloc: _name,
+        error: e,
+        stackTrace: handlerStackTrace,
+      ));
     }
   }
 
@@ -561,12 +573,11 @@ class JuiceBloc<TState extends BlocState>
     if (isClosed) return;
     _closing = true;
 
-    _logger.log('Closing bloc', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'close',
-      'bloc': runtimeType.toString(),
-      'streamBindings': _bindings.length,
-    });
+    _logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.blocClosing,
+      bloc: _name,
+      count: _bindings.length,
+    ));
 
     await _cancelBindings();
     for (final fail in _pendingWaits.toList()) {
@@ -735,12 +746,12 @@ class JuiceBloc<TState extends BlocState>
     bool fenced(String status) {
       if (!run.isSuperseded) return false;
       if (JuiceLoggerConfig.logs(Level.info)) {
-        _logger.log('Emission dropped: use case superseded', context: {
-          'type': 'state_emission_superseded',
-          'bloc': runtimeType.toString(),
-          'event': event.runtimeType.toString(),
-          'status': status,
-        });
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.emissionSuperseded,
+          bloc: _name,
+          event: typeName(event.runtimeType),
+          status: status,
+        ));
       }
       return true;
     }
@@ -786,12 +797,13 @@ class JuiceBloc<TState extends BlocState>
 
   void _handleUnhandledEvent(EventBase event) {
     final message = 'No use case registered for ${event.runtimeType}';
-    _logger
-        .logError(message, StateError(message), StackTrace.current, context: {
-      'type': 'unhandled_event',
-      'bloc': runtimeType.toString(),
-      'event': event.runtimeType.toString(),
-    });
+    _logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.unhandledEvent,
+      bloc: _name,
+      event: typeName(event.runtimeType),
+      error: StateError(message),
+      stackTrace: StackTrace.current,
+    ));
     _errorHandler.handleError(message);
   }
 

@@ -1,28 +1,40 @@
 import "../../../juice.dart";
 
-/// Interface for logging functionality in Juice framework.
+/// Where Juice's output goes.
 ///
-/// Provides a standard logging interface that can be implemented to support
-/// different logging backends or configurations.
+/// Three entry points, two vocabularies:
 ///
-/// **The contract for implementers (juice ≥ 1.9.1).** The framework calls
-/// [log] on every use-case execution and every state emission, in every
-/// build mode, and it passes context values as **live objects** — the
-/// emission's `'state'` is the state itself and `'groups'` is the caller's
-/// set — precisely so that a logger which drops a line pays nothing for it.
-/// Two consequences:
+/// - [record] receives the FRAMEWORK's telemetry — every use-case span,
+///   every emission, every lifecycle and error entry — as a typed
+///   [JuiceTelemetry]: one object per entry, fields read by name, nothing
+///   stringified until a logger prints or ships it. The framework builds an
+///   entry only when [JuiceLoggerConfig.logs] says its level is kept.
+/// - [log] and [logError] receive FREE-FORM lines — yours (`BlocUseCase.log`,
+///   `logState`, `logError`) and the family packages' — as a message with
+///   an optional context map.
 ///
-/// - **Stringify lazily.** Decide whether the line will be kept (level,
-///   environment, sampling) *before* touching `context`; `'$context'` or
-///   `state.toString()` on every emission is the per-emission cost 1.9.1
-///   removed from [DefaultJuiceLogger].
-/// - **Do not retain `context`.** It holds the current state object; a
-///   logger that buffers entries would pin every state it ever saw. Copy
-///   what you keep as strings or primitives.
-///
-/// [logError] is the fail-loud path: errors are rare and must stay visible,
+/// **The contract for implementers.** Telemetry values are live objects:
+/// [JuiceTelemetry.state] is the emitted state, [JuiceTelemetry.groups] the
+/// caller's set. Decide whether an entry is kept before touching them, and
+/// never retain an entry — it pins the state it names. [logError] and error
+/// entries are the fail-loud path: errors are rare and must stay visible,
 /// so formatting eagerly there is acceptable.
+///
+/// The smallest complete implementation forwards telemetry to the free-form
+/// path:
+///
+/// ```dart
+/// @override
+/// void record(JuiceTelemetry e) => e.isError
+///     ? logError(e.message, e.error!, e.stackTrace ?? StackTrace.empty,
+///         context: e.toMap())
+///     : log(e.message, level: e.level, context: e.toMap());
+/// ```
 abstract class JuiceLogger {
+  /// Receives one framework telemetry entry. See [JuiceTelemetry] for the
+  /// vocabulary and [JuiceTelemetryKind] for every kind.
+  void record(JuiceTelemetry entry);
+
   /// Logs a message with the specified log level and optional context.
   ///
   /// [message] - The message to log
@@ -47,10 +59,10 @@ abstract class JuiceLogger {
 /// A [JuiceLogger] that DECLARES the lowest level it keeps.
 ///
 /// The framework's per-event chatter — the use-case span pair and the
-/// emission entry, all at [Level.info] — costs about a third of a dispatch
-/// to BUILD, whether or not the logger keeps it. A logger that implements
-/// this interface tells the framework what it will keep, and the framework
-/// does not build an entry below that: the cost follows the consumer.
+/// emission entry, all at [Level.info] — is built whether or not the logger
+/// keeps it unless the logger says otherwise. A logger that implements this
+/// interface tells the framework what it will keep, and the framework does
+/// not build an entry below that: the cost follows the consumer.
 ///
 /// Optional. A logger that only `implements JuiceLogger` is treated as
 /// keeping everything, exactly as before. [JuiceLoggerConfig.minLevel] is a
@@ -130,6 +142,27 @@ class DefaultJuiceLogger implements LevelAwareJuiceLogger {
   Level get minLevel =>
       !_lazy ? Level.all : (_assertsEnabled ? Logger.level : Level.off);
 
+  /// Prints the entry as `message | Context: {…}`; under the default
+  /// printer the line (message, map and the state's `toString`) is built
+  /// only if the filter keeps it.
+  @override
+  void record(JuiceTelemetry entry) {
+    final error = entry.error;
+    if (entry.isError && error != null) {
+      _logger.e(
+          _lazy
+              ? () => '${entry.message} | Context: ${entry.toMap()}'
+              : '${entry.message} | Context: ${entry.toMap()}',
+          error: error,
+          stackTrace: entry.stackTrace);
+    } else if (_lazy) {
+      _logger.log(
+          entry.level, () => '${entry.message} | Context: ${entry.toMap()}');
+    } else {
+      _logger.log(entry.level, '${entry.message} | Context: ${entry.toMap()}');
+    }
+  }
+
   @override
   void log(String message,
       {Level level = Level.info, Map<String, dynamic>? context}) {
@@ -177,9 +210,8 @@ class JuiceLoggerConfig {
   /// The global FLOOR for the framework's own per-event chatter.
   ///
   /// Every use-case execution logs a span pair and every emission logs an
-  /// entry, at [Level.info]; building those context maps is about a third
-  /// of a dispatch's cost (benchmarks/RESULTS.md §9). The framework builds
-  /// an entry only if BOTH agree to it:
+  /// entry, at [Level.info] (benchmarks/RESULTS.md prices them). The
+  /// framework builds an entry only if BOTH agree to it:
   ///
   /// 1. this floor — default [Level.all], so it gates nothing unless set;
   /// 2. the configured logger's own declaration, if it implements

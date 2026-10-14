@@ -78,6 +78,9 @@ class MapResolver extends BlocDependencyResolver {
 /// Discards framework logs so widget-test output stays readable.
 class SilentLogger implements JuiceLogger {
   @override
+  void record(JuiceTelemetry e) {}
+
+  @override
   void log(String message,
       {Level level = Level.info, Map<String, dynamic>? context}) {}
 

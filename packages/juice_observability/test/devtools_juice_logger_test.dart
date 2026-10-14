@@ -5,6 +5,10 @@ import 'package:juice_observability/juice_observability.dart';
 /// A silent inner logger that records calls — proves the decorator always
 /// forwards, and keeps test output clean.
 class _RecordingLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) =>
+      e.isError ? errors.add(e.message) : logs.add(e.message);
+
   final logs = <String>[];
   final errors = <String>[];
 
@@ -154,6 +158,59 @@ void main() {
       logger.log('x', context: {'type': 'state_emission'});
       expect(posted, hasLength(1));
       expect(logger.minLevel, Level.all);
+    });
+  });
+
+  group('record (juice 2.0.0 telemetry)', () {
+    test('a telemetry entry posts juice:<type> with its fields', () {
+      logger.record(const JuiceTelemetry(
+        JuiceTelemetryKind.stateEmitted,
+        status: 'update',
+        bloc: 'FooBloc',
+        event: 'LoadFoo',
+        groups: {'foo:status'},
+        state: 'FooState(1)',
+      ));
+      expect(posted, hasLength(1));
+      final (kind, data) = posted.single;
+      expect(kind, 'juice:state_emission');
+      expect(data['message'], 'Emitting update');
+      expect(data['level'], 'info');
+      expect(data['bloc'], 'FooBloc');
+      expect(data['status'], 'update');
+      expect(data['state'], 'FooState(1)');
+      expect(data.containsKey('type'), isFalse);
+      expect(inner.logs, ['Emitting update'], reason: 'inner always forwards');
+    });
+
+    test('an error entry carries error and stackTrace, clipped', () {
+      logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.useCaseFailed,
+        useCase: 'LoadFoo',
+        event: 'LoadEvent',
+        executionId: 7,
+        error: StateError('bad'),
+        stackTrace: StackTrace.current,
+      ));
+      final (kind, data) = posted.single;
+      expect(kind, 'juice:use_case_error');
+      expect(data['executionId'], 7);
+      expect(data['error'], contains('bad'));
+      expect(data['stackTrace'], isNotEmpty);
+      expect(inner.errors, ['Use case execution failed']);
+    });
+
+    test('with no listener nothing is posted and nothing stringified', () {
+      final quiet = DevtoolsJuiceLogger(
+          inner: inner,
+          post: (kind, data) => posted.add((kind, data)),
+          hasListener: () => false);
+      final state = _Exploding();
+      quiet.record(JuiceTelemetry(JuiceTelemetryKind.stateEmitted,
+          status: 'update', bloc: 'FooBloc', state: state));
+      expect(posted, isEmpty);
+      expect(state.stringified, 0);
+      expect(inner.logs, ['Emitting update']);
     });
   });
 }

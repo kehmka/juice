@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../telemetry.dart';
 
 import '../juice_logger.dart';
 import 'lifecycle.dart';
@@ -61,10 +62,8 @@ class LeakDetector {
   static void enable() {
     assert(() {
       _enabled = true;
-      JuiceLoggerConfig.logger.log('Leak detection enabled', context: {
-        'type': 'leak_detection',
-        'action': 'enable',
-      });
+      JuiceLoggerConfig.logger.record(
+          const JuiceTelemetry(JuiceTelemetryKind.leakDetectionEnabled));
       return true;
     }());
   }

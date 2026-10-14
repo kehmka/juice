@@ -157,6 +157,10 @@ class _Map implements BlocDependencyResolver {
 }
 
 class _Log implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) =>
+      e.isError ? errors.add(e.message) : entries.add(e.message);
+
   final errors = <String>[];
   final entries = <String>[];
   @override

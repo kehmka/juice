@@ -7,6 +7,7 @@ import '../juice_logger.dart';
 import '../../../ui/src/widget_support.dart';
 import 'state_manager.dart';
 import 'type_names.dart';
+import '../telemetry.dart';
 
 /// Handles emission of StreamStatus with proper logging and group management.
 ///
@@ -73,11 +74,11 @@ class StatusEmitter<TState extends BlocState> {
   }) {
     if (skipIfSame && newState == state) {
       if (JuiceLoggerConfig.logs(Level.info)) {
-        _logger.log('Skipping duplicate state emission', context: {
-          'type': 'state_emission_skipped',
-          'bloc': _blocName,
-          'event': typeName(event.runtimeType),
-        });
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.emissionSkipped,
+          bloc: _blocName,
+          event: typeName(event.runtimeType),
+        ));
       }
       return;
     }
@@ -127,13 +128,13 @@ class StatusEmitter<TState extends BlocState> {
   /// dropped, and logged as `emission_after_close` so it stays visible.
   bool _droppedAfterClose(String statusName, EventBase event, {Object? error}) {
     if (!_stateManager.isClosed) return false;
-    _logger.log('Emission after close dropped', level: Level.warning, context: {
-      'type': 'emission_after_close',
-      'status': statusName,
-      'bloc': _blocName,
-      'event': typeName(event.runtimeType),
-      if (error != null) 'error': error.toString(),
-    });
+    _logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.emissionAfterClose,
+      status: statusName,
+      bloc: _blocName,
+      event: typeName(event.runtimeType),
+      error: error,
+    ));
     return true;
   }
 
@@ -149,17 +150,17 @@ class StatusEmitter<TState extends BlocState> {
 
     // A failure emission is never chatter: it is logged whatever the floor.
     if (kind == _Kind.failure || JuiceLoggerConfig.logs(Level.info)) {
-      _logger.log('Emitting ${kind.name}', context: {
-        'type': 'state_emission',
-        'status': kind.name,
-        // Objects, not strings: a logger that prints stringifies them itself;
-        // one that drops the line (release, a silent sink) pays nothing.
-        'state': newState ?? state,
-        'bloc': _blocName,
-        'groups': groupsToRebuild,
-        'event': typeName(event.runtimeType),
-        if (error != null) 'error': error.toString(),
-      });
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.stateEmitted,
+        status: kind.name,
+        // Live objects: a logger that prints stringifies them itself; one
+        // that drops the entry pays nothing.
+        state: newState ?? state,
+        bloc: _blocName,
+        groups: groupsToRebuild,
+        event: typeName(event.runtimeType),
+        error: error,
+      ));
     }
 
     final groups = groupsToRebuild ?? rebuildAlways;

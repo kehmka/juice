@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — unreleased (ships with juice 2.0.0)
+
+- Require `juice ^2.0.0`. `DevtoolsJuiceLogger` implements the new
+  `JuiceLogger.record`: every framework telemetry entry (`JuiceTelemetry`)
+  is posted as `juice:<type>` with the entry's fields, message and level,
+  plus `error` / `stackTrace` for error entries — the same wire format as
+  before, from a typed source. Free-form `log` / `logError` lines still
+  post when their context carries a `type`. Nothing is built without a
+  listener.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

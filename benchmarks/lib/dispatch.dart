@@ -41,6 +41,9 @@ class DispatchResult {
 /// cost of its default telemetry formatting.
 class SilentJuiceLogger implements JuiceLogger {
   @override
+  void record(JuiceTelemetry e) {}
+
+  @override
   void log(
     String message, {
     Level level = Level.info,

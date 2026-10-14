@@ -8,6 +8,12 @@ import 'package:juice/juice.dart';
 /// `RetryableUseCaseBuilder` was retried against the closed bloc.
 
 class _RecordingLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    types.add(e.kind.type);
+    if (e.isError) errors.add(e.error!);
+  }
+
   final types = <String>[];
   final errors = <Object>[];
   @override

@@ -4,7 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:juice/juice.dart' show JuiceLoggerConfig, JuiceLogger, Level;
+import 'package:juice/juice.dart'
+    show JuiceLoggerConfig, JuiceLogger, JuiceTelemetry, Level;
 import 'package:juice_benchmarks/counters.dart';
 import 'package:juice_benchmarks/scenarios/all.dart';
 
@@ -18,6 +19,9 @@ const updates = 10;
 const target = 7;
 
 class _Silent implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {}
+
   @override
   void log(
     String m, {

@@ -8,6 +8,11 @@ import 'package:juice/juice.dart';
 /// These tests pin the real emitter behavior (the prior "coverage" only
 /// mocked the parameter away).
 class _RecordingLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.kind == JuiceTelemetryKind.emissionSkipped) skipped.add(e.toMap());
+  }
+
   final skipped = <Map<String, dynamic>>[];
   @override
   void log(String m,

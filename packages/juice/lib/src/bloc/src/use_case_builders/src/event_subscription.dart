@@ -1,4 +1,5 @@
 import '../../../bloc.dart';
+import '../../core/type_names.dart';
 
 /// Subscribes to specific events from another bloc and executes a local use case.
 ///
@@ -147,16 +148,12 @@ class EventSubscription<
 
       _setupSubscription();
 
-      JuiceLoggerConfig.logger.log(
-        'EventSubscription initialized',
-        context: {
-          'type': 'event_subscription',
-          'action': 'initialize',
-          'sourceBloc': TSourceBloc.toString(),
-          'sourceEvent': TSourceEvent.toString(),
-          'localEvent': TLocalEvent.toString(),
-        },
-      );
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventSubscriptionInitialized,
+        sourceBloc: typeName(TSourceBloc),
+        sourceEvent: typeName(TSourceEvent),
+        localEvent: typeName(TLocalEvent),
+      ));
     } catch (e, stackTrace) {
       _isClosed = true;
       _sourceLease?.dispose();
@@ -202,16 +199,12 @@ class EventSubscription<
         try {
           final localEvent = toEvent(event);
 
-          JuiceLoggerConfig.logger.log(
-            'EventSubscription triggered',
-            context: {
-              'type': 'event_subscription',
-              'action': 'trigger',
-              'sourceBloc': TSourceBloc.toString(),
-              'sourceEvent': event.runtimeType.toString(),
-              'localEvent': localEvent.runtimeType.toString(),
-            },
-          );
+          JuiceLoggerConfig.logger.record(JuiceTelemetry(
+            JuiceTelemetryKind.eventSubscriptionTriggered,
+            sourceBloc: typeName(TSourceBloc),
+            sourceEvent: typeName(event.runtimeType),
+            localEvent: typeName(localEvent.runtimeType),
+          ));
 
           _onEvent?.call(localEvent);
         } catch (e, stackTrace) {
@@ -249,14 +242,10 @@ class EventSubscription<
     _sourceLease?.dispose();
     _sourceLease = null;
 
-    JuiceLoggerConfig.logger.log(
-      'EventSubscription closed',
-      context: {
-        'type': 'event_subscription',
-        'action': 'close',
-        'sourceBloc': TSourceBloc.toString(),
-        'sourceEvent': TSourceEvent.toString(),
-      },
-    );
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.eventSubscriptionClosed,
+      sourceBloc: typeName(TSourceBloc),
+      sourceEvent: typeName(TSourceEvent),
+    ));
   }
 }

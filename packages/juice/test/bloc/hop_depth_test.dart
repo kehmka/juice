@@ -59,6 +59,10 @@ class _B extends JuiceBloc<_S> {
 }
 
 class _Log implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) =>
+      types.add(e.isError ? 'ERR:${e.kind.type}' : e.kind.type);
+
   final types = <String>[];
   @override
   void log(String m,

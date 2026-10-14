@@ -14,7 +14,7 @@ is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
 | **Rebuild counts** | every tuned form 1 build / update; Juice groups AND Riverpod family 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
 | **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, Riverpod's provider-per-cell family included (family vs groups: 8% on the Mac, 2% on the pinned phone); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 373–429 vs 1050–1231 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac + phone) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not on Linux |
 | **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 648, groups 666, BlocSelector 688, Riverpod select 792 µs p50; naive 1330–1498); against Riverpod's **family** form the Mac and the phone point opposite ways raw (family 16% under groups on the Mac; groups 9% under family on the phone) and **both tie probe-normalized** — a tie band, no winner | §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
-| **Dispatch** | 2.0.0 on the Mac (§15, drift toolchain): a send is **1.12 µs with the chatter on and 0.43 µs with it off** — the release default — from 2.83 and 1.95; against bloc's 1.02 on the same Mac (§11) the release-default send is now ~0.4×, the chatter-on send ~1.1×. Earlier: Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built (§3, §6, §9, §13). The burst-slower-than-sequential number was the 20,000-deep in-flight chain (§12); at 2.0.0 the 20k burst is 1.93 µs per send | §15 (2.0.0, Mac), §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default), §14 (hops) | §15 is a drift-toolchain Mac run: the pinned Linux and phone numbers are taken at publish time. What remains: the three telemetry maps (1.1 µs when the chatter is on) and the two awaited async frames (~0.5 µs) |
+| **Dispatch** | 2.0.0 on the Mac (§15, drift toolchain): a send is **0.67 µs with the chatter on and 0.44 µs with it off** — the release default — from 2.83 and 1.95; against bloc's 1.02 on the same Mac (§11) both are under bloc, the release default by more than half. Earlier: Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built (§3, §6, §9, §13). The burst-slower-than-sequential number was the 20,000-deep in-flight chain (§12); at 2.0.0 the 20k burst is 1.93 µs per send | §15 (2.0.0, Mac), §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default), §14 (hops) | §15 is a drift-toolchain Mac run: the pinned Linux and phone numbers are taken at publish time. What remains: the two awaited async frames (~0.5 µs), the status object and the broadcast add — the shape of the design |
 | **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
 | **The knob, and the default** | a logger declares what it keeps and nothing below it is built; the default logger keeps nothing in release, so the saving is the default (§13). By hand, `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9, §13 | ranges do not overlap; §13 is Mac only so far |
 
@@ -875,3 +875,27 @@ counts the sends) before it is reported.
 - The pinned Linux and phone numbers, and the frame scenarios that the
   group-filter change touches (1,000 widgets × one filter per emission),
   are taken at publish time.
+
+### The typed record (same day, the `perf` branch, second commit)
+
+The three telemetry context maps were 1.1 µs of the 1.12 µs chatter-on
+send. 2.0.0 replaces them: the framework hands the logger one typed
+`JuiceTelemetry` object per entry (`JuiceLogger.record`), fields set, no
+map, the type names from the memo; `toMap()` renders the old map for
+loggers that want it, on demand. Same Mac, same conditions, 5 rounds.
+
+| row | maps (+memo) | records |
+|---|---:|---:|
+| the three entries alone (synthetic) | 1.13 (`telemetry maps`) | **0.02** (`telemetry records`) |
+| statusEmitter.emitUpdate | 0.36 | **0.18** [0.12–0.27] |
+| send · fresh instance, chatter on | 1.12 | **0.67** [0.65–0.68] |
+| send · reused instance, chatter on | 1.13 | **0.67** [0.65–0.77] |
+| send · fresh, chatter not built (the release default) | 0.43 | 0.44 [0.44–0.46] |
+| send · fresh · burst n=2,000, chatter on | 1.15 | **0.56** [0.53–1.44] |
+| send · fresh · burst n=20,000, chatter on | 1.93 | **1.58** [1.33–2.10] |
+
+Reading: the chatter now costs 0.23 µs per send (0.67 against 0.44), and
+a logger that keeps it pays for its own formatting only. Against bloc's
+1.02 µs on this Mac, a Juice send with full telemetry is now cheaper than
+bloc's without. The unchanged rows are the floor: two awaited async frames
+(~0.5 µs), the status object, the broadcast add.

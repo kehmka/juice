@@ -13,6 +13,9 @@ const updates = 10;
 
 class _Silent implements JuiceLogger {
   @override
+  void record(JuiceTelemetry e) {}
+
+  @override
   void log(
     String m, {
     Level level = Level.info,

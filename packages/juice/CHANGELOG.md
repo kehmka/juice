@@ -3,7 +3,8 @@
 ## [2.0.0] - unreleased
 
 The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each entry
-states the contract and, where code must change, the migration.
+states the contract and, where code must change, the migration; the
+step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
 
 ### Breaking
 - **`concurrency:` is required on every builder** — `UseCaseBuilder`,
@@ -60,6 +61,19 @@ states the contract and, where code must change, the migration.
   `RelayUseCaseBuilder` (`StateRelay` / `StatusRelay` replace it —
   `doc/concepts/relay-use-cases.md`). *Migration:* drop the arguments and
   calls; nothing observable changes.
+- **`JuiceLogger` gains `record(JuiceTelemetry entry)`.** The framework's
+  telemetry — every use-case span, emission, lifecycle, binding and error
+  entry — is one typed object per entry (`JuiceTelemetry`, a closed
+  `JuiceTelemetryKind` vocabulary, values live), not a message plus a
+  `Map<String, dynamic>`. `log` / `logError` stay for free-form lines.
+  *Migration:* every logger implementation adds `record`; the forwarding
+  one-liner (`e.isError ? logError(e.message, e.error!, e.stackTrace ??
+  StackTrace.empty, context: e.toMap()) : log(e.message, level: e.level,
+  context: e.toMap())`) reproduces the 1.x lines, `toMap()` being the 1.x
+  context map. Renamed keys: the bloc close entry's `streamBindings` and the
+  feature scope's `blocsEnded` are both `count`. The reference:
+  `packages/juice/doc/TELEMETRY.md`. `DevtoolsJuiceLogger`
+  (`juice_observability` 0.6.0) implements it; its wire format is unchanged.
 - **Telemetry vocabulary.** `stream_binding` / `refused` carries `reason`
   (`bloc is closed`, `bloc is closing`, `run superseded`); a binding
   callback that throws is `stream_binding` / `callback_error` with
@@ -89,9 +103,12 @@ states the contract and, where code must change, the migration.
   while its own factory runs.
 
 ### Performance
-- **A send costs 1.1 µs with the telemetry chatter on and 0.43 µs with it
+- **A send costs 0.67 µs with the telemetry chatter on and 0.44 µs with it
   off, from 2.8 and 1.95** (this Mac, release, median of 5; a restartable
-  send 2.75 → 0.99; 20,000 sends in flight 4.70 → 1.93 each). Four
+  send 2.75 → 0.99; 20,000 sends in flight 4.70 → 1.58 each) — under
+  bloc's 1.02 on the same machine in both modes. The telemetry entries are
+  typed records, one allocation each: the three per-event entries cost
+  0.02 µs together, from 1.13 as context maps. Four
   `Type.toString()` calls per send — the event name, the use-case name
   twice, the builder's — cost 0.27 µs each; they are gone from the path
   below the telemetry floor, and above it every type name comes from a

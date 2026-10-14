@@ -54,6 +54,11 @@ class _ClosingBuilder extends UseCaseBuilderBase {
 }
 
 class _Log implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add({'message': e.message, ...e.toMap()});
+  }
+
   final errors = <Map<String, dynamic>>[];
   @override
   void log(String m,

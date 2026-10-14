@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../juice_logger.dart';
 import '../aviators/aviator.dart';
+import '../telemetry.dart';
 
 /// Manages navigation aviators for a bloc.
 ///
@@ -63,11 +64,12 @@ class AviatorManager {
   }
 
   void _logFailure(String aviatorName, Object error, StackTrace stackTrace) {
-    JuiceLoggerConfig.logger
-        .logError('Aviator navigation failed', error, stackTrace, context: {
-      'type': 'aviator_error',
-      'aviator': aviatorName,
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.aviatorError,
+      aviator: aviatorName,
+      error: error,
+      stackTrace: stackTrace,
+    ));
   }
 
   /// Closes all aviators and clears the registry.

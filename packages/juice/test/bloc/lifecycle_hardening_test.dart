@@ -56,6 +56,21 @@ class _Host extends JuiceBloc<_S> {
 }
 
 class _SpanLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    switch (e.kind) {
+      case JuiceTelemetryKind.useCaseStarted:
+        starts.add(e.executionId!);
+      case JuiceTelemetryKind.useCaseCompleted:
+        ends.add(e.executionId!);
+      case JuiceTelemetryKind.useCaseFailed:
+        ends.add(e.executionId!);
+        errors.add(e.error!);
+      default:
+        break;
+    }
+  }
+
   final starts = <int>[];
   final ends = <int>[];
   final errors = <Object>[];

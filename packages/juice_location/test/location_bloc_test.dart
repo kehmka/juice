@@ -37,6 +37,11 @@ class FakeLocationSource implements LocationSource {
 }
 
 class _CaptureLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
   final errors = <String>[];
   @override
   void log(String m,

@@ -6,6 +6,13 @@ import 'package:juice/juice.dart';
 /// Records every log entry as a map: `message`, `level`, `error` (for
 /// `logError`) and the entry's context fields.
 class CaptureLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) => entries.add({
+        'message': e.message,
+        'level': e.level,
+        ...e.toMap(),
+      });
+
   final entries = <Map<String, dynamic>>[];
 
   @override

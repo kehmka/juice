@@ -46,6 +46,10 @@ class _FlakyGateway implements HiveGateway {
 }
 
 class _RecordingLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) =>
+      e.isError ? errors.add(e.message) : logs.add(e.message);
+
   final logs = <String>[];
   final errors = <String>[];
 

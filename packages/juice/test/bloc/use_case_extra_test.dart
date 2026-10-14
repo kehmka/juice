@@ -20,6 +20,10 @@ class _Entry {
 }
 
 class _CaptureLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) =>
+      entries.add(_Entry(e.message, e.level, e.toMap(), e.error));
+
   final entries = <_Entry>[];
 
   @override

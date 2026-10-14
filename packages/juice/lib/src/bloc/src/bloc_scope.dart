@@ -3,6 +3,7 @@ import 'juice_bloc.dart';
 import 'bloc_state.dart';
 import 'juice_logger.dart';
 import 'lifecycle/lifecycle.dart';
+import 'telemetry.dart';
 
 /// Manages bloc registration, resolution, and lifecycle.
 ///
@@ -116,13 +117,12 @@ class BlocScope {
       lifecycle: lifecycle,
     );
 
-    JuiceLoggerConfig.logger.log('Bloc registered', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'register',
-      'bloc': T.toString(),
-      'lifecycle': lifecycle.toString(),
-      'scope': scope?.toString() ?? 'global',
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.blocRegistered,
+      bloc: T.toString(),
+      lifecycle: lifecycle.toString(),
+      scope: scope?.toString() ?? 'global',
+    ));
   }
 
   /// Check if a bloc type is registered.
@@ -217,12 +217,11 @@ class BlocScope {
     // Track lease for leak detection
     LeakDetector.trackLeaseAcquire(id);
 
-    JuiceLoggerConfig.logger.log('Lease acquired', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'lease_acquire',
-      'bloc': T.toString(),
-      'leaseCount': typedEntry.leaseCount,
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.leaseAcquired,
+      bloc: T.toString(),
+      leaseCount: typedEntry.leaseCount,
+    ));
 
     return BlocLease<T>(
       bloc,
@@ -333,12 +332,11 @@ class BlocScope {
       // Track bloc creation for leak detection
       LeakDetector.trackBlocCreation(id);
 
-      JuiceLoggerConfig.logger.log('Bloc instance created', context: {
-        'type': 'bloc_lifecycle',
-        'action': 'create',
-        'bloc': id.type.toString(),
-        'lifecycle': entry.lifecycle.toString(),
-      });
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.blocCreated,
+        bloc: id.type.toString(),
+        lifecycle: entry.lifecycle.toString(),
+      ));
     }
 
     return entry.instance!;
@@ -363,22 +361,20 @@ class BlocScope {
     // _closeEntry zeroed it, and decrementing it here would auto-close a
     // bloc other widgets are still leasing.
     if (!identical(entry.instance, leasedInstance)) {
-      JuiceLoggerConfig.logger.log('Stale lease released', context: {
-        'type': 'bloc_lifecycle',
-        'action': 'lease_release_stale',
-        'bloc': id.type.toString(),
-      });
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.staleLeaseReleased,
+        bloc: id.type.toString(),
+      ));
       return;
     }
 
     entry.leaseCount--;
 
-    JuiceLoggerConfig.logger.log('Lease released', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'lease_release',
-      'bloc': id.type.toString(),
-      'leaseCount': entry.leaseCount,
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.leaseReleased,
+      bloc: id.type.toString(),
+      leaseCount: entry.leaseCount,
+    ));
 
     // Auto-dispose leased blocs when last lease releases
     if (entry.lifecycle == BlocLifecycle.leased && entry.leaseCount <= 0) {
@@ -410,12 +406,11 @@ class BlocScope {
 
     await Future.wait(futures);
 
-    JuiceLoggerConfig.logger.log('Feature scope ended', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'end_feature',
-      'scope': scope.name,
-      'blocsEnded': scope.managedBlocs.length,
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.featureScopeEnded,
+      scope: scope.name,
+      count: scope.managedBlocs.length,
+    ));
   }
 
   /// Dispose all blocs (app shutdown).
@@ -469,10 +464,8 @@ class BlocScope {
 
     _entries.clear();
 
-    JuiceLoggerConfig.logger.log('All blocs ended', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'end_all',
-    });
+    JuiceLoggerConfig.logger
+        .record(const JuiceTelemetry(JuiceTelemetryKind.allBlocsEnded));
   }
 
   static Future<void> _closeEntry(BlocId id) async {
@@ -489,11 +482,10 @@ class BlocScope {
     final bloc = entry.instance!;
     entry.closingFuture = Future.sync(bloc.close);
 
-    JuiceLoggerConfig.logger.log('Bloc closing', context: {
-      'type': 'bloc_lifecycle',
-      'action': 'close',
-      'bloc': id.type.toString(),
-    });
+    JuiceLoggerConfig.logger.record(JuiceTelemetry(
+      JuiceTelemetryKind.blocClosing,
+      bloc: id.type.toString(),
+    ));
 
     try {
       await entry.closingFuture;
@@ -502,10 +494,12 @@ class BlocScope {
       // cleared below: a close() that throws must not leave closingFuture
       // set, or every later get/lease throws "is closing" and the bloc can
       // never be recreated.
-      JuiceLoggerConfig.logger.logError('Bloc close failed', e, st, context: {
-        'type': 'bloc_close_error',
-        'bloc': id.type.toString(),
-      });
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.blocCloseFailed,
+        bloc: id.type.toString(),
+        error: e,
+        stackTrace: st,
+      ));
       rethrow;
     } finally {
       // Track bloc close for leak detection

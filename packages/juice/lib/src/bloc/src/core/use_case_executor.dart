@@ -8,6 +8,7 @@ import '../usecase.dart';
 import '../juice_logger.dart';
 import 'restartable_run.dart';
 import 'type_names.dart';
+import '../telemetry.dart';
 import '../use_case_builders/use_case_builder.dart';
 
 /// Context provided to use cases for state emission.
@@ -136,42 +137,39 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       useCase = builder.generator();
       final context = _contextFactory(event);
       if (chatter) {
-        _logger.log('Executing use case', context: {
-          'type': 'use_case_execution',
-          'useCase': typeName(useCase.runtimeType),
-          'event': typeName(event.runtimeType),
-          'executionId': executionId,
-        });
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.useCaseStarted,
+          useCase: typeName(useCase.runtimeType),
+          event: typeName(event.runtimeType),
+          executionId: executionId,
+        ));
       }
       _wireUseCase(useCase, context);
       await useCase.execute(event);
       run?.complete();
       if (chatter) {
-        _logger.log('Use case completed', context: {
-          'type': 'use_case_completed',
-          'useCase': typeName(useCase.runtimeType),
-          'event': typeName(event.runtimeType),
-          'executionId': executionId,
-          'elapsedMicros': stopwatch!.elapsedMicroseconds,
-          if (run?.isSuperseded ?? false) 'superseded': true,
-        });
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.useCaseCompleted,
+          useCase: typeName(useCase.runtimeType),
+          event: typeName(event.runtimeType),
+          executionId: executionId,
+          elapsedMicros: stopwatch!.elapsedMicroseconds,
+          superseded: run?.isSuperseded ?? false,
+        ));
       }
     } catch (error, stackTrace) {
       run?.complete();
-      _logger.logError(
-        'Use case execution failed',
-        error,
-        stackTrace,
-        context: {
-          'type': 'use_case_error',
-          // A generator that threw left no use case: the builder names it.
-          'useCase': typeName((useCase ?? builder).runtimeType),
-          'event': typeName(event.runtimeType),
-          'executionId': executionId,
-          if (stopwatch != null) 'elapsedMicros': stopwatch.elapsedMicroseconds,
-          if (run?.isSuperseded ?? false) 'superseded': true,
-        },
-      );
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.useCaseFailed,
+        // A generator that threw left no use case: the builder names it.
+        useCase: typeName((useCase ?? builder).runtimeType),
+        event: typeName(event.runtimeType),
+        executionId: executionId,
+        elapsedMicros: stopwatch?.elapsedMicroseconds,
+        superseded: run?.isSuperseded ?? false,
+        error: error,
+        stackTrace: stackTrace,
+      ));
       _onError(error, stackTrace, event);
     } finally {
       // The work is over: a still-running timeout must not fire later and

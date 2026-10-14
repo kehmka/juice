@@ -45,6 +45,16 @@ class _B extends JuiceBloc<_S> {
 }
 
 class _Counting implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) {
+      errors++;
+      types.add('ERR:${e.kind.type}');
+    } else {
+      types.add(e.kind.type);
+    }
+  }
+
   final types = <String>[];
   int errors = 0;
   @override
@@ -70,6 +80,12 @@ class _Declaring extends _Counting implements LevelAwareJuiceLogger {
 
 /// A wrapper that does NOT declare: only `implements JuiceLogger`.
 class _Wrapper implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    types.add(e.kind.type);
+    inner.record(e);
+  }
+
   _Wrapper(this.inner);
   final JuiceLogger inner;
   final types = <String>[];

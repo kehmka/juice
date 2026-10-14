@@ -316,6 +316,13 @@ void main() {
 }
 
 class _AviatorErrorLogger implements JuiceLogger {
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.kind == JuiceTelemetryKind.aviatorError) {
+      aviatorErrors.add(e.aviator!);
+    }
+  }
+
   final aviatorErrors = <String>[];
   @override
   void log(String m,

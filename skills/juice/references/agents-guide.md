@@ -257,24 +257,36 @@ items into EVENTS — emit from the use case the event dispatches, not from
 
 ## 4c. Telemetry
 
-Every use-case execution logs a structured START (`use_case_execution`) and
-exactly one END sharing its `executionId`: `use_case_completed` (with
-`elapsedMicros`) or `use_case_error` (also stamped). Mirror everything to
-DevTools with `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`
-(`juice_observability ≥ 0.3.0`). The chatter costs more than the rest of
-a dispatch to BUILD (the three context maps), so the cost follows the
-consumer: a
-logger that implements `LevelAwareJuiceLogger` (`Level get minLevel`)
-declares what it keeps and nothing below that is built. `DefaultJuiceLogger`
-declares everything in debug and nothing in profile/release (what its
-filter keeps); `DevtoolsJuiceLogger` (≥ 0.5.1) declares everything while a
-listener is attached. A custom logger that only `implements JuiceLogger`
-keeps everything — implement the interface, or set the global floor
-`JuiceLoggerConfig.minLevel = Level.warning`. Errors, ignored events and
-failure emissions stay loud regardless. A thrown use-case error is two
-lines: `use_case_error` (the executor's span-closer, with `executionId`) and
-`bloc_error` (the bloc's `onError` hook, with `bloc`/`state`). Span consumers
-key on `use_case_error`; error counters on `bloc_error`.
+The framework reports through `JuiceLogger.record(JuiceTelemetry entry)`:
+one typed object per entry, a closed vocabulary (`JuiceTelemetryKind`),
+values live (the emitted state, the caller's group set), nothing
+stringified until a logger prints or ships it. The use-case span is two
+entries sharing an `executionId` — `useCaseStarted`, then `useCaseCompleted`
+(with `elapsedMicros`) or `useCaseFailed`; every emission is `stateEmitted`;
+lifecycle, bindings and errors have their kinds. Free-form lines (yours:
+`BlocUseCase.log` / `logState` / `logError`) still go through `log` /
+`logError` with a context map. The reference, every kind with its level and
+fields: `juice/TELEMETRY.md`.
+
+Cost follows the consumer: the framework builds an entry only if
+`JuiceLoggerConfig.logs(level)` says it is kept — the global floor
+`JuiceLoggerConfig.minLevel` AND the configured logger's own declaration
+(`LevelAwareJuiceLogger.minLevel`). `DefaultJuiceLogger` declares everything
+in debug and nothing in profile/release; `DevtoolsJuiceLogger`
+(`juice_observability`) declares everything while a listener is attached. A
+custom logger that only `implements JuiceLogger` keeps everything —
+implement the interface, or set the floor. Never gated: every error kind,
+`emissionAfterClose`, `eventIgnored`, a failure emission.
+
+A thrown use-case error is two entries: `useCaseFailed` (the span's close)
+and `blocError` (the bloc's `onError` hook). Span consumers key on the
+first, error counters on the second. Mirror everything to DevTools with
+`JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`.
+
+A custom logger's smallest complete `record` forwards to its own free-form
+path: `e.isError ? logError(e.message, e.error!, e.stackTrace ??
+StackTrace.empty, context: e.toMap()) : log(e.message, level: e.level,
+context: e.toMap())`.
 
 ## 4d. Skipping duplicate emits (`skipIfSame`)
 

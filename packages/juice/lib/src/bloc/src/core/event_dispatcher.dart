@@ -6,6 +6,8 @@ import '../cancellable_event.dart';
 import '../juice_logger.dart';
 import 'event_concurrency.dart';
 import 'restartable_run.dart';
+import 'type_names.dart';
+import '../telemetry.dart';
 
 /// Signature for async event handlers.
 typedef EventHandler<E> = Future<void> Function(E event);
@@ -179,19 +181,20 @@ class EventDispatcher<Event extends Object> {
         event.cancel();
       }
       if (JuiceLoggerConfig.logs(Level.info)) {
-        _log.log('Use case superseded', context: {
-          'type': 'use_case_superseded',
-          'event': type.toString(),
-          'cancellable': event is CancellableEvent,
-        });
+        _log.record(JuiceTelemetry(
+          JuiceTelemetryKind.useCaseSuperseded,
+          event: typeName(type),
+          cancellable: event is CancellableEvent,
+        ));
       }
       _onSuperseded?.call(previous);
     } catch (e, st) {
-      _log.logError('Error while superseding a run', e, st, context: {
-        'type': 'use_case_superseded',
-        'action': 'error',
-        'event': type.toString(),
-      });
+      _log.record(JuiceTelemetry(
+        JuiceTelemetryKind.supersedeFailed,
+        event: typeName(type),
+        error: e,
+        stackTrace: st,
+      ));
     }
   }
 
@@ -205,8 +208,12 @@ class EventDispatcher<Event extends Object> {
       // The executor routes a use case's errors through onError; anything
       // that escapes it (a throwing generator) is logged here, not dropped.
       return handler(event).catchError((Object e, StackTrace st) {
-        _log.logError('Sequential run failed outside the executor', e, st,
-            context: {'type': 'use_case_error', 'event': type.toString()});
+        _log.record(JuiceTelemetry(
+          JuiceTelemetryKind.sequentialRunFailed,
+          event: typeName(type),
+          error: e,
+          stackTrace: st,
+        ));
       });
     });
     _tails[type] = run;

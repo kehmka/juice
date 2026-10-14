@@ -12,16 +12,16 @@ is the only difference); bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod
 | claim | number | where | caveat |
 |---|---|---|---|
 | **Rebuild counts** | every tuned form 1 build / update; Juice groups AND Riverpod family 0 selector calls, BlocSelector and JuiceSelector 100, Riverpod select 101; naive forms 100 | §1 (cells), §10 (wide: tuned K+1, naive N+1) | none — deterministic, machine-independent, pinned by test and run in CI |
-| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, Riverpod's provider-per-cell family included (family vs groups: 8% on the Mac, 2% on the pinned phone); untargeted defaults ~2× (Linux 4031 vs 9581 µs p50; phone pinned 373–429 vs 1050–1231 µs) | §2 (Linux), §7 (Mac, ties declared), §8 (phone, clock pinned), §11 (family, Mac + phone) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not on Linux |
-| **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 648, groups 666, BlocSelector 688, Riverpod select 792 µs p50; naive 1330–1498); against Riverpod's **family** form the Mac and the phone point opposite ways raw (family 16% under groups on the Mac; groups 9% under family on the phone) and **both tie probe-normalized** — a tie band, no winner | §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
-| **Dispatch** | 2.0.0 on the Mac (§15, drift toolchain): a send is **0.67 µs with the chatter on and 0.44 µs with it off** — the release default — from 2.83 and 1.95; against bloc's 1.02 on the same Mac (§11) both are under bloc, the release default by more than half. Earlier: Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built (§3, §6, §9, §13). The burst-slower-than-sequential number was the 20,000-deep in-flight chain (§12); at 2.0.0 the 20k burst is 1.93 µs per send | §15 (2.0.0, Mac), §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default), §14 (hops) | §15 is a drift-toolchain Mac run: the pinned Linux and phone numbers are taken at publish time. What remains: the two awaited async frames (~0.5 µs), the status object and the broadcast add — the shape of the design |
-| **Where a send goes** | telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% | §4 (Linux), §6 (phone) | the 1.9.1 fixes removed the eager stringification; the knob removes the rest of the chatter |
+| **Frame cost, cells** | the tuned forms of all three frameworks **tie** within machine noise, Riverpod's provider-per-cell family included (2.0.0 Mac run §16: family vs groups 0.5%, every tuned pair within 2.5%; probe-normalized Juice groups 638 µs is the low end of the band); untargeted defaults ~2.5–3× (Mac §16: 785 vs 2,148 µs p50; phone pinned 373–429 vs 1050–1231 µs) | §16 (2.0.0, Mac), §2 (Linux), §7 (Mac), §8 (phone, clock pinned), §11 (family, Mac + phone) | Linux is old-schema fastest-of-5; Mac is a toolchain-drift run; phone numbers are valid only with the clock pinned; family not on Linux |
+| **Frame cost, wide** (built to hurt groups) | against selector forms groups hold (phone: JuiceSelector+groups 648, groups 666, BlocSelector 688, Riverpod select 792 µs p50; naive 1330–1498); against Riverpod's **family** form a tie band, no winner — the 2.0.0 Mac run (§16) has family vs groups at 1.1% raw, where §11 had 16% | §16 (2.0.0, Mac), §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
+| **Dispatch** | 2.0.0 on the Mac (§15, §16; drift toolchain): the dispatch scenario's release-default send is **0.73 µs against bloc's 1.04 and Riverpod's 0.42** (from 3.12 / 1.02 / 0.42); with every telemetry record built, 1.00 — a tie with bloc. On the bare breakdown bloc a send is 0.66 µs with the chatter on and 0.44 off, from 2.83 and 1.95. Earlier: Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built (§3, §6, §9, §13). The burst-slower-than-sequential number was the 20,000-deep in-flight chain (§12); at 2.0.0 the 20k burst is 1.93 µs per send | §15 (2.0.0, Mac), §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default), §14 (hops) | §15 is a drift-toolchain Mac run: the pinned Linux and phone numbers are taken at publish time. What remains: the two awaited async frames (~0.5 µs), the status object and the broadcast add — the shape of the design |
+| **Where a send goes** | 2.0.0 (§15, §16): the two awaited async frames ~0.5 µs, the emission 0.23, the three telemetry records 0.02; nothing else measurable (closures, zone lookup, context object ≤ 0.01). Earlier: telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% (§4, §6) | §15, §16 (Mac), §4 (Linux), §6 (phone) | what remains is the shape of the design: an awaited use case and a broadcast add |
 | **The knob, and the default** | a logger declares what it keeps and nothing below it is built; the default logger keeps nothing in release, so the saving is the default (§13). By hand, `JuiceLoggerConfig.minLevel = Level.warning` saves about a third of a send: Mac 2.79 → 1.90 µs (32%), phone 1.73 → 1.12 µs (35%) | §9, §13 | ranges do not overlap; §13 is Mac only so far |
 
 Superseded and kept as measured: §5's and §6's frame tables (the phone's
 inversion, explained and fixed in §8); §2–§4's fastest-of-5 schema (the
 next Linux run on the pinned toolchain regenerates them as median + range).
-Not yet measured anywhere: a parent-rebuild scenario (roadmap item J).
+The parent-rebuild scenario (docket item H) has its first after-number in §16: 2,366 → 1,962 µs per parent rebuild of 1,000 leaves on the Mac (−17%).
 Riverpod's family form (one provider per cell — the other idiomatic
 Riverpod, and the source-side counterpart of groups) was added
 2026-09-29; its counts are in §1 and §10, its frame cost is in §11: within
@@ -899,3 +899,124 @@ a logger that keeps it pays for its own formatting only. Against bloc's
 1.02 µs on this Mac, a Juice send with full telemetry is now cheaper than
 bloc's without. The unchanged rows are the floor: two awaited async frames
 (~0.5 µs), the status object, the broadcast add.
+
+---
+
+## 16. The 2.0.0 full run — Mac (2026-10-13)
+
+The whole suite (`tool/run.sh`: rebuild counts, the three frame scenarios,
+dispatch against bloc and Riverpod, the breakdown) on the Mac, at `main`
+= the reviewed `v2` plus the two performance commits (type names memoized,
+typed telemetry records). Flutter 3.44.4 — a drift run, as every Mac run
+in this record; the pinned numbers come from a pinned machine. bloc 9.2.1 /
+flutter_bloc 9.1.1, flutter_riverpod 3.4.3. "Before" is the committed
+`results/timing_macos.json` and `breakdown_macos.json` of 2026-10-07 (§14),
+same machine, same toolchain. Raw data: the two files, overwritten.
+
+### Rebuild counts
+
+Unchanged and deterministic (§1, §10): every tuned form 1 build per
+update; the naive forms N.
+
+### Dispatch — µs per update, 100 cells, 20,000 updates, median of 5 [min–max]
+
+| variant | sequential before → after | burst before → after |
+|---|---:|---:|
+| juice · default logger (the release default: nothing built) | 3.12 → **0.73** [0.72–0.80] | 5.74 → **1.94** [1.39–2.27] |
+| juice · silent logger (chatter BUILT, kept by nobody) | 2.97 → **1.00** [0.98–1.24] | 5.65 → **1.85** [1.74–2.76] |
+| bloc | 1.02 → 1.04 [1.02–2.24] | 0.82 → 0.83 [0.81–1.59] |
+| riverpod | 0.42 → 0.42 [0.41–0.55] | 0.67 → 0.71 [0.65–0.91] |
+
+Harness verdicts: Riverpod faster than Juice (default logger) by 42%
+(0.42 vs 0.73); **Juice (default logger) faster than Juice (silent logger)
+by 27%**; Juice (silent logger) and bloc tie; in burst, bloc faster than
+Juice (silent logger), the two Juice forms tie.
+
+Two things changed meaning here:
+
+- **The variant names inverted.** The "silent logger" only `implements
+  JuiceLogger`, so it declares nothing and the framework builds every
+  telemetry record for it — it now measures "chatter built, consumed by
+  nobody" (0.27 µs over the default). The "default logger" declares
+  `Level.off` in release, so nothing is built: it IS the release default.
+  Before 2.0.0 the default logger's own formatting made it the slower of
+  the two; the names stay as the harness has always printed them.
+- **Juice against bloc flipped.** The release-default Juice send, 0.73 µs,
+  is under bloc's 1.04; with every telemetry record built it ties bloc.
+  §3 had Juice at ~3× bloc; §14 at ~1.6×. Riverpod's 0.42 is a synchronous
+  notifier call with no event queue — the floor for "no dispatch".
+
+### Frame cost, cells — p50 build µs, N = 1,000, 300 updates, median of 3 [min–max], probe-normalized
+
+| variant | builds/update | before | after | normalized |
+|---|---:|---:|---:|---:|
+| juice · groups | 1 | 724 | 785 [769–849] | 638 |
+| juice · JuiceSelector + groups | 1 | 707 | 774 [762–783] | 649 |
+| juice · JuiceSelector | 1 | 736 | 791 [771–804] | 669 |
+| riverpod · family | 1 | 663 | 781 [776–848] | 657 |
+| riverpod · select | 1 | 712 | 811 [745–841] | 674 |
+| bloc · BlocSelector | 1 | 851 | 962 [939–977] | 807 |
+| juice · no groups | 1,000 | 1,960 | 2,148 [2,145–2,184] | 2,090 |
+| riverpod · watch | 1,000 | 1,893 | 2,031 [2,026–2,097] | 1,939 |
+| bloc · BlocBuilder | 1,000 | 2,375 | 2,340 [2,305–2,344] | 2,340 |
+
+Verdicts: every tuned form ties every other tuned form — JuiceSelector +
+groups vs Riverpod family 0.9%, family vs groups 0.5%, groups vs
+JuiceSelector 0.8%, JuiceSelector vs Riverpod select 2.5% — and Riverpod
+select is faster than BlocSelector by 16%. Every raw number, all three
+frameworks, reads 8–15% above the 10-07 run: the machine, not the code
+(bloc and Riverpod did not change). The normalized column takes the
+clock probe back out; Juice groups at 638 is the lowest tuned number on
+the sheet, inside the tie band.
+
+### Frame cost, wide — N = 1,000, K = 50 built to hurt groups
+
+| variant | builds/update | before | after | normalized |
+|---|---:|---:|---:|---:|
+| wide · juice · groups | 50 | 1,154 | 1,349 [1,348–1,477] | 1,160 |
+| wide · riverpod · family | 50 | 968 | 1,334 [1,235–1,644] | 1,334 |
+| wide · juice · JuiceSelector + groups | 50 | 1,242 | 1,457 [1,252–1,660] | 1,448 |
+| wide · riverpod · select | 50 | 1,441 | 1,531 [1,516–1,936] | 1,374 |
+| wide · bloc · BlocSelector | 50 | 1,432 | 1,672 [1,595–1,784] | 1,613 |
+| wide · juice · no groups | 1,000 | 2,207 | 2,500 [2,349–3,122] | 2,480 |
+| wide · riverpod · watch | 1,000 | 2,184 | 2,742 [2,248–2,941] | 2,725 |
+| wide · bloc · BlocBuilder | 1,000 | 2,702 | 2,802 [2,454–3,338] | 2,779 |
+
+Verdicts: a four-way tie among the tuned forms (family vs groups 1.1%,
+groups vs JuiceSelector + groups 7.4%, that vs Riverpod select 4.8%,
+select vs BlocSelector 8.4%); §11's "family 16% under groups raw" on the
+Mac is gone (1.1%). Wide spreads this run (Riverpod family 1,235–1,644):
+read the normalized column.
+
+### Frame cost, parent rebuild — the first after-number (docket item H)
+
+| variant | leaves | before (10-07, pre-H) | after |
+|---|---:|---:|---:|
+| parent · juice · groups | 1,000 | 2,366 [2,256–2,374] | **1,962** [1,960–1,967] |
+
+A parent rebuild of 1,000 Juice leaves costs 17% less than before the
+widgets kept their subscription (−404 µs; different days, same machine;
+the frame is dominated by building 1,000 widgets, which H did not touch).
+
+### Breakdown — the §15 numbers, reproduced in the full run
+
+| layer | 10-07 | now |
+|---|---:|---:|
+| statusEmitter.emitUpdate | 0.90 | 0.23 |
+| telemetry maps (3 per event) · records | 1.05 · — | 1.17 · **0.02** |
+| send · fresh instance (chatter built) | 2.44 | **0.66** |
+| send · fresh, chatter not built (release default) | 1.60 | **0.44** |
+| send · fresh, restartable, chatter not built | — | 1.06 |
+| send · fresh · burst n=20,000 | 3.95 | **2.00** |
+
+### Reading
+
+- **Dispatch is no longer the number against Juice.** The release default
+  send is 0.73 µs in the dispatch scenario (a 100-cell state copy per
+  update) and 0.44 µs on the bare breakdown bloc — under bloc either way.
+- **Frames tie, as they did.** Groups, JuiceSelector and Riverpod's two
+  tuned forms sit in one band on this machine; the probe-normalized
+  numbers put Juice groups at the low end of it. The parent-rebuild
+  scenario has its after-number: −17%.
+- **What this run is not:** pinned. The phone run follows (§17); the
+  pinned Linux numbers wait for a pinned machine.

@@ -214,7 +214,12 @@ build (none was documented) needs a key change to force one.
 - **`JuiceAsyncBuilder.streamKey` and `where`.**
 - **Performance** — a send is 0.67 µs with the telemetry chatter on and
   0.44 µs with it off (the release default), from 2.8 and 2.0 in 1.10.0 on
-  the same machine; `benchmarks/RESULTS.md` §15.
+  the same machine. Against bloc and Riverpod (`benchmarks/RESULTS.md`
+  §16–§17): the release-default dispatch is under bloc's on the Mac and
+  the phone (0.73 / 0.63 µs vs 1.04 / 1.03), ties bloc with every
+  telemetry record built, and sits above Riverpod's synchronous notifier
+  (0.42 / 0.41), which has no event queue to pay for; per frame the tuned
+  forms of all three tie.
 
 ## Checklist
 

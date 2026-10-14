@@ -67,13 +67,14 @@ count side is pinned in core: `packages/juice/test/ui/resubscribe_test.dart`.
    naive = 100).
 2. **Dispatch cost** (`lib/dispatch.dart`, release build) — µs per update
    with no widgets: `sequential` (await each) and `burst` (fire all, await
-   the last). Juice is reported with its **default logger** and with a
-   **silent logger**. From juice 1.10.0 the default logger DECLARES that
-   it keeps nothing in release, so the framework builds no per-event
-   telemetry for it and it is the cheap row; the benchmark's silent logger
-   declares nothing, so everything is built and thrown away and it is the
-   dear one (RESULTS §13). Results recorded before 1.10.0 have the two the
-   other way round.
+      the last). Juice is reported with its **default logger** and with a
+   **silent logger** — read the names as what they measure, not what they
+   say: the default logger declares that it keeps nothing in release, so
+   the framework builds no per-event telemetry for it and that row IS the
+   release default; the silent logger declares nothing, so every
+   telemetry record is built and thrown away — "chatter built, consumed by
+   nobody" (RESULTS §13, §16). Results recorded before 1.10.0 have the two
+   the other way round.
 3. **Rebuild frame cost** (`lib/main.dart`, release build) — 1000 cells, 300
    single-cell updates, one frame each; p50/p90 of the engine's
    `FrameTiming.buildDuration` (UI thread: build + layout + paint). Raster is
@@ -167,11 +168,22 @@ hand.
 
 ## Reading the results honestly
 
+- **Where 2.0.0 stands against bloc and Riverpod** (RESULTS §16 Mac, §17
+  phone): dispatch per update, release default, Juice 0.73 / 0.63 µs
+  against bloc 1.04 / 1.03 and Riverpod 0.42 / 0.41; with every telemetry
+  record built Juice ties bloc. Per frame the tuned forms of all three tie
+  (Juice groups vs Riverpod family 0.5% / 0.0%), BlocSelector about 10%
+  behind on the phone; in the wide scenario Juice's forms lead BlocSelector
+  by 7% and Riverpod select by 17% on the phone.
+- **Riverpod's dispatch number is a different shape.** A notifier method
+  is a synchronous call: no event object, no queue, no use case, no span.
+  It is the floor for "no dispatch", and Juice and bloc — both event
+  queues — are compared against each other, with Riverpod as the bound.
 - All three frameworks reach **1 build per update** when used idiomatically.
   The difference is *where* the targeting lives: Juice names the invalidation
   once, at the emitter; selector-based approaches run a selector in every
   consumer on every update (see the selector-calls column).
-- Juice's group filter is also per-widget work (a set intersection per
+- Juice's group filter is also per-widget work (a membership test per
   subscribed widget per emission), so "no selector calls" is not "no work" —
   the frame-cost numbers are the fair comparison of the two.
 - Headless Linux under Xvfb is not a phone. Relative ordering is the result;

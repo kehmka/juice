@@ -5,7 +5,8 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../notification_service.dart';
 
-/// Default [NotificationService] backed by `flutter_local_notifications`.
+/// Default [NotificationService] backed by `flutter_local_notifications`
+/// 20–22 (the named-parameter API that arrived in 20.0.0).
 ///
 /// Deliberately logic-light: it maps [JuiceNotification] to the plugin and
 /// forwards taps. All behavior lives in `NotificationsBloc`, tested with a fake
@@ -35,7 +36,7 @@ class LocalNotificationService implements NotificationService {
   @override
   Future<void> initialize() async {
     await _plugin.initialize(
-      const InitializationSettings(
+      settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(),
       ),
@@ -49,25 +50,28 @@ class LocalNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> show(JuiceNotification n) =>
-      _plugin.show(n.id, n.title, n.body, _details, payload: n.payload);
-
-  @override
-  Future<void> schedule(JuiceNotification n, DateTime when) =>
-      _plugin.zonedSchedule(
-        n.id,
-        n.title,
-        n.body,
-        tz.TZDateTime.from(when, tz.local),
-        _details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+  Future<void> show(JuiceNotification n) => _plugin.show(
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        notificationDetails: _details,
         payload: n.payload,
       );
 
   @override
-  Future<void> cancel(int id) => _plugin.cancel(id);
+  Future<void> schedule(JuiceNotification n, DateTime when) =>
+      _plugin.zonedSchedule(
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        scheduledDate: tz.TZDateTime.from(when, tz.local),
+        notificationDetails: _details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: n.payload,
+      );
+
+  @override
+  Future<void> cancel(int id) => _plugin.cancel(id: id);
 
   @override
   Future<void> cancelAll() => _plugin.cancelAll();

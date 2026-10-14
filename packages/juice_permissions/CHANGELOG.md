@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Requires `juice ^2.0.0`.** No API change in this package: the bump carries
   the core's breaking set (`doc/guides/upgrading-to-2.0.md`).
+- **`permission_handler` `>=11.3.0 <14.0.0`** (was `^11.3.0`): an app on
+  permission_handler 12 or 13 can resolve this package. The default provider
+  compiles and its tests pass at both ends of the range; the new major has not
+  had an on-device run yet.
 
 ## [0.3.0] - 2026-08-12
 

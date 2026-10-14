@@ -291,7 +291,7 @@ API change.
 | juice_auth | 0.3.0 | 0.4.0 | |
 | juice_auth_network | 0.1.3 | 0.2.0 | requires `juice_auth ^0.4.0`, `juice_network ^0.14.0` |
 | juice_auth_routing | 0.1.2 | 0.2.0 | requires `juice_auth ^0.4.0`, `juice_routing ^2.0.0` |
-| juice_connectivity | 0.2.0 | 0.3.0 | *changed*: bloc-owned `changes` binding, close order, loud dispose |
+| juice_connectivity | 0.2.0 | 0.3.0 | *changed*: bloc-owned `changes` binding, close order, loud dispose; `connectivity_plus` up to 7 |
 | juice_flags | 0.2.0 | 0.3.0 | |
 | juice_forms | 0.3.0 | 0.4.0 | |
 | juice_i18n | 0.2.0 | 0.3.0 | |
@@ -299,17 +299,17 @@ API change.
 | juice_lint | 0.2.0 | 0.3.0 | *changed*: `juice_missing_concurrency_mode` retired (analyzer plugin: no `juice` dependency; not yet on pub.dev) |
 | juice_llm | 0.5.0 | 0.6.0 | *changed*: bloc-owned generation binding, close order |
 | juice_llm_llamacpp | 0.2.3 | 0.2.3 | unchanged (depends on `juice_llm`, not on `juice`; not republished) |
-| juice_location | 0.2.0 | 0.3.0 | *changed*: bloc-owned tracking binding, `TrackingEndedEvent` |
+| juice_location | 0.2.0 | 0.3.0 | *changed*: bloc-owned tracking binding, `TrackingEndedEvent`; `geolocator` up to 14 |
 | juice_media | 0.6.0 | 0.7.0 | *changed*: per-upload progress bindings, close order, loud dispose |
 | juice_network | 0.13.1 | 0.14.0 | |
-| juice_notifications | 0.2.0 | 0.3.0 | *changed*: bloc-owned `taps` binding, close order, loud dispose |
+| juice_notifications | 0.2.0 | 0.3.0 | *changed*: bloc-owned `taps` binding, close order, loud dispose; `flutter_local_notifications` 20–22 (named-parameter API; Flutter ≥ 3.32) |
 | juice_observability | 0.5.1 | 0.6.0 | *changed*: `DevtoolsJuiceLogger.record` |
 | juice_paging | 0.2.0 | 0.3.0 | |
-| juice_permissions | 0.3.0 | 0.4.0 | |
-| juice_power | 0.1.0 | 0.2.0 | *changed*: as connectivity |
+| juice_permissions | 0.3.0 | 0.4.0 | `permission_handler` up to 13 |
+| juice_power | 0.1.0 | 0.2.0 | *changed*: as connectivity; `battery_plus` up to 7 |
 | juice_realtime | 0.2.0 | 0.3.0 | *changed*: bloc-owned `messages` binding, socket error = connection loss, close order |
 | juice_routing | 1.3.0 | 2.0.0 | |
-| juice_storage | 2.3.0 | 3.0.0 | |
+| juice_storage | 2.3.0 | 3.0.0 | `flutter_secure_storage` up to 11 |
 | juice_sync | 0.2.1 | 0.3.0 | |
 | juice_theme | 0.2.0 | 0.3.0 | |
 

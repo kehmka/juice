@@ -4,7 +4,7 @@ package: juice_location
 version: 0.3.0
 requires:
   juice: ">=2.0.0"
-  geolocator: ">=13.0.0"
+  geolocator: ">=13.0.0 <15.0.0"
 updated: 2026-10-13
 ---
 

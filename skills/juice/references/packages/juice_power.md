@@ -4,7 +4,7 @@ package: juice_power
 version: 0.2.0
 requires:
   juice: ">=2.0.0"
-  battery_plus: ">=6.2.0"
+  battery_plus: ">=6.2.0 <8.0.0"
 updated: 2026-10-13
 ---
 

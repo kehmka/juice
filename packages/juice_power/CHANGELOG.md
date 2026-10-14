@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bloc_error`); the bloc owns one provider for its life, and the first stays
   live. Before, the config was silently replaced and the first provider never
   disposed.
+- **`battery_plus` `>=6.2.0 <8.0.0`** (was `^6.2.0`): an app on battery_plus 7
+  can resolve this package. The default provider compiles and its tests pass at
+  both ends of the range; the new major has not had an on-device run yet.
 
 ## [0.1.0] - 2026-07-25
 

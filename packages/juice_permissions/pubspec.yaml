@@ -17,7 +17,7 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^2.0.0
-  permission_handler: ^11.3.0
+  permission_handler: '>=11.3.0 <14.0.0'
 
 dev_dependencies:
   flutter_test:

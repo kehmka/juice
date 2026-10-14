@@ -4,7 +4,7 @@ package: juice_permissions
 version: 0.4.0
 requires:
   juice: ">=2.0.0"
-  permission_handler: ">=11.3.0"
+  permission_handler: ">=11.3.0 <14.0.0"
 updated: 2026-10-13
 ---
 

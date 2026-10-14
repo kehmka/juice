@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `use_case_error` and `bloc_error`); the bloc owns one provider for its life,
   and the first stays live. Before, the config was silently replaced and the
   first provider never disposed.
+- **`connectivity_plus` `>=6.1.0 <8.0.0`** (was `^6.1.0`): an app on
+  connectivity_plus 7 can resolve this package. The default provider compiles
+  and its tests pass at both ends of the range; the new major has not had an on-
+  device run yet.
 
 ## [0.2.0] - 2026-08-12
 

@@ -18,7 +18,7 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^2.0.0
-  geolocator: ^13.0.0
+  geolocator: '>=13.0.0 <15.0.0'
 
 dev_dependencies:
   flutter_test:

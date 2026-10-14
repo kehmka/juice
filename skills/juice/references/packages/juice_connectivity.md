@@ -4,7 +4,7 @@ package: juice_connectivity
 version: 0.3.0
 requires:
   juice: ">=2.0.0"
-  connectivity_plus: ">=6.1.0"
+  connectivity_plus: ">=6.1.0 <8.0.0"
 updated: 2026-10-13
 ---
 

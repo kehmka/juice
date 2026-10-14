@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first service never disposed.
 - `close()` waits for a service operation still in flight (a schedule, a cancel)
   before disposing the service.
+- **`flutter_local_notifications` `>=20.0.0 <23.0.0`** (was `^17.2.2`, which no
+  app on a current plugin could resolve) and `timezone` `>=0.10.0 <0.12.0`; the
+  default `LocalNotificationService` uses the plugin's named-parameter API
+  (20.0.0's breaking change) and no longer passes the removed
+  `uiLocalNotificationDateInterpretation`. The package's Flutter floor follows
+  the plugin's: `>=3.32.0`. An app still on plugin 19 cannot take this version;
+  19 and 20+ have incompatible call shapes, so the package follows the current
+  majors.
 
 ## [0.2.0] - 2026-08-12
 

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the core's breaking set (`doc/guides/upgrading-to-2.0.md`).
 - 3.0.0 because the dependency bump is breaking for a 1.x consumer; nothing in
   the storage API changed since 2.3.0.
+- **`flutter_secure_storage` `>=9.2.0 <12.0.0`** (was `^9.2.0`): an app on
+  flutter_secure_storage 10 or 11 can resolve this package. The secure backend
+  compiles and the suite passes at 9.2.4 and 11.2.0; the new majors have not had
+  an on-device run yet.
 
 ## [2.3.0] - 2026-09-26
 

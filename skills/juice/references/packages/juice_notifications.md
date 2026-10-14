@@ -4,8 +4,8 @@ package: juice_notifications
 version: 0.3.0
 requires:
   juice: ">=2.0.0"
-  flutter_local_notifications: ">=17.2.2"
-  timezone: ">=0.9.4"
+  flutter_local_notifications: ">=20.0.0 <23.0.0"
+  timezone: ">=0.10.0 <0.12.0"
 updated: 2026-10-13
 ---
 

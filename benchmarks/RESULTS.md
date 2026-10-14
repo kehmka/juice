@@ -1163,37 +1163,41 @@ its product through a never-inlined sink and keeps a summed checksum (an
 XOR cancelled when `Type.toString()` returned the same cached string
 twice — the first corrected run failed loud on exactly that). A
 `2 awaited async hops` row was added: 2.0.0's send depth, beside the 1.x
-four. Same Mac, same tree plus the review's fixes, 5 rounds, median
-[range]. Raw data: `results/breakdown_macos.json`.
+four. Same machines, same tree plus the review's fixes, 5 rounds, median
+[range]; the phone clock-pinned as in §17 (its send rows read under §17's
+— a cooler phone — so compare within a run). Raw data:
+`results/breakdown_macos.json`, `results/breakdown_ios.json`.
 
-| layer | µs per op |
-|---|---:|
-| telemetry maps (3 per event) | 1.20 [1.03–1.29] |
-| **telemetry records (3 per event)** | **0.06** [0.05–0.12] |
-| `Type.toString()` ×3 | 0.80 |
-| `typeName()` memo ×3 | 0.03 |
-| Stopwatch()..start | 0.03 |
-| context object + 9 wiring closures | 0.03 |
-| group set spread | 0.05 |
-| Zone.current[key] | 0.01 |
-| group filter · intersection() / any(contains) | 0.05 / 0.03 |
-| **2 awaited async hops** | **0.37** [0.35–0.42] |
-| 4 awaited async hops | 0.52 |
-| statusEmitter.emitUpdate | 0.16 [0.07–0.20] |
-| send · fresh instance (chatter built) | 0.63 [0.63–0.66] |
-| send · fresh, chatter not built (release default) | 0.43 [0.42–0.45] |
-| send · fresh, restartable, chatter not built | 0.98 |
-| send · fresh · burst n=20,000 | 1.93 |
+| layer | Mac | iPhone 17 Pro Max |
+|---|---:|---:|
+| telemetry maps (3 per event) | 1.20 [1.03–1.29] | 0.65 [0.62–0.66] |
+| **telemetry records (3 per event)** | **0.06** [0.05–0.12] | **0.04** [0.04–0.04] |
+| `Type.toString()` ×3 | 0.80 | 0.41 |
+| `typeName()` memo ×3 | 0.03 | 0.03 |
+| Stopwatch()..start | 0.03 | 0.03 |
+| context object + 9 wiring closures | 0.03 | 0.03 |
+| group set spread | 0.05 | 0.03 |
+| Zone.current[key] | 0.01 | 0.01 |
+| group filter · intersection() / any(contains) | 0.05 / 0.03 | 0.03 / 0.02 |
+| **2 awaited async hops** | **0.37** [0.35–0.42] | **0.26** [0.25–0.27] |
+| 4 awaited async hops | 0.52 | 0.35 |
+| statusEmitter.emitUpdate | 0.16 [0.07–0.20] | 0.07 [0.04–0.14] |
+| send · fresh instance (chatter built) | 0.63 [0.63–0.66] | 0.42 [0.41–0.43] |
+| send · fresh, chatter not built (release default) | 0.43 [0.42–0.45] | 0.31 [0.30–0.32] |
+| send · fresh, restartable, chatter not built | 0.98 | 0.67 |
+| send · fresh · burst n=20,000 | 1.93 | 0.91 |
 
 ### Reading
 
-- **The records cost 0.06 µs for three, not 0.02** — still a twentieth
-  of the 1.20 µs the maps cost, and the send rows are unchanged (0.63 /
-  0.43), so the claims that rested on them stand with the honest number.
-- **The closures and the context object cost 0.03 µs**, not nothing:
-  measurable, and the smallest allocation on the sheet.
-- **Two awaited hops alone are 0.37 µs** (the four were 0.52): most of the
-  release-default send is the two awaited frames — the executor's and the
-  use case's — and the rest is the emission (0.16). The rows are measured
-  alone and do not sum to the send (the loops carry their own overhead);
-  read them as magnitudes.
+- **The records cost 0.06 µs for three on the Mac and 0.04 on the phone,
+  not 0.02** — a twentieth and a sixteenth of what the maps cost (1.20 /
+  0.65), and the send rows are unchanged on the Mac (0.63 / 0.43), so the
+  claims that rested on them stand with the honest number.
+- **The closures and the context object cost 0.03 µs** on both machines,
+  not nothing: measurable, and the smallest allocation on the sheet.
+- **Two awaited hops alone are 0.37 µs on the Mac and 0.26 on the phone**
+  (the four: 0.52 / 0.35): most of the release-default send is the two
+  awaited frames — the executor's and the use case's — and the rest is
+  the emission (0.16 / 0.07). The rows are measured alone and do not sum
+  to the send (the loops carry their own overhead); read them as
+  magnitudes.

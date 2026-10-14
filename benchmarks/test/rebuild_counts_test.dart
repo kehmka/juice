@@ -4,9 +4,9 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:juice/juice.dart'
-    show JuiceLoggerConfig, JuiceLogger, JuiceTelemetry, Level;
+import 'package:juice/juice.dart' show JuiceLoggerConfig;
 import 'package:juice_benchmarks/counters.dart';
+import 'package:juice_benchmarks/dispatch.dart' show SilentJuiceLogger;
 import 'package:juice_benchmarks/scenarios/all.dart';
 
 /// REBUILD COUNTS — deterministic, so they are both a published result and a
@@ -18,27 +18,8 @@ const cells = 100;
 const updates = 10;
 const target = 7;
 
-class _Silent implements JuiceLogger {
-  @override
-  void record(JuiceTelemetry e) {}
-
-  @override
-  void log(
-    String m, {
-    Level level = Level.info,
-    Map<String, dynamic>? context,
-  }) {}
-  @override
-  void logError(
-    String m,
-    Object e,
-    StackTrace s, {
-    Map<String, dynamic>? context,
-  }) {}
-}
-
 void main() {
-  setUpAll(() => JuiceLoggerConfig.configureLogger(_Silent()));
+  setUpAll(() => JuiceLoggerConfig.configureLogger(SilentJuiceLogger()));
   final results = <Map<String, Object?>>[];
 
   for (final variant in allVariants()) {

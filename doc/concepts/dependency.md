@@ -802,11 +802,15 @@ class EnvironmentBlocResolver implements BlocDependencyResolver {
 
 // Usage examples:
 
+// There is no global resolver slot in 2.0.0: a resolver is passed to the
+// widgets and relays that take one, and everything else registers with
+// BlocScope.
+
 // Multi-tenant setup
 void configureTenantApp() {
   final resolver = TenantBlocResolver(currentTenant);
-  GlobalBlocResolver().resolver = resolver;
-  
+  runApp(OrdersView(resolver: resolver));   // every Juice widget takes resolver:
+
   // Later, when switching tenants:
   resolver.disposeTenant(oldTenant);
   // Create new resolver for new tenant
@@ -818,13 +822,21 @@ void configureFeatureFlags() {
     newPaymentSystem: true,
     experimentalCheckout: false,
   );
-  GlobalBlocResolver().resolver = FeatureFlagBlocResolver(flags);
+  final resolver = FeatureFlagBlocResolver(flags);
+  runApp(CheckoutView(resolver: resolver));
 }
 
-// Environment setup
+// Environment setup — or register the right factory with BlocScope once
 void configureEnvironment() {
   final env = Environment.development;
-  GlobalBlocResolver().resolver = EnvironmentBlocResolver(env);
+  BlocScope.register<ApiBloc>(
+    () => switch (env) {
+      Environment.development => DevApiBloc(mockApiService),
+      Environment.staging => StagingApiBloc(stagingApiService),
+      Environment.production => ProductionApiBloc(productionApiService),
+    },
+    lifecycle: BlocLifecycle.permanent,
+  );
 }
 
 // Composite resolver that combines multiple strategies
@@ -852,8 +864,8 @@ class CompositeResolver implements BlocDependencyResolver {
 void configureApp() {
   final tenantResolver = TenantBlocResolver(currentTenant);
   final featureResolver = FeatureFlagBlocResolver(flags);
-  
-  GlobalBlocResolver().resolver = CompositeResolver(
+
+  final resolver = CompositeResolver(
     resolvers: {
       // Tenant-specific blocs
       OrderBloc: tenantResolver,
@@ -863,8 +875,9 @@ void configureApp() {
       PaymentBloc: featureResolver,
       CheckoutBloc: featureResolver,
     },
-    defaultResolver: BlocResolver(),
+        defaultResolver: BlocResolver(),
   );
+  runApp(AppShell(resolver: resolver));
 }
 ```
 

@@ -14,8 +14,8 @@ import 'core/type_names.dart';
 /// - Error tracking
 abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
     extends UseCase<TBloc, TEvent> {
-  /// Name of the use case: its runtime type, computed on first use.
-  late final String useCaseName = typeName(runtimeType);
+  /// Name of the use case: its runtime type's name.
+  String get useCaseName => typeName(runtimeType);
 
   /// Execute the use case logic for the given event.
   ///

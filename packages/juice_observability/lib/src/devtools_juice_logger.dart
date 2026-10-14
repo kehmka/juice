@@ -15,13 +15,13 @@ import 'package:juice/juice.dart';
 /// `type`; untyped chatter stays console-only. Errors without a type post as
 /// `juice:error` — an error is always worth surfacing.
 ///
-/// SPANS: from juice 1.7.0 the core logs a `use_case_completed` end entry
+/// SPANS: the core logs a `use_case_completed` end entry
 /// (and stamps `use_case_error`) sharing the start's `executionId`, with
 /// `elapsedMicros` — so a consumer can pair `juice:use_case_execution` with
 /// its end event into an honest duration span, even when same-type events
 /// overlap under `concurrent`.
 ///
-/// COST FOLLOWS THE LISTENER (0.5.1, juice ≥ 1.10.0): this logger declares
+/// COST FOLLOWS THE LISTENER: this logger declares
 /// its level ([LevelAwareJuiceLogger]) and builds payloads only while the
 /// VM's Extension stream has a listener (`dart:developer`
 /// `extensionStreamHasListener`). With a listener it declares [Level.all],
@@ -85,17 +85,15 @@ class DevtoolsJuiceLogger implements LevelAwareJuiceLogger {
   static const int maxFieldLength = 512;
 
   /// The framework's telemetry: posted as `juice:<type>` with the entry's
-  /// fields (its pre-2.0 map shape, `type` stripped), message and level,
-  /// plus `error` / `stackTrace` for error entries. Built only with a
-  /// listener.
+  /// fields (its map shape, `type` stripped; an `error` crosses as its
+  /// string), message and level, plus `stackTrace` when the entry has one.
+  /// Built only with a listener.
   @override
   void record(JuiceTelemetry entry) {
     _inner.record(entry);
     if (!_hasListener()) return;
-    final error = entry.error;
-    _post('juice:${entry.kind.type}', {
+    _post('juice:${entry.kind.wireType}', {
       ..._payload(entry.message, entry.level, entry.toMap()),
-      if (error != null) 'error': _clip(error.toString()),
       if (entry.stackTrace != null)
         'stackTrace': _clip(entry.stackTrace.toString()),
     });

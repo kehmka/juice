@@ -9,31 +9,30 @@ import 'stats.dart';
 
 /// WHERE A JUICE DISPATCH'S TIME GOES — measured layer by layer.
 ///
-/// Real Juice code, timed directly:
-/// - `stateManager.emit`   — the raw state store (set + broadcast add);
-/// - `statusEmitter.emit`  — + status object, group merge, emission log map;
-/// - `send (stateful)`     — the full path with ONE reused use-case instance
-///                           (StatefulUseCaseBuilder);
-/// - `send (fresh)`        — the full path as normally registered: a fresh
-///                           use-case instance per event (UseCaseBuilder).
+/// Rows of kind `real` time a Juice send path end to end:
+/// - `stateManager.emit` — the raw store (set + broadcast add);
+/// - `statusEmitter.emitUpdate` — the store plus the status object, the
+///   group merge and the emission's telemetry record;
+/// - `send · …` — the full path: a reused use-case instance
+///   (StatefulUseCaseBuilder) or a fresh one per event (UseCaseBuilder),
+///   with the chatter built (silent logger) or not built (telemetry floor
+///   at warning; the default logger in release), registered restartable,
+///   and in the burst shape at two sizes.
 ///
-/// Synthetic, labelled as such (Juice can't switch these off to compare):
-/// - `telemetry maps`      — building the three context maps one event logs
-///                           (span start, emission, span end) + the two type
-///                           names, with nothing consuming them;
-/// - `4 async hops`        — four nested awaited async calls: the 1.x send
-///                           depth (send → dispatcher → executor →
-///                           execute()). A send now awaits once, so this
-///                           row is the reference the send rows are read
-///                           against, not their model.
+/// Rows of kind `synthetic` time ONE piece alone — real framework code or a
+/// stand-in — so a send's cost can be decomposed: the three telemetry
+/// entries as the context maps 1.x built and as the records 2.0.0 builds;
+/// `Type.toString()` against the `typeName` memo; a Stopwatch; the context
+/// object with the closures the executor wires; the group-set spread; a
+/// zone lookup; the widgets' group filter in its allocating and its
+/// allocation-free form; two and four nested awaited async calls (a send
+/// awaits twice: the executor and the use case; four was the 1.x depth).
 ///
-/// BURST shape: the dispatch benchmark found Juice's burst (fire all, await
-/// the last) SLOWER per event than its sequential shape, on every machine,
-/// while bloc and Riverpod get cheaper in burst. These rows fire the same
-/// ops without awaiting each one, at two sizes: a cost that grows with the
-/// size is depth (microtask queue, allocation/GC), a flat one is per event.
-///
-/// All with the silent logger, µs per operation, every round kept.
+/// Every product of a synthetic row escapes through [_consume], a
+/// never-inlined call, so the compiler cannot elide the work. The burst
+/// rows fire the same ops without awaiting each one: a cost that grows with
+/// the size is depth (microtask queue, allocation, GC), a flat one is per
+/// event. Silent logger throughout, µs per operation, every round kept.
 
 class _S extends BlocState {
   const _S(this.n);
@@ -91,29 +90,9 @@ class _StatefulBloc extends JuiceBloc<_S> {
       ]);
 }
 
-/// Whether a row times real Juice code or a synthetic stand-in.
+/// `real`: a Juice send path timed end to end. `synthetic`: one piece timed
+/// alone — real framework code or a stand-in.
 enum RowKind { real, synthetic }
-
-/// Stand-in for UseCaseContext: one object holding six closures.
-class _SyntheticContext {
-  _SyntheticContext(this.u, this.w, this.f, this.c, this.e, this.nav);
-  final void Function(Object?, Object?) u;
-  final void Function(Object?, Object?) w;
-  final void Function(Object?, Object?) f;
-  final void Function(Object?, Object?) c;
-  final void Function(Object?) e;
-  final void Function(Object?, Object?) nav;
-}
-
-/// Stand-in for a UseCase: the late function fields the executor wires.
-class _SyntheticUseCase {
-  late void Function({Object? a, Object? b}) emitUpdate;
-  late void Function({Object? a, Object? b}) emitWaiting;
-  late void Function({Object? a, Object? b}) emitFailure;
-  late void Function({Object? a, Object? b}) emitCancel;
-  late void Function({Object? a}) emitEvent;
-  late void Function(Object?, Object?) navigate;
-}
 
 class BreakdownRow {
   BreakdownRow(this.layer, this.kind, this.micros);
@@ -134,6 +113,35 @@ class BreakdownResult {
     ...sample.toJson('microsPerOp'),
   };
 }
+
+/// Stand-in for the per-execution part of UseCaseContext: the four emit
+/// closures that capture the event (emitEvent and navigate are shared per
+/// bloc).
+class _SyntheticContext {
+  _SyntheticContext(this.update, this.waiting, this.failure, this.cancel);
+  final void Function(Object?, Object?) update;
+  final void Function(Object?, Object?) waiting;
+  final void Function(Object?, Object?) failure;
+  final void Function(Object?, Object?) cancel;
+}
+
+/// Stand-in for a UseCase: the function fields the executor assigns per
+/// execution (five closures; `navigate` is the context's shared closure).
+class _SyntheticUseCase {
+  late void Function({Object? a, Object? b}) emitUpdate;
+  late void Function({Object? a, Object? b}) emitWaiting;
+  late void Function({Object? a, Object? b}) emitFailure;
+  late void Function({Object? a, Object? b}) emitCancel;
+  late void Function({Object? a}) emitEvent;
+  late void Function(Object?, Object?) navigate;
+}
+
+/// The sink every synthetic product escapes through: never inlined, so the
+/// value must exist. Returns a hash the caller SUMS into a checksum (an XOR
+/// cancels when the same object comes back twice, as a cached type name
+/// does).
+@pragma('vm:never-inline')
+int _consume(Object? value) => identityHashCode(value);
 
 /// Runs [body] with the framework's telemetry floor at [level], restoring
 /// the previous floor whatever happens.
@@ -167,19 +175,24 @@ Future<double> _sends(
   int n, {
   bool expectAll = true,
 }) async {
-  final micros = await _timeAsync(n, (_) => bloc.send(_Ev()));
-  if (expectAll && bloc.state.n != n) {
-    throw StateError('${bloc.runtimeType}: ${bloc.state.n} of $n sends ran');
+  try {
+    final micros = await _timeAsync(n, (_) => bloc.send(_Ev()));
+    if (expectAll && bloc.state.n != n) {
+      throw StateError('${bloc.runtimeType}: ${bloc.state.n} of $n sends ran');
+    }
+    return micros;
+  } finally {
+    await bloc.close();
   }
-  await bloc.close();
-  return micros;
 }
 
 /// The burst shape of [_sends].
 Future<double> _burst(JuiceBloc<_S> bloc, int n) async {
-  final micros = await _timeBurst(n, (_) => bloc.send(_Ev()));
-  await bloc.close();
-  return micros;
+  try {
+    return await _timeBurst(n, (_) => bloc.send(_Ev()));
+  } finally {
+    await bloc.close();
+  }
 }
 
 Future<double> _timeAsync(int n, Future<void> Function(int i) op) async {
@@ -212,7 +225,8 @@ double _timeSync(int n, void Function(int i) op) {
   return sw.elapsedMicroseconds / n;
 }
 
-// Four nested awaited async calls — the hop depth of a Juice send.
+// Nested awaited async calls: four was the 1.x send depth, two is 2.0.0's
+// (the executor's await and the use case's own).
 Future<void> _hop4(int i) => _hop3(i);
 Future<void> _hop3(int i) async => await _hop2(i);
 Future<void> _hop2(int i) async => await _hop1(i);
@@ -221,351 +235,289 @@ Future<void> _hop0(int i) async {}
 
 Future<List<BreakdownRow>> _once(int n) async {
   final rows = <BreakdownRow>[];
+  void add(String layer, RowKind kind, double micros) =>
+      rows.add(BreakdownRow(layer, kind, micros));
 
-  // 1. Raw state store.
+  /// A synthetic row's checksum is a sum of identity hashes over n
+  /// iterations: zero means the loop body produced nothing the sink saw.
+  void check(String layer, int checksum) {
+    if (checksum == 0) throw StateError('$layer: nothing reached the sink');
+  }
+
+  // --- the store and the emitter
   final sm = StateManager<StreamStatus<_S>>(
     StreamStatus.updating(const _S(0), const _S(0), null),
   );
   final sub = sm.stream.listen((_) {});
-  rows.add(
-    BreakdownRow(
-      'stateManager.emit',
-      RowKind.real,
-      _timeSync(n, (i) {
-        sm.emit(StreamStatus.updating(_S(i), const _S(0), null));
-      }),
-    ),
+  add(
+    'stateManager.emit',
+    RowKind.real,
+    _timeSync(n, (i) {
+      sm.emit(StreamStatus.updating(_S(i), const _S(0), null));
+    }),
   );
   await Future<void>.delayed(Duration.zero);
-
-  // 2. Status emitter (status + group merge + emission log map).
   final emitter = StatusEmitter<_S>(
     stateManager: sm,
     logger: SilentJuiceLogger(),
     blocName: '_FreshBloc',
   );
-  rows.add(
-    BreakdownRow(
-      'statusEmitter.emitUpdate',
-      RowKind.real,
-      _timeSync(n, (i) {
-        emitter.emitUpdate(_Ev(), _S(i), {'g'});
-      }),
-    ),
+  add(
+    'statusEmitter.emitUpdate',
+    RowKind.real,
+    _timeSync(n, (i) {
+      emitter.emitUpdate(_Ev(), _S(i), {'g'});
+    }),
   );
   await Future<void>.delayed(Duration.zero);
   await sub.cancel();
   await sm.close();
 
-  // 3. Telemetry maps alone (synthetic). The maps are consumed (their key
-  //    counts summed and checked) so the compiler cannot drop them.
+  // --- the three telemetry entries of a send: as the maps 1.x built, and
+  //     as the records 2.0.0 builds.
   final uc = _UC();
   final ev = _Ev();
-  var keys = 0;
-  rows.add(
-    BreakdownRow(
-      'telemetry maps (3 per event)',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        final useCaseName = uc.runtimeType.toString();
-        final eventName = ev.runtimeType.toString();
-        final start = {
-          'type': 'use_case_execution',
-          'useCase': useCaseName,
-          'event': eventName,
-          'executionId': i,
-        };
-        final emission = {
-          'type': 'state_emission',
-          'status': 'update',
-          'state': i,
-          'bloc': '_FreshBloc',
-          'groups': const {'g'},
-          'event': eventName,
-        };
-        final end = {
-          'type': 'use_case_completed',
-          'useCase': useCaseName,
-          'event': eventName,
-          'executionId': i,
-          'elapsedMicros': i,
-        };
-        keys += start.length + emission.length + end.length;
-      }),
-    ),
+  var sum = 0;
+  add(
+    'telemetry maps (3 per event)',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      final useCaseName = uc.runtimeType.toString();
+      final eventName = ev.runtimeType.toString();
+      sum += _consume({
+        'type': 'use_case_execution',
+        'useCase': useCaseName,
+        'event': eventName,
+        'executionId': i,
+      });
+      sum += _consume({
+        'type': 'state_emission',
+        'status': 'update',
+        'state': i,
+        'bloc': '_FreshBloc',
+        'groups': const {'g'},
+        'event': eventName,
+      });
+      sum += _consume({
+        'type': 'use_case_completed',
+        'useCase': useCaseName,
+        'event': eventName,
+        'executionId': i,
+        'elapsedMicros': i,
+      });
+    }),
   );
-  if (keys != n * 15) {
-    throw StateError('the synthetic maps were not built: $keys keys');
-  }
-
-  // 3a. The same three entries as typed records (what 2.0.0 builds): one
-  //     object each, no map, names from the memo.
-  var ids = 0;
-  rows.add(
-    BreakdownRow(
-      'telemetry records (3 per event)',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        final useCaseName = typeName(uc.runtimeType);
-        final eventName = typeName(ev.runtimeType);
-        final start = JuiceTelemetry(
+  check('telemetry maps', sum);
+  sum = 0;
+  add(
+    'telemetry records (3 per event)',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      final useCaseName = typeName(uc.runtimeType);
+      final eventName = typeName(ev.runtimeType);
+      sum += _consume(
+        JuiceTelemetry(
           JuiceTelemetryKind.useCaseStarted,
           useCase: useCaseName,
           event: eventName,
           executionId: i,
-        );
-        final emission = JuiceTelemetry(
+        ),
+      );
+      sum += _consume(
+        JuiceTelemetry(
           JuiceTelemetryKind.stateEmitted,
-          status: 'update',
+          status: EmissionKind.update,
           state: i,
           bloc: '_FreshBloc',
           groups: const {'g'},
           event: eventName,
-        );
-        final end = JuiceTelemetry(
+        ),
+      );
+      sum += _consume(
+        JuiceTelemetry(
           JuiceTelemetryKind.useCaseCompleted,
           useCase: useCaseName,
           event: eventName,
           executionId: i,
           elapsedMicros: i,
-        );
-        ids += start.executionId! + end.executionId! + (emission.state as int);
-      }),
-    ),
+        ),
+      );
+    }),
   );
-  if (ids == 0 && n > 1) throw StateError('the records were not built');
+  check('telemetry records', sum);
 
-  // 3b. The per-send allocations the send path makes besides the maps
-  //     (synthetic, each alone): the three Type.toString() calls (event
-  //     name, use-case name in the executor, use-case name in BlocUseCase's
-  //     constructor); a Stopwatch; the context object plus the eleven
-  //     closures that wire a use case; the group-set copy an emit makes;
-  //     and a Zone value lookup.
-  var names = 0;
-  rows.add(
-    BreakdownRow(
-      'Type.toString() ×3',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        names +=
-            ev.runtimeType.toString().length +
-            uc.runtimeType.toString().length +
-            uc.runtimeType.toString().length;
-      }),
-    ),
+  // --- the pieces a send allocates or looks up, each alone.
+  sum = 0;
+  add(
+    'Type.toString() ×3',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      sum += _consume(ev.runtimeType.toString());
+      sum += _consume(uc.runtimeType.toString());
+      sum += _consume(uc.runtimeType.toString());
+    }),
   );
-  if (names == 0) throw StateError('names not built');
-  var memo = 0;
-  rows.add(
-    BreakdownRow(
-      'typeName() memo ×3',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        memo +=
-            typeName(ev.runtimeType).length +
-            typeName(uc.runtimeType).length +
-            typeName(uc.runtimeType).length;
-      }),
-    ),
+  check('Type.toString()', sum);
+  sum = 0;
+  add(
+    'typeName() memo ×3',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      sum += _consume(typeName(ev.runtimeType));
+      sum += _consume(typeName(uc.runtimeType));
+      sum += _consume(typeName(uc.runtimeType));
+    }),
   );
-  if (memo != names) throw StateError('memo disagrees with toString');
-  var ticks = 0;
-  rows.add(
-    BreakdownRow(
-      'Stopwatch()..start',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        final sw = Stopwatch()..start();
-        ticks += sw.elapsedMicroseconds;
-      }),
-    ),
+  check('typeName()', sum);
+  sum = 0;
+  add(
+    'Stopwatch()..start',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      sum += _consume(Stopwatch()..start());
+    }),
   );
-  if (ticks < 0) throw StateError('unreachable');
-  var wired = 0;
-  rows.add(
-    BreakdownRow(
-      'context object + 11 wiring closures',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        final ctx = _SyntheticContext(
-          (a, b) => wired++,
-          (a, b) => wired++,
-          (a, b) => wired++,
-          (a, b) => wired++,
-          (a) => wired++,
-          (a, b) => wired++,
-        );
-        final u = _SyntheticUseCase();
-        u.emitUpdate = ({a, b}) {
-          ctx.u(a, b);
-        };
-        u.emitWaiting = ({a, b}) {
-          ctx.w(a, b);
-        };
-        u.emitFailure = ({a, b}) {
-          ctx.f(a, b);
-        };
-        u.emitCancel = ({a, b}) {
-          ctx.c(a, b);
-        };
-        u.emitEvent = ({a}) {
-          ctx.e(a);
-        };
-        u.navigate = ctx.nav;
-        wired += identityHashCode(u);
-      }),
-    ),
+  check('Stopwatch', sum);
+  sum = 0;
+  add(
+    'context object + 9 wiring closures',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      final ctx = _SyntheticContext(
+        (a, b) => sum += 1,
+        (a, b) => sum += 2,
+        (a, b) => sum += 4,
+        (a, b) => sum += 8,
+      );
+      final u = _SyntheticUseCase();
+      u.emitUpdate = ({a, b}) {
+        ctx.update(a, b);
+      };
+      u.emitWaiting = ({a, b}) {
+        ctx.waiting(a, b);
+      };
+      u.emitFailure = ({a, b}) {
+        ctx.failure(a, b);
+      };
+      u.emitCancel = ({a, b}) {
+        ctx.cancel(a, b);
+      };
+      u.emitEvent = ({a}) {
+        sum += 16;
+      };
+      u.navigate = _sharedNavigate;
+      sum += _consume(ctx) + _consume(u);
+    }),
   );
-  if (wired == 0) throw StateError('closures not built');
+  check('context + closures', sum);
   final eventGroups = <String>{'cell:7'};
   const widgetGroups = {'g'};
-  var merged = 0;
-  rows.add(
-    BreakdownRow(
-      'group set spread {...a, ...b}',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        merged += {...eventGroups, ...widgetGroups}.length;
-      }),
-    ),
+  sum = 0;
+  add(
+    'group set spread {...a, ...b}',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      sum += _consume({...eventGroups, ...widgetGroups});
+    }),
   );
-  if (merged != n * 2) throw StateError('sets not built');
-  var zones = 0;
-  rows.add(
-    BreakdownRow(
-      'Zone.current[key] lookup',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        if (Zone.current[#juice.bench] == null) zones++;
-      }),
-    ),
+  check('set spread', sum);
+  sum = 0;
+  add(
+    'Zone.current[key] lookup',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      sum += _consume(Zone.current[#juice.bench]) + 1;
+    }),
   );
-  if (zones != n) throw StateError('zone lookups skipped');
+  check('zone lookup', sum);
 
-  // 3c. The widget filter per emission per widget: a 1-element event set
-  //     against a 1-element widget set, as the cells scenario runs it 1,000
-  //     times per emission — the allocating form and the allocation-free one.
+  // --- the widgets' group filter per emission per widget: a one-element
+  //     event set against a one-element widget set, as the cells scenario
+  //     runs it 1,000 times per emission.
   var hits = 0;
-  rows.add(
-    BreakdownRow(
-      'group filter · intersection().isNotEmpty',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        if (eventGroups.intersection(widgetGroups).isNotEmpty) hits++;
-      }),
-    ),
+  add(
+    'group filter · intersection().isNotEmpty',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      if (eventGroups.intersection(widgetGroups).isNotEmpty) hits++;
+    }),
   );
-  rows.add(
-    BreakdownRow(
-      'group filter · any(contains)',
-      RowKind.synthetic,
-      _timeSync(n, (i) {
-        if (eventGroups.any(widgetGroups.contains)) hits++;
-      }),
-    ),
+  add(
+    'group filter · any(contains)',
+    RowKind.synthetic,
+    _timeSync(n, (i) {
+      if (eventGroups.any(widgetGroups.contains)) hits++;
+    }),
   );
   if (hits != 0) throw StateError('disjoint sets matched');
 
-  // 4. Async hop depth alone (synthetic).
-  rows.add(
-    BreakdownRow(
-      '4 awaited async hops',
-      RowKind.synthetic,
-      await _timeAsync(n, _hop4),
+  // --- awaited async depth alone.
+  add('2 awaited async hops', RowKind.synthetic, await _timeAsync(n, _hop2));
+  add('4 awaited async hops', RowKind.synthetic, await _timeAsync(n, _hop4));
+
+  // --- the full send, every form.
+  add(
+    'send · StatefulUseCaseBuilder (reused instance)',
+    RowKind.real,
+    await _sends(_StatefulBloc(), n),
+  );
+  add(
+    'send · UseCaseBuilder (fresh instance)',
+    RowKind.real,
+    await _sends(_FreshBloc(), n),
+  );
+  add(
+    'send · fresh instance, minLevel = warning (chatter not built)',
+    RowKind.real,
+    await _withMinLevel(Level.warning, () => _sends(_FreshBloc(), n)),
+  );
+  // DefaultJuiceLogger declares what its filter keeps — nothing outside
+  // debug — so in a release build this row lands on the one above with no
+  // knob set.
+  add(
+    'send · fresh instance, DefaultJuiceLogger, no knob set',
+    RowKind.real,
+    await _withLogger(DefaultJuiceLogger(), () => _sends(_FreshBloc(), n)),
+  );
+  // The restartable mode's own cost: a zone fork per send plus the per-run
+  // token.
+  add(
+    'send · fresh instance, restartable, minLevel = warning',
+    RowKind.real,
+    await _withMinLevel(
+      Level.warning,
+      () => _sends(_RestartableBloc(), n, expectAll: false),
     ),
   );
 
-  // 5. Full send, one reused use-case instance.
-  rows.add(
-    BreakdownRow(
-      'send · StatefulUseCaseBuilder (reused instance)',
-      RowKind.real,
-      await _sends(_StatefulBloc(), n),
-    ),
-  );
-
-  // 6. Full send, fresh instance per event (the normal registration).
-  rows.add(
-    BreakdownRow(
-      'send · UseCaseBuilder (fresh instance)',
-      RowKind.real,
-      await _sends(_FreshBloc(), n),
-    ),
-  );
-
-  // 7. The same send with the framework's chatter NOT BUILT
-  //    (JuiceLoggerConfig.minLevel = Level.warning) — the one knob the
-  //    breakdown priced.
-  rows.add(
-    BreakdownRow(
-      'send · fresh instance, minLevel = warning (chatter not built)',
-      RowKind.real,
-      await _withMinLevel(Level.warning, () => _sends(_FreshBloc(), n)),
-    ),
-  );
-
-  // 7b. The same send with NOTHING configured but the default logger:
-  //     DefaultJuiceLogger declares what its filter keeps — nothing outside
-  //     debug — so in a release build this row should land on row 7 with
-  //     no knob set.
-  rows.add(
-    BreakdownRow(
-      'send · fresh instance, DefaultJuiceLogger, no knob set',
-      RowKind.real,
-      await _withLogger(DefaultJuiceLogger(), () => _sends(_FreshBloc(), n)),
-    ),
-  );
-
-  // 7c. The restartable mode's own cost: a zone fork per send plus the
-  //     per-run token. Same fresh-instance send, registered restartable,
-  //     chatter not built — compare with row 7.
-  rows.add(
-    BreakdownRow(
-      'send · fresh instance, restartable, minLevel = warning',
-      RowKind.real,
-      await _withMinLevel(
-        Level.warning,
-        () => _sends(_RestartableBloc(), n, expectAll: false),
-      ),
-    ),
-  );
-
-  // 8. BURST shape, two sizes each: the hop depth alone, then the full
-  //    send (fresh instance), the reused instance, and the full send with
-  //    chatter not built.
+  // --- burst shape, two sizes.
   for (final size in [n ~/ 10, n]) {
-    rows.add(
-      BreakdownRow(
-        '4 awaited async hops · burst n=$size',
-        RowKind.synthetic,
-        await _timeBurst(size, _hop4),
-      ),
+    add(
+      '4 awaited async hops · burst n=$size',
+      RowKind.synthetic,
+      await _timeBurst(size, _hop4),
     );
-    rows.add(
-      BreakdownRow(
-        'send · fresh instance · burst n=$size',
-        RowKind.real,
-        await _burst(_FreshBloc(), size),
-      ),
+    add(
+      'send · fresh instance · burst n=$size',
+      RowKind.real,
+      await _burst(_FreshBloc(), size),
     );
-    rows.add(
-      BreakdownRow(
-        'send · reused instance · burst n=$size',
-        RowKind.real,
-        await _burst(_StatefulBloc(), size),
-      ),
+    add(
+      'send · reused instance · burst n=$size',
+      RowKind.real,
+      await _burst(_StatefulBloc(), size),
     );
-    rows.add(
-      BreakdownRow(
-        'send · fresh, minLevel = warning · burst n=$size',
-        RowKind.real,
-        await _withMinLevel(Level.warning, () => _burst(_FreshBloc(), size)),
-      ),
+    add(
+      'send · fresh, minLevel = warning · burst n=$size',
+      RowKind.real,
+      await _withMinLevel(Level.warning, () => _burst(_FreshBloc(), size)),
     );
   }
 
   return rows;
 }
+
+void _sharedNavigate(Object? a, Object? b) {}
 
 /// Warm-up, then EVERY round per layer (median + range in the report).
 Future<List<BreakdownResult>> runBreakdown({int n = 20000, int rounds = 5}) =>

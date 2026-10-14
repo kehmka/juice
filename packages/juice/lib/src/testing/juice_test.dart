@@ -61,10 +61,10 @@ class JuiceEmission<TState extends BlocState> {
 ///   emission, in order — use [isUpdatingStatus], [isWaitingStatus],
 ///   [isFailureStatus], [isCancelingStatus]. [skip] drops that many leading
 ///   emissions first.
-/// - [errors] returns the expected errors, in order: use-case errors (the
-///   `use_case_error` spans) and stream-binding errors (a stream's error, an
-///   `onData`/`onError`/`onDone` that threw, a cancel that failed). Without
-///   it, any such error fails the test.
+/// - [errors] returns the expected errors, in order: use-case errors (a
+///   `useCaseFailed` span, a `sequentialRunFailed`) and stream-binding
+///   errors (a stream's error, an `onData`/`onError`/`onDone` that threw, a
+///   cancel that failed). Without it, any such error fails the test.
 /// - [verify] runs last, with the closed bloc, for further checks.
 /// - The bloc is closed BEFORE asserting. The test fails if a use case was
 ///   still running when the bloc closed (a telemetry START without its END —
@@ -286,9 +286,10 @@ class _RecordingLogger implements JuiceLogger {
       case JuiceTelemetryKind.useCaseFailed:
         useCaseErrors.add(entry.error!);
         openSpans.remove(entry.executionId);
-      case JuiceTelemetryKind.streamBindingError ||
-            JuiceTelemetryKind.streamBindingCallbackError ||
-            JuiceTelemetryKind.streamBindingCancelError:
+      case JuiceTelemetryKind.sequentialRunFailed ||
+            JuiceTelemetryKind.streamBindingError ||
+            JuiceTelemetryKind.streamBindingCallbackFailed ||
+            JuiceTelemetryKind.streamBindingCancelFailed:
         useCaseErrors.add(entry.error!);
       default:
         break;

@@ -8,12 +8,12 @@ nav_order: 99
 # Upgrading to juice 2.0.0
 
 2.0.0 is the breaking set, shipped together. This guide lists every change
-that can stop a 1.x program compiling or alter what it does, with the
-migration for each, then the new surface. The CHANGELOG has the same list
-in release-note form; `benchmarks/RESULTS.md` §15 has the numbers.
+that can stop a 1.x program compiling or alter what it does, with the migration for each, then the new surface. The CHANGELOG has the same list
+in release-note form; `benchmarks/RESULTS.md` §15–§17 have the numbers.
 
-Every family package has a matching major or minor bump that requires
-`juice: ^2.0.0`; upgrade them together.
+Every family package gets a matching major or minor bump that requires
+`juice: ^2.0.0` in the release wave that follows the core; upgrade them
+together.
 
 ## Compile-time changes
 
@@ -91,15 +91,21 @@ void record(JuiceTelemetry e) => e.isError
     : log(e.message, level: e.level, context: e.toMap());
 ```
 
-`e.toMap()` is the 1.x context map (same `type`, `action` and field keys;
-values live). Two keys were renamed: the bloc close entry's
-`streamBindings` and the feature scope's `blocsEnded` are both `count`. A
-thrown use-case error is two entries — `useCaseFailed` (the span's close,
-with `executionId`) and `blocError` — where 1.x logged three lines. The
-whole vocabulary, with levels and fields: `packages/juice/doc/TELEMETRY.md`.
+`e.toMap()` is the 1.x context map (the same `type`, `action` and field
+keys, `streamBindings` and `blocsEnded` included; values live). The
+`message` is a constant per kind — the status, reason or callback that
+used to be interpolated into it is a field. A thrown use-case error is two
+entries — `useCaseFailed` (the span's close, with `executionId`) and
+`blocError` — where 1.x logged three lines; a sequential run's escaped
+failure is its own `type` (`sequential_run_error`), as is a failed
+supersede (`supersede_error`), and the framework's remaining free-form
+lines (retries, the dispatcher's fallback warning, `get` on a leased bloc,
+the error handler's debug prints) are kinds or gone. The whole vocabulary,
+with levels, fields and what changed on the wire:
+`packages/juice/doc/TELEMETRY.md` §3 and §6.
 
-`DevtoolsJuiceLogger` (`juice_observability` 0.6.0) implements `record`;
-its wire format is unchanged.
+`DevtoolsJuiceLogger` (`juice_observability` 0.6.0, in the wave) implements
+`record` and posts the same payload shape as before, plus the new kinds.
 
 ### Dead surface removed
 
@@ -110,9 +116,6 @@ its wire format is unchanged.
 `RelayUseCaseBuilder`. Drop the calls and arguments; nothing observable
 changes. `RelayUseCaseBuilder` becomes a `StateRelay` or `StatusRelay`
 (`doc/concepts/relay-use-cases.md`).
-
-`SubscriptionKey` (a `JuiceAsyncBuilder` key the widget forms use) takes
-the bloc list only; `JuiceAsyncBuilder` has a new `where`.
 
 ## Behaviour changes
 
@@ -175,11 +178,21 @@ group set after passing it.
 
 ### Widgets keep their subscription across parent rebuilds
 
-Every widget form keys its bloc subscription on the bloc instances and
-applies the rebuild groups and `onStateChange` live, from the current
-widget. A parent rebuild no longer cancels and re-listens. Listen order is
-therefore stable across rebuilds; code that depended on a re-listen per
-build (none was documented) needs a key change to force one.
+Every widget form keys its bloc subscription on the bloc instances
+(`SubscriptionKey`, new) and applies the rebuild groups and
+`onStateChange` live through `JuiceAsyncBuilder`'s new `where`, from the
+current widget. A parent rebuild no longer cancels and re-listens. Listen
+order is therefore stable across rebuilds; code that depended on a
+re-listen per build (none was documented) needs a key change to force one.
+
+### Telemetry below the floor is not built
+
+Every info-level entry — the use-case span, emissions, lifecycle, leases,
+bindings, retries, subscriptions — is built only when
+`JuiceLoggerConfig.logs(level)` keeps it. Recorded whatever the floor says:
+the error kinds, `emissionAfterClose`, `eventIgnored`, `leasedBlocGot`,
+`streamBindingRefused` and a failure emission. In 1.x the lifecycle and
+lease entries bypassed the floor.
 
 ### Smaller changes
 
@@ -212,22 +225,36 @@ build (none was documented) needs a key change to force one.
 - **`JuiceTelemetry` / `JuiceTelemetryKind`** — the typed telemetry
   vocabulary (`packages/juice/doc/TELEMETRY.md`).
 - **`JuiceAsyncBuilder.streamKey` and `where`.**
-- **Performance** — a send is 0.67 µs with the telemetry chatter on and
-  0.44 µs with it off (the release default), from 2.8 and 2.0 in 1.10.0 on
-  the same machine. Against bloc and Riverpod (`benchmarks/RESULTS.md`
-  §16–§17): the release-default dispatch is under bloc's on the Mac and
-  the phone (0.73 / 0.63 µs vs 1.04 / 1.03), ties bloc with every
-  telemetry record built, and sits above Riverpod's synchronous notifier
-  (0.42 / 0.41), which has no event queue to pay for; per frame the tuned
-  forms of all three tie.
+- **Performance** — on the benchmark Mac a send is 0.66 µs with the
+  telemetry chatter on and 0.44 µs with it off (the release default), from
+  2.83 and 1.95 on the 2.0 tree before the performance work (1.10.0 had
+  measured 2.72 and 1.82 on the same bloc). Against bloc and Riverpod
+  (`benchmarks/RESULTS.md` §16–§17): the sequential release-default
+  dispatch is under bloc's on the Mac and the phone (0.73 / 0.63 µs vs
+  1.04 / 1.03), ties bloc with every telemetry record built, trails bloc
+  in the burst shape, and sits above Riverpod's synchronous notifier (0.42
+  / 0.41), which has no event queue to pay for; per frame the tuned Juice
+  and Riverpod forms tie and bloc's BlocSelector trails them.
 
 ## Checklist
 
-1. Add `concurrency:` to every builder (the compiler lists them).
+1. Add `concurrency:` to every builder (the compiler lists them); add the
+   `restartable` case to any exhaustive `switch` over `EventConcurrency`;
+   no `StatefulUseCaseBuilder` may be `restartable`.
 2. Replace `UpdateEvent(newState:)` with a real event; drop `<TState>`.
-3. Replace `GlobalBlocResolver` with `BlocScope.register`.
-4. Add `record` to every `JuiceLogger` implementation (the forwarding
+3. Replace `GlobalBlocResolver` with `BlocScope.register`. A tenant,
+   feature-flag or environment resolver has no global slot to sit in any
+   more: pass it to the widgets and relays that take `resolver:`, or make
+   the choice inside the factories you register.
+4. Replace each `RelayUseCaseBuilder` with a `StateRelay` or `StatusRelay`
+   by hand (`doc/concepts/relay-use-cases.md`); drop the removed members
+   the compiler names.
+5. Add `record` to every `JuiceLogger` implementation (the forwarding
    one-liner above is enough).
-5. Move any relay built inside a bloc constructor to the composition root.
-6. Run the tests: a `sendAndWait` that used to time out now throws at once.
-7. Bump the family packages to their 2.0-compatible versions.
+6. Move any relay built inside a bloc constructor to the composition root.
+7. Do not mutate a group set after passing it to an emit.
+8. Run the tests: a `sendAndWait` that used to time out now throws at once,
+   and `juiceTest` now fails on an unexpected stream-binding error
+   (`errors:` to expect one).
+9. Bump the family packages to their 2.0-compatible versions when the
+   wave publishes them.

@@ -69,11 +69,22 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   *Migration:* every logger implementation adds `record`; the forwarding
   one-liner (`e.isError ? logError(e.message, e.error!, e.stackTrace ??
   StackTrace.empty, context: e.toMap()) : log(e.message, level: e.level,
-  context: e.toMap())`) reproduces the 1.x lines, `toMap()` being the 1.x
-  context map. Renamed keys: the bloc close entry's `streamBindings` and the
-  feature scope's `blocsEnded` are both `count`. The reference:
-  `packages/juice/doc/TELEMETRY.md`. `DevtoolsJuiceLogger`
-  (`juice_observability` 0.6.0) implements it; its wire format is unchanged.
+    context: e.toMap())`) reproduces the 1.x lines, `toMap()` being the 1.x
+  context map with its keys (`streamBindings` and `blocsEnded` included).
+  On the wire: `message` is a constant per kind (the interpolated status,
+  reason or callback is a field); a sequential run's escaped failure is
+  `sequential_run_error` and a failed supersede `supersede_error` instead
+  of sharing `use_case_error` / `use_case_superseded`; `lifecycle` is the
+  enum name; new kinds for retries (`retry_scheduled`, `retry_exhausted`),
+  relay and subscription failures (`relay_error`, `event_subscription` ·
+  `error`) and `get` on a leased bloc; the framework's free-form lines are
+  gone (retries, the dispatcher's fallback warning, `Closing
+  StatefulUseCase`, `Disposing all blocs`, `BlocErrorHandler`'s debug
+  prints). Every info-level kind, lifecycle and leases included, is built
+  only when the telemetry floor keeps it (1.x bypassed the floor for
+  those). The reference: `packages/juice/doc/TELEMETRY.md`.
+  `DevtoolsJuiceLogger` (`juice_observability` 0.6.0) implements it and
+  posts the same payload shape, plus the new kinds.
 - **Telemetry vocabulary.** `stream_binding` / `refused` carries `reason`
   (`bloc is closed`, `bloc is closing`, `run superseded`); a binding
   callback that throws is `stream_binding` / `callback_error` with
@@ -101,14 +112,25 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   silent). `RetryableUseCaseBuilder` stops before `onRetry` and the backoff
   once its run is superseded. `BlocScope` fails loud on a bloc resolved
   while its own factory runs.
+- **The first emit for an event adopts the caller's group set** (no copy;
+  a later emit for the same event merges into a new set). Do not mutate a
+  set after passing it to an emit.
+- **`BlocErrorHandler` prints nothing of its own in debug builds**: the
+  error is on the logger as a `blocError` entry with its stack trace; the
+  handler's `logger` and `onError` callbacks are unchanged.
 
 ### Performance
-- **A send costs 0.67 µs with the telemetry chatter on and 0.44 µs with it
-  off, from 2.8 and 1.95** (this Mac, release, median of 5; a restartable
-  send 2.75 → 0.99; 20,000 sends in flight 4.70 → 1.58 each) — under
-  bloc's 1.02 on the same machine in both modes. The telemetry entries are
-  typed records, one allocation each: the three per-event entries cost
-  0.02 µs together, from 1.13 as context maps. Four
+- **A send costs 0.66 µs with the telemetry chatter on and 0.44 µs with it
+  off, from 2.83 and 1.95 on the 2.0 tree before this work** (the bare
+  benchmark bloc on the Mac, release, median of 5; 1.10.0 had measured
+  2.72 and 1.82 there; a restartable send 2.75 → 1.06; 20,000 sends in
+  flight 4.70 → 2.00 each). In the dispatch scenario — the one that runs
+  bloc and Riverpod on the same work — the sequential release-default send
+  is 0.73 µs on the Mac against bloc's 1.04 and 0.63 on the phone against
+  1.03; with every telemetry record built it ties bloc; in burst bloc
+  leads (`benchmarks/RESULTS.md` §16–§17). The telemetry entries are typed
+  records, one allocation each, priced against the context maps they
+  replace in §17b. Four
   `Type.toString()` calls per send — the event name, the use-case name
   twice, the builder's — cost 0.27 µs each; they are gone from the path
   below the telemetry floor, and above it every type name comes from a

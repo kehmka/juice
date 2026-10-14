@@ -1,5 +1,3 @@
-import 'package:juice/juice.dart';
-
 class BlocErrorHandler {
   // Allow configurable error reporting
   final void Function(String message, {Object? error, StackTrace? stackTrace})?
@@ -17,18 +15,10 @@ class BlocErrorHandler {
     // Log the error if logger is provided
     logger?.call(message);
 
-    // Report error if handler provided
+    // Report error if handler provided. The error itself is already on the
+    // logger as a `blocError` entry (error and stack trace included), so
+    // the handler prints nothing of its own.
     onError?.call(message, error: error, stackTrace: stackTrace);
-
-    // In debug mode, also print to console
-    assert(() {
-      JuiceLoggerConfig.logger.log('Bloc Error: $message');
-      if (error != null) JuiceLoggerConfig.logger.log('Error: $error');
-      if (stackTrace != null) {
-        JuiceLoggerConfig.logger.log('StackTrace: $stackTrace');
-      }
-      return true;
-    }());
   }
 }
 

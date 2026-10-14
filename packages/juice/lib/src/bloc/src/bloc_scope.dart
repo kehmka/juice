@@ -3,7 +3,10 @@ import 'juice_bloc.dart';
 import 'bloc_state.dart';
 import 'juice_logger.dart';
 import 'lifecycle/lifecycle.dart';
+import 'package:logger/web.dart' show Level;
+
 import 'telemetry.dart';
+import 'core/type_names.dart';
 
 /// Manages bloc registration, resolution, and lifecycle.
 ///
@@ -117,12 +120,14 @@ class BlocScope {
       lifecycle: lifecycle,
     );
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.blocRegistered,
-      bloc: T.toString(),
-      lifecycle: lifecycle.toString(),
-      scope: scope?.toString() ?? 'global',
-    ));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.blocRegistered,
+        bloc: typeName(T),
+        lifecycle: lifecycle,
+        scope: scope?.toString() ?? 'global',
+      ));
+    }
   }
 
   /// Check if a bloc type is registered.
@@ -185,10 +190,8 @@ class BlocScope {
         );
       }());
       // In release mode, log warning and continue
-      JuiceLoggerConfig.logger.log(
-        'WARNING: get() called on leased bloc, use lease() instead',
-        context: {'bloc': T.toString()},
-      );
+      JuiceLoggerConfig.logger.record(
+          JuiceTelemetry(JuiceTelemetryKind.leasedBlocGot, bloc: typeName(T)));
     }
 
     return _getOrCreate<T>(id, entry as BlocEntry<T>);
@@ -217,11 +220,13 @@ class BlocScope {
     // Track lease for leak detection
     LeakDetector.trackLeaseAcquire(id);
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.leaseAcquired,
-      bloc: T.toString(),
-      leaseCount: typedEntry.leaseCount,
-    ));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.leaseAcquired,
+        bloc: typeName(T),
+        leaseCount: typedEntry.leaseCount,
+      ));
+    }
 
     return BlocLease<T>(
       bloc,
@@ -332,11 +337,13 @@ class BlocScope {
       // Track bloc creation for leak detection
       LeakDetector.trackBlocCreation(id);
 
-      JuiceLoggerConfig.logger.record(JuiceTelemetry(
-        JuiceTelemetryKind.blocCreated,
-        bloc: id.type.toString(),
-        lifecycle: entry.lifecycle.toString(),
-      ));
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        JuiceLoggerConfig.logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.blocCreated,
+          bloc: typeName(id.type),
+          lifecycle: entry.lifecycle,
+        ));
+      }
     }
 
     return entry.instance!;
@@ -361,20 +368,24 @@ class BlocScope {
     // _closeEntry zeroed it, and decrementing it here would auto-close a
     // bloc other widgets are still leasing.
     if (!identical(entry.instance, leasedInstance)) {
-      JuiceLoggerConfig.logger.record(JuiceTelemetry(
-        JuiceTelemetryKind.staleLeaseReleased,
-        bloc: id.type.toString(),
-      ));
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        JuiceLoggerConfig.logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.staleLeaseReleased,
+          bloc: typeName(id.type),
+        ));
+      }
       return;
     }
 
     entry.leaseCount--;
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.leaseReleased,
-      bloc: id.type.toString(),
-      leaseCount: entry.leaseCount,
-    ));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.leaseReleased,
+        bloc: typeName(id.type),
+        leaseCount: entry.leaseCount,
+      ));
+    }
 
     // Auto-dispose leased blocs when last lease releases
     if (entry.lifecycle == BlocLifecycle.leased && entry.leaseCount <= 0) {
@@ -406,11 +417,13 @@ class BlocScope {
 
     await Future.wait(futures);
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.featureScopeEnded,
-      scope: scope.name,
-      count: scope.managedBlocs.length,
-    ));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.featureScopeEnded,
+        scope: scope.name,
+        blocCount: scope.managedBlocs.length,
+      ));
+    }
   }
 
   /// Dispose all blocs (app shutdown).
@@ -464,8 +477,10 @@ class BlocScope {
 
     _entries.clear();
 
-    JuiceLoggerConfig.logger
-        .record(const JuiceTelemetry(JuiceTelemetryKind.allBlocsEnded));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger
+          .record(const JuiceTelemetry(JuiceTelemetryKind.allBlocsEnded));
+    }
   }
 
   static Future<void> _closeEntry(BlocId id) async {
@@ -482,11 +497,6 @@ class BlocScope {
     final bloc = entry.instance!;
     entry.closingFuture = Future.sync(bloc.close);
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.blocClosing,
-      bloc: id.type.toString(),
-    ));
-
     try {
       await entry.closingFuture;
     } catch (e, st) {
@@ -496,7 +506,7 @@ class BlocScope {
       // never be recreated.
       JuiceLoggerConfig.logger.record(JuiceTelemetry(
         JuiceTelemetryKind.blocCloseFailed,
-        bloc: id.type.toString(),
+        bloc: typeName(id.type),
         error: e,
         stackTrace: st,
       ));

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_benchmarks/counters.dart';
+import 'package:juice_benchmarks/dispatch.dart' show SilentJuiceLogger;
 import 'package:juice_benchmarks/scenarios/wide.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -11,27 +12,8 @@ import 'dart:io';
 const cells = 100;
 const updates = 10;
 
-class _Silent implements JuiceLogger {
-  @override
-  void record(JuiceTelemetry e) {}
-
-  @override
-  void log(
-    String m, {
-    Level level = Level.info,
-    Map<String, dynamic>? context,
-  }) {}
-  @override
-  void logError(
-    String m,
-    Object e,
-    StackTrace s, {
-    Map<String, dynamic>? context,
-  }) {}
-}
-
 void main() {
-  setUpAll(() => JuiceLoggerConfig.configureLogger(_Silent()));
+  setUpAll(() => JuiceLoggerConfig.configureLogger(SilentJuiceLogger()));
   final results = <Map<String, Object?>>[];
   final k = wideK(cells);
 

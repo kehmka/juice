@@ -65,7 +65,7 @@ class AviatorManager {
 
   void _logFailure(String aviatorName, Object error, StackTrace stackTrace) {
     JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.aviatorError,
+      JuiceTelemetryKind.aviatorFailed,
       aviator: aviatorName,
       error: error,
       stackTrace: stackTrace,

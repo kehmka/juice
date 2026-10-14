@@ -120,9 +120,10 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
   /// Every execution logs exactly two structured entries: the
   /// `use_case_execution` start, and — sharing its `executionId` — either
   /// `use_case_completed` (with `elapsedMicros`) or `use_case_error` (with
-  /// `elapsedMicros` when the start was logged). A span consumer closes on
-  /// whichever arrives. Below the telemetry floor only the error line is
-  /// built.
+  /// `elapsedMicros` when the span was being timed — the chatter was on
+  /// when the use case started; a generator that throws then closes a span
+  /// that never opened). A span consumer closes on whichever arrives.
+  /// Below the telemetry floor only the error line is built.
   Future<void> execute(UseCaseBuilderBase builder, EventBase event) async {
     final executionId = _nextExecutionId++;
     // Built only when a line will carry them: the two type names and the

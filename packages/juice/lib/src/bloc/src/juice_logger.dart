@@ -20,8 +20,8 @@ import "../../../juice.dart";
 /// entries are the fail-loud path: errors are rare and must stay visible,
 /// so formatting eagerly there is acceptable.
 ///
-/// The smallest complete implementation forwards telemetry to the free-form
-/// path:
+/// The `record` of the smallest complete implementation forwards telemetry
+/// to the free-form path:
 ///
 /// ```dart
 /// @override
@@ -31,8 +31,12 @@ import "../../../juice.dart";
 ///     : log(e.message, level: e.level, context: e.toMap());
 /// ```
 abstract class JuiceLogger {
-  /// Receives one framework telemetry entry. See [JuiceTelemetry] for the
-  /// vocabulary and [JuiceTelemetryKind] for every kind.
+  /// Receives one framework telemetry entry, synchronously, on the thread
+  /// that produced it. Entries below the telemetry floor are not built at
+  /// all, with the exemptions [JuiceTelemetry.isError] names; an entry that
+  /// arrives is one the floor kept. A throw from here is not caught by the
+  /// framework. See [JuiceTelemetry] for the record and [JuiceTelemetryKind]
+  /// for every kind.
   void record(JuiceTelemetry entry);
 
   /// Logs a message with the specified log level and optional context.
@@ -65,7 +69,7 @@ abstract class JuiceLogger {
 /// not build an entry below that: the cost follows the consumer.
 ///
 /// Optional. A logger that only `implements JuiceLogger` is treated as
-/// keeping everything, exactly as before. [JuiceLoggerConfig.minLevel] is a
+/// keeping everything. [JuiceLoggerConfig.minLevel] is a
 /// global floor on top: the effective level is the HIGHER of the two, so the
 /// global knob can silence more but can never force entries into a logger
 /// that declared it drops them.
@@ -73,9 +77,11 @@ abstract class JuiceLogger {
 /// [minLevel] is read on every gated entry, so it may change at run time
 /// (a DevTools panel attaching, a remote log level) and must be cheap.
 ///
-/// Never gated, whatever is declared: [logError], `emission_after_close`,
-/// `event_ignored`, and a failure emission's entry. Those are still
-/// delivered — a logger that must not see them filters them itself.
+/// Never gated, whatever is declared: [logError], every error kind, and the
+/// kinds [JuiceTelemetry.isError] lists (`emissionAfterClose`,
+/// `eventIgnored`, `leasedBlocGot`, `streamBindingRefused`, a failure
+/// `stateEmitted`). Those are still delivered — a logger that must not see
+/// them filters them itself.
 ///
 /// **Wrapping another logger?** Only the CONFIGURED logger's declaration
 /// counts. A wrapper that does not implement this interface receives
@@ -115,10 +121,10 @@ class DefaultJuiceLogger implements LevelAwareJuiceLogger {
               ),
             );
 
-  /// Whether messages are passed to [_logger] as closures (built only if
-  /// the filter lets the line through). True for the default PrettyPrinter,
+  /// Whether lines are passed to [_logger] as closures (built only if the
+  /// filter lets the line through). True for the default PrettyPrinter,
   /// which evaluates function messages; a caller-supplied [Logger] may use a
-  /// printer that doesn't (LogfmtPrinter), so it gets eager strings as before.
+  /// printer that doesn't (LogfmtPrinter), so it gets eager strings.
   final bool _lazy;
 
   /// Whether asserts are enabled — the same test `logger`'s
@@ -142,56 +148,42 @@ class DefaultJuiceLogger implements LevelAwareJuiceLogger {
   Level get minLevel =>
       !_lazy ? Level.all : (_assertsEnabled ? Logger.level : Level.off);
 
-  /// Prints the entry as `message | Context: {…}`; under the default
-  /// printer the line (message, map and the state's `toString`) is built
-  /// only if the filter keeps it.
+  /// Prints the entry as `message | Context: {…}`; an error entry carries
+  /// its error and stack trace in the printer's error slot. Under the
+  /// default printer the line is built only if the filter keeps it.
   @override
-  void record(JuiceTelemetry entry) {
-    final error = entry.error;
-    if (entry.isError && error != null) {
-      _logger.e(
-          _lazy
-              ? () => '${entry.message} | Context: ${entry.toMap()}'
-              : '${entry.message} | Context: ${entry.toMap()}',
-          error: error,
-          stackTrace: entry.stackTrace);
-    } else if (_lazy) {
-      _logger.log(
-          entry.level, () => '${entry.message} | Context: ${entry.toMap()}');
-    } else {
-      _logger.log(entry.level, '${entry.message} | Context: ${entry.toMap()}');
-    }
-  }
+  void record(JuiceTelemetry entry) => _write(
+        entry.level,
+        () => '${entry.message} | Context: ${entry.toMap()}',
+        error: entry.isError ? entry.error : null,
+        stackTrace: entry.isError ? entry.stackTrace : null,
+      );
 
   @override
   void log(String message,
-      {Level level = Level.info, Map<String, dynamic>? context}) {
-    if (context == null) {
-      _logger.log(level, message);
-    } else if (_lazy) {
-      // Every emission logs a context holding the state's toString(). Built
-      // eagerly, that string was paid for on EVERY emission — in release
-      // too, where logger's default filter then drops the line.
-      _logger.log(level, () => '$message | Context: $context');
-    } else {
-      _logger.log(level, '$message | Context: $context');
-    }
-  }
+          {Level level = Level.info, Map<String, dynamic>? context}) =>
+      _write(
+          level,
+          context == null
+              ? () => message
+              : () => '$message | Context: $context');
 
   @override
   void logError(String message, Object error, StackTrace stackTrace,
-      {Map<String, dynamic>? context}) {
-    if (context != null) {
-      _logger.e(
-          _lazy
-              ? () => '$message | Context: $context'
-              : '$message | Context: $context',
+          {Map<String, dynamic>? context}) =>
+      _write(
+          Level.error,
+          context == null
+              ? () => message
+              : () => '$message | Context: $context',
           error: error,
           stackTrace: stackTrace);
-    } else {
-      _logger.e(message, error: error, stackTrace: stackTrace);
-    }
-  }
+
+  /// The one writer: lazily under the default printer, eagerly otherwise.
+  void _write(Level level, String Function() line,
+          {Object? error, StackTrace? stackTrace}) =>
+      _logger.log(level, _lazy ? line : line(),
+          error: error, stackTrace: stackTrace);
 }
 
 /// Global configuration for Juice logging.
@@ -222,8 +214,8 @@ class JuiceLoggerConfig {
   /// this to silence a logger that declares nothing, or to raise the floor
   /// above what a logger asks for; it cannot lower it.
   ///
-  /// Never gates [JuiceLogger.logError], `emission_after_close`,
-  /// `event_ignored`, or a failure emission's entry: those stay loud.
+  /// Never gates [JuiceLogger.logError], an error kind, or the kinds
+  /// [JuiceTelemetry.isError] lists: those stay loud.
   static Level minLevel = Level.all;
 
   /// Whether an entry at [level] would be built and delivered at all: at or

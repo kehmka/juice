@@ -1,19 +1,20 @@
 # Changelog
 
-## 0.6.0 — unreleased (ships with juice 2.0.0)
-
-- Require `juice ^2.0.0`. `DevtoolsJuiceLogger` implements the new
-  `JuiceLogger.record`: every framework telemetry entry (`JuiceTelemetry`)
-  is posted as `juice:<type>` with the entry's fields, message and level,
-  plus `error` / `stackTrace` for error entries — the same wire format as
-  before, from a typed source. Free-form `log` / `logError` lines still
-  post when their context carries a `type`. Nothing is built without a
-  listener.
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.6.0] - unreleased (ships with juice 2.0.0)
+
+- Require `juice ^2.0.0`. `DevtoolsJuiceLogger` implements the new
+  `JuiceLogger.record`: every framework telemetry entry (`JuiceTelemetry`)
+  is posted as `juice:<type>` with the entry's fields, message and level,
+  plus `stackTrace` when the entry has one — the same payload shape as
+  before, from a typed source, plus 2.0.0's new kinds (`TELEMETRY.md` §6
+  lists what changed on the wire). Free-form `log` lines still post when
+  their context carries a `type`; free-form `logError` lines always post.
+  Nothing is built without a listener.
 
 ## [0.5.1] - 2026-09-29
 

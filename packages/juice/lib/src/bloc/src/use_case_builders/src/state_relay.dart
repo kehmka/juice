@@ -1,4 +1,5 @@
 import '../../../bloc.dart';
+import '../../core/type_names.dart';
 
 /// Relays state changes from one bloc to another by transforming states into events.
 ///
@@ -126,11 +127,7 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       _sourceLease = null;
       _destLease?.dispose();
       _destLease = null;
-      JuiceLoggerConfig.logger.logError(
-        'Failed to initialize StateRelay between $TSourceBloc and $TDestBloc',
-        e,
-        stackTrace,
-      );
+      _recordFailure('initialize', e, stackTrace);
       rethrow;
     }
   }
@@ -157,25 +154,29 @@ class StateRelay<TSourceBloc extends JuiceBloc<TSourceState>,
           final event = toEvent(state);
           _destBloc.send(event);
         } catch (e, stackTrace) {
-          JuiceLoggerConfig.logger.logError(
-            'Error in StateRelay<$TSourceBloc, $TDestBloc>',
-            e,
-            stackTrace,
-          );
-          // Don't close on transformer errors - just log and continue
+          _recordFailure('transform', e, stackTrace);
         }
       },
-      onError: (error, stackTrace) async {
-        JuiceLoggerConfig.logger.logError(
-          'Stream error in StateRelay<$TSourceBloc, $TDestBloc>',
-          error,
-          stackTrace,
-        );
+      onError: (Object error, StackTrace stackTrace) async {
+        _recordFailure('stream', error, stackTrace);
         await close();
       },
       onDone: () async => await close(),
     );
   }
+
+  /// The one error entry this relay records; [site] says which step
+  /// failed (`initialize`, `transform`, `stream`).
+  void _recordFailure(String site, Object error, StackTrace stackTrace) =>
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.relayFailed,
+        relay: 'StateRelay',
+        site: site,
+        sourceBloc: typeName(TSourceBloc),
+        destBloc: typeName(TDestBloc),
+        error: error,
+        stackTrace: stackTrace,
+      ));
 
   /// Closes the relay and releases all resources.
   ///
@@ -287,11 +288,7 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
       _sourceLease = null;
       _destLease?.dispose();
       _destLease = null;
-      JuiceLoggerConfig.logger.logError(
-        'Failed to initialize StatusRelay between $TSourceBloc and $TDestBloc',
-        e,
-        stackTrace,
-      );
+      _recordFailure('initialize', e, stackTrace);
       rethrow;
     }
   }
@@ -315,24 +312,29 @@ class StatusRelay<TSourceBloc extends JuiceBloc<TSourceState>,
           final event = toEvent(status);
           _destBloc.send(event);
         } catch (e, stackTrace) {
-          JuiceLoggerConfig.logger.logError(
-            'Error in StatusRelay<$TSourceBloc, $TDestBloc>',
-            e,
-            stackTrace,
-          );
+          _recordFailure('transform', e, stackTrace);
         }
       },
-      onError: (error, stackTrace) async {
-        JuiceLoggerConfig.logger.logError(
-          'Stream error in StatusRelay<$TSourceBloc, $TDestBloc>',
-          error,
-          stackTrace,
-        );
+      onError: (Object error, StackTrace stackTrace) async {
+        _recordFailure('stream', error, stackTrace);
         await close();
       },
       onDone: () async => await close(),
     );
   }
+
+  /// The one error entry this relay records; [site] says which step
+  /// failed (`initialize`, `transform`, `stream`).
+  void _recordFailure(String site, Object error, StackTrace stackTrace) =>
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.relayFailed,
+        relay: 'StatusRelay',
+        site: site,
+        sourceBloc: typeName(TSourceBloc),
+        destBloc: typeName(TDestBloc),
+        error: error,
+        stackTrace: stackTrace,
+      ));
 
   /// Closes the relay and releases all resources.
   Future<void> close() async {

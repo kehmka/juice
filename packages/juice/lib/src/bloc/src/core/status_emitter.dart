@@ -63,7 +63,9 @@ class StatusEmitter<TState extends BlocState> {
   ///
   /// [event] - The event that triggered this update.
   /// [newState] - The new state to emit. If null, uses current state.
-  /// [groups] - The rebuild groups to notify.
+  /// [groups] - The rebuild groups to notify. The event ADOPTS this set on
+  ///   its first emit (a later emit merges into a new set): do not mutate a
+  ///   set after passing it.
   /// [skipIfSame] - If true, skips emission when newState equals current state.
   ///   This helps prevent unnecessary widget rebuilds when state hasn't changed.
   void emitUpdate(
@@ -82,14 +84,14 @@ class StatusEmitter<TState extends BlocState> {
       }
       return;
     }
-    _emit(_Kind.update, event, newState, groups);
+    _emit(EmissionKind.update, event, newState, groups);
   }
 
   /// Emits a waiting status.
   ///
   /// Used to indicate an async operation is in progress.
   void emitWaiting(EventBase event, TState? newState, Set<String>? groups) {
-    _emit(_Kind.waiting, event, newState, groups);
+    _emit(EmissionKind.waiting, event, newState, groups);
   }
 
   /// Emits a failure status.
@@ -105,7 +107,7 @@ class StatusEmitter<TState extends BlocState> {
     Object? error,
     StackTrace? errorStackTrace,
   }) {
-    _emit(_Kind.failure, event, newState, groups,
+    _emit(EmissionKind.failure, event, newState, groups,
         error: error, errorStackTrace: errorStackTrace);
   }
 
@@ -113,24 +115,24 @@ class StatusEmitter<TState extends BlocState> {
   ///
   /// Used to indicate an operation was cancelled.
   void emitCancel(EventBase event, TState? newState, Set<String>? groups) {
-    _emit(_Kind.cancel, event, newState, groups);
+    _emit(EmissionKind.cancel, event, newState, groups);
   }
 
   /// Re-emits the current status carrying [event] — no state change, no
   /// groups: a signal to listeners that watch events.
   void emitEvent(EventBase event) {
-    if (_droppedAfterClose('event', event)) return;
+    if (_droppedAfterClose(EmissionKind.event, event)) return;
     _stateManager.emit(_stateManager.current.copyWith(event: event));
   }
 
   /// The close fence. A use case still running when its bloc closes (the
   /// user left mid-fetch) must not crash on its next emit — that emit is
   /// dropped, and logged as `emission_after_close` so it stays visible.
-  bool _droppedAfterClose(String statusName, EventBase event, {Object? error}) {
+  bool _droppedAfterClose(EmissionKind kind, EventBase event, {Object? error}) {
     if (!_stateManager.isClosed) return false;
     _logger.record(JuiceTelemetry(
       JuiceTelemetryKind.emissionAfterClose,
-      status: statusName,
+      status: kind,
       bloc: _blocName,
       event: typeName(event.runtimeType),
       error: error,
@@ -139,20 +141,20 @@ class StatusEmitter<TState extends BlocState> {
   }
 
   void _emit(
-    _Kind kind,
+    EmissionKind kind,
     EventBase event,
     TState? newState,
     Set<String>? groupsToRebuild, {
     Object? error,
     StackTrace? errorStackTrace,
   }) {
-    if (_droppedAfterClose(kind.name, event, error: error)) return;
+    if (_droppedAfterClose(kind, event, error: error)) return;
 
     // A failure emission is never chatter: it is logged whatever the floor.
-    if (kind == _Kind.failure || JuiceLoggerConfig.logs(Level.info)) {
+    if (kind == EmissionKind.failure || JuiceLoggerConfig.logs(Level.info)) {
       _logger.record(JuiceTelemetry(
         JuiceTelemetryKind.stateEmitted,
-        status: kind.name,
+        status: kind,
         // Live objects: a logger that prints stringifies them itself; one
         // that drops the entry pays nothing.
         state: newState ?? state,
@@ -160,6 +162,7 @@ class StatusEmitter<TState extends BlocState> {
         groups: groupsToRebuild,
         event: typeName(event.runtimeType),
         error: error,
+        stackTrace: errorStackTrace,
       ));
     }
 
@@ -178,14 +181,15 @@ class StatusEmitter<TState extends BlocState> {
     final current = state;
     final next = newState ?? current;
     _stateManager.emit(switch (kind) {
-      _Kind.update => UpdatingStatus<TState>(next, current, event),
-      _Kind.waiting => WaitingStatus<TState>(next, current, event),
-      _Kind.cancel => CancelingStatus<TState>(next, current, event),
-      _Kind.failure => FailureStatus<TState>(next, current, event,
+      EmissionKind.update => UpdatingStatus<TState>(next, current, event),
+      EmissionKind.waiting => WaitingStatus<TState>(next, current, event),
+      EmissionKind.cancel => CancelingStatus<TState>(next, current, event),
+      EmissionKind.failure => FailureStatus<TState>(next, current, event,
           error: error, errorStackTrace: errorStackTrace),
+      // An event re-emission and a navigation are not statuses this builds.
+      EmissionKind.event ||
+      EmissionKind.navigate =>
+        throw ArgumentError.value(kind, 'kind', 'not a status'),
     });
   }
 }
-
-/// The status an emit produces; `name` is the telemetry `status` value.
-enum _Kind { update, waiting, failure, cancel }

@@ -158,8 +158,9 @@ class _Map implements BlocDependencyResolver {
 
 class _Log implements JuiceLogger {
   @override
-  void record(JuiceTelemetry e) =>
-      e.isError ? errors.add(e.message) : entries.add(e.message);
+  void record(JuiceTelemetry e) => e.isError
+      ? errors.add(e.site == null ? e.message : '${e.message}: ${e.site}')
+      : entries.add(e.message);
 
   final errors = <String>[];
   final entries = <String>[];
@@ -301,7 +302,7 @@ void main() {
       expect(dst.state.log.length, 4, reason: 'one _Local per status kind');
       src.failStream();
       await pump();
-      expect(log.errors, contains('Stream error in EventSubscription'));
+      expect(log.errors, contains('EventSubscription failed: stream'));
       await dst.close();
     });
 
@@ -320,7 +321,7 @@ void main() {
               .having((e) => e.message, 'message', contains('closed bloc'))));
       expect(
           log.errors
-              .any((e) => e.contains('Failed to initialize EventSubscription')),
+              .any((e) => e.contains('EventSubscription failed: initialize')),
           isTrue);
     });
   });

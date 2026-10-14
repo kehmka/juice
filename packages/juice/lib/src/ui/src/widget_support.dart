@@ -82,7 +82,7 @@ const Set<String> optOutOfRebuilds = {_optOut};
 ///
 /// Parameters:
 /// * [event] - The event that triggered the potential rebuild
-/// * [key] - The widget's key (reserved for future use)
+
 /// * [rebuildGroups] - The set of rebuild groups specified by the widget
 ///
 /// Returns true if the widget should skip rebuilding, false if it should rebuild.
@@ -107,7 +107,8 @@ bool _isInRebuildGroup(EventBase? event, Set<String> rebuildGroups) {
   final groups = event?.groupsToRebuild;
   if (groups == null || groups.isEmpty) return false;
   if (groups.contains(_alwaysRebuild)) return true;
-  // No intersection set: every listening widget runs this per emission.
+  // Every listening widget runs this per emission, so no intersection set
+  // is built: probe the larger set with the smaller one's members.
   return groups.length <= rebuildGroups.length
       ? groups.any(rebuildGroups.contains)
       : rebuildGroups.any(groups.contains);

@@ -182,7 +182,7 @@ void main() {
       await d.dispatch(_A());
       await d.dispatch(_A());
       expect(calls, 2);
-      expect(log.errors.single['type'], 'use_case_error');
+      expect(log.errors.single['type'], 'sequential_run_error');
       expect(log.errors.single['event'], '_A');
     });
   });

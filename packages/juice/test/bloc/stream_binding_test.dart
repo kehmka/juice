@@ -303,7 +303,7 @@ void main() {
       await b.close();
       final close = log.entries.firstWhere(
           (e) => e['type'] == 'bloc_lifecycle' && e['action'] == 'close');
-      expect(close['count'], 1);
+      expect(close['streamBindings'], 1);
       await c.close();
     });
   });
@@ -402,7 +402,7 @@ void main() {
       expect(got, [1, 3]);
       expect(b.errors.single, isA<ArgumentError>());
       final threw = log.bindings('callback_error').single;
-      expect(threw['message'], 'Stream binding onData threw');
+      expect(threw['message'], 'Stream binding callback threw');
       expect(threw['callback'], 'onData');
       expect(binding.isActive, isTrue);
       await c.close();

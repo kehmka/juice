@@ -1,3 +1,5 @@
+import 'package:logger/web.dart' show Level;
+
 import '../../../bloc.dart';
 import '../../core/type_names.dart';
 
@@ -148,21 +150,19 @@ class EventSubscription<
 
       _setupSubscription();
 
-      JuiceLoggerConfig.logger.record(JuiceTelemetry(
-        JuiceTelemetryKind.eventSubscriptionInitialized,
-        sourceBloc: typeName(TSourceBloc),
-        sourceEvent: typeName(TSourceEvent),
-        localEvent: typeName(TLocalEvent),
-      ));
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        JuiceLoggerConfig.logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.eventSubscriptionInitialized,
+          sourceBloc: typeName(TSourceBloc),
+          sourceEvent: typeName(TSourceEvent),
+          localEvent: typeName(TLocalEvent),
+        ));
+      }
     } catch (e, stackTrace) {
       _isClosed = true;
       _sourceLease?.dispose();
       _sourceLease = null;
-      JuiceLoggerConfig.logger.logError(
-        'Failed to initialize EventSubscription for $TSourceBloc.$TSourceEvent',
-        e,
-        stackTrace,
-      );
+      _recordFailure('initialize', e, stackTrace);
       rethrow;
     }
   }
@@ -199,33 +199,22 @@ class EventSubscription<
         try {
           final localEvent = toEvent(event);
 
-          JuiceLoggerConfig.logger.record(JuiceTelemetry(
-            JuiceTelemetryKind.eventSubscriptionTriggered,
-            sourceBloc: typeName(TSourceBloc),
-            sourceEvent: typeName(event.runtimeType),
-            localEvent: typeName(localEvent.runtimeType),
-          ));
+          if (JuiceLoggerConfig.logs(Level.info)) {
+            JuiceLoggerConfig.logger.record(JuiceTelemetry(
+              JuiceTelemetryKind.eventSubscriptionTriggered,
+              sourceBloc: typeName(TSourceBloc),
+              sourceEvent: typeName(event.runtimeType),
+              localEvent: typeName(localEvent.runtimeType),
+            ));
+          }
 
           _onEvent?.call(localEvent);
         } catch (e, stackTrace) {
-          JuiceLoggerConfig.logger.logError(
-            'Error in EventSubscription transformer',
-            e,
-            stackTrace,
-            context: {
-              'sourceBloc': TSourceBloc.toString(),
-              'sourceEvent': TSourceEvent.toString(),
-            },
-          );
+          _recordFailure('transform', e, stackTrace);
         }
       },
-      onError: (error, stackTrace) {
-        JuiceLoggerConfig.logger.logError(
-          'Stream error in EventSubscription',
-          error,
-          stackTrace,
-        );
-      },
+      onError: (Object error, StackTrace stackTrace) =>
+          _recordFailure('stream', error, stackTrace),
       onDone: () => close(),
     );
   }
@@ -242,10 +231,25 @@ class EventSubscription<
     _sourceLease?.dispose();
     _sourceLease = null;
 
-    JuiceLoggerConfig.logger.record(JuiceTelemetry(
-      JuiceTelemetryKind.eventSubscriptionClosed,
-      sourceBloc: typeName(TSourceBloc),
-      sourceEvent: typeName(TSourceEvent),
-    ));
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventSubscriptionClosed,
+        sourceBloc: typeName(TSourceBloc),
+        sourceEvent: typeName(TSourceEvent),
+      ));
+    }
   }
+
+  /// The one error entry this subscription records; [site] says which step
+  /// failed (`initialize`, `transform`, `stream`).
+  void _recordFailure(String site, Object error, StackTrace stackTrace) =>
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventSubscriptionFailed,
+        site: site,
+        sourceBloc: typeName(TSourceBloc),
+        sourceEvent: typeName(TSourceEvent),
+        localEvent: typeName(TLocalEvent),
+        error: error,
+        stackTrace: stackTrace,
+      ));
 }

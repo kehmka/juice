@@ -247,10 +247,6 @@ class EventDispatcher<Event extends Object> {
     final handler = _handlers[event.runtimeType];
     if (handler == null) {
       if (_onUnhandledEvent != null) {
-        _log.log(
-          'No handler registered for ${event.runtimeType}, using fallback handler',
-          level: Level.warning,
-        );
         try {
           _onUnhandledEvent(event);
         } catch (e, st) {

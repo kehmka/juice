@@ -424,7 +424,7 @@ void main() {
       await b.send(_Boom());
       final escaped = log.entries.where(
           (e) => e['message'] == 'Sequential run failed outside the executor');
-      expect(escaped.single['type'], 'use_case_error');
+      expect(escaped.single['type'], 'sequential_run_error');
       await b.send(_Silent()); // the queue is not wedged
       await b.close();
     });
@@ -515,7 +515,7 @@ void main() {
           .where((e) => e['action'] == 'cancel_error')
           .single;
       expect(failed['key'], 'k');
-      expect(failed['message'], contains('at unbind'));
+      expect(failed['site'], 'at unbind');
       await b.close();
     });
 

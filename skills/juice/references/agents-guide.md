@@ -276,7 +276,9 @@ in debug and nothing in profile/release; `DevtoolsJuiceLogger`
 (`juice_observability`) declares everything while a listener is attached. A
 custom logger that only `implements JuiceLogger` keeps everything —
 implement the interface, or set the floor. Never gated: every error kind,
-`emissionAfterClose`, `eventIgnored`, a failure emission.
+`emissionAfterClose`, `eventIgnored`, `leasedBlocGot`, `streamBindingRefused`,
+a failure emission; everything else, lifecycle and leases included, is built
+only when the floor keeps it.
 
 A thrown use-case error is two entries: `useCaseFailed` (the span's close)
 and `blocError` (the bloc's `onError` hook). Span consumers key on the

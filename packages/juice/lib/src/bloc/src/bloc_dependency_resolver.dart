@@ -45,10 +45,7 @@ class BlocResolver implements BlocDependencyResolver {
   /// Calls `BlocScope.endAll()` to ensure all registered blocs
   /// are disposed and resources are cleaned up.
   @override
-  Future<void> disposeAll() async {
-    JuiceLoggerConfig.logger.log('Disposing all blocs through BlocResolver');
-    await BlocScope.endAll();
-  }
+  Future<void> disposeAll() => BlocScope.endAll();
 }
 
 /// A resolver that delegates to different resolvers based on bloc type.

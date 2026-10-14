@@ -35,7 +35,7 @@ If you only need simple local state or straightforward CRUD screens, mainstream 
 
 - **Use-case driven blocs**: business logic lives in dedicated use cases, not large widget callbacks
 - **Lifecycle ownership**: `BlocScope` supports `permanent`, `feature`, and `leased` lifecycles
-- **Targeted rebuilds**: rebuild groups let widgets opt into only the state changes they care about. Measured against bloc and Riverpod in [`benchmarks/`](benchmarks/RESULTS.md): 1 build and 0 selector calls per update (Riverpod's provider-per-cell family matches those counts), groups tie the selector forms and the family form per frame on a Mac and a clock-pinned iPhone, untargeted defaults ~2.5×. Dispatch is under bloc's on both machines since 2.0.0 — the table below
+- **Targeted rebuilds**: rebuild groups let widgets opt into only the state changes they care about. Measured against bloc and Riverpod in [`benchmarks/`](benchmarks/RESULTS.md): 1 build and 0 selector calls per update (Riverpod's provider-per-cell family matches those counts), groups tie Riverpod's select and family forms per frame on a Mac and a clock-pinned iPhone and lead bloc's BlocSelector, untargeted defaults ~2.5×. Sequential dispatch is under bloc's on both machines since 2.0.0 — the table below
 - **Status-aware state**: `StreamStatus` separates persistent state from transient states like waiting, failure, and canceling
 - **Cross-bloc orchestration**: event subscriptions, state relays, and status relays are first-class patterns
 
@@ -45,13 +45,14 @@ Measured in [`benchmarks/`](benchmarks/RESULTS.md) (bloc 9.2.1 / flutter_bloc 9.
 
 | | Juice, release default | Juice, every telemetry record built | bloc | Riverpod |
 |---|---:|---:|---:|---:|
-| **Dispatch**, µs per update, Mac | **0.73** | 1.00 | 1.04 | 0.42 |
-| **Dispatch**, µs per update, iPhone | **0.63** | 0.88 | 1.03 | 0.41 |
+| **Dispatch**, sequential, µs per update, Mac | **0.73** | 1.00 | 1.04 | 0.42 |
+| **Dispatch**, sequential, µs per update, iPhone | **0.63** | 0.88 | 1.03 | 0.41 |
+| **Dispatch**, burst (fire all, await the last), Mac | 1.94 | 1.85 | **0.83** | 0.71 |
 | **Frame**, 1 of 1,000 widgets updated, p50 µs, iPhone | **399** (groups) | — | 447 (BlocSelector) | 399 (family) / 398 (select) |
 | **Frame**, 50 of 1,000 updated, p50 µs, iPhone | **699** (groups) / 692 (JuiceSelector + groups) | — | 751 (BlocSelector) | 804 (family) / 840 (select) |
 
-- **Dispatch**: with nothing built — the release default — a Juice send is under bloc's by 30% on the Mac and 40% on the phone; with the full telemetry built it ties bloc (ranges overlap on both machines). Riverpod is faster than both and will stay so: a notifier method is a synchronous call with no event queue and no use case, so it is the floor for that shape, not a like-for-like dispatch.
-- **Frames**: the tuned forms of all three frameworks are one band — Juice groups and Riverpod's provider-per-cell family within 0.5% on the Mac and 0.0% on the phone; bloc's BlocSelector trails that band by about 10% on the phone. Where the scenario is built to hurt groups (50 of 1,000 updated) Juice's two forms lead BlocSelector by 7% and Riverpod select by 17% on the phone, and all tuned forms tie on the Mac.
+- **Dispatch, sequential**: with nothing built — the release default — a Juice send is under bloc's by 30% on the Mac and 39% on the phone; with the full telemetry built it ties bloc (ranges overlap on both machines). In **burst** bloc leads: its event stream drains a backlog cheaper than Juice's awaited use cases (1.94 vs 0.83 µs on the Mac; a tie by range on the phone). Riverpod is faster than both and will stay so: a notifier method is a synchronous call with no event queue and no use case, so it is the floor for that shape, not a like-for-like dispatch.
+- **Frames**: the tuned Juice and Riverpod forms are one band — Juice groups and Riverpod's provider-per-cell family within 0.5% on the Mac and 0.0% on the phone; bloc's BlocSelector trails that band by 18% on the Mac and 10% on the phone. Where the scenario is built to hurt groups (50 of 1,000 updated) Juice's two forms lead BlocSelector by 7% and Riverpod select by 17% on the phone, and the Juice and Riverpod forms tie on the Mac.
 - **Rebuild counts** are deterministic and identical: one build per update for every tuned form, with Juice and Riverpod's family needing no selector run per consumer.
 - Every number is the median of repeated rounds with its range; the harness declares a tie when ranges overlap. The pinned-toolchain run is still to be taken on a pinned machine.
 

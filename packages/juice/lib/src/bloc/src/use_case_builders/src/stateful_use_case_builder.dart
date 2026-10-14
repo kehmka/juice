@@ -66,8 +66,6 @@ class StatefulUseCaseBuilder extends UseCaseBuilderBase {
   /// allowing for proper resource cleanup.
   @override
   Future<void> close() async {
-    JuiceLoggerConfig.logger.log(
-        "Closing StatefulUseCase instance of type ${_instance.runtimeType}");
     _instance?.close();
     _instance = null;
   }

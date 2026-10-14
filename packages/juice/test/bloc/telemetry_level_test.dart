@@ -49,9 +49,9 @@ class _Counting implements JuiceLogger {
   void record(JuiceTelemetry e) {
     if (e.isError) {
       errors++;
-      types.add('ERR:${e.kind.type}');
+      types.add('ERR:${e.kind.wireType}');
     } else {
-      types.add(e.kind.type);
+      types.add(e.kind.wireType);
     }
   }
 
@@ -82,7 +82,7 @@ class _Declaring extends _Counting implements LevelAwareJuiceLogger {
 class _Wrapper implements JuiceLogger {
   @override
   void record(JuiceTelemetry e) {
-    types.add(e.kind.type);
+    types.add(e.kind.wireType);
     inner.record(e);
   }
 

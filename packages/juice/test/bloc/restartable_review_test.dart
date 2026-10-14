@@ -325,7 +325,7 @@ void main() {
     g2.complete();
     await Future.wait([first, second]);
     expect(b.state.log, ['bad'], reason: 'the new run ran and emitted');
-    expect(log.where('use_case_superseded', 'error'), hasLength(1));
+    expect(log.where('supersede_error'), hasLength(1));
     await b.close();
   });
 

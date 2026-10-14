@@ -1,3 +1,5 @@
+import 'package:logger/web.dart' show Level;
+
 import '../../../bloc.dart';
 import '../../core/restartable_run.dart';
 import '../../core/type_names.dart';
@@ -178,16 +180,14 @@ class _RetryableUseCase<
         // Invoke retry callback
         onRetry?.call(attempt, lastError!, delay);
 
-        // Log retry attempt
-        JuiceLoggerConfig.logger.log(
-          'Retrying operation',
-          context: {
-            'attempt': attempt,
-            'maxRetries': maxRetries,
-            'error': lastError.toString(),
-            'delayMs': delay.inMilliseconds,
-          },
-        );
+        if (JuiceLoggerConfig.logs(Level.info)) {
+          JuiceLoggerConfig.logger.record(JuiceTelemetry(
+            JuiceTelemetryKind.retryScheduled,
+            attempt: attempt,
+            bloc: typeName(bloc.runtimeType),
+            error: lastError,
+          ));
+        }
 
         // Wait for backoff duration
         await Future.delayed(delay);
@@ -202,12 +202,14 @@ class _RetryableUseCase<
 
         // The bloc closed during the backoff (the user left): re-running the
         // work against a dead bloc is pointless and has side effects.
-        if (bloc.isClosed || bloc.isClosing) {
-          JuiceLoggerConfig.logger.record(JuiceTelemetry(
-            JuiceTelemetryKind.retryAbandoned,
-            attempt: attempt,
-            bloc: typeName(bloc.runtimeType),
-          ));
+        if (bloc.isClosing) {
+          if (JuiceLoggerConfig.logs(Level.info)) {
+            JuiceLoggerConfig.logger.record(JuiceTelemetry(
+              JuiceTelemetryKind.retryAbandoned,
+              attempt: attempt,
+              bloc: typeName(bloc.runtimeType),
+            ));
+          }
           return;
         }
       }
@@ -330,13 +332,14 @@ class _RetryableUseCase<
     }
 
     // All retries exhausted or non-retryable error
-    JuiceLoggerConfig.logger.log(
-      'Retry exhausted, emitting failure',
-      context: {
-        'totalAttempts': maxRetries + 1,
-        'error': lastError?.toString(),
-      },
-    );
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      JuiceLoggerConfig.logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.retryExhausted,
+        attempt: maxRetries + 1,
+        bloc: typeName(bloc.runtimeType),
+        error: lastError,
+      ));
+    }
 
     emitFailure(
       newState: lastFailureState,

@@ -466,28 +466,30 @@ void main() {
       await bloc.close();
     });
 
-    test('handleError forwards error + stack and logs them in debug', () {
+    test(
+        'handleError forwards error + stack to its callbacks and prints '
+        'nothing of its own (the blocError entry carries the error)', () {
       Object? gotError;
       StackTrace? gotStack;
-      final handler = BlocErrorHandler(onError: (m, {error, stackTrace}) {
-        gotError = error;
-        gotStack = stackTrace;
-      });
+      final summaries = <String>[];
+      final handler = BlocErrorHandler(
+        logger: summaries.add,
+        onError: (m, {error, stackTrace}) {
+          gotError = error;
+          gotStack = stackTrace;
+        },
+      );
       final st = StackTrace.fromString('trace-line');
       handler.handleError('oops', error: 'E1', stackTrace: st);
       expect(gotError, 'E1');
       expect(gotStack, st);
-      final messages = logger.entries.map((e) => e.message).toList();
-      expect(
-          messages,
-          containsAllInOrder(
-              ['Bloc Error: oops', 'Error: E1', 'StackTrace: trace-line']));
+      expect(summaries, ['oops']);
+      expect(logger.entries, isEmpty);
     });
 
-    test('handleError with no callbacks only logs the message', () {
+    test('handleError with no callbacks logs nothing', () {
       const BlocErrorHandler().handleError('just a message');
-      expect(
-          logger.entries.map((e) => e.message), ['Bloc Error: just a message']);
+      expect(logger.entries, isEmpty);
     });
 
     test('JuiceBlocException / NoEventHandlerException describe themselves',

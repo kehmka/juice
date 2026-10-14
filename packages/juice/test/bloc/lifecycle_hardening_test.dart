@@ -76,26 +76,12 @@ class _SpanLogger implements JuiceLogger {
   final errors = <Object>[];
   @override
   void log(String m,
-      {Level level = Level.info, Map<String, dynamic>? context}) {
-    if (context?['type'] == 'use_case_execution') {
-      starts.add(context!['executionId'] as int);
-    }
-    if (context?['type'] == 'use_case_completed') {
-      ends.add(context!['executionId'] as int);
-    }
-  }
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
 
   @override
   void logError(String m, Object e, StackTrace s,
-      {Map<String, dynamic>? context}) {
-    // Span closers carry executionId; BlocErrorHandler's summary shares the
-    // type but not the id (AGENTS §4b).
-    if (context?['type'] == 'use_case_error' &&
-        context!.containsKey('executionId')) {
-      ends.add(context['executionId'] as int);
+          {Map<String, dynamic>? context}) =>
       errors.add(e);
-    }
-  }
 }
 
 void main() {

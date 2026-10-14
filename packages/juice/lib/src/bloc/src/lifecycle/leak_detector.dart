@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:logger/web.dart' show Level;
+
 import '../telemetry.dart';
 
 import '../juice_logger.dart';
@@ -62,8 +64,10 @@ class LeakDetector {
   static void enable() {
     assert(() {
       _enabled = true;
-      JuiceLoggerConfig.logger.record(
-          const JuiceTelemetry(JuiceTelemetryKind.leakDetectionEnabled));
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        JuiceLoggerConfig.logger.record(
+            const JuiceTelemetry(JuiceTelemetryKind.leakDetectionEnabled));
+      }
       return true;
     }());
   }

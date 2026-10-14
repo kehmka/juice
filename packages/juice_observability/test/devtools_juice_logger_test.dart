@@ -165,7 +165,7 @@ void main() {
     test('a telemetry entry posts juice:<type> with its fields', () {
       logger.record(const JuiceTelemetry(
         JuiceTelemetryKind.stateEmitted,
-        status: 'update',
+        status: EmissionKind.update,
         bloc: 'FooBloc',
         event: 'LoadFoo',
         groups: {'foo:status'},
@@ -174,13 +174,13 @@ void main() {
       expect(posted, hasLength(1));
       final (kind, data) = posted.single;
       expect(kind, 'juice:state_emission');
-      expect(data['message'], 'Emitting update');
+      expect(data['message'], 'State emitted');
       expect(data['level'], 'info');
       expect(data['bloc'], 'FooBloc');
       expect(data['status'], 'update');
       expect(data['state'], 'FooState(1)');
       expect(data.containsKey('type'), isFalse);
-      expect(inner.logs, ['Emitting update'], reason: 'inner always forwards');
+      expect(inner.logs, ['State emitted'], reason: 'inner always forwards');
     });
 
     test('an error entry carries error and stackTrace, clipped', () {
@@ -207,10 +207,10 @@ void main() {
           hasListener: () => false);
       final state = _Exploding();
       quiet.record(JuiceTelemetry(JuiceTelemetryKind.stateEmitted,
-          status: 'update', bloc: 'FooBloc', state: state));
+          status: EmissionKind.update, bloc: 'FooBloc', state: state));
       expect(posted, isEmpty);
       expect(state.stringified, 0);
-      expect(inner.logs, ['Emitting update']);
+      expect(inner.logs, ['State emitted']);
     });
   });
 }

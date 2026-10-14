@@ -10,7 +10,7 @@ import 'package:juice/juice.dart';
 class _RecordingLogger implements JuiceLogger {
   @override
   void record(JuiceTelemetry e) {
-    types.add(e.kind.type);
+    types.add(e.kind.wireType);
     if (e.isError) errors.add(e.error!);
   }
 
@@ -18,18 +18,12 @@ class _RecordingLogger implements JuiceLogger {
   final errors = <Object>[];
   @override
   void log(String m,
-      {Level level = Level.info, Map<String, dynamic>? context}) {
-    final t = context?['type'];
-    if (t is String) types.add(t);
-  }
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
 
   @override
   void logError(String m, Object e, StackTrace s,
-      {Map<String, dynamic>? context}) {
-    errors.add(e);
-    final t = context?['type'];
-    if (t is String) types.add(t);
-  }
+          {Map<String, dynamic>? context}) =>
+      errors.add(e);
 }
 
 class _S extends BlocState {

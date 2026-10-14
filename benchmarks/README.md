@@ -169,12 +169,13 @@ hand.
 ## Reading the results honestly
 
 - **Where 2.0.0 stands against bloc and Riverpod** (RESULTS §16 Mac, §17
-  phone): dispatch per update, release default, Juice 0.73 / 0.63 µs
-  against bloc 1.04 / 1.03 and Riverpod 0.42 / 0.41; with every telemetry
-  record built Juice ties bloc. Per frame the tuned forms of all three tie
-  (Juice groups vs Riverpod family 0.5% / 0.0%), BlocSelector about 10%
-  behind on the phone; in the wide scenario Juice's forms lead BlocSelector
-  by 7% and Riverpod select by 17% on the phone.
+  phone): sequential dispatch per update, release default, Juice 0.73 /
+  0.63 µs against bloc 1.04 / 1.03 and Riverpod 0.42 / 0.41; with every
+  telemetry record built Juice ties bloc; in burst bloc leads on the Mac
+  and ties on the phone. Per frame the tuned Juice and Riverpod forms tie
+  (groups vs family 0.5% / 0.0%) and bloc's BlocSelector trails them (18%
+  on the Mac, 10% on the phone); in the wide scenario Juice's forms lead
+  BlocSelector by 7% and Riverpod select by 17% on the phone.
 - **Riverpod's dispatch number is a different shape.** A notifier method
   is a synchronous call: no event object, no queue, no use case, no span.
   It is the floor for "no dispatch", and Juice and bloc — both event

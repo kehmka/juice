@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart';
 import 'package:juice_media/juice_media.dart';
 
 /// Records emitted rebuild groups, to assert per-item selective refresh.
@@ -39,11 +38,18 @@ class FakeMediaSource implements MediaSource {
 
 /// A controllable in-flight upload.
 class FakeMediaUpload implements MediaUpload {
-  final _progress = StreamController<double>.broadcast();
+  late final _progress = StreamController<double>.broadcast(
+      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
   final _result = Completer<String>();
   bool cancelled = false;
 
+  /// Listen / cancel / handle-cancel, in the order they happened.
+  final log = <String>[];
+
   void emit(double p) => _progress.add(p);
+
+  /// Break the progress stream (the result stays pending).
+  void failProgress(Object e) => _progress.addError(e);
   void complete(String url) {
     if (!_result.isCompleted) _result.complete(url);
   }
@@ -58,6 +64,7 @@ class FakeMediaUpload implements MediaUpload {
   Future<String> get result => _result.future;
   @override
   void cancel() {
+    log.add('handle-cancel');
     cancelled = true;
     if (!_result.isCompleted) _result.completeError(StateError('cancelled'));
   }
@@ -66,12 +73,32 @@ class FakeMediaUpload implements MediaUpload {
 class FakeMediaUploader implements MediaUploader {
   final Map<String, FakeMediaUpload> uploads = {};
   bool disposed = false;
+  Object? disposeError;
 
   @override
   MediaUpload upload(MediaItem item) => uploads[item.id] = FakeMediaUpload();
 
   @override
-  Future<void> dispose() async => disposed = true;
+  Future<void> dispose() async {
+    disposed = true;
+    if (disposeError != null) throw disposeError!;
+  }
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 MediaItem img(String id) =>
@@ -411,6 +438,67 @@ void main() {
       await bloc.close();
       expect(src.disposed, isTrue);
       expect(up.disposed, isTrue);
+    });
+  });
+
+  group('MediaBloc review pins (2.0.0)', () {
+    test(
+        'close cancels a progress binding before cancelling its handle and '
+        'disposing', () async {
+      final src = FakeMediaSource([img('a')]);
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      bloc.pickFromGallery();
+      await settle();
+      bloc.upload('a');
+      await settle();
+
+      await bloc.close();
+      expect(up.uploads['a']!.log, ['listen', 'cancel', 'handle-cancel']);
+      expect(src.disposed, isTrue);
+      expect(up.disposed, isTrue);
+    });
+
+    test('a progress stream error fails the upload and ends its binding',
+        () async {
+      final src = FakeMediaSource([img('a')]);
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      bloc.pickFromGallery();
+      await settle();
+      bloc.upload('a');
+      await settle();
+
+      up.uploads['a']!.failProgress(StateError('pipe broke'));
+      await settle();
+
+      expect(bloc.state.uploads['a']!.status, UploadStatus.failed);
+      expect(bloc.state.uploads['a']!.error, contains('pipe broke'));
+      expect(up.uploads['a']!.log, ['listen', 'cancel']);
+      expect(bloc.isUploadActive('a'), isFalse);
+      await bloc.close();
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = MediaBloc();
+      expect(() => bloc.source, throwsStateError);
+      await bloc.close();
+    });
+
+    test('an uploader whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final src = FakeMediaSource();
+      final up = FakeMediaUploader()..disposeError = StateError('bucket busy');
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('bucket busy'));
     });
   });
 }

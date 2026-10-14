@@ -21,7 +21,7 @@ A lifecycle-aware HTTP workflow package for [Juice](https://pub.dev/packages/jui
 
 ```yaml
 dependencies:
-  juice_network: ^0.13.1
+  juice_network: ^0.14.0
 ```
 
 ## Quick Start

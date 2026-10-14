@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - unreleased (ships with juice 2.0.0)
+
+### Changed
+
+- **Requires `juice ^2.0.0`.** Each upload's progress stream is a bloc-owned
+  binding keyed by item (`bindStream(..., key: 'upload:<id>')`), unbound when
+  the upload completes, fails or is cancelled; no subscription map, no
+  `isClosed` guard. A progress stream error fails the upload and ends its
+  binding, as a result error already did.
+- `close()` closes the bloc first (every progress binding is cancelled), cancels
+  the active handles, then disposes the source and the uploader; a dispose
+  failure is logged, never swallowed; an uninitialised bloc closes cleanly.
+- `source` / `uploader` / `config` before `InitializeMediaEvent` throw a named
+  `StateError` instead of a late-initialisation error.
+
 ## [0.6.0] - 2026-09-16
 
 ### Changed — every builder now declares its `EventConcurrency` mode

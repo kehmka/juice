@@ -1,6 +1,6 @@
 name: juice_power
 description: Battery and charging state as a Juice bloc — plugged-in, charge level and power-saver mode behind a swappable provider seam.
-version: 0.1.0
+version: 0.2.0
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_power
 issue_tracker: https://github.com/kehmka/juice/issues
@@ -18,7 +18,7 @@ dependencies:
     sdk: flutter
   # >=1.5.0 for EventConcurrency on UseCaseBuilder (this package declares a
   # mode on all three events); 1.6.0 is what it is developed against.
-  juice: ^1.6.0
+  juice: ^2.0.0
   battery_plus: ^6.2.0
 
 dev_dependencies:

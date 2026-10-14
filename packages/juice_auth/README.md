@@ -19,7 +19,7 @@ Authentication lifecycle management for [Juice](https://pub.dev/packages/juice) 
 
 ```yaml
 dependencies:
-  juice_auth: ^0.3.0
+  juice_auth: ^0.4.0
 ```
 
 ## Quick Start

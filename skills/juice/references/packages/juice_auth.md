@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_auth
-version: 0.3.0
+version: 0.4.0
 requires:
-  juice: ">=1.6.0"
-  juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-16
+  juice: ">=2.0.0"
+  juice_storage: ">=1.2.0 <4.0.0"
+updated: 2026-10-13
 ---
 
 # juice_auth — AI card
@@ -28,8 +28,8 @@ guarding (use `juice_auth_routing`).
 
 ```yaml
 dependencies:
-  juice_auth: ^0.3.0
-  juice_storage: ^1.2.0   # required — secure token/session storage
+  juice_auth: ^0.4.0
+  juice_storage: ^3.0.0   # required — secure token/session storage
 ```
 
 ## Construct

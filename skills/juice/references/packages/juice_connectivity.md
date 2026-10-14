@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_connectivity
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
+  juice: ">=2.0.0"
   connectivity_plus: ">=6.1.0"
-updated: 2026-08-12
+updated: 2026-10-13
 ---
 
 # juice_connectivity — AI card
@@ -32,7 +32,7 @@ feed an `onlineSignal` to `juice_sync`. For the requests themselves use
 
 ```yaml
 dependencies:
-  juice_connectivity: ^0.2.0   # pulls connectivity_plus for the default provider
+  juice_connectivity: ^0.3.0   # pulls connectivity_plus for the default provider
 ```
 
 ## Construct

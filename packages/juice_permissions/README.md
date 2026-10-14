@@ -17,7 +17,7 @@ notifications) react to grant state via per-capability glue packages.
 
 ```yaml
 dependencies:
-  juice_permissions: ^0.3.0
+  juice_permissions: ^0.4.0
 ```
 
 ## Use

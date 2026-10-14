@@ -1,12 +1,12 @@
 ---
 card_schema: "1.0"
 package: juice_notifications
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
+  juice: ">=2.0.0"
   flutter_local_notifications: ">=17.2.2"
   timezone: ">=0.9.4"
-updated: 2026-08-12
+updated: 2026-10-13
 ---
 
 # juice_notifications — AI card
@@ -27,7 +27,7 @@ an informational `permissionGranted` flag.
 
 ```yaml
 dependencies:
-  juice_notifications: ^0.2.0
+  juice_notifications: ^0.3.0
 ```
 
 Default backend is `flutter_local_notifications` — add its platform setup

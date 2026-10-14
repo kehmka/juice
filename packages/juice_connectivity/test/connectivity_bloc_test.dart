@@ -4,9 +4,14 @@ import 'package:juice_connectivity/juice_connectivity.dart';
 
 /// Pure-Dart fake provider — drives the bloc without any platform plugin.
 class FakeConnectivityProvider implements ConnectivityProvider {
-  final _ctrl = StreamController<ConnectivitySnapshot>.broadcast();
+  late final _ctrl = StreamController<ConnectivitySnapshot>.broadcast(
+      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
   ConnectivitySnapshot _current;
   bool disposed = false;
+  Object? disposeError;
+
+  /// Listen / cancel / dispose, in the order they happened.
+  final log = <String>[];
   int checks = 0;
   Completer<ConnectivitySnapshot>? checkGate;
 
@@ -24,7 +29,9 @@ class FakeConnectivityProvider implements ConnectivityProvider {
 
   @override
   Future<void> dispose() async {
+    log.add('dispose');
     disposed = true;
+    if (disposeError != null) throw disposeError!;
     await _ctrl.close();
   }
 
@@ -33,6 +40,25 @@ class FakeConnectivityProvider implements ConnectivityProvider {
     _current = s;
     _ctrl.add(s);
   }
+
+  /// Break the change stream.
+  void fail(Object error) => _ctrl.addError(error);
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 void main() {
@@ -221,6 +247,67 @@ void main() {
       expect(bloc.state.connectionType, ConnectionType.none);
       expect(bloc.state.isOffline, isTrue);
       await bloc.close();
+    });
+  });
+
+  group('ConnectivityBloc review pins (2.0.0)', () {
+    test('close cancels the changes binding before disposing the provider',
+        () async {
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle();
+      await bloc.close();
+      expect(p.log, ['listen', 'cancel', 'dispose']);
+    });
+
+    test('a second start replaces the binding instead of adding one', () async {
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle();
+      bloc.startListening();
+      await settle();
+      expect(p.log, ['listen', 'cancel', 'listen']);
+      await bloc.close();
+    });
+
+    test(
+        'a changes stream error is logged as a bloc error and ends the binding',
+        () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle();
+      p.fail(StateError('radio off'));
+      await settle();
+      // Two entries by design: the binding's own `stream_binding/error`
+      // (it names the key) and the `bloc_error` from the bloc's onError.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('radio off')));
+      expect(p.log, ['listen', 'cancel']);
+      await bloc.close();
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = ConnectivityBloc();
+      expect(() => bloc.provider, throwsStateError);
+      await bloc.close();
+    });
+
+    test('a provider whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final p = FakeConnectivityProvider()
+        ..disposeError = StateError('radio busy');
+      final bloc = ConnectivityBloc.withConfig(cfg(p));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('radio busy'));
     });
   });
 }

@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_power
-version: 0.1.0
+version: 0.2.0
 requires:
-  juice: ">=1.6.0"
+  juice: ">=2.0.0"
   battery_plus: ">=6.2.0"
-updated: 2026-09-16
+updated: 2026-10-13
 ---
 
 # juice_power — AI card
@@ -34,7 +34,7 @@ matters.
 
 ```yaml
 dependencies:
-  juice_power: ^0.1.0   # pulls battery_plus for the default provider
+  juice_power: ^0.2.0   # pulls battery_plus for the default provider
 ```
 
 ## Construct

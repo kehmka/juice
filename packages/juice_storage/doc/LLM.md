@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_storage
-version: 2.3.0
+version: 3.0.0
 requires:
-  juice: ">=1.9.0"
-updated: 2026-09-26
+  juice: ">=2.0.0"
+updated: 2026-10-13
 ---
 
 # juice_storage — AI card
@@ -44,7 +44,7 @@ updated: 2026-09-26
 
 ```yaml
 dependencies:
-  juice_storage: ^2.3.0
+  juice_storage: ^3.0.0
 ```
 
 Pulls `hive_ce`/`hive_ce_flutter`, `shared_preferences`, `sqflite`,

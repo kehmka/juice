@@ -2807,8 +2807,8 @@ packages/juice_network/
 dependencies:
   flutter:
     sdk: flutter
-  juice: ^1.6.0
-  juice_storage: ^1.0.0  # For cache persistence
+  juice: ^2.0.0
+  juice_storage: ^3.0.0  # For cache persistence
   dio: ^5.4.0
   crypto: ^3.0.3         # For body hashing
 

@@ -30,10 +30,10 @@ import 'use_cases/send_use_case.dart';
 /// rt.send('{"type":"ping"}');
 /// ```
 class RealtimeBloc extends JuiceBloc<RealtimeState> {
-  late RealtimeConfig _config;
+  RealtimeConfig? _config;
 
   RealtimeConnection? _connection;
-  StreamSubscription<RealtimeMessage>? _messageSub;
+  StreamBinding<RealtimeMessage>? _messageBinding;
   Timer? _reconnectTimer;
   bool _manualClose = false;
   bool _connecting = false;
@@ -91,7 +91,13 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   // === Config (used by use cases) ===
 
   void configure(RealtimeConfig config) => _config = config;
-  RealtimeConfig get config => _config;
+
+  /// The config [InitializeRealtimeEvent] applied. Throws before that.
+  RealtimeConfig get config =>
+      _config ??
+      (throw StateError(
+          'RealtimeBloc is not initialized: send InitializeRealtimeEvent '
+          '(or use RealtimeBloc.withConfig) first'));
 
   /// Inbound messages — listen here to receive *every* message in order.
   Stream<RealtimeMessage> get messages => _messages.stream;
@@ -141,17 +147,21 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
 
   /// Open a connection and wire its message stream to internal events.
   /// Sends [ConnectionEstablishedEvent] on success, [ConnectionLostEvent] on
-  /// failure or drop.
+  /// failure, drop or stream error. The message stream is a bloc-owned
+  /// binding: cancelled before the use cases close, replaced by the next
+  /// connection's, and ended by a stream error (the loss handling tears the
+  /// connection down).
   Future<void> openConnection(int connectionEpoch) async {
     try {
-      final conn = await _config.connector.connect();
+      final conn = await config.connector.connect();
       if (!isCurrentConnectionEpoch(connectionEpoch)) {
         await conn.close();
         return;
       }
 
       _connection = conn;
-      _messageSub = conn.messages.listen(
+      _messageBinding = bindStream<RealtimeMessage>(
+        conn.messages,
         (m) {
           if (isCurrentConnectionEpoch(connectionEpoch)) {
             send(MessageReceivedEvent(
@@ -160,7 +170,8 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
             ));
           }
         },
-        onError: (Object e) {
+        key: _messagesKey,
+        onError: (e, _) {
           if (isCurrentConnectionEpoch(connectionEpoch)) {
             send(ConnectionLostEvent(
               e,
@@ -213,27 +224,31 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
     return epoch;
   }
 
-  /// Tear down the current connection + subscription (not the broadcast stream).
+  static const _messagesKey = 'messages';
+
+  /// Tear down the current connection + its message binding (not the
+  /// broadcast stream). The binding's cancel is awaited before the connection
+  /// closes, so no message callback runs against a closing socket.
   Future<void> teardownConnection() async {
-    final messageSub = _messageSub;
+    final binding = _messageBinding;
     final connection = _connection;
-    _messageSub = null;
+    _messageBinding = null;
     _connection = null;
-    await messageSub?.cancel();
+    await binding?.cancel();
     await connection?.close();
   }
 
   /// Whether another reconnect is allowed given [attempt] (1-based).
   bool canReconnect(int attempt) {
-    final max = _config.maxReconnectAttempts;
+    final max = config.maxReconnectAttempts;
     return max == null || attempt <= max;
   }
 
   /// Schedule a reconnect with exponential backoff for [attempt] (1-based).
   void scheduleReconnect(int attempt) {
     _reconnectTimer?.cancel();
-    final base = _config.initialBackoff * math.pow(2, attempt - 1).toDouble();
-    final delay = base > _config.maxBackoff ? _config.maxBackoff : base;
+    final base = config.initialBackoff * math.pow(2, attempt - 1).toDouble();
+    final delay = base > config.maxBackoff ? config.maxBackoff : base;
     _reconnectTimer = Timer(delay, () {
       if (!isClosed) send(ReconnectEvent());
     });
@@ -247,14 +262,22 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
 
   @override
   Future<void> close() async {
+    // No reconnect may be scheduled from here on; then the bloc closes (its
+    // message binding is cancelled before the use cases close), the socket
+    // and the broadcast stream close, and the connector is disposed last.
+    // An uninitialized bloc has no connector.
     markManualClose();
+    await super.close();
     await teardownConnection();
     await _messages.close();
+    final config = _config;
+    if (config == null) return;
     try {
-      await _config.connector.dispose();
-    } catch (_) {
-      // Config may never have been applied; ignore.
+      await config.connector.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'RealtimeConnector dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'RealtimeBloc'});
     }
-    await super.close();
   }
 }

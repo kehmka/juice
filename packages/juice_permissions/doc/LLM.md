@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_permissions
-version: 0.3.0
+version: 0.4.0
 requires:
-  juice: ">=1.6.0"
+  juice: ">=2.0.0"
   permission_handler: ">=11.3.0"
-updated: 2026-08-12
+updated: 2026-10-13
 ---
 
 # juice_permissions — AI card
@@ -33,7 +33,7 @@ instead of duplicating permission logic.
 
 ```yaml
 dependencies:
-  juice_permissions: ^0.3.0   # pulls permission_handler for the default provider
+  juice_permissions: ^0.4.0   # pulls permission_handler for the default provider
 ```
 
 Declare the underlying OS permissions you actually use in `Info.plist` /

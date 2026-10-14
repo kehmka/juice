@@ -13,7 +13,7 @@ in release-note form; `benchmarks/RESULTS.md` §15–§17 have the numbers.
 
 Every family package gets a matching major or minor bump that requires
 `juice: ^2.0.0` in the release wave that follows the core; upgrade them
-together.
+together. The wave's versions are listed at the end of this guide.
 
 ## Compile-time changes
 
@@ -256,5 +256,50 @@ lease entries bypassed the floor.
 8. Run the tests: a `sendAndWait` that used to time out now throws at once,
    and `juiceTest` now fails on an unexpected stream-binding error
    (`errors:` to expect one).
-9. Bump the family packages to their 2.0-compatible versions when the
-   wave publishes them.
+9. Bump the family packages to the versions below, together.
+
+## The family wave
+
+Every package below requires `juice: ^2.0.0`. A 0.x package takes a minor
+bump, a 1.x+ package a major one (`juice_routing` 2.0.0, `juice_storage`
+3.0.0); the packages that depend on `juice_storage` accept it up to
+`<4.0.0`. The packages marked *changed* carry code of their own in the
+wave; the rest are constraint bumps with no API change.
+
+| Package | 1.x | 2.0 wave | |
+|---|---|---|---|
+| juice_analytics | 0.2.0 | 0.3.0 | |
+| juice_auth | 0.3.0 | 0.4.0 | |
+| juice_auth_network | 0.1.3 | 0.2.0 | requires `juice_auth ^0.4.0`, `juice_network ^0.14.0` |
+| juice_auth_routing | 0.1.2 | 0.2.0 | requires `juice_auth ^0.4.0`, `juice_routing ^2.0.0` |
+| juice_connectivity | 0.2.0 | 0.3.0 | *changed*: bloc-owned `changes` binding, close order, loud dispose |
+| juice_flags | 0.2.0 | 0.3.0 | |
+| juice_forms | 0.3.0 | 0.4.0 | |
+| juice_i18n | 0.2.0 | 0.3.0 | |
+| juice_lifecycle | 0.2.0 | 0.3.0 | *changed*: as connectivity |
+| juice_lint | 0.2.0 | 0.3.0 | *changed*: `juice_missing_concurrency_mode` retired |
+| juice_llm | 0.5.0 | 0.6.0 | *changed*: bloc-owned generation binding, close order |
+| juice_llm_llamacpp | 0.2.3 | 0.2.3 | unchanged (depends on `juice_llm`, not on `juice`) |
+| juice_location | 0.2.0 | 0.3.0 | *changed*: bloc-owned tracking binding, `TrackingEndedEvent` |
+| juice_media | 0.6.0 | 0.7.0 | *changed*: per-upload progress bindings, close order, loud dispose |
+| juice_network | 0.13.1 | 0.14.0 | |
+| juice_notifications | 0.2.0 | 0.3.0 | *changed*: bloc-owned `taps` binding, close order, loud dispose |
+| juice_observability | 0.5.1 | 0.6.0 | *changed*: `DevtoolsJuiceLogger.record` |
+| juice_paging | 0.2.0 | 0.3.0 | |
+| juice_permissions | 0.3.0 | 0.4.0 | |
+| juice_power | 0.1.0 | 0.2.0 | *changed*: as connectivity |
+| juice_realtime | 0.2.0 | 0.3.0 | *changed*: bloc-owned `messages` binding, socket error = connection loss, close order |
+| juice_routing | 1.3.0 | 2.0.0 | |
+| juice_storage | 2.3.0 | 3.0.0 | |
+| juice_sync | 0.2.1 | 0.3.0 | |
+| juice_theme | 0.2.0 | 0.3.0 | |
+
+What *changed* means for the seven stream-owning blocs (connectivity,
+lifecycle, location, media, notifications, power, realtime): each bloc's
+provider stream is a `bindStream` binding the bloc cancels at the start of
+`close()`, before the use cases close; `close()` then disposes the
+provider, logging (never swallowing) a dispose failure; a provider stream
+error reaches the bloc's error handler and ends the binding instead of
+escaping as an uncaught error; and reading the provider before the
+initialize event throws a named `StateError`. Each package's CHANGELOG
+has the exact list.

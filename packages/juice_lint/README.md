@@ -78,7 +78,7 @@ section (not the legacy `analyzer: plugins:` list):
 
 ```yaml
 plugins:
-  juice_lint: ^0.2.0          # once published; until then, a path or git source:
+  juice_lint: ^0.3.0          # once published; until then, a path or git source:
   # juice_lint:
   #   path: ../juice_lint     # relative to this analysis_options.yaml
 ```

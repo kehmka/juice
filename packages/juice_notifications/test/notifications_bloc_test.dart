@@ -1,11 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart';
 import 'package:juice_notifications/juice_notifications.dart';
 
 /// Pure-Dart fake — drives the bloc without the plugin.
 class FakeNotificationService implements NotificationService {
-  final _taps = StreamController<NotificationTap>.broadcast();
+  late final _taps = StreamController<NotificationTap>.broadcast(
+      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
+  Object? disposeError;
+
+  /// Listen / cancel / dispose, in the order they happened.
+  final log = <String>[];
   final List<JuiceNotification> shown = [];
   final List<JuiceNotification> scheduled = [];
   final List<int> cancelled = [];
@@ -43,12 +47,33 @@ class FakeNotificationService implements NotificationService {
 
   @override
   Future<void> dispose() async {
+    log.add('dispose');
     disposed = true;
+    if (disposeError != null) throw disposeError!;
     await _taps.close();
   }
 
   /// Simulate a tap.
   void emitTap(NotificationTap tap) => _taps.add(tap);
+
+  /// Break the tap stream.
+  void fail(Object error) => _taps.addError(error);
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 void main() {
@@ -201,6 +226,70 @@ void main() {
 
       await bloc.close();
       expect(svc.disposed, isTrue);
+    });
+  });
+
+  group('NotificationsBloc review pins (2.0.0)', () {
+    test('close cancels the taps binding before disposing the service',
+        () async {
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      await bloc.close();
+      expect(svc.log, ['listen', 'cancel', 'dispose']);
+    });
+
+    test('a second start replaces the binding instead of adding one', () async {
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      bloc.startListeningForTaps();
+      await settle();
+      expect(svc.log, ['listen', 'cancel', 'listen']);
+      await bloc.close();
+    });
+
+    test('a taps stream error is logged as a bloc error and ends the binding',
+        () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      svc.fail(StateError('channel gone'));
+      await settle();
+      // Two entries by design: the binding's own `stream_binding/error`
+      // (it names the key) and the `bloc_error` from the bloc's onError.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('channel gone')));
+      expect(svc.log, ['listen', 'cancel']);
+      await bloc.close();
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = NotificationsBloc();
+      expect(() => bloc.service, throwsStateError);
+      await bloc.close();
+    });
+
+    test('a service whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final svc = FakeNotificationService()
+        ..disposeError = StateError('channel busy');
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('channel busy'));
     });
   });
 }

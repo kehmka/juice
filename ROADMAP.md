@@ -683,6 +683,37 @@ any minor. Pub package-skills (A), mason brick (M): tooling, not core.
 (`restartable` and `bindStream` were pulled INTO 2.0 and are built on
 `v2`.)
 
+### Family wave (built 2026-10-13, unpublished)
+
+Kevin: "start the family wave." Every package's versions, constraints and
+notes are in `doc/guides/upgrading-to-2.0.md` ("The family wave" table)
+and each package's CHANGELOG (`unreleased (ships with juice 2.0.0)`).
+
+- 21 packages bumped to require `juice: ^2.0.0`: a minor bump for 0.x, a
+  major for `juice_routing` (2.0.0) and `juice_storage` (3.0.0); the five
+  storage consumers accept `juice_storage` `<4.0.0`; `juice_auth_network`
+  and `juice_auth_routing` require their peers' wave versions (without
+  that, nothing under juice 2 would resolve). `juice_llm_llamacpp` is
+  untouched (depends on `juice_llm`, already in range). `juice_lint`,
+  `juice_llm`, `juice_location`, `juice_observability` were already at
+  their wave versions from the 2.0 branch.
+- The six stream sites item F left for the wave are migrated to
+  `bindStream`, mirroring location's reviewed shape exactly: keyed
+  binding, no subscription field, no `isClosed` guard in the stream
+  callback, bloc closes FIRST then disposes the provider, dispose failure
+  logged (the old `catch (_) {}` swallowed it), uninitialised bloc closes
+  cleanly, `config` before init throws a named `StateError`. Five pins per
+  package (close order via the fake's listen/cancel/dispose log, second
+  start replaces, stream error → `stream_binding/error` + `bloc_error` and
+  the binding ends, uninitialised close, dispose throw logged).
+- Cards' `version`/`requires` mirror the pubspecs (`tool/check_cards.sh`
+  green); README, card and package-doc install snippets name the wave
+  versions; root quick-start snippets say `juice: ^2.0.0`; the skill
+  bundle re-synced.
+- Not done, by design: publishing and tagging (Kevin's word); the
+  pinned-toolchain benchmark run (needs a 3.47.5 machine); the
+  `juice_lint` gate runs in CI.
+
 ### Sequence
 
 1. 1.10.0: A — published 2026-09-30.
@@ -691,6 +722,7 @@ any minor. Pub package-skills (A), mason brick (M): tooling, not core.
    (a "Breaking" section per item with the migration in one line).
 3. Family wave: bump every `juice: ^1.x` to `^2.0.0`, run the hygiene
    gate per package, publish in dependency order, tag `<package>-v<ver>`.
+   **BUILT 2026-10-13, unpublished** — see "Family wave" below.
 4. AGENTS.md, llms.txt, every AI card's `requires`, the skill bundle:
    one sync pass (`tool/sync_skill.sh`, `tool/check_cards.sh`).
 
@@ -823,7 +855,7 @@ release-mode gate — a doctrine call.
 | C ✅ (partly) | The lint rules the gotchas imply (stale-read-across-await ×3 reports, missing-concurrency-mode ×2, send-in-build, nullable-copyWith sentinel, lease-in-build, feature-bloc-dependency, public-state-field) — after B | M | expect_lint fixture per rule reproducing a documented incident; 0 false positives across 28 packages | bloc, riverpod, signals |
 | D ✅ 2026-10-07 (`v2`) | no mechanical fix by decision (2026-10-13): `UpdateEvent.newState` fails to compile; `RelayUseCaseBuilder` migrates by hand per the docs | S | ~~confirm the v2.0.0 removal list~~ two members, not three | dx |
 | E | State hydration seam (`StatePersistence<TState>` + `hydrate`; storage default + fake; versioned FAIL-LOUD migration) | M | migrating theme + i18n must net-delete code | bloc, riverpod |
-| F ✅ 2026-10-07 (`v2`) | `JuiceBloc.bindStream` / `unbind` / `StreamBinding` — on the BLOC, which owns the lifetime (Kevin's ruling; the family's nine sites all start from bloc helpers): cancelled at the start of close before the use cases close, keyed replacement, loud errors, refused on a closing bloc. Location and llm migrated (location's close body shrank; llm keeps one explicit cancel so the provider is never disposed under a live stream). 20 tests, every path; coverage of the new code 100%. Seven sites remain for the family wave: connectivity, power, lifecycle, notifications, realtime, media (per-item), llm's throttle | M | ~~migrate location + llm~~ | bloc |
+| F ✅ 2026-10-07 (`v2`) | `JuiceBloc.bindStream` / `unbind` / `StreamBinding` — on the BLOC, which owns the lifetime (Kevin's ruling; the family's nine sites all start from bloc helpers): cancelled at the start of close before the use cases close, keyed replacement, loud errors, refused on a closing bloc. Location and llm migrated (location's close body shrank; llm keeps one explicit cancel so the provider is never disposed under a live stream). 20 tests, every path; coverage of the new code 100%. The six remaining stream sites migrated in the family wave 2026-10-13 (connectivity, power, lifecycle, notifications, realtime, media per-item); llm's throttle is a `Timer`, not a stream — already cancelled on stop and on close, nothing for a binding to own | M | ~~migrate location + llm~~ | bloc |
 | G ✅ | `juiceTest` + dogfood `BlocTester` (exists, unused, sleeps 10 ms) | M | theme + sync ports delete `settle()` calls and assert groups | bloc, dx |
 | H | `WaitingStatus.progress`; `isWaitingFor<TEvent>()` / `isRunning(Type)` / `lastFailure(Type)` | S | llm model acquire; permissions' `requestsInFlight` map deletable | riverpod, others |
 | I | DevTools rebuild inspector + state diff + emission rate (`widget_rebuild` event from the accept path) | M | approve the event schema, measure overhead; build with the select measurement | riverpod, signals, dx, others |

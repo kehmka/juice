@@ -4,9 +4,14 @@ import 'package:juice_power/juice_power.dart';
 
 /// Pure-Dart fake provider — drives the bloc without any platform plugin.
 class FakePowerProvider implements PowerProvider {
-  final _ctrl = StreamController<PowerSnapshot>.broadcast();
+  late final _ctrl = StreamController<PowerSnapshot>.broadcast(
+      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
   PowerSnapshot _current;
   bool disposed = false;
+  Object? disposeError;
+
+  /// Listen / cancel / dispose, in the order they happened.
+  final log = <String>[];
   int checks = 0;
 
   FakePowerProvider(
@@ -26,7 +31,9 @@ class FakePowerProvider implements PowerProvider {
 
   @override
   Future<void> dispose() async {
+    log.add('dispose');
     disposed = true;
+    if (disposeError != null) throw disposeError!;
     await _ctrl.close();
   }
 
@@ -36,9 +43,28 @@ class FakePowerProvider implements PowerProvider {
     _ctrl.add(s);
   }
 
+  /// Break the change stream.
+  void fail(Object error) => _ctrl.addError(error);
+
   /// Change what [check] will answer, without announcing it — how a charge
   /// level really moves: silently, between status changes.
   void setSilently(PowerSnapshot s) => _current = s;
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 void main() {
@@ -314,6 +340,66 @@ void main() {
 
       expect(p.disposed, isTrue);
       expect(p.checks, after, reason: 'a live timer after close leaks');
+    });
+  });
+
+  group('PowerBloc review pins (2.0.0)', () {
+    test('close cancels the changes binding before disposing the provider',
+        () async {
+      final p = FakePowerProvider();
+      final bloc = PowerBloc.withConfig(cfg(p));
+      await settle();
+      await bloc.close();
+      expect(p.log, ['listen', 'cancel', 'dispose']);
+    });
+
+    test('a second start replaces the binding instead of adding one', () async {
+      final p = FakePowerProvider();
+      final bloc = PowerBloc.withConfig(cfg(p));
+      await settle();
+      bloc.startListening();
+      await settle();
+      expect(p.log, ['listen', 'cancel', 'listen']);
+      await bloc.close();
+    });
+
+    test(
+        'a changes stream error is logged as a bloc error and ends the binding',
+        () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final p = FakePowerProvider();
+      final bloc = PowerBloc.withConfig(cfg(p));
+      await settle();
+      p.fail(StateError('battery gone'));
+      await settle();
+      // Two entries by design: the binding's own `stream_binding/error`
+      // (it names the key) and the `bloc_error` from the bloc's onError.
+      expect(log.errors, hasLength(2));
+      expect(log.errors, everyElement(contains('battery gone')));
+      expect(p.log, ['listen', 'cancel']);
+      await bloc.close();
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = PowerBloc();
+      expect(() => bloc.provider, throwsStateError);
+      await bloc.close();
+    });
+
+    test('a provider whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final p = FakePowerProvider()..disposeError = StateError('battery busy');
+      final bloc = PowerBloc.withConfig(cfg(p));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('battery busy'));
     });
   });
 }

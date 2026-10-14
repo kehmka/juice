@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_i18n
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
-  juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-16
+  juice: ">=2.0.0"
+  juice_storage: ">=1.2.0 <4.0.0"
+updated: 2026-10-13
 ---
 
 # juice_i18n — AI card
@@ -31,8 +31,8 @@ For formatting reach for `intl`; this owns string selection only.
 
 ```yaml
 dependencies:
-  juice_i18n: ^0.2.0
-  juice_storage: ^1.2.0   # for the default StorageLocalePersistence
+  juice_i18n: ^0.3.0
+  juice_storage: ^3.0.0   # for the default StorageLocalePersistence
 ```
 
 ## Construct

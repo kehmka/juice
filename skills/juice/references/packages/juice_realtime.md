@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_realtime
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
+  juice: ">=2.0.0"
   web_socket_channel: ">=3.0.0"
-updated: 2026-08-12
+updated: 2026-10-13
 ---
 
 # juice_realtime — AI card
@@ -30,7 +30,7 @@ For request/response use `juice_network`; for durable offline writes use
 
 ```yaml
 dependencies:
-  juice_realtime: ^0.2.0
+  juice_realtime: ^0.3.0
 ```
 
 ## Construct

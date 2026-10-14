@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_lifecycle
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
-updated: 2026-08-12
+  juice: ">=2.0.0"
+updated: 2026-10-13
 ---
 
 # juice_lifecycle — AI card
@@ -30,7 +30,7 @@ blur, "refresh on resume", pause expensive work in the background. The
 
 ```yaml
 dependencies:
-  juice_lifecycle: ^0.2.0
+  juice_lifecycle: ^0.3.0
 ```
 
 ## Construct

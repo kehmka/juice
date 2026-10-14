@@ -21,7 +21,7 @@ bloc reports; consumers decide.
 
 ```yaml
 dependencies:
-  juice_power: ^0.1.0     # pulls battery_plus for the default provider
+  juice_power: ^0.2.0     # pulls battery_plus for the default provider
 ```
 
 ## Use

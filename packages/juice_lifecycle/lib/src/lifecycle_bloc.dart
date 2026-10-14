@@ -17,8 +17,7 @@ import 'use_cases/lifecycle_changed_use_case.dart';
 /// // ... react to state.isForeground / state.resumedFromBackground
 /// ```
 class LifecycleBloc extends JuiceBloc<LifecycleState> {
-  late LifecycleConfig _config;
-  StreamSubscription<AppLifecycle>? _subscription;
+  LifecycleConfig? _config;
 
   LifecycleBloc()
       : super(
@@ -45,26 +44,46 @@ class LifecycleBloc extends JuiceBloc<LifecycleState> {
   }
 
   /// The active provider. Valid after initialization.
-  LifecycleProvider get provider => _config.provider;
+  LifecycleProvider get provider => config.provider;
+
+  /// The config [InitializeLifecycleEvent] applied. Throws before that.
+  LifecycleConfig get config =>
+      _config ??
+      (throw StateError(
+          'LifecycleBloc is not initialized: send InitializeLifecycleEvent '
+          '(or use LifecycleBloc.withConfig) first'));
 
   /// Store config during initialization.
   void configure(LifecycleConfig config) => _config = config;
 
-  /// Subscribe to provider changes.
+  /// Subscribe to provider changes. The bloc owns the binding: a second
+  /// start replaces the first, and close cancels it before the use cases
+  /// close. A stream error goes to the bloc's error handler and ends the
+  /// binding.
   void startListening() {
-    _subscription = provider.changes.listen((phase) {
-      if (!isClosed) send(LifecycleChangedEvent(phase));
-    });
+    bindStream<AppLifecycle>(
+      provider.changes,
+      (phase) => send(LifecycleChangedEvent(phase)),
+      key: _changesKey,
+    );
   }
+
+  static const _changesKey = 'changes';
 
   @override
   Future<void> close() async {
-    await _subscription?.cancel();
-    try {
-      await _config.provider.dispose();
-    } catch (_) {
-      // Provider may never have been configured; ignore.
-    }
+    // The bloc closes first: its changes binding is cancelled before the
+    // provider it listens to is disposed. An uninitialized bloc has no
+    // provider.
     await super.close();
+    final config = _config;
+    if (config == null) return;
+    try {
+      await config.provider.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'LifecycleProvider dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'LifecycleBloc'});
+    }
   }
 }

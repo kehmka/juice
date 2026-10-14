@@ -23,17 +23,16 @@ import 'use_cases/power_changed_use_case.dart';
 /// );
 /// ```
 class PowerBloc extends JuiceBloc<PowerState> {
-  late PowerConfig _config;
-  StreamSubscription<PowerSnapshot>? _subscription;
+  PowerConfig? _config;
   Timer? _poll;
 
   PowerBloc()
       : super(
           PowerState.initial,
           [
-            // Initializing twice would subscribe twice and start a second
-            // poll timer, and the first timer's handle would be overwritten
-            // beyond the reach of close() — a leak that outlives the bloc.
+            // Initializing twice would start a second poll timer, and the
+            // first timer's handle would be overwritten beyond the reach of
+            // close() — a leak that outlives the bloc.
             // droppable, not a `_initialized` flag (juice >= 1.5.0).
             () => UseCaseBuilder(
                   typeOfEvent: InitializePowerEvent,
@@ -70,7 +69,14 @@ class PowerBloc extends JuiceBloc<PowerState> {
   }
 
   /// The active provider. Valid after initialization.
-  PowerProvider get provider => _config.provider;
+  PowerProvider get provider => config.provider;
+
+  /// The config [InitializePowerEvent] applied. Throws before that.
+  PowerConfig get config =>
+      _config ??
+      (throw StateError(
+          'PowerBloc is not initialized: send InitializePowerEvent '
+          '(or use PowerBloc.withConfig) first'));
 
   /// Store config during initialization.
   void configure(PowerConfig config) => _config = config;
@@ -80,17 +86,25 @@ class PowerBloc extends JuiceBloc<PowerState> {
   /// Undebounced, unlike connectivity: power does not flap. Plugging a cable in
   /// is a real, deliberate act, and delaying the news by half a second only
   /// makes a consumer resume expensive work later than it could have.
+  ///
+  /// The bloc owns the binding: a second start replaces the first, and
+  /// close cancels it before the use cases close. A stream error goes to
+  /// the bloc's error handler and ends the binding.
   void startListening() {
-    _subscription = provider.changes.listen((snapshot) {
-      if (!isClosed) send(PowerChangedEvent(snapshot));
-    });
+    bindStream<PowerSnapshot>(
+      provider.changes,
+      (snapshot) => send(PowerChangedEvent(snapshot)),
+      key: _changesKey,
+    );
   }
+
+  static const _changesKey = 'changes';
 
   /// Begin re-reading the charge level on [PowerConfig.pollInterval].
   ///
   /// No-op when the interval is [Duration.zero].
   void startPolling() {
-    final interval = _config.pollInterval;
+    final interval = config.pollInterval;
     if (interval == Duration.zero) return;
     _poll = Timer.periodic(interval, (_) {
       if (!isClosed) send(CheckPowerEvent());
@@ -103,12 +117,18 @@ class PowerBloc extends JuiceBloc<PowerState> {
   @override
   Future<void> close() async {
     _poll?.cancel();
-    await _subscription?.cancel();
-    try {
-      await _config.provider.dispose();
-    } catch (_) {
-      // Provider may never have been configured; ignore.
-    }
+    // The bloc closes first: its changes binding is cancelled before the
+    // provider it listens to is disposed. An uninitialized bloc has no
+    // provider.
     await super.close();
+    final config = _config;
+    if (config == null) return;
+    try {
+      await config.provider.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'PowerProvider dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'PowerBloc'});
+    }
   }
 }

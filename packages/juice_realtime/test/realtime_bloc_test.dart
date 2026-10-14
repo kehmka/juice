@@ -1,17 +1,23 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart';
 import 'package:juice_realtime/juice_realtime.dart';
 
 /// A fake live connection — drive messages, drops, and inspect sends.
 class FakeRealtimeConnection implements RealtimeConnection {
-  final _controller = StreamController<RealtimeMessage>();
+  late final _controller = StreamController<RealtimeMessage>(
+      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
   final List<Object> sent = [];
   Completer<void>? sendGate;
   bool closed = false;
   int closeCalls = 0;
 
+  /// Listen / cancel / close, in the order they happened.
+  final log = <String>[];
+
   void emit(RealtimeMessage m) => _controller.add(m);
+
+  /// Simulate a socket error → bloc sees `onError`.
+  void fail(Object error) => _controller.addError(error);
 
   /// Simulate the server closing the socket → bloc sees `onDone`.
   void drop() {
@@ -31,6 +37,7 @@ class FakeRealtimeConnection implements RealtimeConnection {
 
   @override
   Future<void> close() async {
+    log.add('close');
     closeCalls++;
     closed = true;
     if (!_controller.isClosed) await _controller.close();
@@ -44,6 +51,7 @@ class FakeRealtimeConnector implements RealtimeConnector {
   Completer<void>? connectGate;
   int connectCalls = 0;
   bool disposed = false;
+  Object? disposeError;
 
   FakeRealtimeConnection get latest => connections.last;
 
@@ -60,7 +68,26 @@ class FakeRealtimeConnector implements RealtimeConnector {
   }
 
   @override
-  Future<void> dispose() async => disposed = true;
+  Future<void> dispose() async {
+    disposed = true;
+    if (disposeError != null) throw disposeError!;
+  }
+}
+
+class _CaptureLogger implements JuiceLogger {
+  final errors = <String>[];
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.isError) errors.add('${e.message}: ${e.error}');
+  }
+
+  @override
+  void log(String m,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+  @override
+  void logError(String m, Object e, StackTrace s,
+          {Map<String, dynamic>? context}) =>
+      errors.add('$m: $e');
 }
 
 void main() {
@@ -303,6 +330,60 @@ void main() {
       await settle();
       await bloc.close();
       expect(conn.disposed, isTrue);
+    });
+  });
+
+  group('RealtimeBloc review pins (2.0.0)', () {
+    test(
+        'close cancels the message binding, then closes the socket, then '
+        'disposes the connector', () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+      await bloc.close();
+      expect(conn.latest.log, ['listen', 'cancel', 'close']);
+      expect(conn.latest.closeCalls, 1);
+      expect(conn.disposed, isTrue);
+    });
+
+    test('a socket error is a connection loss: reconnects on a fresh link',
+        () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+      final first = conn.latest;
+
+      first.fail(StateError('socket reset'));
+      await settle(80);
+
+      expect(first.log, ['listen', 'cancel', 'close']);
+      expect(conn.connections.length, 2);
+      expect(bloc.state.status, RealtimeStatus.connected);
+      await bloc.close();
+    });
+
+    test('an uninitialized bloc closes cleanly and names its missing config',
+        () async {
+      final bloc = RealtimeBloc();
+      expect(() => bloc.config, throwsStateError);
+      await bloc.close();
+    });
+
+    test('a connector whose dispose throws is logged, not swallowed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final conn = FakeRealtimeConnector()
+        ..disposeError = StateError('connector busy');
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('connector busy'));
     });
   });
 }

@@ -20,8 +20,7 @@ import 'use_cases/initialize_connectivity_use_case.dart';
 /// if (bloc.state.isOnline) { /* ... */ }
 /// ```
 class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
-  late ConnectivityConfig _config;
-  StreamSubscription<ConnectivitySnapshot>? _subscription;
+  ConnectivityConfig? _config;
   Timer? _debounce;
 
   ConnectivityBloc()
@@ -32,8 +31,7 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
                   typeOfEvent: InitializeConnectivityEvent,
                   useCaseGenerator: () => InitializeConnectivityUseCase(),
                   // A second initialization would replace the config while
-                  // the first provider check is in flight and add another
-                  // stream subscription whose handle close() cannot reach.
+                  // the first provider check is in flight.
                   concurrency: EventConcurrency.droppable,
                 ),
             () => UseCaseBuilder(
@@ -62,20 +60,36 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
   }
 
   /// The active provider. Valid after initialization.
-  ConnectivityProvider get provider => _config.provider;
+  ConnectivityProvider get provider => config.provider;
+
+  /// The config [InitializeConnectivityEvent] applied. Throws before that.
+  ConnectivityConfig get config =>
+      _config ??
+      (throw StateError('ConnectivityBloc is not initialized: send '
+          'InitializeConnectivityEvent (or use ConnectivityBloc.withConfig) '
+          'first'));
 
   /// Store config during initialization.
   void configure(ConnectivityConfig config) => _config = config;
 
   /// Subscribe to provider changes, debounced to absorb network flapping.
+  /// The bloc owns the binding: a second start replaces the first, and
+  /// close cancels it before the use cases close. A stream error goes to
+  /// the bloc's error handler and ends the binding.
   void startListening() {
-    _subscription = provider.changes.listen((snapshot) {
-      _debounce?.cancel();
-      _debounce = Timer(_config.debounce, () {
-        if (!isClosed) send(ConnectivityChangedEvent(snapshot));
-      });
-    });
+    bindStream<ConnectivitySnapshot>(
+      provider.changes,
+      (snapshot) {
+        _debounce?.cancel();
+        _debounce = Timer(config.debounce, () {
+          if (!isClosed) send(ConnectivityChangedEvent(snapshot));
+        });
+      },
+      key: _changesKey,
+    );
   }
+
+  static const _changesKey = 'changes';
 
   /// Manually re-read current connectivity.
   void check() => send(CheckConnectivityEvent());
@@ -83,12 +97,18 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
   @override
   Future<void> close() async {
     _debounce?.cancel();
-    await _subscription?.cancel();
-    try {
-      await _config.provider.dispose();
-    } catch (_) {
-      // Provider may never have been configured; ignore.
-    }
+    // The bloc closes first: its changes binding is cancelled before the
+    // provider it listens to is disposed. An uninitialized bloc has no
+    // provider.
     await super.close();
+    final config = _config;
+    if (config == null) return;
+    try {
+      await config.provider.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'ConnectivityProvider dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'ConnectivityBloc'});
+    }
   }
 }

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - unreleased (ships with juice 2.0.0)
+
+### Changed
+
+- **Requires `juice ^2.0.0`.** No API change in this package: the bump carries
+  the core's breaking set (`doc/guides/upgrading-to-2.0.md`).
+- Accepts `juice_storage` up to `<4.0.0` (3.0.0 is its 2.0-wave bump; same API).
+
 ## [0.2.1] - 2026-09-26
 
 ### Changed

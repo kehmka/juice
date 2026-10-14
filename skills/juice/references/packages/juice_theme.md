@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_theme
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
-  juice_storage: ">=1.2.0 <3.0.0"
-updated: 2026-09-16
+  juice: ">=2.0.0"
+  juice_storage: ">=1.2.0 <4.0.0"
+updated: 2026-10-13
 ---
 
 # juice_theme — AI card
@@ -25,8 +25,8 @@ updated: 2026-09-16
 
 ```yaml
 dependencies:
-  juice_theme: ^0.1.1
-  juice_storage: ^2.2.0   # for the default StorageThemePersistence (any 1.2+ works)
+  juice_theme: ^0.3.0
+  juice_storage: ^3.0.0   # for the default StorageThemePersistence
 ```
 
 ## Construct

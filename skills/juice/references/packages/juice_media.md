@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_media
-version: 0.6.0
+version: 0.7.0
 requires:
-  juice: ">=1.5.0"
+  juice: ">=2.0.0"
   image_picker: ">=1.1.0"
-updated: 2026-09-16
+updated: 2026-10-13
 ---
 
 # juice_media — AI card
@@ -31,7 +31,7 @@ when you track a *gallery* of uploads.
 
 ```yaml
 dependencies:
-  juice_media: ^0.6.0
+  juice_media: ^0.7.0
 ```
 
 Default source uses `image_picker` — add its platform setup (iOS `Info.plist`

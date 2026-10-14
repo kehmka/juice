@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_forms
-version: 0.3.0
+version: 0.4.0
 requires:
-  juice: ">=1.6.0"
-updated: 2026-08-12
+  juice: ">=2.0.0"
+updated: 2026-10-13
 ---
 
 # juice_forms — AI card
@@ -32,7 +32,7 @@ field doesn't rebuild the others). It's a feature bloc with no platform SDK.
 
 ```yaml
 dependencies:
-  juice_forms: ^0.3.0
+  juice_forms: ^0.4.0
 ```
 
 ## Construct

@@ -33,13 +33,10 @@ import 'use_cases/upload_progress_use_case.dart';
 /// media.uploadAll();
 /// ```
 class MediaBloc extends JuiceBloc<MediaState> {
-  late MediaConfig _config;
+  MediaConfig? _config;
 
   /// Active upload handles, per item id (for cancellation).
   final Map<String, MediaUpload> _active = {};
-
-  /// Progress subscriptions, per item id.
-  final Map<String, StreamSubscription<double>> _progressSubs = {};
 
   MediaBloc()
       : super(
@@ -124,28 +121,40 @@ class MediaBloc extends JuiceBloc<MediaState> {
   // === Config (used by use cases) ===
 
   void configure(MediaConfig config) => _config = config;
-  MediaSource get source => _config.source;
-  MediaUploader? get uploader => _config.uploader;
+  MediaSource get source => config.source;
+  MediaUploader? get uploader => config.uploader;
+
+  /// The config [InitializeMediaEvent] applied. Throws before that.
+  MediaConfig get config =>
+      _config ??
+      (throw StateError(
+          'MediaBloc is not initialized: send InitializeMediaEvent '
+          '(or use MediaBloc.withConfig) first'));
 
   // === Upload orchestration (lifecycle lives here) ===
 
   /// Begin an upload: wire its progress stream and result to internal events.
-  /// Caller must ensure [uploader] is non-null.
+  /// Caller must ensure [uploader] is non-null. The progress stream is a
+  /// bloc-owned binding keyed by item: cancelled before the use cases close,
+  /// unbound by [cleanupUpload], ended by a stream error (which fails the
+  /// upload).
   void beginUpload(MediaItem item) {
-    final handle = _config.uploader!.upload(item);
+    final handle = uploader!.upload(item);
     _active[item.id] = handle;
     // The `_active` membership guard drops stale callbacks: a cancel cleans up
     // *before* the handle's result errors, so a cancelled upload's error never
     // overwrites the cancelled status (cleanup-before-callback). A real
     // completion/failure fires before its use case cleans up, so it passes.
-    _progressSubs[item.id] = handle.progress.listen(
+    bindStream<double>(
+      handle.progress,
       (p) {
-        if (!isClosed && _active.containsKey(item.id)) {
+        if (_active.containsKey(item.id)) {
           send(UploadProgressEvent(item.id, p));
         }
       },
-      onError: (Object e) {
-        if (!isClosed && _active.containsKey(item.id)) {
+      key: _progressKey(item.id),
+      onError: (e, _) {
+        if (_active.containsKey(item.id)) {
           send(UploadFailedEvent(item.id, e));
         }
       },
@@ -167,11 +176,13 @@ class MediaBloc extends JuiceBloc<MediaState> {
     cleanupUpload(id);
   }
 
-  /// Release the handle/subscription for a finished or cancelled upload.
+  /// Release the handle/binding for a finished or cancelled upload.
   void cleanupUpload(String id) {
-    _progressSubs.remove(id)?.cancel();
+    unbind(_progressKey(id));
     _active.remove(id);
   }
+
+  static String _progressKey(String id) => 'upload:$id';
 
   bool isUploadActive(String id) => _active.containsKey(id);
 
@@ -209,24 +220,26 @@ class MediaBloc extends JuiceBloc<MediaState> {
 
   @override
   Future<void> close() async {
-    // Snapshot then clear before awaiting — cancelling a handle can schedule
-    // callbacks that would otherwise mutate these maps mid-iteration.
+    // The bloc closes first: every progress binding is cancelled before the
+    // handles are cancelled and the source and uploader are disposed. An
+    // uninitialized bloc has neither.
+    await super.close();
+    // Snapshot then clear before cancelling — cancelling a handle can schedule
+    // callbacks that would otherwise mutate the map mid-iteration.
     final handles = _active.values.toList();
-    final subs = _progressSubs.values.toList();
     _active.clear();
-    _progressSubs.clear();
     for (final h in handles) {
       h.cancel();
     }
-    for (final s in subs) {
-      await s.cancel();
-    }
+    final config = _config;
+    if (config == null) return;
     try {
-      await _config.source.dispose();
-      await _config.uploader?.dispose();
-    } catch (_) {
-      // Config may never have been applied; ignore.
+      await config.source.dispose();
+      await config.uploader?.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'MediaSource/MediaUploader dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'MediaBloc'});
     }
-    await super.close();
   }
 }

@@ -24,8 +24,7 @@ import 'use_cases/show_notification_use_case.dart';
 /// notifications.show(JuiceNotification(id: 1, title: 'Hi', body: 'There'));
 /// ```
 class NotificationsBloc extends JuiceBloc<NotificationsState> {
-  late NotificationsConfig _config;
-  StreamSubscription<NotificationTap>? _tapSubscription;
+  NotificationsConfig? _config;
   Future<void> _serviceOperationTail = Future<void>.value();
 
   NotificationsBloc()
@@ -80,7 +79,14 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
   }
 
   /// The active service. Valid after initialization.
-  NotificationService get service => _config.service;
+  NotificationService get service => config.service;
+
+  /// The config [InitializeNotificationsEvent] applied. Throws before that.
+  NotificationsConfig get config =>
+      _config ??
+      (throw StateError('NotificationsBloc is not initialized: send '
+          'InitializeNotificationsEvent (or use NotificationsBloc.withConfig) '
+          'first'));
 
   /// Store config during initialization.
   void configure(NotificationsConfig config) => _config = config;
@@ -103,12 +109,19 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
     }
   }
 
-  /// Forward service taps as events.
+  /// Forward service taps as events. The bloc owns the binding: a second
+  /// start replaces the first, and close cancels it before the use cases
+  /// close. A stream error goes to the bloc's error handler and ends the
+  /// binding.
   void startListeningForTaps() {
-    _tapSubscription = service.taps.listen((tap) {
-      if (!isClosed) send(NotificationTappedEvent(tap));
-    });
+    bindStream<NotificationTap>(
+      service.taps,
+      (tap) => send(NotificationTappedEvent(tap)),
+      key: _tapsKey,
+    );
   }
+
+  static const _tapsKey = 'taps';
 
   // === Convenience ===
 
@@ -132,12 +145,18 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
 
   @override
   Future<void> close() async {
-    await _tapSubscription?.cancel();
-    try {
-      await _config.service.dispose();
-    } catch (_) {
-      // Service may never have been configured; ignore.
-    }
+    // The bloc closes first: its taps binding is cancelled before the
+    // service it listens to is disposed. An uninitialized bloc has no
+    // service.
     await super.close();
+    final config = _config;
+    if (config == null) return;
+    try {
+      await config.service.dispose();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'NotificationService dispose failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'NotificationsBloc'});
+    }
   }
 }

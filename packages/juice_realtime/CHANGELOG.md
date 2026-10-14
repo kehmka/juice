@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - unreleased (ships with juice 2.0.0)
+
+### Changed
+
+- **Requires `juice ^2.0.0`.** A connection's message stream is a bloc-owned
+  binding (`bindStream(..., key: 'messages')`): cancelled before the use cases
+  close, replaced by the next connection's. A socket error ends the binding and
+  is handled as a connection loss (the reconnect policy applies), where before
+  the subscription outlived the error until the loss handling cancelled it.
+- `close()` marks the manual close, closes the bloc (its message binding is
+  cancelled), closes the socket and the broadcast stream, then disposes the
+  connector; a dispose failure is logged, never swallowed; an uninitialised bloc
+  closes cleanly.
+- `config` before `InitializeRealtimeEvent` throws a named `StateError` instead
+  of a late-initialisation error.
+
 ## [0.2.0] - 2026-08-12
 
 ### Changed

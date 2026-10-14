@@ -1,10 +1,10 @@
 ---
 card_schema: "1.0"
 package: juice_analytics
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=1.6.0"
-updated: 2026-08-12
+  juice: ">=2.0.0"
+updated: 2026-10-13
 ---
 
 # juice_analytics — AI card
@@ -30,7 +30,7 @@ you need a privacy consent gate. For crash/error reporting use
 
 ```yaml
 dependencies:
-  juice_analytics: ^0.2.0
+  juice_analytics: ^0.3.0
 ```
 
 ## Construct

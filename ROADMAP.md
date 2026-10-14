@@ -687,7 +687,7 @@ any minor. Pub package-skills (A), mason brick (M): tooling, not core.
 
 Kevin: "start the family wave." Every package's versions, constraints and
 notes are in `doc/guides/upgrading-to-2.0.md` ("The family wave" table)
-and each package's CHANGELOG (`unreleased (ships with juice 2.0.0)`).
+and each package's CHANGELOG (dated 2026-10-14).
 
 - 21 packages bumped to require `juice: ^2.0.0`: a minor bump for 0.x, a
   major for `juice_routing` (2.0.0) and `juice_storage` (3.0.0); the five
@@ -746,7 +746,7 @@ juice-only packages (analytics, connectivity, flags, forms, lifecycle,
 llm, location, media, notifications, paging, permissions, power,
 realtime) → 2 auth, network, i18n, sync, theme → 3 auth_network,
 auth_routing. Skip llm_llamacpp (unchanged, in range), lint / examples /
-devtools extension (`publish_to: none`). Before: date the 24 `unreleased`
+devtools extension (`publish_to: none`). Before: ~~date the 24 `unreleased`~~ (dated 2026-10-14),
 headings, push, let CI run the lint gate; after: tag `<pkg>-v<ver>` and
 push tags. The pre-existing items the review surfaced are fixed too
 (Kevin 2026-10-13: "fix everything the reviews found"): a second

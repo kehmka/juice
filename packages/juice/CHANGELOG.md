@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] - unreleased
+## [2.0.0] - 2026-10-14
 
 The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each entry
 states the contract and, where code must change, the migration; the

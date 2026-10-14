@@ -1,4 +1,4 @@
-## 0.6.0 — unreleased (ships with juice 2.0.0)
+## 0.6.0 — 2026-10-14
 
 - Require `juice ^2.0.0`. The generation stream is a bloc-owned binding
   (`bindStream(..., key: 'generation', cancelOnError: true)`).

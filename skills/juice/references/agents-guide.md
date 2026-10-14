@@ -261,8 +261,9 @@ Every use-case execution logs a structured START (`use_case_execution`) and
 exactly one END sharing its `executionId`: `use_case_completed` (with
 `elapsedMicros`) or `use_case_error` (also stamped). Mirror everything to
 DevTools with `JuiceLoggerConfig.configureLogger(DevtoolsJuiceLogger())`
-(`juice_observability ≥ 0.3.0`). The chatter costs about a third of a
-dispatch to BUILD, so the cost follows the consumer: a
+(`juice_observability ≥ 0.3.0`). The chatter costs more than the rest of
+a dispatch to BUILD (the three context maps), so the cost follows the
+consumer: a
 logger that implements `LevelAwareJuiceLogger` (`Level get minLevel`)
 declares what it keeps and nothing below that is built. `DefaultJuiceLogger`
 declares everything in debug and nothing in profile/release (what its

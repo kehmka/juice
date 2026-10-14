@@ -7,6 +7,7 @@ import '../juice_bloc.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
 import 'restartable_run.dart';
+import 'type_names.dart';
 import '../use_case_builders/use_case_builder.dart';
 
 /// Context provided to use cases for state emission.
@@ -117,26 +118,28 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
   ///
   /// Every execution logs exactly two structured entries: the
   /// `use_case_execution` start, and — sharing its `executionId` — either
-  /// `use_case_completed` (with `elapsedMicros`) or `use_case_error` (also
-  /// with `elapsedMicros`). A span consumer closes on whichever arrives.
+  /// `use_case_completed` (with `elapsedMicros`) or `use_case_error` (with
+  /// `elapsedMicros` when the start was logged). A span consumer closes on
+  /// whichever arrives. Below the telemetry floor only the error line is
+  /// built.
   Future<void> execute(UseCaseBuilderBase builder, EventBase event) async {
     final executionId = _nextExecutionId++;
-    final eventName = event.runtimeType.toString();
+    // Built only when a line will carry them: the two type names and the
+    // stopwatch are the span's content, not the send's.
     final chatter = JuiceLoggerConfig.logs(Level.info);
-    final stopwatch = Stopwatch()..start();
+    final stopwatch = chatter ? (Stopwatch()..start()) : null;
     final run = RestartableRun.current;
-    String useCaseName = builder.runtimeType.toString();
+    UseCase? useCase;
     try {
       // The generator and the context are inside the try: a throwing
       // generator (a DI lookup) is a use-case error, not a silent miss.
-      final useCase = builder.generator();
-      useCaseName = useCase.runtimeType.toString();
+      useCase = builder.generator();
       final context = _contextFactory(event);
       if (chatter) {
         _logger.log('Executing use case', context: {
           'type': 'use_case_execution',
-          'useCase': useCaseName,
-          'event': eventName,
+          'useCase': typeName(useCase.runtimeType),
+          'event': typeName(event.runtimeType),
           'executionId': executionId,
         });
       }
@@ -146,10 +149,10 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       if (chatter) {
         _logger.log('Use case completed', context: {
           'type': 'use_case_completed',
-          'useCase': useCaseName,
-          'event': eventName,
+          'useCase': typeName(useCase.runtimeType),
+          'event': typeName(event.runtimeType),
           'executionId': executionId,
-          'elapsedMicros': stopwatch.elapsedMicroseconds,
+          'elapsedMicros': stopwatch!.elapsedMicroseconds,
           if (run?.isSuperseded ?? false) 'superseded': true,
         });
       }
@@ -161,10 +164,11 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
         stackTrace,
         context: {
           'type': 'use_case_error',
-          'useCase': useCaseName,
-          'event': eventName,
+          // A generator that threw left no use case: the builder names it.
+          'useCase': typeName((useCase ?? builder).runtimeType),
+          'event': typeName(event.runtimeType),
           'executionId': executionId,
-          'elapsedMicros': stopwatch.elapsedMicroseconds,
+          if (stopwatch != null) 'elapsedMicros': stopwatch.elapsedMicroseconds,
           if (run?.isSuperseded ?? false) 'superseded': true,
         },
       );

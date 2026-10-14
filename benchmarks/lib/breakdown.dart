@@ -2,6 +2,7 @@
 import 'package:juice/juice.dart';
 import 'package:juice/src/bloc/src/core/state_manager.dart';
 import 'package:juice/src/bloc/src/core/status_emitter.dart';
+import 'package:juice/src/bloc/src/core/type_names.dart';
 
 import 'dispatch.dart' show SilentJuiceLogger;
 import 'stats.dart';
@@ -93,6 +94,27 @@ class _StatefulBloc extends JuiceBloc<_S> {
 /// Whether a row times real Juice code or a synthetic stand-in.
 enum RowKind { real, synthetic }
 
+/// Stand-in for UseCaseContext: one object holding six closures.
+class _SyntheticContext {
+  _SyntheticContext(this.u, this.w, this.f, this.c, this.e, this.nav);
+  final void Function(Object?, Object?) u;
+  final void Function(Object?, Object?) w;
+  final void Function(Object?, Object?) f;
+  final void Function(Object?, Object?) c;
+  final void Function(Object?) e;
+  final void Function(Object?, Object?) nav;
+}
+
+/// Stand-in for a UseCase: the late function fields the executor wires.
+class _SyntheticUseCase {
+  late void Function({Object? a, Object? b}) emitUpdate;
+  late void Function({Object? a, Object? b}) emitWaiting;
+  late void Function({Object? a, Object? b}) emitFailure;
+  late void Function({Object? a, Object? b}) emitCancel;
+  late void Function({Object? a}) emitEvent;
+  late void Function(Object?, Object?) navigate;
+}
+
 class BreakdownRow {
   BreakdownRow(this.layer, this.kind, this.micros);
   final String layer;
@@ -137,9 +159,18 @@ Future<T> _withLogger<T>(JuiceLogger logger, Future<T> Function() body) async {
   }
 }
 
-/// Times [n] sends on a fresh [bloc], then closes it.
-Future<double> _sends(JuiceBloc<_S> bloc, int n) async {
+/// Times [n] awaited sends on a fresh [bloc], proves every one ran, then
+/// closes it. A superseded restartable run emits nothing, so [expectAll]
+/// is false for the restartable row.
+Future<double> _sends(
+  JuiceBloc<_S> bloc,
+  int n, {
+  bool expectAll = true,
+}) async {
   final micros = await _timeAsync(n, (_) => bloc.send(_Ev()));
+  if (expectAll && bloc.state.n != n) {
+    throw StateError('${bloc.runtimeType}: ${bloc.state.n} of $n sends ran');
+  }
   await bloc.close();
   return micros;
 }
@@ -267,6 +298,137 @@ Future<List<BreakdownRow>> _once(int n) async {
     throw StateError('the synthetic maps were not built: $keys keys');
   }
 
+  // 3b. The per-send allocations the send path makes besides the maps
+  //     (synthetic, each alone): the three Type.toString() calls (event
+  //     name, use-case name in the executor, use-case name in BlocUseCase's
+  //     constructor); a Stopwatch; the context object plus the eleven
+  //     closures that wire a use case; the group-set copy an emit makes;
+  //     and a Zone value lookup.
+  var names = 0;
+  rows.add(
+    BreakdownRow(
+      'Type.toString() ×3',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        names +=
+            ev.runtimeType.toString().length +
+            uc.runtimeType.toString().length +
+            uc.runtimeType.toString().length;
+      }),
+    ),
+  );
+  if (names == 0) throw StateError('names not built');
+  var memo = 0;
+  rows.add(
+    BreakdownRow(
+      'typeName() memo ×3',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        memo +=
+            typeName(ev.runtimeType).length +
+            typeName(uc.runtimeType).length +
+            typeName(uc.runtimeType).length;
+      }),
+    ),
+  );
+  if (memo != names) throw StateError('memo disagrees with toString');
+  var ticks = 0;
+  rows.add(
+    BreakdownRow(
+      'Stopwatch()..start',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        final sw = Stopwatch()..start();
+        ticks += sw.elapsedMicroseconds;
+      }),
+    ),
+  );
+  if (ticks < 0) throw StateError('unreachable');
+  var wired = 0;
+  rows.add(
+    BreakdownRow(
+      'context object + 11 wiring closures',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        final ctx = _SyntheticContext(
+          (a, b) => wired++,
+          (a, b) => wired++,
+          (a, b) => wired++,
+          (a, b) => wired++,
+          (a) => wired++,
+          (a, b) => wired++,
+        );
+        final u = _SyntheticUseCase();
+        u.emitUpdate = ({a, b}) {
+          ctx.u(a, b);
+        };
+        u.emitWaiting = ({a, b}) {
+          ctx.w(a, b);
+        };
+        u.emitFailure = ({a, b}) {
+          ctx.f(a, b);
+        };
+        u.emitCancel = ({a, b}) {
+          ctx.c(a, b);
+        };
+        u.emitEvent = ({a}) {
+          ctx.e(a);
+        };
+        u.navigate = ctx.nav;
+        wired += identityHashCode(u);
+      }),
+    ),
+  );
+  if (wired == 0) throw StateError('closures not built');
+  final eventGroups = <String>{'cell:7'};
+  const widgetGroups = {'g'};
+  var merged = 0;
+  rows.add(
+    BreakdownRow(
+      'group set spread {...a, ...b}',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        merged += {...eventGroups, ...widgetGroups}.length;
+      }),
+    ),
+  );
+  if (merged != n * 2) throw StateError('sets not built');
+  var zones = 0;
+  rows.add(
+    BreakdownRow(
+      'Zone.current[key] lookup',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        if (Zone.current[#juice.bench] == null) zones++;
+      }),
+    ),
+  );
+  if (zones != n) throw StateError('zone lookups skipped');
+
+  // 3c. The widget filter per emission per widget: a 1-element event set
+  //     against a 1-element widget set, as the cells scenario runs it 1,000
+  //     times per emission — the allocating form and the allocation-free one.
+  var hits = 0;
+  rows.add(
+    BreakdownRow(
+      'group filter · intersection().isNotEmpty',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        if (eventGroups.intersection(widgetGroups).isNotEmpty) hits++;
+      }),
+    ),
+  );
+  rows.add(
+    BreakdownRow(
+      'group filter · any(contains)',
+      RowKind.synthetic,
+      _timeSync(n, (i) {
+        if (eventGroups.any(widgetGroups.contains)) hits++;
+      }),
+    ),
+  );
+  if (hits != 0) throw StateError('disjoint sets matched');
+
   // 4. Async hop depth alone (synthetic).
   rows.add(
     BreakdownRow(
@@ -324,7 +486,10 @@ Future<List<BreakdownRow>> _once(int n) async {
     BreakdownRow(
       'send · fresh instance, restartable, minLevel = warning',
       RowKind.real,
-      await _withMinLevel(Level.warning, () => _sends(_RestartableBloc(), n)),
+      await _withMinLevel(
+        Level.warning,
+        () => _sends(_RestartableBloc(), n, expectAll: false),
+      ),
     ),
   );
 

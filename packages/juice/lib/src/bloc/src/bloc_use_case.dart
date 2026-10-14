@@ -1,6 +1,7 @@
 import 'package:juice/juice.dart';
 
 import 'core/restartable_run.dart';
+import 'core/type_names.dart';
 
 /// Base class for bloc-specific use cases that provides logging and naming capabilities.
 ///
@@ -13,12 +14,8 @@ import 'core/restartable_run.dart';
 /// - Error tracking
 abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
     extends UseCase<TBloc, TEvent> {
-  /// Name of the use case, automatically set from the runtime type
-  late final String useCaseName;
-
-  BlocUseCase() {
-    useCaseName = runtimeType.toString();
-  }
+  /// Name of the use case: its runtime type, computed on first use.
+  late final String useCaseName = typeName(runtimeType);
 
   /// Execute the use case logic for the given event.
   ///
@@ -43,7 +40,7 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
       {Level level = Level.info, Map<String, dynamic>? context}) {
     final enrichedContext = {
       'useCase': useCaseName,
-      'bloc': bloc.runtimeType.toString(),
+      'bloc': typeName(bloc.runtimeType),
       ...?context,
     };
 
@@ -61,7 +58,7 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
   void logState(String stateDescription, {Map<String, dynamic>? context}) {
     final enrichedContext = {
       'useCase': useCaseName,
-      'bloc': bloc.runtimeType.toString(),
+      'bloc': typeName(bloc.runtimeType),
       'state': bloc.state.toString(),
       ...?context,
     };
@@ -136,7 +133,7 @@ abstract class BlocUseCase<TBloc extends JuiceBloc, TEvent extends EventBase>
       {Map<String, dynamic>? context}) {
     final enrichedContext = {
       'useCase': useCaseName,
-      'bloc': bloc.runtimeType.toString(),
+      'bloc': typeName(bloc.runtimeType),
       'state': bloc.state.toString(),
       ...?context,
     };

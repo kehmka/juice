@@ -62,8 +62,7 @@ class JuiceGroupsVariant extends Variant {
   String get framework => 'juice';
   @override
   String get mechanism =>
-      'emitter names the group; widget filters by set '
-      'intersection';
+      'emitter names the group; widget filters by group membership';
 
   late CellsBloc bloc;
 

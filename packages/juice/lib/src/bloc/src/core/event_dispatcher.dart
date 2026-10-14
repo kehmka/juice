@@ -132,7 +132,8 @@ class EventDispatcher<Event extends Object> {
 
   /// Whether [eventType] is registered `restartable` — the bloc builds the
   /// emission fence into a run's context only then.
-  bool isRestartable(Type eventType) => _restartableTypes.contains(eventType);
+  bool isRestartable(Type eventType) =>
+      _restartableTypes.isNotEmpty && _restartableTypes.contains(eventType);
 
   /// Whether [event]'s run has been superseded by a newer same-type event.
   /// False for an event that is not restartable or not in flight.

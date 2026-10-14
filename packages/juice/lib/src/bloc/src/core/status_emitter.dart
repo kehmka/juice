@@ -6,6 +6,7 @@ import '../stream_status.dart';
 import '../juice_logger.dart';
 import '../../../ui/src/widget_support.dart';
 import 'state_manager.dart';
+import 'type_names.dart';
 
 /// Handles emission of StreamStatus with proper logging and group management.
 ///
@@ -75,19 +76,19 @@ class StatusEmitter<TState extends BlocState> {
         _logger.log('Skipping duplicate state emission', context: {
           'type': 'state_emission_skipped',
           'bloc': _blocName,
-          'event': event.runtimeType.toString(),
+          'event': typeName(event.runtimeType),
         });
       }
       return;
     }
-    _emit(StreamStatus.updating, 'update', event, newState, groups);
+    _emit(_Kind.update, event, newState, groups);
   }
 
   /// Emits a waiting status.
   ///
   /// Used to indicate an async operation is in progress.
   void emitWaiting(EventBase event, TState? newState, Set<String>? groups) {
-    _emit(StreamStatus.waiting, 'waiting', event, newState, groups);
+    _emit(_Kind.waiting, event, newState, groups);
   }
 
   /// Emits a failure status.
@@ -103,22 +104,15 @@ class StatusEmitter<TState extends BlocState> {
     Object? error,
     StackTrace? errorStackTrace,
   }) {
-    _emit(
-      (state, oldState, event) => StreamStatus.failure(state, oldState, event,
-          error: error, errorStackTrace: errorStackTrace),
-      'failure',
-      event,
-      newState,
-      groups,
-      error: error,
-    );
+    _emit(_Kind.failure, event, newState, groups,
+        error: error, errorStackTrace: errorStackTrace);
   }
 
   /// Emits a canceling status.
   ///
   /// Used to indicate an operation was cancelled.
   void emitCancel(EventBase event, TState? newState, Set<String>? groups) {
-    _emit(StreamStatus.canceling, 'cancel', event, newState, groups);
+    _emit(_Kind.cancel, event, newState, groups);
   }
 
   /// Re-emits the current status carrying [event] — no state change, no
@@ -137,33 +131,33 @@ class StatusEmitter<TState extends BlocState> {
       'type': 'emission_after_close',
       'status': statusName,
       'bloc': _blocName,
-      'event': event.runtimeType.toString(),
+      'event': typeName(event.runtimeType),
       if (error != null) 'error': error.toString(),
     });
     return true;
   }
 
   void _emit(
-    StreamStatus<TState> Function(TState, TState, EventBase?) factory,
-    String statusName,
+    _Kind kind,
     EventBase event,
     TState? newState,
     Set<String>? groupsToRebuild, {
     Object? error,
+    StackTrace? errorStackTrace,
   }) {
-    if (_droppedAfterClose(statusName, event, error: error)) return;
+    if (_droppedAfterClose(kind.name, event, error: error)) return;
 
     // A failure emission is never chatter: it is logged whatever the floor.
-    if (statusName == 'failure' || JuiceLoggerConfig.logs(Level.info)) {
-      _logger.log('Emitting $statusName', context: {
+    if (kind == _Kind.failure || JuiceLoggerConfig.logs(Level.info)) {
+      _logger.log('Emitting ${kind.name}', context: {
         'type': 'state_emission',
-        'status': statusName,
+        'status': kind.name,
         // Objects, not strings: a logger that prints stringifies them itself;
         // one that drops the line (release, a silent sink) pays nothing.
         'state': newState ?? state,
         'bloc': _blocName,
         'groups': groupsToRebuild,
-        'event': event.runtimeType.toString(),
+        'event': typeName(event.runtimeType),
         if (error != null) 'error': error.toString(),
       });
     }
@@ -173,9 +167,24 @@ class StatusEmitter<TState extends BlocState> {
       !groups.contains('*') || groups.length == 1,
       "Cannot mix '*' with other groups",
     );
-    // Merge groups onto the event
-    event.groupsToRebuild = {...?event.groupsToRebuild, ...groups};
+    // The event accumulates the groups of every emit made for it. The first
+    // emit adopts the caller's set as is (no copy); a later emit merges.
+    final existing = event.groupsToRebuild;
+    event.groupsToRebuild = existing == null || existing.isEmpty
+        ? groups
+        : {...existing, ...groups};
 
-    _stateManager.emit(factory(newState ?? state, state, event));
+    final current = state;
+    final next = newState ?? current;
+    _stateManager.emit(switch (kind) {
+      _Kind.update => UpdatingStatus<TState>(next, current, event),
+      _Kind.waiting => WaitingStatus<TState>(next, current, event),
+      _Kind.cancel => CancelingStatus<TState>(next, current, event),
+      _Kind.failure => FailureStatus<TState>(next, current, event,
+          error: error, errorStackTrace: errorStackTrace),
+    });
   }
 }
+
+/// The status an emit produces; `name` is the telemetry `status` value.
+enum _Kind { update, waiting, failure, cancel }

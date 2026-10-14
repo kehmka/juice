@@ -5,7 +5,7 @@
     {
       "variant": "juice · groups",
       "framework": "juice",
-      "mechanism": "emitter names the group; widget filters by set intersection",
+      "mechanism": "emitter names the group; widget filters by group membership",
       "buildsPerUpdate": 1.0,
       "selectorCallsPerUpdate": 0.0,
       "untouchedCellsRebuilt": 0

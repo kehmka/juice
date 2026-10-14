@@ -682,6 +682,12 @@ class JuiceBloc<TState extends BlocState>
   // Context Factory
   // ============================================================
 
+  /// The two context closures that capture no event, made once per bloc
+  /// instead of once per execution.
+  late final void Function(EventBase?) _emitEventTearOff = _emitEvent;
+  late final void Function(String?, Map<String, dynamic>?) _navigateTearOff =
+      _aviatorManager.navigate;
+
   UseCaseContext<JuiceBloc<TState>, TState> _createContext(EventBase event) {
     if (_dispatcher.isRestartable(event.runtimeType)) {
       return _fencedContext(event);
@@ -699,8 +705,8 @@ class JuiceBloc<TState extends BlocState>
               error: error, errorStackTrace: errorStackTrace),
       emitCancel: (newState, groups) =>
           _statusEmitter.emitCancel(event, newState, groups),
-      emitEvent: _emitEvent,
-      navigate: _aviatorManager.navigate,
+      emitEvent: _emitEventTearOff,
+      navigate: _navigateTearOff,
     );
   }
 

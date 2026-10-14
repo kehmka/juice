@@ -106,8 +106,11 @@ bool denyRebuild({
 bool _isInRebuildGroup(EventBase? event, Set<String> rebuildGroups) {
   final groups = event?.groupsToRebuild;
   if (groups == null || groups.isEmpty) return false;
-  return groups.contains(_alwaysRebuild) ||
-      groups.intersection(rebuildGroups).isNotEmpty;
+  if (groups.contains(_alwaysRebuild)) return true;
+  // No intersection set: every listening widget runs this per emission.
+  return groups.length <= rebuildGroups.length
+      ? groups.any(rebuildGroups.contains)
+      : rebuildGroups.any(groups.contains);
 }
 
 /// Internal helper for shared widget build logic.

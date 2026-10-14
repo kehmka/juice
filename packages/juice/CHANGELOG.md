@@ -88,6 +88,24 @@ states the contract and, where code must change, the migration.
   once its run is superseded. `BlocScope` fails loud on a bloc resolved
   while its own factory runs.
 
+### Performance
+- **A send costs 1.1 µs with the telemetry chatter on and 0.43 µs with it
+  off, from 2.8 and 1.95** (this Mac, release, median of 5; a restartable
+  send 2.75 → 0.99; 20,000 sends in flight 4.70 → 1.93 each). Four
+  `Type.toString()` calls per send — the event name, the use-case name
+  twice, the builder's — cost 0.27 µs each; they are gone from the path
+  below the telemetry floor, and above it every type name comes from a
+  memo (`Map<Type, String>`, bounded by the types a program dispatches).
+  The span's `Stopwatch` exists only when the span is logged (the error
+  line carries `elapsedMicros` only then). The emitter builds the status
+  directly instead of through a factory closure, and the FIRST emit for an
+  event adopts the caller's group set instead of copying it (a later emit
+  merges into a new set) — the set an event holds is the one the use case
+  passed. `BlocUseCase.useCaseName` is computed on first use, not per
+  instance. The widgets' group filter no longer allocates an intersection
+  set per emission per widget (`any(contains)`, 0.03 µs instead of 0.06).
+  Measured in `benchmarks/RESULTS.md` §15.
+
 ### Fixed
 - A stream error no longer reverts a Juice widget to its initial status:
   `JuiceAsyncBuilder` builds the error with the last status the current

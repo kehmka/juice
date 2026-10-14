@@ -650,6 +650,31 @@ synchronously (two blocs cannot subscribe to each other); `Stateful` +
 `restartable` refused; no `fix_data.yaml`; a relay cannot be built inside
 its own bloc's constructor (the notes example's moved to `main.dart`).
 
+### Performance before the wave (Kevin, 2026-10-13: "we need to get faster")
+
+Done on `main` (the `perf` branch, merged). A same-session bisect found
+the review batches had cost 0.35 µs per send; the breakdown's isolating
+rows found why: `Type.toString()` is 0.27 µs and a send made it four
+times. Two commits: (1) no type names or stopwatch below the telemetry
+floor, a `Map<Type, String>` memo above it, the emitter without factory
+closures, the widgets' group filter allocation-free; (2) **the typed
+telemetry record** — `JuiceLogger.record(JuiceTelemetry)`, a closed
+33-kind vocabulary, one allocation per entry, `toMap()` for the old wire
+shape (BREAKING for every logger implementation; `doc/guides/upgrading-to-2.0.md`,
+`packages/juice/doc/TELEMETRY.md`). Then the full run on the Mac and the
+clock-pinned iPhone 17 Pro Max (RESULTS §15–§17, drift toolchain 3.44.4
+against the 3.47.5 pin — the pinned Linux run still needs a pinned
+machine): the release-default send 3.12 → 0.73 µs on the Mac and
+1.93 → 0.63 on the phone, under bloc's 1.04 / 1.03 on the same runs and
+a tie with bloc with every record built; Riverpod's synchronous notifier
+(0.42 / 0.41) is the floor for a design with no event queue; frames tie
+across the tuned forms of all three frameworks, Juice ahead of
+BlocSelector on the phone; the parent-rebuild scenario's first numbers
+(Mac 2,366 → 1,962, phone 1,089). The comparison is stated in the root and
+core READMEs, benchmarks/README and the upgrade guide. What remains in a
+send is the shape of the design: two awaited async frames, the status
+object, the broadcast add.
+
 ### Not in 2.0, on purpose
 
 `lease linger` (K), `whenReady` (L), `progress` (H): additive, can ride

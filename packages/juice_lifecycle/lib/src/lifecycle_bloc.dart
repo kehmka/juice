@@ -58,24 +58,31 @@ class LifecycleBloc extends JuiceBloc<LifecycleState> {
 
   /// Subscribe to provider changes. The bloc owns the binding: a second
   /// start replaces the first, and close cancels it before the use cases
-  /// close. A stream error goes to the bloc's error handler and ends the
-  /// binding.
+  /// close. A stream error goes to the bloc's error handler; the binding
+  /// keeps listening, as the old subscription did.
   void startListening() {
     bindStream<AppLifecycle>(
       provider.changes,
       (phase) => send(LifecycleChangedEvent(phase)),
       key: _changesKey,
+      cancelOnError: false,
     );
   }
 
   static const _changesKey = 'changes';
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     // The bloc closes first: its changes binding is cancelled before the
     // provider it listens to is disposed. An uninitialized bloc has no
     // provider.
-    await super.close();
+    await closing;
     final config = _config;
     if (config == null) return;
     try {

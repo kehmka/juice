@@ -99,6 +99,25 @@ void main() {
     expect(store.problemCount, 4);
   });
 
+  test('every error-level entry is a problem, by level, whatever its name', () {
+    // juice 2.0.0's typed telemetry posts `level`; the new error kinds need
+    // no name list here.
+    for (final k in [
+      'sequential_run_error',
+      'supersede_error',
+      'relay_error',
+      'aviator_error',
+      'bloc_close_error',
+      'stream_binding',
+      'event_subscription',
+    ]) {
+      store.ingest(k, {'message': k, 'level': 'error'});
+    }
+    store.ingest('stream_binding', {'action': 'refused', 'level': 'warning'});
+    store.ingest('bloc_lifecycle', {'action': 'close', 'level': 'info'});
+    expect(store.problemCount, 7);
+  });
+
   test('the event buffer is capped', () {
     for (var i = 0; i < TelemetryModel.maxEvents + 50; i++) {
       store.ingest('bloc_lifecycle', {'bloc': 'B$i'});

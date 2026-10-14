@@ -18,6 +18,8 @@ class GroupRecorder {
 
 /// Returns preset items from `pick`.
 class FakeMediaSource implements MediaSource {
+  int disposeCalls = 0;
+  Object? disposeError;
   List<MediaItem> toReturn;
   Object? error;
   bool disposed = false;
@@ -33,7 +35,11 @@ class FakeMediaSource implements MediaSource {
   }
 
   @override
-  Future<void> dispose() async => disposed = true;
+  Future<void> dispose() async {
+    disposed = true;
+    disposeCalls++;
+    if (disposeError != null) throw disposeError!;
+  }
 }
 
 /// A controllable in-flight upload.
@@ -499,6 +505,32 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('bucket busy'));
+    });
+
+    test(
+        'a source whose dispose throws is logged and the uploader is still '
+        'disposed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final src = FakeMediaSource()..disposeError = StateError('album busy');
+      final up = FakeMediaUploader();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src, uploader: up));
+      await settle();
+      await bloc.close();
+      expect(log.errors.single, contains('album busy'));
+      expect(up.disposed, isTrue);
+    });
+
+    test('a second close() awaits the first: the source is disposed once',
+        () async {
+      final src = FakeMediaSource();
+      final bloc = MediaBloc.withConfig(MediaConfig(source: src));
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(src.disposeCalls, 1);
     });
   });
 }

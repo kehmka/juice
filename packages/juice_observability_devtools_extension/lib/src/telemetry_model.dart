@@ -25,14 +25,24 @@ class JuiceEvent {
   int? get elapsedMicros =>
       data['elapsedMicros'] is int ? data['elapsedMicros'] as int : null;
 
-  bool get isProblem => const {
-    'use_case_error',
-    'bloc_error',
-    'error_handler_error',
-    'error',
-    'unhandled_event',
-    'leak_detection',
-  }.contains(kind);
+  /// The entry's level as the logger posted it (`error`, `warning`, …);
+  /// null for a payload from a juice older than 2.0.0's typed telemetry.
+  String? get level => data['level']?.toString();
+
+  /// A problem is any error-level entry — every error kind juice 2.0.0's
+  /// vocabulary defines, whatever its name — plus the 1.x names kept for
+  /// payloads that carry no level, and the leak report.
+  bool get isProblem =>
+      level == 'error' ||
+      level == 'fatal' ||
+      const {
+        'use_case_error',
+        'bloc_error',
+        'error_handler_error',
+        'error',
+        'unhandled_event',
+        'leak_detection',
+      }.contains(kind);
 }
 
 /// A use-case execution paired by `executionId`: start → completed|error.

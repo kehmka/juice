@@ -367,14 +367,16 @@ class CheckoutUseCase extends BlocUseCase<CheckoutBloc, CheckoutEvent> {
 }
 ```
 
-## Event Concurrency (juice ≥ 1.5.0)
+## Event Concurrency
 
-By default, use cases for the **same event type** run concurrently — if an
-`execute()` suspends at an `await`, another event of that type can start during
-the suspension. That's fine for independent events, but it makes a
-read-modify-write across an `await` unsafe (one run can clobber another).
+Every builder declares how same-type events overlap: `concurrency:` is a
+required parameter (juice 2.0; 1.x defaulted to `concurrent`). Under
+`concurrent`, if an `execute()` suspends at an `await`, another event of that
+type can start during the suspension. That's fine for independent events, but
+it makes a read-modify-write across an `await` unsafe (one run can clobber
+another).
 
-Declare a concurrency mode per event on its builder:
+Pick the mode per event on its builder:
 
 ```dart
 () => UseCaseBuilder(
@@ -386,17 +388,19 @@ Declare a concurrency mode per event on its builder:
 
 | Mode | Behavior | Use for |
 |---|---|---|
-| `concurrent` (default) | same-type use cases may interleave at awaits | genuinely independent events |
+| `concurrent` | same-type use cases may interleave at awaits | genuinely independent events |
 | `sequential` | same-type events queue and run one-at-a-time to completion, in order | events that **mutate shared state** (a list, map, counter) — eliminates the read-before-await race |
 | `droppable` | a same-type event arriving while one runs is **dropped** | exclusive flows (a flush, a connect, a pick) — replaces a manual "busy" guard |
+| `restartable` | a same-type event arriving while one runs **supersedes** it: the new run starts at once and the old one is fenced (its emits and navigations dropped, its stream bindings cancelled, its `CancellableEvent` cancelled) | latest input wins (search, filter, select) |
 
-> When you stay on `concurrent`, follow the discipline: read `bloc.state` *at
+> When you choose `concurrent`, follow the discipline: read `bloc.state` *at
 > emit time* (after any await), never a snapshot captured *before* an await
 > (`emitUpdate` sets `bloc.state` synchronously, so a read-modify-write with no
 > `await` between the read and the emit is atomic).
 
-`restartable` (cancel the in-flight run, start the new one) is planned for a
-future release.
+`restartable` fences state, not the world: side effects a superseded run
+already performed are not rolled back. `BlocUseCase.isSuperseded` is the
+check after an await; a `StatefulUseCaseBuilder` cannot be `restartable`.
 
 ## Best Practices
 

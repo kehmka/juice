@@ -434,7 +434,10 @@ Future<StreamStatus<TState>> sendAndWait(
 })
 ```
 
-Sends an event and waits for a non-waiting status to be emitted.
+Sends an event and waits for its terminal status. Returns the terminal status emitted for THAT event. Throws `StateError` at
+once when the event is dropped, unhandled, emits nothing, or the bloc closes
+mid-wait; answers `CancelingStatus` for a superseded `restartable` event;
+`TimeoutException` otherwise.
 
 ### emitUpdate with skipIfSame
 
@@ -455,4 +458,5 @@ Future<StreamStatus<TState>> sendAndWaitForResult(
 })
 ```
 
-Testing utility that mirrors `sendAndWait` behavior.
+Testing utility built on `sendAndWait`: the same contract, answering for that
+event (not for the first non-waiting status of any event).

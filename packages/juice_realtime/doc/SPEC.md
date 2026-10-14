@@ -37,8 +37,9 @@ Connection status is plain state (`RealtimeGroups.status`).
 
 ## Reconnection (the concurrency core)
 
-The bloc owns the live connection, its message subscription, and the reconnect
-timer (lifecycle resources, released in `close()`).
+The bloc owns the live connection, its message binding (`bindStream`, keyed
+`messages`), and the reconnect timer (lifecycle resources, released in
+`close()`).
 
 - On drop/failure → `ConnectionLostEvent`. If a **manual** disconnect →
   `disconnected`. Else attempt = `reconnectAttempts + 1`; if within

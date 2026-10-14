@@ -249,8 +249,9 @@ expect(media.state.items, hasLength(1));
   skipped by `uploadAll`, uniformly with locally-uploaded items.
 - `item.uri` ("came from the network") ≠ `uploads[id].remoteUrl` ("uploaded this
   session").
-- `close()` snapshots `_active`/`_progressSubs` before awaiting cancellation to
-  avoid concurrent modification; disposes both seams.
+- `close()` closes the bloc first (every `upload:<id>` progress binding is
+  cancelled), cancels the active handles, then disposes both seams; each
+  failure is logged.
 - 0.2 scope: image/video via `image_picker`. Arbitrary file picking is a
   separate file-capable `MediaSource` — see ROADMAP.
 

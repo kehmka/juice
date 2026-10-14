@@ -9,7 +9,7 @@ Juice is event-in / state-out with the logic isolated in use cases, one
 class per event, and widgets that rebuild only when an emitted rebuild
 group intersects theirs. It looks like other bloc libraries and behaves
 differently in ways that matter: events are matched by exact runtime type,
-same-type use cases run concurrently by default, state is an immutable
+every builder declares its concurrency mode, state is an immutable
 value with no behavior in it, and every vendor sits behind an injected seam.
 Code written from general bloc intuition compiles and then misbehaves, so
 this skill front-loads the guide the framework's own maintainers wrote for
@@ -64,9 +64,10 @@ Pointers, not restatements. Each is fully explained in the guide.
   its use case (guide gotcha 2).
 - **`StatelessJuiceWidget` subclasses cannot be `const`**, and neither can
   a parent that forces it (gotcha 1).
-- **Same-type use cases run concurrently by default.** A state read before
-  an `await` is stale by the time you emit. Pick the concurrency mode on
-  the `UseCaseBuilder` instead of hand-rolling a guard (§4, gotcha 3).
+- **Every builder declares its concurrency mode** (`concurrency:` is
+  required). Under `concurrent` a state read before an `await` is stale by
+  the time you emit; pick `sequential`, `droppable` or `restartable` on the
+  `UseCaseBuilder` instead of hand-rolling a guard (§4, gotcha 3).
 - **State holds data, not behavior**, and every field is `final` with
   changes through `copyWith`, with an `_unset` sentinel for nullable fields
   (gotchas 5 and 6).

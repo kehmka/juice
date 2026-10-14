@@ -40,6 +40,7 @@ class LoadEvent<T> extends EventBase {}   // generic
 UseCaseBuilder(
   typeOfEvent: LoadEvent,                 // matches LoadEvent, never LoadEvent<Item>
   useCaseGenerator: () => LoadUseCase(),
+  concurrency: EventConcurrency.concurrent,
 )
 ```
 

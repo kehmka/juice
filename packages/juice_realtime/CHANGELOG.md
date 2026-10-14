@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the subscription outlived the error until the loss handling cancelled it.
 - `close()` marks the manual close, closes the bloc (its message binding is
   cancelled), closes the socket and the broadcast stream, then disposes the
-  connector; a dispose failure is logged, never swallowed; an uninitialised bloc
-  closes cleanly.
+  connector; a failed binding cancel, socket close or dispose is logged and the
+  rest of the teardown still runs; an uninitialised bloc closes cleanly; a
+  second `close()` awaits the first.
 - `config` before `InitializeRealtimeEvent` throws a named `StateError` instead
   of a late-initialisation error.
 

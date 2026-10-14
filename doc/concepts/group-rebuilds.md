@@ -58,9 +58,9 @@ abstract class ProfileGroups {
 In class-based use cases, convert to strings with `.toStringSet()`:
 
 ```dart
-class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
+class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateProfileEvent> {
   @override
-  Future<void> execute(UpdateEvent event) async {
+  Future<void> execute(UpdateProfileEvent event) async {
     emitUpdate(
       newState: bloc.state.copyWith(name: event.name),
       groupsToRebuild: {ProfileGroups.header, ProfileGroups.details}.toStringSet(),
@@ -72,8 +72,8 @@ class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
 In inline use cases, groups are auto-converted:
 
 ```dart
-() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateEvent>(
-  typeOfEvent: UpdateEvent,
+() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateProfileEvent>(
+  typeOfEvent: UpdateProfileEvent,
   handler: (ctx, event) async {
     ctx.emit.update(
       newState: ctx.state.copyWith(name: event.name),
@@ -331,9 +331,9 @@ class ProfileHeader extends StatelessJuiceWidget<ProfileBloc> {
 }
 
 // Use in class-based use cases with .toStringSet()
-class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
+class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateProfileEvent> {
   @override
-  Future<void> execute(UpdateEvent event) async {
+  Future<void> execute(UpdateProfileEvent event) async {
     emitUpdate(
       newState: bloc.state.copyWith(profile: event.profile),
       groupsToRebuild: ProfileGroups.all.toStringSet()
@@ -342,8 +342,8 @@ class UpdateProfileUseCase extends BlocUseCase<ProfileBloc, UpdateEvent> {
 }
 
 // Use in inline use cases (auto-converts)
-() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateEvent>(
-  typeOfEvent: UpdateEvent,
+() => InlineUseCaseBuilder<ProfileBloc, ProfileState, UpdateProfileEvent>(
+  typeOfEvent: UpdateProfileEvent,
   handler: (ctx, event) async {
     ctx.emit.update(
       newState: ctx.state.copyWith(profile: event.profile),

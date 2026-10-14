@@ -160,11 +160,11 @@ class MediaBloc extends JuiceBloc<MediaState> {
       },
     );
     handle.result.then((url) {
-      if (!isClosed && _active.containsKey(item.id)) {
+      if (!isClosing && _active.containsKey(item.id)) {
         send(UploadCompletedEvent(item.id, url));
       }
     }).catchError((Object e) {
-      if (!isClosed && _active.containsKey(item.id)) {
+      if (!isClosing && _active.containsKey(item.id)) {
         send(UploadFailedEvent(item.id, e));
       }
     });
@@ -218,28 +218,45 @@ class MediaBloc extends JuiceBloc<MediaState> {
   void setPermissionStatus(bool granted) =>
       send(SetPermissionStatusEvent(granted));
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     // The bloc closes first: every progress binding is cancelled before the
     // handles are cancelled and the source and uploader are disposed. An
     // uninitialized bloc has neither.
-    await super.close();
+    await closing;
     // Snapshot then clear before cancelling — cancelling a handle can schedule
     // callbacks that would otherwise mutate the map mid-iteration.
     final handles = _active.values.toList();
     _active.clear();
     for (final h in handles) {
-      h.cancel();
+      try {
+        h.cancel();
+      } catch (error, stackTrace) {
+        _logCloseFailure('MediaUpload cancel failed', error, stackTrace);
+      }
     }
     final config = _config;
     if (config == null) return;
+    // Each seam is disposed whatever the other does; each failure is logged.
     try {
       await config.source.dispose();
+    } catch (error, stackTrace) {
+      _logCloseFailure('MediaSource dispose failed', error, stackTrace);
+    }
+    try {
       await config.uploader?.dispose();
     } catch (error, stackTrace) {
-      JuiceLoggerConfig.logger.logError(
-          'MediaSource/MediaUploader dispose failed', error, stackTrace,
-          context: {'type': 'bloc_error', 'bloc': 'MediaBloc'});
+      _logCloseFailure('MediaUploader dispose failed', error, stackTrace);
     }
   }
+
+  void _logCloseFailure(String what, Object error, StackTrace stackTrace) =>
+      JuiceLoggerConfig.logger.logError(what, error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'MediaBloc'});
 }

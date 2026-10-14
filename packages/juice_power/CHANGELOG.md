@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `isClosed` guard, no manual cancel in `close()` — the bloc cancels it before
   the use cases close, and a second start replaces the binding instead of
   leaking it. A stream error now reaches the bloc's error handler (logged as
-  `stream_binding/error` and `bloc_error`) and ends the binding; before, it was
-  an uncaught error.
+  `stream_binding/error` and `bloc_error`) and the binding keeps listening, as
+  the old subscription did; before, the error was uncaught.
 - `close()` closes the bloc first (its binding is cancelled), then disposes the
   provider; a dispose failure is logged, never swallowed; an uninitialised bloc
-  closes cleanly.
+  closes cleanly; a second `close()` awaits the first (the provider is disposed
+  once).
+- `startPolling` cancels the previous poll timer before starting another.
 - `provider` / `config` before `InitializePowerEvent` throw a named `StateError`
   instead of a late-initialisation error.
 

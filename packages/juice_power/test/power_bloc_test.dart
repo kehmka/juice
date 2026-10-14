@@ -364,8 +364,8 @@ void main() {
     });
 
     test(
-        'a changes stream error is logged as a bloc error and ends the binding',
-        () async {
+        'a changes stream error is logged as a bloc error; the binding keeps '
+        'listening', () async {
       final saved = JuiceLoggerConfig.logger;
       final log = _CaptureLogger();
       JuiceLoggerConfig.configureLogger(log);
@@ -379,7 +379,10 @@ void main() {
       // (it names the key) and the `bloc_error` from the bloc's onError.
       expect(log.errors, hasLength(2));
       expect(log.errors, everyElement(contains('battery gone')));
-      expect(p.log, ['listen', 'cancel']);
+      expect(p.log, ['listen'], reason: 'not cancelled on error');
+      p.emit(const PowerSnapshot(status: BatteryStatus.charging, percent: 81));
+      await settle();
+      expect(bloc.state.isPluggedIn, isTrue, reason: 'still listening');
       await bloc.close();
     });
 
@@ -400,6 +403,16 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('battery busy'));
+    });
+
+    test('a second close() awaits the first: the provider is disposed once',
+        () async {
+      final p = FakePowerProvider();
+      final bloc = PowerBloc.withConfig(cfg(p));
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(p.log.where((e) => e == 'dispose').length, 1);
     });
   });
 }

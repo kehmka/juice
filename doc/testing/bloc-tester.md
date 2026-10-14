@@ -367,7 +367,7 @@ void main() {
 | Method | Description |
 |--------|-------------|
 | `send(event, {delay})` | Send event and wait for processing |
-| `sendAndWaitForResult(event, {timeout})` | Send and wait for non-waiting status |
+| `sendAndWaitForResult(event, {timeout})` | Send and wait for that event's terminal status (throws at once if it is dropped, unhandled, emits nothing or the bloc closes) |
 | `expectState(predicate)` | Assert state matches predicate |
 | `expectStateEquals(state)` | Assert exact state equality |
 | `expectLastStatusIs<T>()` | Assert last status type |

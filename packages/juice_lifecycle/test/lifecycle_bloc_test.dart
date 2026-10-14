@@ -205,8 +205,8 @@ void main() {
     });
 
     test(
-        'a changes stream error is logged as a bloc error and ends the binding',
-        () async {
+        'a changes stream error is logged as a bloc error; the binding keeps '
+        'listening', () async {
       final saved = JuiceLoggerConfig.logger;
       final log = _CaptureLogger();
       JuiceLoggerConfig.configureLogger(log);
@@ -220,7 +220,10 @@ void main() {
       // (it names the key) and the `bloc_error` from the bloc's onError.
       expect(log.errors, hasLength(2));
       expect(log.errors, everyElement(contains('binding gone')));
-      expect(p.log, ['listen', 'cancel']);
+      expect(p.log, ['listen'], reason: 'not cancelled on error');
+      p.emit(AppLifecycle.paused);
+      await settle();
+      expect(bloc.state.isBackground, isTrue, reason: 'still listening');
       await bloc.close();
     });
 
@@ -242,6 +245,16 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('binding busy'));
+    });
+
+    test('a second close() awaits the first: the provider is disposed once',
+        () async {
+      final p = FakeLifecycleProvider();
+      final bloc = LifecycleBloc.withConfig(LifecycleConfig(provider: p));
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(p.log.where((e) => e == 'dispose').length, 1);
     });
   });
 }

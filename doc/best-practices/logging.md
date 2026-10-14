@@ -76,11 +76,11 @@ Context is particularly useful for:
 
 You can implement your own logging system by creating a class that implements the `JuiceLogger` interface.
 
-Two rules first, because the framework calls `log` on **every** use-case execution and **every** state emission, in every build mode, and passes context values as live objects (the emission's `'state'` is the state itself):
+Three rules first, because the framework calls `record` with one typed `JuiceTelemetry` entry for **every** use-case execution and **every** state emission it keeps, in every build mode, and the entry's fields are live objects (the emission's `state` is the state itself). `log` and `logError` carry only free-form lines (yours, and the few the family packages write).
 
-0. **Declare what you keep** (juice ≥ 1.10.0). Implement `LevelAwareJuiceLogger` — one getter, `Level get minLevel` — and the framework does not even *build* a per-event entry below that level: no context map, no call. A logger that only `implements JuiceLogger` is treated as keeping everything. Errors, ignored events, `emission_after_close` and failure emissions are delivered whatever you declare, so keep your own level check in `log`. Only the *configured* logger's declaration counts: if you wrap `DefaultJuiceLogger`, declare your own level rather than delegating to it (it keeps nothing outside debug builds).
-1. **Decide before you format.** Check the level (or environment, or a sample rate) *before* touching `context`. Building `'$context'` unconditionally runs the state's `toString()` on every emission, in release too — the exact cost `DefaultJuiceLogger` stopped paying in juice 1.9.1.
-2. **Never keep `context`.** It holds the current state object. A logger that buffers entries would pin every state it ever saw; copy what you keep as strings.
+0. **Declare what you keep** (juice ≥ 1.10.0). Implement `LevelAwareJuiceLogger` — one getter, `Level get minLevel` — and the framework does not even *build* an entry below that level: no record, no call. A logger that only `implements JuiceLogger` is treated as keeping everything. Delivered whatever you declare: every error kind, `emission_after_close`, `event_ignored`, `get_on_leased`, a refused stream binding and a failure emission — so keep your own level check in `record`. Only the *configured* logger's declaration counts: if you wrap `DefaultJuiceLogger`, declare your own level rather than delegating to it (it keeps nothing outside debug builds).
+1. **Decide before you format.** Check `e.level` (or environment, or a sample rate) *before* calling `e.toMap()` or touching `e.state`. Building `'${e.toMap()}'` unconditionally runs the state's `toString()` on every emission, in release too — the exact cost `DefaultJuiceLogger` stopped paying in juice 1.9.1.
+2. **Never keep the entry or its map.** It holds the current state object. A logger that buffers entries would pin every state it ever saw; copy what you keep as strings.
 
 ```dart
 class CustomLogger implements LevelAwareJuiceLogger {
@@ -88,6 +88,20 @@ class CustomLogger implements LevelAwareJuiceLogger {
 
   @override
   final Level minLevel; // the framework builds nothing below this
+
+  @override
+  void record(JuiceTelemetry e) {
+    // The framework's own telemetry: one typed entry per use-case span,
+    // emission, lifecycle step, binding and error. Decide on e.level first;
+    // e.toMap() is the 1.x context map, built only past the gate.
+    if (e.isError) {
+      logError(e.message, e.error!, e.stackTrace ?? StackTrace.empty,
+          context: e.toMap());
+      return;
+    }
+    if (e.level.index < minLevel.index) return;
+    log(e.message, level: e.level, context: e.toMap());
+  }
 
   @override
   void log(String message, {
@@ -254,6 +268,25 @@ class ProductionLogger implements JuiceLogger {
   })  : _loggingService = loggingService,
         _errorReporting = errorReporting,
         _isProd = isProd;
+
+  @override
+  void record(JuiceTelemetry e) {
+    // Route by kind where it matters; forward the rest as lines.
+    switch (e.kind) {
+      case JuiceTelemetryKind.useCaseFailed:
+      case JuiceTelemetryKind.blocError:
+        logError(e.message, e.error!, e.stackTrace ?? StackTrace.empty,
+            context: e.toMap());
+      default:
+        if (e.isError) {
+          logError(e.message, e.error ?? e.message,
+              e.stackTrace ?? StackTrace.empty,
+              context: e.toMap());
+        } else {
+          log(e.message, level: e.level, context: e.toMap());
+        }
+    }
+  }
 
   @override
   void log(String message, {

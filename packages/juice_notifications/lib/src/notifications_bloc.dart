@@ -111,13 +111,14 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
 
   /// Forward service taps as events. The bloc owns the binding: a second
   /// start replaces the first, and close cancels it before the use cases
-  /// close. A stream error goes to the bloc's error handler and ends the
-  /// binding.
+  /// close. A stream error goes to the bloc's error handler; the binding
+  /// keeps listening, as the old subscription did.
   void startListeningForTaps() {
     bindStream<NotificationTap>(
       service.taps,
       (tap) => send(NotificationTappedEvent(tap)),
       key: _tapsKey,
+      cancelOnError: false,
     );
   }
 
@@ -143,12 +144,18 @@ class NotificationsBloc extends JuiceBloc<NotificationsState> {
   void setPermissionStatus(bool granted) =>
       send(SetPermissionStatusEvent(granted));
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     // The bloc closes first: its taps binding is cancelled before the
     // service it listens to is disposed. An uninitialized bloc has no
     // service.
-    await super.close();
+    await closing;
     final config = _config;
     if (config == null) return;
     try {

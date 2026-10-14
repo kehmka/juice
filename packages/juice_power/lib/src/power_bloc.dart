@@ -30,10 +30,9 @@ class PowerBloc extends JuiceBloc<PowerState> {
       : super(
           PowerState.initial,
           [
-            // Initializing twice would start a second poll timer, and the
-            // first timer's handle would be overwritten beyond the reach of
-            // close() — a leak that outlives the bloc.
-            // droppable, not a `_initialized` flag (juice >= 1.5.0).
+            // A second initialization would replace the config while the
+            // first provider check is in flight. droppable, not a
+            // `_initialized` flag (juice >= 1.5.0).
             () => UseCaseBuilder(
                   typeOfEvent: InitializePowerEvent,
                   useCaseGenerator: () => InitializePowerUseCase(),
@@ -89,12 +88,14 @@ class PowerBloc extends JuiceBloc<PowerState> {
   ///
   /// The bloc owns the binding: a second start replaces the first, and
   /// close cancels it before the use cases close. A stream error goes to
-  /// the bloc's error handler and ends the binding.
+  /// the bloc's error handler; the binding keeps listening, as the old
+  /// subscription did.
   void startListening() {
     bindStream<PowerSnapshot>(
       provider.changes,
       (snapshot) => send(PowerChangedEvent(snapshot)),
       key: _changesKey,
+      cancelOnError: false,
     );
   }
 
@@ -104,23 +105,30 @@ class PowerBloc extends JuiceBloc<PowerState> {
   ///
   /// No-op when the interval is [Duration.zero].
   void startPolling() {
+    _poll?.cancel();
     final interval = config.pollInterval;
     if (interval == Duration.zero) return;
     _poll = Timer.periodic(interval, (_) {
-      if (!isClosed) send(CheckPowerEvent());
+      if (!isClosing) send(CheckPowerEvent());
     });
   }
 
   /// Manually re-read the current power situation.
   void check() => send(CheckPowerEvent());
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     _poll?.cancel();
     // The bloc closes first: its changes binding is cancelled before the
     // provider it listens to is disposed. An uninitialized bloc has no
     // provider.
-    await super.close();
+    await closing;
     final config = _config;
     if (config == null) return;
     try {

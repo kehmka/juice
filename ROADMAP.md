@@ -574,7 +574,7 @@ ships in 1.10.0 FIRST so the IDE migrates the two before they disappear.
 — *Gate:* `dart analyze` clean across the family with both gone; the
 examples compile; CHANGELOG names both.
 
-**E ✅ BUILT 2026-10-07 on `v2`** (five files gone; the three interfaces `JuiceBloc` implements kept in `bloc_interfaces.dart`; coverage exclusions dropped; dependency.md's legacy section replaced — its Modular/custom-resolver examples still show 1.x `GlobalBlocResolver().resolver =` lines under a note: DOC DEBT). Original: **Delete the vendored `Bloc<Event, State>` base** — `bloc.dart`,
+**E ✅ BUILT 2026-10-07 on `v2`** (five files gone; the three interfaces `JuiceBloc` implements kept in `bloc_interfaces.dart`; coverage exclusions dropped; dependency.md's legacy section replaced — its Modular/custom-resolver examples rewritten for 2.0 in the pre-wave review — resolvers passed explicitly). Original: **Delete the vendored `Bloc<Event, State>` base** — `bloc.dart`,
 `emitter.dart`, `bloc_support.dart`, `bloc_base.dart`,
 `global_bloc_resolver.dart`: exported, unused, excluded from the coverage
 gate. No package or example outside core imports them (verified
@@ -713,6 +713,47 @@ and each package's CHANGELOG (`unreleased (ships with juice 2.0.0)`).
 - Not done, by design: publishing and tagging (Kevin's word); the
   pinned-toolchain benchmark run (needs a 3.47.5 machine); the
   `juice_lint` gate runs in CI.
+
+**Post-wave review (2026-10-13, three independent reviews: migration
+code, 2.0.0 docs against the real `juice-v1.10.0..HEAD` diff, publish
+readiness).** Fixed: the four simple blocs keep listening after a provider
+stream error (`cancelOnError: false`, the old subscription's resilience,
+now logged instead of uncaught); realtime's teardown and close survive a
+failing binding cancel or socket close (logged, the rest still runs);
+media disposes each seam whatever the other does and guards each handle
+cancel; the seven stream blocs memoize their own close tail (a second
+`close()` disposed the provider twice); power's `startPolling` cancels the
+previous timer; the remaining `isClosed` guards read `isClosing`. Docs:
+the core CHANGELOG restructured (Breaking / Changed / Added / Fixed /
+Performance), its dead-surface list split into public vs never-exported,
+the missing items added (relay error type, `EventSubscription.initialize`
+on closed, `sendAndWaitResult` failure scope, one close entry per bloc,
+retry-kind keys, `JuiceBloc.isSuperseded`, `activeBindingCount`,
+`EmissionKind`, `StreamBinding` members, the widget `error:` context, the
+eight migrated blocs); the upgrade guide matched; `logging.md`'s two
+loggers compile again (`record`); `use-cases.md`, `SKILL.md`, two SPECs
+no longer say "concurrent by default"; `relay-use-cases.md` states the
+sync-init rule; `group-rebuilds.md` stops registering `UpdateEvent`;
+stale `juice_storage` snippets, the card TEMPLATE, the pub.dev-dead guide
+path (now an absolute URL). Publish: `packages/juice/.pubignore` keeps
+`coverage/` and `doc/api/` out of the archive; the DevTools panel's
+Problems filter is level-based so every 2.0 error kind counts.
+
+**Publish order (each level after the previous is indexed on pub.dev;
+`juice_observability` through its `tool/publish.sh`, which rebuilds the
+extension bundle):** 0 juice → 1 storage, routing, observability and the
+juice-only packages (analytics, connectivity, flags, forms, lifecycle,
+llm, location, media, notifications, paging, permissions, power,
+realtime) → 2 auth, network, i18n, sync, theme → 3 auth_network,
+auth_routing. Skip llm_llamacpp (unchanged, in range), lint / examples /
+devtools extension (`publish_to: none`). Before: date the 24 `unreleased`
+headings, push, let CI run the lint gate; after: tag `<pkg>-v<ver>` and
+push tags. Pre-existing, left for a ruling: a second `Initialize…Event`
+after the first completed replaces the config and never disposes the old
+provider (all six); realtime's `openConnection` drops a stale
+connection's close error silently; media's stale-callback guard checks
+the item id, not the handle; notifications' close disposes the service
+without awaiting an in-flight service operation.
 
 ### Sequence
 

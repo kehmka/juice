@@ -1,0 +1,5 @@
+# Not part of the package: the coverage report tool/coverage_check.sh writes
+# and the generated API docs. Pub reads only this package's ignore files, not
+# the repository root .gitignore.
+coverage/
+doc/api/

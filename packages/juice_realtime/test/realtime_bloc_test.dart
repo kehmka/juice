@@ -5,7 +5,12 @@ import 'package:juice_realtime/juice_realtime.dart';
 /// A fake live connection — drive messages, drops, and inspect sends.
 class FakeRealtimeConnection implements RealtimeConnection {
   late final _controller = StreamController<RealtimeMessage>(
-      onListen: () => log.add('listen'), onCancel: () => log.add('cancel'));
+      onListen: () => log.add('listen'),
+      onCancel: () {
+        log.add('cancel');
+        if (cancelError != null) throw cancelError!;
+      });
+  Object? cancelError;
   final List<Object> sent = [];
   Completer<void>? sendGate;
   bool closed = false;
@@ -51,6 +56,7 @@ class FakeRealtimeConnector implements RealtimeConnector {
   Completer<void>? connectGate;
   int connectCalls = 0;
   bool disposed = false;
+  int disposeCalls = 0;
   Object? disposeError;
 
   FakeRealtimeConnection get latest => connections.last;
@@ -70,6 +76,7 @@ class FakeRealtimeConnector implements RealtimeConnector {
   @override
   Future<void> dispose() async {
     disposed = true;
+    disposeCalls++;
     if (disposeError != null) throw disposeError!;
   }
 }
@@ -384,6 +391,41 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('connector busy'));
+    });
+
+    test(
+        'a message binding whose cancel throws is logged; the socket still '
+        'closes and the connector is disposed', () async {
+      final saved = JuiceLoggerConfig.logger;
+      final log = _CaptureLogger();
+      JuiceLoggerConfig.configureLogger(log);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+      conn.latest.cancelError = StateError('cancel boom');
+
+      await bloc.close();
+
+      expect(conn.latest.closeCalls, 1);
+      expect(conn.disposed, isTrue);
+      expect(log.errors, isNotEmpty);
+      expect(log.errors, everyElement(contains('cancel boom')));
+    });
+
+    test('a second close() awaits the first: the connector is disposed once',
+        () async {
+      final conn = FakeRealtimeConnector();
+      final bloc = RealtimeBloc.withConfig(cfg(conn));
+      await settle();
+      bloc.connect();
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(conn.disposeCalls, 1);
+      expect(conn.latest.closeCalls, 1);
     });
   });
 }

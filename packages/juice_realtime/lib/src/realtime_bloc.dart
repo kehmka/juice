@@ -234,7 +234,15 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
     final connection = _connection;
     _messageBinding = null;
     _connection = null;
-    await binding?.cancel();
+    try {
+      await binding?.cancel();
+    } catch (error, stackTrace) {
+      // The socket still closes: a failed cancel is logged, never a reason
+      // to leak the connection.
+      JuiceLoggerConfig.logger.logError(
+          'RealtimeConnection message binding cancel failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'RealtimeBloc'});
+    }
     await connection?.close();
   }
 
@@ -250,7 +258,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
     final base = config.initialBackoff * math.pow(2, attempt - 1).toDouble();
     final delay = base > config.maxBackoff ? config.maxBackoff : base;
     _reconnectTimer = Timer(delay, () {
-      if (!isClosed) send(ReconnectEvent());
+      if (!isClosing) send(ReconnectEvent());
     });
   }
 
@@ -260,15 +268,27 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   void disconnect() => send(DisconnectEvent());
   void sendMessage(Object data) => send(SendEvent(data));
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     // No reconnect may be scheduled from here on; then the bloc closes (its
     // message binding is cancelled before the use cases close), the socket
     // and the broadcast stream close, and the connector is disposed last.
     // An uninitialized bloc has no connector.
     markManualClose();
-    await super.close();
-    await teardownConnection();
+    await closing;
+    try {
+      await teardownConnection();
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'RealtimeConnection close failed', error, stackTrace,
+          context: {'type': 'bloc_error', 'bloc': 'RealtimeBloc'});
+    }
     await _messages.close();
     final config = _config;
     if (config == null) return;

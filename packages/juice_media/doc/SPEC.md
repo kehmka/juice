@@ -56,9 +56,10 @@ progress never rebuilds the gallery.
 
 ## Upload concurrency
 
-The bloc owns the upload handles (`_active`) and progress subscriptions
-(`_progressSubs`) — lifecycle resources, cancelled in `close()`. `beginUpload`
-wires a handle's progress/result to internal events.
+The bloc owns the upload handles (`_active`) and, through `bindStream`, each
+upload's progress binding (keyed `upload:<id>`) — lifecycle resources the bloc
+cancels in `close()`. `beginUpload` wires a handle's progress/result to internal
+events.
 
 **Staleness guard:** callbacks check `_active` membership before emitting. A
 **cancel** cleans up *before* the handle's result errors, so a cancelled

@@ -124,11 +124,17 @@ class LocationBloc extends JuiceBloc<LocationState> {
   void setPermissionStatus(bool granted) =>
       send(SetPermissionStatusEvent(granted));
 
+  // Memoized like the core's close(): a second caller awaits the first
+  // teardown, so the provider is disposed once. `super.close()` is invoked
+  // here (the core requires it) and awaited inside.
   @override
-  Future<void> close() async {
+  Future<void> close() => _closeOnce ??= _close(super.close());
+  Future<void>? _closeOnce;
+
+  Future<void> _close(Future<void> closing) async {
     // The bloc closes first: its tracking binding is cancelled before the
     // source it listens to is disposed. An uninitialized bloc has no source.
-    await super.close();
+    await closing;
     final config = _config;
     if (config == null) return;
     try {

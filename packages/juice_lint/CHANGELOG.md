@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0] - unreleased (ships with juice 2.0.0)
+## [0.3.0] - unreleased (tracks juice 2.0.0; the package is not yet on pub.dev)
 
 ### Removed
 - `juice_missing_concurrency_mode` (the one opt-in rule). juice 2.0.0 makes

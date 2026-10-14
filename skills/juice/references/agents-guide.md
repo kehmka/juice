@@ -211,8 +211,9 @@ primary fix, not a hand-rolled guard:
   inside the run is its OWN run (not fenced with the outer one), while a
   Timer / Future.delayed / listener the run created IS the run; an event
   instance is single-use — re-sending the same instance is a new run that
-  supersedes the old, and `sendAndWait` / `bloc.isSuperseded(event)` then
-  answer for the latest run. `StatefulUseCaseBuilder` cannot be restartable
+  supersedes the old; `bloc.isSuperseded(event)` then answers for the
+  latest run, while a `sendAndWait` already pending on the first send
+  answers `CancelingStatus` for its own run. `StatefulUseCaseBuilder` cannot be restartable
   (one instance cannot be fenced per run; refused at registration).
 - **`concurrent`** — for **genuinely independent** events.
 

@@ -22,7 +22,7 @@ Add the dependencies to your `pubspec.yaml`:
 dependencies:
   juice: ^2.0.0
   juice_network: ^0.14.0
-  juice_storage: ^1.1.0
+  juice_storage: ^3.0.0
 ```
 
 Then run:

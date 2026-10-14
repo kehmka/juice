@@ -54,8 +54,8 @@ class Mutation {
 ## Flush algorithm (partitioned FIFO)
 
 All triggers (enqueue-if-online, online edge, backoff/periodic timer,
-retryFailed, init) funnel through one `FlushRequestedEvent`. Same-type use cases
-run concurrently by default, so an `_isFlushing` flag + a `_pendingFlushRequest`
+retryFailed, init) funnel through one `FlushRequestedEvent`. Its use case is
+declared `concurrent`, so an `_isFlushing` flag + a `_pendingFlushRequest`
 trailing re-check make the drain single-owner (closes the missed-wakeup race).
 (juice ≥ 1.5.0's `EventConcurrency.droppable` could replace the flag; the
 re-check still matters for work enqueued mid-flush — a tracked follow-up.)

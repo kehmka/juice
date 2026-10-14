@@ -4,7 +4,7 @@ package: juice_llm
 version: 0.6.0
 requires:
   juice: ">=2.0.0"
-updated: 2026-09-16
+updated: 2026-10-13
 ---
 
 # juice_llm — AI card

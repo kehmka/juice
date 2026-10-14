@@ -96,12 +96,16 @@ keys, `streamBindings` and `blocsEnded` included; values live). The
 `message` is a constant per kind — the status, reason or callback that
 used to be interpolated into it is a field. A thrown use-case error is two
 entries — `useCaseFailed` (the span's close, with `executionId`) and
-`blocError` — where 1.x logged three lines; a sequential run's escaped
-failure is its own `type` (`sequential_run_error`), as is a failed
-supersede (`supersede_error`), and the framework's remaining free-form
-lines (retries, the dispatcher's fallback warning, `get` on a leased bloc,
-the error handler's debug prints) are kinds or gone. The whole vocabulary,
-with levels, fields and what changed on the wire:
+`blocError` — where 1.x logged three lines; a bloc's close is one
+`bloc_lifecycle` · `close` entry (the scope no longer logs its own beside
+it); a sequential run's escaped failure is its own `type`
+(`sequential_run_error`), as is a failed supersede (`supersede_error`); the
+retry kinds (`retry_scheduled`, `retry_exhausted`, `retry_abandoned`) carry
+`attempt`, `bloc` and a live `error`, and the 1.x free-form retry lines'
+`maxRetries`, `delayMs` and `totalAttempts` keys are gone; the framework's
+other free-form lines (the dispatcher's fallback warning, `get` on a leased
+bloc, the error handler's debug prints) are kinds or gone. The whole
+vocabulary, with levels, fields and what changed on the wire:
 `packages/juice/doc/TELEMETRY.md` §3 and §6.
 
 `DevtoolsJuiceLogger` (`juice_observability` 0.6.0, in the wave) implements
@@ -109,22 +113,28 @@ with levels, fields and what changed on the wire:
 
 ### Dead surface removed
 
-`UseCaseContext.getState` / `getOldState` / `navigateAsync`,
-`JuiceBloc.logger`, `JuiceAsyncBuilder.waiting`, `AviatorManager.navigateAsync` /
-`hasAviator` / `aviatorCount` / `aviatorNames`, `UseCaseRegistry.builderCount`,
-`EventDispatcher.handlerCount`, `denyRebuild`'s `key` parameter, and
-`RelayUseCaseBuilder`. Drop the calls and arguments; nothing observable
-changes. `RelayUseCaseBuilder` becomes a `StateRelay` or `StatusRelay`
-(`doc/concepts/relay-use-cases.md`).
+`JuiceBloc.logger`, `JuiceAsyncBuilder.waiting`, `denyRebuild`'s `key`
+parameter, and `RelayUseCaseBuilder`. Drop the calls and arguments; nothing
+observable changes. `RelayUseCaseBuilder` becomes a `StateRelay` or
+`StatusRelay` (`doc/concepts/relay-use-cases.md`). Internal members that
+were never exported are gone too (`UseCaseContext.getState` / `getOldState`
+/ `navigateAsync`, `AviatorManager.navigateAsync` / `hasAviator` /
+`aviatorCount` / `aviatorNames`, `UseCaseRegistry.builderCount`,
+`EventDispatcher.handlerCount`); no program outside the package could
+reach them.
 
 ## Behaviour changes
 
 ### Relays and subscriptions initialise synchronously, and throw
 
 `StateRelay`, `StatusRelay` and `EventSubscription` resolve their blocs in
-the constructor and throw `StateError` when a bloc is unregistered or
-closed — where the developer is looking, not as an uncaught error from a
-microtask. A failed initialisation holds no lease.
+the constructor and throw when a bloc is unregistered or closed — where the
+developer is looking, not as an uncaught error from a microtask. The error
+is the resolver's own: a `StateError` from `BlocScope`; a custom
+`resolver:`'s error passes through unchanged, where 1.x wrapped it in a
+`StateError('StateRelay initialization failed: …')`. A failed
+initialisation holds no lease. `EventSubscription.initialize()` on a closed
+subscription throws `StateError`; 1.x did nothing.
 
 Two consequences:
 
@@ -160,7 +170,10 @@ the use case emitted nothing, or the bloc closed during the wait — instead
 of waiting out the timeout. On a closed or closing bloc the returned future
 fails (the call no longer throws). `sendAndWaitResult`, `sendForResult` and
 `BlocTester.sendAndWaitForResult` are built on it; the tester now answers
-for that event rather than the first non-waiting status of any event.
+for that event rather than the first non-waiting status of any event, and
+`sendAndWaitResult` fails the event's `result` on every failure of the wait
+(closed bloc, no handler, nothing emitted, timeout, close mid-wait), where
+1.x failed it only for a missing terminal status.
 
 A test that relied on the timeout gets the error at once; a use case that
 is expected to emit nothing is awaited with `send`, not `sendAndWait`.
@@ -198,6 +211,8 @@ lease entries bypassed the floor.
 
 - `sendCancellable` always goes through `send`; a refusal on a closed bloc
   is logged (`eventIgnored`, warning), never silent.
+- A Juice widget's `error:` builder receives the builder's own
+  `BuildContext`, not the `State`'s outer one.
 - `RetryableUseCaseBuilder` stops before `onRetry` and the backoff once its
   run is superseded.
 - `LocationBloc` (`juice_location` 0.3.0): close closes the bloc, then
@@ -214,16 +229,19 @@ lease entries bypassed the floor.
   arriving while one runs supersedes it; the superseded run is fenced
   (every emit and navigation dropped, its stream bindings cancelled, its
   `CancellableEvent` cancelled), `BlocUseCase.isSuperseded` is the check for
-  any other event, and `sendAndWait` on it answers `CancelingStatus`. Side
-  effects already performed are not rolled back.
+  any other event (`JuiceBloc.isSuperseded(event)` from outside a use case),
+  and `sendAndWait` on it answers `CancelingStatus`. Side effects already
+  performed are not rolled back.
 - **`JuiceBloc.bindStream` / `unbind` / `StreamBinding`** — the bloc owns
   every stream it listens to: cancelled at the start of `close()`, keyed
   for idempotent starts, errors routed to the bloc's error handler. No
   `StreamSubscription` field, no `isClosed` guard, no manual cancel.
+  `StreamBinding` exposes `key`, `isActive`, `done` and `cancel()`;
+  `JuiceBloc.activeBindingCount` counts the live bindings.
 - **`JuiceBloc.seedState(state, {groups})`** — the `@visibleForTesting`
   seam `juiceTest(seed:)` uses.
-- **`JuiceTelemetry` / `JuiceTelemetryKind`** — the typed telemetry
-  vocabulary (`packages/juice/doc/TELEMETRY.md`).
+- **`JuiceTelemetry`, `JuiceTelemetryKind`, `EmissionKind`** — the typed
+  telemetry vocabulary (`packages/juice/doc/TELEMETRY.md`).
 - **`JuiceAsyncBuilder.streamKey` and `where`.**
 - **Performance** — on the benchmark Mac a send is 0.66 µs with the
   telemetry chatter on and 0.44 µs with it off (the release default), from
@@ -260,13 +278,14 @@ lease entries bypassed the floor.
 
 ## The family wave
 
-Every package below requires `juice: ^2.0.0`. A 0.x package takes a minor
-bump, a 1.x+ package a major one (`juice_routing` 2.0.0, `juice_storage`
-3.0.0); the packages that depend on `juice_storage` accept it up to
-`<4.0.0`. The packages marked *changed* carry code of their own in the
-wave; the rest are constraint bumps with no API change.
+Every published package below requires `juice: ^2.0.0`, except the two
+footnoted. A 0.x package takes a minor bump, a 1.x+ package a major one
+(`juice_routing` 2.0.0, `juice_storage` 3.0.0); the packages that depend on
+`juice_storage` accept it up to `<4.0.0`. The packages marked *changed*
+carry code of their own in the wave; the rest are constraint bumps with no
+API change.
 
-| Package | 1.x | 2.0 wave | |
+| Package | at juice 1.10.0 | 2.0 wave | |
 |---|---|---|---|
 | juice_analytics | 0.2.0 | 0.3.0 | |
 | juice_auth | 0.3.0 | 0.4.0 | |
@@ -277,9 +296,9 @@ wave; the rest are constraint bumps with no API change.
 | juice_forms | 0.3.0 | 0.4.0 | |
 | juice_i18n | 0.2.0 | 0.3.0 | |
 | juice_lifecycle | 0.2.0 | 0.3.0 | *changed*: as connectivity |
-| juice_lint | 0.2.0 | 0.3.0 | *changed*: `juice_missing_concurrency_mode` retired |
+| juice_lint | 0.2.0 | 0.3.0 | *changed*: `juice_missing_concurrency_mode` retired (analyzer plugin: no `juice` dependency; not yet on pub.dev) |
 | juice_llm | 0.5.0 | 0.6.0 | *changed*: bloc-owned generation binding, close order |
-| juice_llm_llamacpp | 0.2.3 | 0.2.3 | unchanged (depends on `juice_llm`, not on `juice`) |
+| juice_llm_llamacpp | 0.2.3 | 0.2.3 | unchanged (depends on `juice_llm`, not on `juice`; not republished) |
 | juice_location | 0.2.0 | 0.3.0 | *changed*: bloc-owned tracking binding, `TrackingEndedEvent` |
 | juice_media | 0.6.0 | 0.7.0 | *changed*: per-upload progress bindings, close order, loud dispose |
 | juice_network | 0.13.1 | 0.14.0 | |

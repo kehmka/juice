@@ -204,8 +204,9 @@ expect(rt.state.status, RealtimeStatus.connected);
 - A scheduled `ReconnectEvent` preserves `reconnectAttempts`; a user `connect()`
   resets it to 0; a successful connect resets it.
 - Backoff = `min(maxBackoff, initialBackoff · 2^(attempt-1))`, attempt 1-based.
-- `close()` cancels the reconnect timer + message subscription, closes the
-  connection and the broadcast stream, and disposes the connector.
+- `close()` cancels the reconnect timer, closes the bloc (its `messages`
+  binding is cancelled), closes the connection and the broadcast stream, and
+  disposes the connector; failures are logged.
 
 ## See also
 

@@ -251,8 +251,9 @@ void main() {
       await bloc.close();
     });
 
-    test('a taps stream error is logged as a bloc error and ends the binding',
-        () async {
+    test(
+        'a taps stream error is logged as a bloc error; the binding keeps '
+        'listening', () async {
       final saved = JuiceLoggerConfig.logger;
       final log = _CaptureLogger();
       JuiceLoggerConfig.configureLogger(log);
@@ -267,7 +268,10 @@ void main() {
       // (it names the key) and the `bloc_error` from the bloc's onError.
       expect(log.errors, hasLength(2));
       expect(log.errors, everyElement(contains('channel gone')));
-      expect(svc.log, ['listen', 'cancel']);
+      expect(svc.log, ['listen'], reason: 'not cancelled on error');
+      svc.emitTap(const NotificationTap(id: 7));
+      await settle();
+      expect(bloc.state.lastTap?.id, 7, reason: 'still listening');
       await bloc.close();
     });
 
@@ -290,6 +294,17 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('channel busy'));
+    });
+
+    test('a second close() awaits the first: the service is disposed once',
+        () async {
+      final svc = FakeNotificationService();
+      final bloc =
+          NotificationsBloc.withConfig(NotificationsConfig(service: svc));
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(svc.log.where((e) => e == 'dispose').length, 1);
     });
   });
 }

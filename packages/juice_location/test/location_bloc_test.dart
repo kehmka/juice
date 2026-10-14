@@ -23,10 +23,12 @@ class FakeLocationSource implements LocationSource {
   Stream<GeoPosition> positions() => _controller.stream;
 
   Object? disposeError;
+  int disposeCalls = 0;
 
   @override
   Future<void> dispose() async {
     disposed = true;
+    disposeCalls++;
     if (disposeError != null) throw disposeError!;
     await _controller.close();
   }
@@ -229,6 +231,16 @@ void main() {
       await settle();
       await bloc.close();
       expect(log.errors.single, contains('gps busy'));
+    });
+
+    test('a second close() awaits the first: the source is disposed once',
+        () async {
+      final src = FakeLocationSource();
+      final bloc = LocationBloc.withConfig(LocationConfig(source: src));
+      await settle();
+      await Future.wait([bloc.close(), bloc.close()]);
+      await bloc.close();
+      expect(src.disposeCalls, 1);
     });
   });
 }

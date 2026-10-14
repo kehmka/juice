@@ -248,4 +248,4 @@ Every entry used to be `log(message, context: {'type': …, …})` or
   `BlocErrorHandler`'s debug `Bloc Error:` prints) — each is now a kind, or
   nothing.
 
-`doc/guides/upgrading-to-2.0.md` has the logger migration in full.
+[upgrading-to-2.0.md](https://github.com/kehmka/juice/blob/main/doc/guides/upgrading-to-2.0.md) (in the repository) has the logger migration in full.

@@ -27,8 +27,8 @@ card_schema: "1.0"          # the schema this card follows (this file's version)
 package: juice_foo          # package name
 version: 0.1.0              # the PACKAGE version this card documents (mirror pubspec)
 requires:                   # min versions of juice-family deps
-  juice: ">=1.5.0"
-  juice_storage: ">=1.2.0"  # omit if none beyond juice
+  juice: ">=2.0.0"
+  juice_storage: ">=3.0.0"  # omit if none beyond juice
 updated: 2026-06-09         # ISO date the card was last revised
 ---
 ```
@@ -36,8 +36,8 @@ updated: 2026-06-09         # ISO date the card was last revised
 - `version` mirrors the package's `pubspec.yaml` version. When the package bumps,
   review and bump the card. If they drift, the card is stale — fix it.
 - `requires` mirrors the package's `pubspec.yaml` dependency constraints (e.g.
-  `juice: ">=1.4.0"`). Bump `juice` to `">=1.5.0"` only once the package actually
-  adopts `EventConcurrency`.
+  `juice: ">=2.0.0"`; `tool/check_cards.sh` compares them). Raise a floor only
+  when the package actually needs the newer API.
 
 ## Sections (in order)
 
@@ -86,7 +86,7 @@ entirely (don't write "N/A").
 card_schema: "1.0"
 package: juice_foo
 version: 0.1.0
-requires: { juice: ">=1.5.0" }
+requires: { juice: ">=2.0.0" }
 updated: 2026-06-09
 ---
 

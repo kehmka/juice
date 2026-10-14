@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `isClosed` guard. A progress stream error fails the upload and ends its
   binding, as a result error already did.
 - `close()` closes the bloc first (every progress binding is cancelled), cancels
-  the active handles, then disposes the source and the uploader; a dispose
-  failure is logged, never swallowed; an uninitialised bloc closes cleanly.
+  the active handles, then disposes the source and the uploader; a failed handle
+  cancel or dispose is logged and the other seam is still disposed; an
+  uninitialised bloc closes cleanly; a second `close()` awaits the first.
 - `source` / `uploader` / `config` before `InitializeMediaEvent` throw a named
   `StateError` instead of a late-initialisation error.
 

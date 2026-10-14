@@ -4,7 +4,8 @@
 
 The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each entry
 states the contract and, where code must change, the migration; the
-step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
+step-by-step guide is
+[upgrading-to-2.0.md](https://github.com/kehmka/juice/blob/main/doc/guides/upgrading-to-2.0.md) (in the repository, not in this archive).
 
 ### Breaking
 - **`concurrency:` is required on every builder** — `UseCaseBuilder`,
@@ -31,10 +32,14 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   `BlocScope` (`doc/concepts/dependency.md`); a `BlocDependencyResolver` is
   passed explicitly where an API takes one.
 - **`StateRelay`, `StatusRelay` and `EventSubscription` initialise
-  synchronously and throw** (`StateError`) when a bloc is unregistered or
-  closed — from the constructor (for `EventSubscription`, the subscribing
-  bloc's constructor), not as an uncaught error from a microtask nobody
-  awaits. A failed initialisation holds no lease. *Migration:* register the
+  synchronously and throw** when a bloc is unregistered or closed — from
+  the constructor (for `EventSubscription`, the subscribing bloc's
+  constructor), not as an uncaught error from a microtask nobody awaits.
+  The error is the resolver's own: a `StateError` from `BlocScope`, a
+  custom `resolver:`'s error unchanged (1.x wrapped it in
+  `StateError('StateRelay initialization failed: …')`). A failed
+  initialisation holds no lease. `EventSubscription.initialize()` on a
+  closed subscription throws `StateError` (1.x did nothing). *Migration:* register the
   blocs before constructing the relay. Never build a relay inside a bloc's
   own constructor: a bloc leased while its own factory runs fails at the
   scope with a `StateError`; wire relays in the composition root. Two blocs
@@ -48,19 +53,22 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   fails (the call no longer throws). `sendAndWaitResult`, `sendForResult`
   and `BlocTester.sendAndWaitForResult` are built on it:
   `sendAndWaitForResult` answers for THAT event, not for the first
-  non-waiting status of any event. *Migration:* a test that relied on the
-  timeout gets the error at once.
+  non-waiting status of any event; `sendAndWaitResult` fails the event's
+  `result` on every failure of the wait (closed bloc, no handler, nothing
+  emitted, timeout, close mid-wait), not only on a missing terminal status.
+  *Migration:* a test that relied on the timeout gets the error at once.
 - **`StatefulUseCaseBuilder` cannot be `restartable`** (`ArgumentError` at
   registration): one instance serves every run and cannot be fenced per
   run.
-- **Dead surface removed:** `UseCaseContext.getState` / `getOldState` /
-  `navigateAsync`, `JuiceBloc.logger`, `JuiceAsyncBuilder.waiting` (could
-  never fire), `AviatorManager.navigateAsync` / `hasAviator` /
-  `aviatorCount` / `aviatorNames`, `UseCaseRegistry.builderCount`,
-  `EventDispatcher.handlerCount`, `denyRebuild`'s unused `key`, and
+- **Dead surface removed:** `JuiceBloc.logger`, `JuiceAsyncBuilder.waiting`
+  (could never fire), `denyRebuild`'s unused `key`, and
   `RelayUseCaseBuilder` (`StateRelay` / `StatusRelay` replace it —
   `doc/concepts/relay-use-cases.md`). *Migration:* drop the arguments and
-  calls; nothing observable changes.
+  calls; nothing observable changes. (Internal, never exported, also gone:
+  `UseCaseContext.getState` / `getOldState` / `navigateAsync`,
+  `AviatorManager.navigateAsync` / `hasAviator` / `aviatorCount` /
+  `aviatorNames`, `UseCaseRegistry.builderCount`,
+  `EventDispatcher.handlerCount`.)
 - **`JuiceLogger` gains `record(JuiceTelemetry entry)`.** The framework's
   telemetry — every use-case span, emission, lifecycle, binding and error
   entry — is one typed object per entry (`JuiceTelemetry`, a closed
@@ -77,21 +85,25 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   of sharing `use_case_error` / `use_case_superseded`; `lifecycle` is the
   enum name; new kinds for retries (`retry_scheduled`, `retry_exhausted`),
   relay and subscription failures (`relay_error`, `event_subscription` ·
-  `error`) and `get` on a leased bloc; the framework's free-form lines are
-  gone (retries, the dispatcher's fallback warning, `Closing
-  StatefulUseCase`, `Disposing all blocs`, `BlocErrorHandler`'s debug
-  prints). Every info-level kind, lifecycle and leases included, is built
-  only when the telemetry floor keeps it (1.x bypassed the floor for
-  those). The reference: `packages/juice/doc/TELEMETRY.md`.
-  `DevtoolsJuiceLogger` (`juice_observability` 0.6.0) implements it and
-  posts the same payload shape, plus the new kinds.
-- **Telemetry vocabulary.** `stream_binding` / `refused` carries `reason`
-  (`bloc is closed`, `bloc is closing`, `run superseded`); a binding
-  callback that throws is `stream_binding` / `callback_error` with
-  `callback` (`onData`, `onError`, `onDone`); `state_emission_superseded`
-  carries `status`. A thrown use-case error is two lines — `use_case_error`
-  (the executor's span-closer, with `executionId`) and `bloc_error` — not
-  three. A refused `send` logs at warning.
+  `error`) and `get` on a leased bloc; the retry kinds (`retry_scheduled`,
+  `retry_exhausted`, `retry_abandoned`) replace 1.x's free-form retry lines
+  and carry `attempt`, `bloc` and a live `error` — the 1.x keys
+  `maxRetries`, `delayMs` and `totalAttempts` are gone; the framework's
+  other free-form lines are gone too (the dispatcher's fallback warning,
+  `Closing StatefulUseCase`, `Disposing all blocs`, `BlocErrorHandler`'s
+  debug prints). `stream_binding` / `refused` carries `reason` (`bloc is
+  closed`, `bloc is closing`, `run superseded`); a binding callback that
+  throws is `stream_binding` / `callback_error` with `callback` (`onData`,
+  `onError`, `onDone`); `state_emission_superseded` carries `status`. A
+  thrown use-case error is two lines — `use_case_error` (the executor's
+  span-closer, with `executionId`) and `bloc_error` — not three; a bloc's
+  close is one `bloc_lifecycle` · `close` entry (the scope no longer logs
+  its own beside it). A refused `send` logs at warning. Every info-level
+  kind, lifecycle and leases included, is built only when the telemetry
+  floor keeps it (1.x bypassed the floor for those). The reference:
+  `packages/juice/doc/TELEMETRY.md`. `DevtoolsJuiceLogger`
+  (`juice_observability` 0.6.0) implements it and posts the same payload
+  shape, plus the new kinds.
 
 ### Changed
 - **A Juice widget keeps its bloc subscription across parent rebuilds.**
@@ -118,52 +130,9 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
 - **`BlocErrorHandler` prints nothing of its own in debug builds**: the
   error is on the logger as a `blocError` entry with its stack trace; the
   handler's `logger` and `onError` callbacks are unchanged.
-
-### Performance
-- **A send costs 0.66 µs with the telemetry chatter on and 0.44 µs with it
-  off, from 2.83 and 1.95 on the 2.0 tree before this work** (the bare
-  benchmark bloc on the Mac, release, median of 5; 1.10.0 had measured
-  2.72 and 1.82 there; a restartable send 2.75 → 1.06; 20,000 sends in
-  flight 4.70 → 2.00 each). In the dispatch scenario — the one that runs
-  bloc and Riverpod on the same work — the sequential release-default send
-  is 0.73 µs on the Mac against bloc's 1.04 and 0.63 on the phone against
-  1.03; with every telemetry record built it ties bloc; in burst bloc
-  leads (`benchmarks/RESULTS.md` §16–§17). The telemetry entries are typed
-  records, one allocation each, priced against the context maps they
-  replace in §17b. Four
-  `Type.toString()` calls per send — the event name, the use-case name
-  twice, the builder's — cost 0.27 µs each; they are gone from the path
-  below the telemetry floor, and above it every type name comes from a
-  memo (`Map<Type, String>`, bounded by the types a program dispatches).
-  The span's `Stopwatch` exists only when the span is logged (the error
-  line carries `elapsedMicros` only then). The emitter builds the status
-  directly instead of through a factory closure, and the FIRST emit for an
-  event adopts the caller's group set instead of copying it (a later emit
-  merges into a new set) — the set an event holds is the one the use case
-  passed. `BlocUseCase.useCaseName` is computed on first use, not per
-  instance. The widgets' group filter no longer allocates an intersection
-  set per emission per widget (`any(contains)`, 0.03 µs instead of 0.06).
-  Measured in `benchmarks/RESULTS.md` §15.
-
-### Fixed
-- A stream error no longer reverts a Juice widget to its initial status:
-  `JuiceAsyncBuilder` builds the error with the last status the current
-  subscription delivered (a `ValueStream`'s seed counts), reset on every
-  re-subscribe.
-- A use-case generator that throws (a failing DI lookup) is a use-case
-  error with its span and reaches `onError`; it was a silent miss. A
-  `sequential` run whose failure escapes the executor is logged and the
-  queue goes on. An unhandled-event fallback that throws fails the send.
-- `bindStream`: a throwing `onError` / `onDone` is the bloc's error; a
-  stream whose `listen` throws leaves no binding behind; every cancel —
-  unbind, replace, on error, at supersede, at close — is logged if it
-  fails; `StreamBinding.cancel()` is memoized, so every caller awaits the
-  one teardown.
-- `emitEvent` goes through the close fence like every other emission
-  (`emission_after_close`, status `event`).
-- `juiceTest` reports a `build()` that throws as that error, and counts
-  stream-binding errors (`errors:` to expect them).
-- `StateManager` allocates nothing per emit when nothing taps it.
+- Core line coverage gate raised from 90% to 99% in CI
+  (`tool/coverage_check.sh 99`); the lines left uncovered are unreachable by
+  construction and stay in the count.
 
 ### Added
 - **`EventConcurrency.restartable` — latest input wins.** A same-type event
@@ -172,7 +141,8 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   `state_emission_superseded`), the stream bindings it created are
   cancelled, and a `CancellableEvent` is cancelled so a loop can bail;
   `BlocUseCase.isSuperseded` is the check for any other event (read from
-  the run's zone, correct after any await). `sendAndWait` on a superseded
+  the run's zone, correct after any await), `JuiceBloc.isSuperseded(event)`
+  the check from outside a use case. `sendAndWait` on a superseded
   event answers with a `CancelingStatus` for that event (not emitted);
   `sendAndWaitResult` answers canceled and fails the event's result. The
   span still closes, flagged `superseded: true`; the supersede logs
@@ -195,9 +165,13 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
   listening); an `onData`, `onError` or `onDone` that throws goes to the
   error handler (`callback_error`), and an `onData` throw leaves the
   binding active. A bind on a closing bloc or from a superseded run is
-  refused with an inert binding. Replaces the `StreamSubscription` field,
-  `isClosed` guard and manual cancel every stream-reading bloc hand-rolled
-  (location and llm migrated).
+  refused with an inert binding. `StreamBinding` exposes `key`, `isActive`,
+  `done` (completes when the binding stops, never errors) and `cancel()`;
+  `JuiceBloc.activeBindingCount` counts the live ones. Replaces the
+  `StreamSubscription` field, `isClosed` guard and manual cancel every
+  stream-reading bloc hand-rolled: the eight family blocs that read a
+  stream (connectivity, lifecycle, llm, location, media, notifications,
+  power, realtime) are migrated in their 2.0-wave versions.
 - **`JuiceBloc.seedState(state, {groups})`** — a `@visibleForTesting` seam
   that puts a bloc into a state without running a use case, as a normal
   `UpdatingStatus` emission carrying an `UpdateEvent`; `juiceTest(seed:)`
@@ -207,11 +181,57 @@ step-by-step guide is `doc/guides/upgrading-to-2.0.md`.
 - **`UseCase.navigate`** (`@internal`) — the navigation half of
   `emitUpdate(aviatorName:)`, wired by the executor; inline use cases
   navigate through it, under the restartable fence.
+- **`JuiceTelemetry`, `JuiceTelemetryKind`, `EmissionKind`** — the typed
+  telemetry vocabulary (`packages/juice/doc/TELEMETRY.md`); `EmissionKind`
+  is the `status` an emission entry carries (`update`, `waiting`,
+  `failure`, `cancel`, `event`, `navigate`).
 
-### Coverage
-- Core line coverage gate raised from 90% to 99% in CI
-  (`tool/coverage_check.sh 99`); the lines left uncovered are unreachable by
-  construction and stay in the count.
+### Fixed
+- A stream error no longer reverts a Juice widget to its initial status:
+  `JuiceAsyncBuilder` builds the error with the last status the current
+  subscription delivered (a `ValueStream`'s seed counts), reset on every
+  re-subscribe.
+- A use-case generator that throws (a failing DI lookup) is a use-case
+  error with its span and reaches `onError`; it was a silent miss. A
+  `sequential` run whose failure escapes the executor is logged and the
+  queue goes on. An unhandled-event fallback that throws fails the send.
+- `bindStream`: a throwing `onError` / `onDone` is the bloc's error; a
+  stream whose `listen` throws leaves no binding behind; every cancel —
+  unbind, replace, on error, at supersede, at close — is logged if it
+  fails; `StreamBinding.cancel()` is memoized, so every caller awaits the
+  one teardown.
+- `emitEvent` goes through the close fence like every other emission
+  (`emission_after_close`, status `event`).
+- `juiceTest` reports a `build()` that throws as that error, and counts
+  stream-binding errors (`errors:` to expect them).
+- `StateManager` allocates nothing per emit when nothing taps it.
+- A Juice widget's `error:` builder receives the builder's own
+  `BuildContext`, not the `State`'s outer one.
+
+### Performance
+- **A send costs 0.66 µs with the telemetry chatter on and 0.44 µs with it
+  off, from 2.83 and 1.95 on the 2.0 tree before this work** (the bare
+  benchmark bloc on the Mac, release, median of 5; 1.10.0 had measured
+  2.72 and 1.82 there; a restartable send 2.75 → 1.06; 20,000 sends in
+  flight 4.70 → 2.00 each). In the dispatch scenario — the one that runs
+  bloc and Riverpod on the same work — the sequential release-default send
+  is 0.73 µs on the Mac against bloc's 1.04 and 0.63 on the phone against
+  1.03; with every telemetry record built it ties bloc; in burst bloc
+  leads (`benchmarks/RESULTS.md` §16–§17). The telemetry entries are typed
+  records, one allocation each, priced against the context maps they
+  replace in §17b. Four
+  `Type.toString()` calls per send — the event name, the use-case name
+  twice, the builder's — cost 0.27 µs each; they are gone from the path
+  below the telemetry floor, and above it every type name comes from a
+  memo (`Map<Type, String>`, bounded by the types a program dispatches).
+  The span's `Stopwatch` exists only when the span is logged (the error
+  line carries `elapsedMicros` only then). The emitter builds the status
+  directly instead of through a factory closure, and the first emit adopts
+  the caller's group set instead of copying it (the contract is under
+  Changed). `BlocUseCase.useCaseName` is computed on first use, not per
+  instance. The widgets' group filter no longer allocates an intersection
+  set per emission per widget (`any(contains)`, 0.03 µs instead of 0.06).
+  Measured in `benchmarks/RESULTS.md` §15.
 
 ## [1.10.0] - 2026-09-29
 

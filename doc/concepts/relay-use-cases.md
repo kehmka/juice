@@ -160,6 +160,14 @@ final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
 );
 ```
 
+A relay resolves both blocs **in its constructor** and throws there when one
+is unregistered or closed (a `StateError` from `BlocScope`, or a custom
+resolver's own error) — where you are looking, not as an uncaught error a
+microtask later. So register both blocs first, and **never build a relay
+inside a bloc's own constructor**: a bloc leased while its own factory is
+running fails at the scope. Wire relays in the composition root, after the
+registrations, as above.
+
 ### Using Scoped Blocs
 
 For feature-scoped blocs, specify the scope:

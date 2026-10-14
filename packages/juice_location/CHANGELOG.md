@@ -11,15 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Require `juice ^2.0.0`. Position tracking is a bloc-owned stream binding
   (`bindStream(..., key: 'tracking')` / `unbind('tracking')`): no
-  `StreamSubscription` field, no `isClosed` guard, no manual cancel in
-  `close()` — the bloc cancels it before the use cases close. A second
+  `StreamSubscription` field, no `isClosed` guard, no manual cancel in `close()`
+  — the bloc cancels it before the use cases close. A second
   `StartTrackingEvent` replaces the first binding instead of leaking it.
 - `close()` closes the bloc first (its tracking binding is cancelled) and
-  disposes the source after; a dispose failure is logged, never swallowed;
-  an uninitialised bloc closes cleanly.
+  disposes the source after; a dispose failure is logged, never swallowed; an
+  uninitialised bloc closes cleanly; a second `close()` awaits the first (the
+  source is disposed once).
 - A positions stream that errors or ends on its own ends tracking:
-  `TrackingEndedEvent` sets `tracking: false` (and `lastError` on an error,
-  on the `error` group). Before, the state kept saying `tracking: true`.
+  `TrackingEndedEvent` sets `tracking: false` (and `lastError` on an error, on
+  the `error` group). Before, the state kept saying `tracking: true`.
 - `source` / `config` before `InitializeLocationEvent` throw a named
   `StateError` instead of a late-initialisation error.
 

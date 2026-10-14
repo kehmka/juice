@@ -183,9 +183,9 @@ fake.setSilently(...);   // a level that moves with NO status change → only th
   (`use_case_error`, the bloc error handler). There is no `emitFailure`: state
   is left as it was (on a cold boot, `initial` — which answers "may I run?"
   with *no*). Make the provider report unknown instead of throwing.
-- **An error on `changes`** is not caught by the bloc's subscription (no
-  `onError`); a provider's stream must not error. Report unknown snapshots
-  instead.
+- **An error on `changes`** reaches the bloc's error handler (logged as
+  `stream_binding/error` and `bloc_error`); the binding keeps listening. A
+  provider's stream should still not error: report unknown snapshots instead.
 - `pollInterval: Duration.zero` disables the poll: the level then moves only
   when the platform pushes a status change.
 

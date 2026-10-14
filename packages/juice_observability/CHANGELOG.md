@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists what changed on the wire). Free-form `log` lines still post when
   their context carries a `type`; free-form `logError` lines always post.
   Nothing is built without a listener.
+- The DevTools panel's Problems filter counts every error-level entry by its
+  posted `level`, so 2.0.0's new error kinds (`sequential_run_error`,
+  `supersede_error`, `relay_error`, `aviator_error`, `bloc_close_error`, a
+  `stream_binding` / `event_subscription` error) land in Problems without
+  a name list; the 1.x names stay for payloads without a level. The
+  extension bundle is rebuilt for this release (`tool/publish.sh`).
 
 ## [0.5.1] - 2026-09-29
 

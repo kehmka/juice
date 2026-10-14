@@ -10,128 +10,128 @@
       "variant": "juice (default logger)",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 1.934,
-      "min": 1.887,
-      "max": 1.977,
-      "spread": 0.023,
+      "microsPerUpdate": 0.631,
+      "min": 0.605,
+      "max": 0.857,
+      "spread": 0.2,
       "rounds": [
-        1.948,
-        1.934,
-        1.887,
-        1.977,
-        1.898
+        0.857,
+        0.631,
+        0.641,
+        0.605,
+        0.63
       ]
     },
     {
       "variant": "juice (default logger)",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 3.595,
-      "min": 2.561,
-      "max": 3.675,
-      "spread": 0.155,
+      "microsPerUpdate": 1.462,
+      "min": 1.111,
+      "max": 1.888,
+      "spread": 0.266,
       "rounds": [
-        3.595,
-        2.701,
-        3.675,
-        2.561,
-        3.67
+        1.736,
+        1.462,
+        1.888,
+        1.111,
+        1.315
       ]
     },
     {
       "variant": "juice (silent logger)",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 1.804,
-      "min": 1.776,
-      "max": 1.886,
-      "spread": 0.03,
+      "microsPerUpdate": 0.875,
+      "min": 0.746,
+      "max": 1.221,
+      "spread": 0.271,
       "rounds": [
-        1.876,
-        1.797,
-        1.804,
-        1.776,
-        1.886
+        1.221,
+        0.875,
+        0.746,
+        0.823,
+        1.083
       ]
     },
     {
       "variant": "juice (silent logger)",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 3.695,
-      "min": 2.415,
-      "max": 3.771,
-      "spread": 0.183,
+      "microsPerUpdate": 1.556,
+      "min": 1.287,
+      "max": 2.166,
+      "spread": 0.283,
       "rounds": [
-        3.695,
-        2.525,
-        3.771,
-        2.415,
-        3.727
+        1.556,
+        1.936,
+        1.365,
+        1.287,
+        2.166
       ]
     },
     {
       "variant": "bloc",
       "shape": "sequential",
       "updates": 20000,
-      "microsPerUpdate": 0.72,
-      "min": 0.708,
-      "max": 0.751,
-      "spread": 0.03,
+      "microsPerUpdate": 1.034,
+      "min": 0.882,
+      "max": 1.651,
+      "spread": 0.372,
       "rounds": [
-        0.751,
-        0.708,
-        0.744,
-        0.708,
-        0.72
+        1.476,
+        1.651,
+        1.034,
+        0.882,
+        0.923
       ]
     },
     {
       "variant": "bloc",
       "shape": "burst",
       "updates": 20000,
-      "microsPerUpdate": 0.571,
+      "microsPerUpdate": 0.847,
+      "min": 0.727,
+      "max": 1.125,
+      "spread": 0.235,
+      "rounds": [
+        0.727,
+        1.125,
+        0.846,
+        0.85,
+        0.847
+      ]
+    },
+    {
+      "variant": "riverpod",
+      "shape": "sequential",
+      "updates": 20000,
+      "microsPerUpdate": 0.408,
+      "min": 0.332,
+      "max": 0.508,
+      "spread": 0.216,
+      "rounds": [
+        0.375,
+        0.508,
+        0.468,
+        0.408,
+        0.332
+      ]
+    },
+    {
+      "variant": "riverpod",
+      "shape": "burst",
+      "updates": 20000,
+      "microsPerUpdate": 0.594,
       "min": 0.556,
-      "max": 0.609,
-      "spread": 0.046,
+      "max": 0.699,
+      "spread": 0.12,
       "rounds": [
-        0.565,
+        0.563,
+        0.699,
+        0.594,
         0.556,
-        0.596,
-        0.609,
-        0.571
-      ]
-    },
-    {
-      "variant": "riverpod",
-      "shape": "sequential",
-      "updates": 20000,
-      "microsPerUpdate": 0.279,
-      "min": 0.258,
-      "max": 0.326,
-      "spread": 0.122,
-      "rounds": [
-        0.326,
-        0.279,
-        0.29,
-        0.258,
-        0.267
-      ]
-    },
-    {
-      "variant": "riverpod",
-      "shape": "burst",
-      "updates": 20000,
-      "microsPerUpdate": 0.435,
-      "min": 0.379,
-      "max": 0.497,
-      "spread": 0.136,
-      "rounds": [
-        0.491,
-        0.4,
-        0.497,
-        0.379,
-        0.435
+        0.627
       ]
     }
   ],
@@ -139,24 +139,24 @@
     "sequential": [
       {
         "faster": "riverpod",
-        "slower": "bloc",
+        "slower": "juice (default logger)",
         "verdict": "faster",
-        "byPercent": 61.283,
+        "byPercent": 35.342,
         "reason": "ranges do not overlap"
       },
       {
-        "faster": "bloc",
+        "faster": "juice (default logger)",
         "slower": "juice (silent logger)",
-        "verdict": "faster",
-        "byPercent": 60.073,
-        "reason": "ranges do not overlap"
+        "verdict": "tie",
+        "byPercent": 27.869,
+        "reason": "ranges overlap (0.605–0.857 vs 0.746–1.221)"
       },
       {
         "faster": "juice (silent logger)",
-        "slower": "juice (default logger)",
-        "verdict": "faster",
-        "byPercent": 6.764,
-        "reason": "ranges do not overlap"
+        "slower": "bloc",
+        "verdict": "tie",
+        "byPercent": 15.368,
+        "reason": "ranges overlap (0.746–1.221 vs 0.882–1.651)"
       }
     ],
     "burst": [
@@ -164,22 +164,22 @@
         "faster": "riverpod",
         "slower": "bloc",
         "verdict": "faster",
-        "byPercent": 23.873,
+        "byPercent": 29.844,
         "reason": "ranges do not overlap"
       },
       {
         "faster": "bloc",
         "slower": "juice (default logger)",
-        "verdict": "faster",
-        "byPercent": 84.109,
-        "reason": "ranges do not overlap"
+        "verdict": "tie",
+        "byPercent": 42.085,
+        "reason": "ranges overlap (0.727–1.125 vs 1.111–1.888)"
       },
       {
         "faster": "juice (default logger)",
         "slower": "juice (silent logger)",
         "verdict": "tie",
-        "byPercent": 2.709,
-        "reason": "ranges overlap (2.561–3.675 vs 2.415–3.771)"
+        "byPercent": 6.059,
+        "reason": "ranges overlap (1.111–1.888 vs 1.287–2.166)"
       }
     ]
   },
@@ -191,54 +191,54 @@
       "cells": 1000,
       "updates": 300,
       "rounds": 3,
-      "buildsPerUpdate": 1.0,
+      "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 382.0,
-        "min": 374.0,
-        "max": 386.0,
-        "spread": 0.016,
+        "median": 399.0,
+        "min": 398.0,
+        "max": 417.0,
+        "spread": 0.024,
         "rounds": [
-          386.0,
-          382.0,
-          374.0
+          398.0,
+          399.0,
+          417.0
         ]
       },
       "buildMicrosP90": {
-        "median": 398.0,
-        "min": 387.0,
-        "max": 406.0,
-        "spread": 0.024,
+        "median": 429.0,
+        "min": 424.0,
+        "max": 457.0,
+        "spread": 0.038,
         "rounds": [
-          406.0,
-          398.0,
-          387.0
+          429.0,
+          424.0,
+          457.0
         ]
       },
       "clockProbeMicros": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 389.0,
-        "spread": 0.007,
+        "median": 405.0,
+        "min": 402.0,
+        "max": 417.0,
+        "spread": 0.019,
         "rounds": [
-          389.0,
-          384.0,
-          384.0
+          402.0,
+          405.0,
+          417.0
         ]
       },
-      "rasterMicrosP50": 455.0,
-      "totalSpanMicrosP50": 292.0,
+      "rasterMicrosP50": 472.0,
+      "totalSpanMicrosP50": 344.0,
       "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": 0.0,
+      "uiThreadMicrosP50": -1.0,
       "clockFactor": 1.0,
       "buildMicrosP50Normalized": {
-        "median": 382.0,
-        "min": 374.0,
-        "max": 386.0,
-        "spread": 0.016,
+        "median": 399.0,
+        "min": 398.0,
+        "max": 417.0,
+        "spread": 0.024,
         "rounds": [
-          386.0,
-          382.0,
-          374.0
+          398.0,
+          399.0,
+          417.0
         ]
       }
     },
@@ -250,52 +250,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 373.0,
-        "min": 369.0,
-        "max": 382.0,
-        "spread": 0.017,
+        "median": 404.0,
+        "min": 398.0,
+        "max": 426.0,
+        "spread": 0.035,
         "rounds": [
-          382.0,
-          369.0,
-          373.0
+          404.0,
+          398.0,
+          426.0
         ]
       },
       "buildMicrosP90": {
-        "median": 388.0,
-        "min": 385.0,
-        "max": 397.0,
-        "spread": 0.015,
+        "median": 433.0,
+        "min": 427.0,
+        "max": 448.0,
+        "spread": 0.024,
         "rounds": [
-          397.0,
-          385.0,
-          388.0
+          433.0,
+          427.0,
+          448.0
         ]
       },
       "clockProbeMicros": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 384.0,
-        "spread": 0.0,
+        "median": 405.0,
+        "min": 402.0,
+        "max": 431.0,
+        "spread": 0.036,
         "rounds": [
-          384.0,
-          384.0,
-          384.0
+          402.0,
+          405.0,
+          431.0
         ]
       },
-      "rasterMicrosP50": 460.0,
-      "totalSpanMicrosP50": 289.0,
-      "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": -11.0,
+      "rasterMicrosP50": 472.0,
+      "totalSpanMicrosP50": 345.0,
+      "vsyncOverheadMicrosP50": -950.0,
+      "uiThreadMicrosP50": -3.0,
       "clockFactor": 1.0,
       "buildMicrosP50Normalized": {
-        "median": 373.0,
-        "min": 369.0,
-        "max": 382.0,
-        "spread": 0.017,
+        "median": 404.0,
+        "min": 398.0,
+        "max": 426.0,
+        "spread": 0.035,
         "rounds": [
-          382.0,
-          369.0,
-          373.0
+          404.0,
+          398.0,
+          426.0
         ]
       }
     },
@@ -307,52 +307,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 375.0,
-        "min": 375.0,
-        "max": 379.0,
-        "spread": 0.005,
+        "median": 397.0,
+        "min": 387.0,
+        "max": 397.0,
+        "spread": 0.013,
         "rounds": [
-          375.0,
-          375.0,
-          379.0
+          397.0,
+          387.0,
+          397.0
         ]
       },
       "buildMicrosP90": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 408.0,
-        "spread": 0.031,
+        "median": 437.0,
+        "min": 416.0,
+        "max": 449.0,
+        "spread": 0.038,
         "rounds": [
-          384.0,
-          384.0,
-          408.0
+          449.0,
+          416.0,
+          437.0
         ]
       },
       "clockProbeMicros": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 389.0,
-        "spread": 0.007,
-        "rounds": [
-          384.0,
-          389.0,
-          384.0
-        ]
-      },
-      "rasterMicrosP50": 448.0,
-      "totalSpanMicrosP50": 281.0,
-      "vsyncOverheadMicrosP50": -952.0,
-      "uiThreadMicrosP50": -7.0,
-      "clockFactor": 1.0,
-      "buildMicrosP50Normalized": {
-        "median": 375.0,
-        "min": 375.0,
-        "max": 379.0,
+        "median": 413.0,
+        "min": 413.0,
+        "max": 417.0,
         "spread": 0.005,
         "rounds": [
-          375.0,
-          375.0,
-          379.0
+          413.0,
+          413.0,
+          417.0
+        ]
+      },
+      "rasterMicrosP50": 476.0,
+      "totalSpanMicrosP50": 356.0,
+      "vsyncOverheadMicrosP50": -951.0,
+      "uiThreadMicrosP50": -17.0,
+      "clockFactor": 0.981,
+      "buildMicrosP50Normalized": {
+        "median": 389.31,
+        "min": 379.504,
+        "max": 389.31,
+        "spread": 0.013,
+        "rounds": [
+          389.31,
+          379.504,
+          389.31
         ]
       }
     },
@@ -364,52 +364,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1077.0,
-        "min": 1072.0,
-        "max": 1105.0,
-        "spread": 0.015,
+        "median": 1183.0,
+        "min": 1171.0,
+        "max": 1325.0,
+        "spread": 0.065,
         "rounds": [
-          1105.0,
-          1072.0,
-          1077.0
+          1183.0,
+          1171.0,
+          1325.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1126.0,
-        "min": 1123.0,
-        "max": 1137.0,
-        "spread": 0.006,
+        "median": 1297.0,
+        "min": 1245.0,
+        "max": 1411.0,
+        "spread": 0.064,
         "rounds": [
-          1137.0,
-          1123.0,
-          1126.0
+          1297.0,
+          1245.0,
+          1411.0
         ]
       },
       "clockProbeMicros": {
-        "median": 387.0,
-        "min": 384.0,
-        "max": 388.0,
-        "spread": 0.005,
+        "median": 423.0,
+        "min": 417.0,
+        "max": 445.0,
+        "spread": 0.033,
         "rounds": [
-          384.0,
-          387.0,
-          388.0
+          423.0,
+          417.0,
+          445.0
         ]
       },
-      "rasterMicrosP50": 468.0,
-      "totalSpanMicrosP50": 1009.0,
-      "vsyncOverheadMicrosP50": -949.0,
-      "uiThreadMicrosP50": 690.0,
-      "clockFactor": 0.992,
+      "rasterMicrosP50": 499.0,
+      "totalSpanMicrosP50": 1178.0,
+      "vsyncOverheadMicrosP50": -945.0,
+      "uiThreadMicrosP50": 765.0,
+      "clockFactor": 0.957,
       "buildMicrosP50Normalized": {
-        "median": 1068.651,
-        "min": 1063.69,
-        "max": 1096.434,
-        "spread": 0.015,
+        "median": 1132.66,
+        "min": 1121.17,
+        "max": 1268.617,
+        "spread": 0.065,
         "rounds": [
-          1096.434,
-          1063.69,
-          1068.651
+          1132.66,
+          1121.17,
+          1268.617
         ]
       }
     },
@@ -421,52 +421,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 429.0,
-        "min": 423.0,
-        "max": 429.0,
-        "spread": 0.007,
+        "median": 447.0,
+        "min": 443.0,
+        "max": 462.0,
+        "spread": 0.021,
         "rounds": [
-          429.0,
-          429.0,
-          423.0
+          443.0,
+          447.0,
+          462.0
         ]
       },
       "buildMicrosP90": {
-        "median": 443.0,
-        "min": 437.0,
-        "max": 447.0,
-        "spread": 0.011,
+        "median": 471.0,
+        "min": 468.0,
+        "max": 506.0,
+        "spread": 0.04,
         "rounds": [
-          447.0,
-          443.0,
-          437.0
+          468.0,
+          471.0,
+          506.0
         ]
       },
       "clockProbeMicros": {
-        "median": 389.0,
-        "min": 384.0,
-        "max": 389.0,
-        "spread": 0.006,
+        "median": 413.0,
+        "min": 405.0,
+        "max": 417.0,
+        "spread": 0.015,
         "rounds": [
-          389.0,
-          384.0,
-          389.0
+          413.0,
+          405.0,
+          417.0
         ]
       },
-      "rasterMicrosP50": 448.0,
-      "totalSpanMicrosP50": 333.0,
-      "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": 42.0,
-      "clockFactor": 0.987,
+      "rasterMicrosP50": 471.0,
+      "totalSpanMicrosP50": 399.0,
+      "vsyncOverheadMicrosP50": -950.0,
+      "uiThreadMicrosP50": 44.0,
+      "clockFactor": 0.981,
       "buildMicrosP50Normalized": {
-        "median": 423.486,
-        "min": 417.563,
-        "max": 423.486,
-        "spread": 0.007,
+        "median": 438.341,
+        "min": 434.419,
+        "max": 453.051,
+        "spread": 0.021,
         "rounds": [
-          423.486,
-          423.486,
-          417.563
+          434.419,
+          438.341,
+          453.051
         ]
       }
     },
@@ -478,52 +478,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1231.0,
-        "min": 1207.0,
-        "max": 1232.0,
-        "spread": 0.01,
+        "median": 1368.0,
+        "min": 1336.0,
+        "max": 1462.0,
+        "spread": 0.046,
         "rounds": [
-          1207.0,
-          1231.0,
-          1232.0
+          1368.0,
+          1336.0,
+          1462.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1265.0,
-        "min": 1241.0,
-        "max": 1284.0,
-        "spread": 0.017,
+        "median": 1472.0,
+        "min": 1420.0,
+        "max": 1527.0,
+        "spread": 0.036,
         "rounds": [
-          1241.0,
-          1265.0,
-          1284.0
+          1472.0,
+          1420.0,
+          1527.0
         ]
       },
       "clockProbeMicros": {
-        "median": 389.0,
-        "min": 384.5,
-        "max": 393.0,
-        "spread": 0.011,
+        "median": 431.0,
+        "min": 425.0,
+        "max": 462.0,
+        "spread": 0.043,
         "rounds": [
-          389.0,
-          384.5,
-          393.0
+          431.0,
+          425.0,
+          462.0
         ]
       },
-      "rasterMicrosP50": 460.0,
-      "totalSpanMicrosP50": 1152.0,
-      "vsyncOverheadMicrosP50": -949.0,
-      "uiThreadMicrosP50": 841.0,
-      "clockFactor": 0.987,
+      "rasterMicrosP50": 509.0,
+      "totalSpanMicrosP50": 1385.0,
+      "vsyncOverheadMicrosP50": -945.0,
+      "uiThreadMicrosP50": 940.0,
+      "clockFactor": 0.94,
       "buildMicrosP50Normalized": {
-        "median": 1215.177,
-        "min": 1191.486,
-        "max": 1216.165,
-        "spread": 0.01,
+        "median": 1285.476,
+        "min": 1255.406,
+        "max": 1373.805,
+        "spread": 0.046,
         "rounds": [
-          1191.486,
-          1215.177,
-          1216.165
+          1285.476,
+          1255.406,
+          1373.805
         ]
       }
     },
@@ -535,52 +535,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 373.0,
-        "min": 370.0,
-        "max": 373.0,
-        "spread": 0.004,
+        "median": 399.0,
+        "min": 398.0,
+        "max": 403.0,
+        "spread": 0.006,
         "rounds": [
-          373.0,
-          373.0,
-          370.0
+          399.0,
+          398.0,
+          403.0
         ]
       },
       "buildMicrosP90": {
-        "median": 388.0,
-        "min": 385.0,
-        "max": 392.0,
-        "spread": 0.009,
+        "median": 455.0,
+        "min": 442.0,
+        "max": 486.0,
+        "spread": 0.048,
         "rounds": [
-          385.0,
-          388.0,
-          392.0
+          455.0,
+          486.0,
+          442.0
         ]
       },
       "clockProbeMicros": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 388.0,
-        "spread": 0.005,
+        "median": 413.0,
+        "min": 405.0,
+        "max": 417.0,
+        "spread": 0.015,
         "rounds": [
-          384.0,
-          384.0,
-          388.0
+          413.0,
+          405.0,
+          417.0
         ]
       },
-      "rasterMicrosP50": 451.0,
-      "totalSpanMicrosP50": 283.0,
-      "vsyncOverheadMicrosP50": -952.0,
-      "uiThreadMicrosP50": -11.0,
-      "clockFactor": 1.0,
+      "rasterMicrosP50": 481.0,
+      "totalSpanMicrosP50": 364.0,
+      "vsyncOverheadMicrosP50": -951.0,
+      "uiThreadMicrosP50": -6.0,
+      "clockFactor": 0.981,
       "buildMicrosP50Normalized": {
-        "median": 373.0,
-        "min": 370.0,
-        "max": 373.0,
-        "spread": 0.004,
+        "median": 391.271,
+        "min": 390.291,
+        "max": 395.194,
+        "spread": 0.006,
         "rounds": [
-          373.0,
-          373.0,
-          370.0
+          391.271,
+          390.291,
+          395.194
         ]
       }
     },
@@ -592,52 +592,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1.0,
       "buildMicrosP50": {
-        "median": 379.0,
-        "min": 379.0,
-        "max": 380.0,
-        "spread": 0.001,
+        "median": 398.0,
+        "min": 397.0,
+        "max": 413.0,
+        "spread": 0.02,
         "rounds": [
-          380.0,
-          379.0,
-          379.0
+          398.0,
+          397.0,
+          413.0
         ]
       },
       "buildMicrosP90": {
-        "median": 394.0,
-        "min": 394.0,
-        "max": 397.0,
-        "spread": 0.004,
+        "median": 424.0,
+        "min": 421.0,
+        "max": 453.0,
+        "spread": 0.038,
         "rounds": [
-          397.0,
-          394.0,
-          394.0
+          424.0,
+          421.0,
+          453.0
         ]
       },
       "clockProbeMicros": {
-        "median": 389.0,
-        "min": 384.0,
-        "max": 389.0,
-        "spread": 0.006,
+        "median": 413.0,
+        "min": 411.0,
+        "max": 426.0,
+        "spread": 0.018,
         "rounds": [
-          389.0,
-          389.0,
-          384.0
+          413.0,
+          411.0,
+          426.0
         ]
       },
-      "rasterMicrosP50": 449.0,
-      "totalSpanMicrosP50": 288.0,
+      "rasterMicrosP50": 470.0,
+      "totalSpanMicrosP50": 352.0,
       "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": -7.0,
-      "clockFactor": 0.987,
+      "uiThreadMicrosP50": -11.0,
+      "clockFactor": 0.981,
       "buildMicrosP50Normalized": {
-        "median": 374.129,
-        "min": 374.129,
-        "max": 375.116,
-        "spread": 0.001,
+        "median": 390.291,
+        "min": 389.31,
+        "max": 405.0,
+        "spread": 0.02,
         "rounds": [
-          375.116,
-          374.129,
-          374.129
+          390.291,
+          389.31,
+          405.0
         ]
       }
     },
@@ -649,52 +649,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1050.0,
-        "min": 1050.0,
-        "max": 1059.0,
-        "spread": 0.004,
+        "median": 1160.0,
+        "min": 1155.0,
+        "max": 1211.0,
+        "spread": 0.024,
         "rounds": [
-          1050.0,
-          1050.0,
-          1059.0
+          1155.0,
+          1160.0,
+          1211.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1094.0,
-        "min": 1093.0,
-        "max": 1100.0,
-        "spread": 0.003,
+        "median": 1222.0,
+        "min": 1220.0,
+        "max": 1314.0,
+        "spread": 0.038,
         "rounds": [
-          1093.0,
-          1094.0,
-          1100.0
+          1220.0,
+          1222.0,
+          1314.0
         ]
       },
       "clockProbeMicros": {
-        "median": 389.0,
-        "min": 389.0,
-        "max": 389.0,
-        "spread": 0.0,
+        "median": 427.0,
+        "min": 426.0,
+        "max": 434.0,
+        "spread": 0.009,
         "rounds": [
-          389.0,
-          389.0,
-          389.0
+          427.0,
+          426.0,
+          434.0
         ]
       },
-      "rasterMicrosP50": 453.0,
-      "totalSpanMicrosP50": 963.0,
-      "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": 664.0,
-      "clockFactor": 0.987,
+      "rasterMicrosP50": 492.0,
+      "totalSpanMicrosP50": 1151.0,
+      "vsyncOverheadMicrosP50": -948.0,
+      "uiThreadMicrosP50": 740.0,
+      "clockFactor": 0.948,
       "buildMicrosP50Normalized": {
-        "median": 1036.504,
-        "min": 1036.504,
-        "max": 1045.388,
-        "spread": 0.004,
+        "median": 1100.234,
+        "min": 1095.492,
+        "max": 1148.607,
+        "spread": 0.024,
         "rounds": [
-          1036.504,
-          1036.504,
-          1045.388
+          1095.492,
+          1100.234,
+          1148.607
         ]
       }
     }
@@ -703,75 +703,75 @@
   "frameComparisons": {
     "tunedP50": [
       {
-        "faster": "juice · JuiceSelector + groups",
-        "slower": "riverpod · family",
-        "verdict": "tie",
-        "byPercent": 0.0,
-        "reason": "ranges overlap (369.0–382.0 vs 370.0–373.0)"
-      },
-      {
-        "faster": "riverpod · family",
-        "slower": "juice · JuiceSelector",
-        "verdict": "faster",
-        "byPercent": 0.533,
-        "reason": "ranges do not overlap"
-      },
-      {
         "faster": "juice · JuiceSelector",
         "slower": "riverpod · select",
         "verdict": "tie",
-        "byPercent": 1.055,
-        "reason": "ranges overlap (375.0–379.0 vs 379.0–380.0)"
+        "byPercent": 0.251,
+        "reason": "ranges overlap (387.0–397.0 vs 397.0–413.0)"
       },
       {
         "faster": "riverpod · select",
         "slower": "juice · groups",
         "verdict": "tie",
-        "byPercent": 0.785,
-        "reason": "ranges overlap (379.0–380.0 vs 374.0–386.0)"
+        "byPercent": 0.251,
+        "reason": "ranges overlap (397.0–413.0 vs 398.0–417.0)"
       },
       {
         "faster": "juice · groups",
+        "slower": "riverpod · family",
+        "verdict": "tie",
+        "byPercent": 0.0,
+        "reason": "ranges overlap (398.0–417.0 vs 398.0–403.0)"
+      },
+      {
+        "faster": "riverpod · family",
+        "slower": "juice · JuiceSelector + groups",
+        "verdict": "tie",
+        "byPercent": 1.238,
+        "reason": "ranges overlap (398.0–403.0 vs 398.0–426.0)"
+      },
+      {
+        "faster": "juice · JuiceSelector + groups",
         "slower": "bloc · BlocSelector",
         "verdict": "faster",
-        "byPercent": 10.956,
+        "byPercent": 9.62,
         "reason": "ranges do not overlap"
       }
     ],
     "tunedP50Normalized": [
       {
-        "faster": "juice · JuiceSelector + groups",
-        "slower": "riverpod · family",
-        "verdict": "tie",
-        "byPercent": 0.0,
-        "reason": "ranges overlap (369.0–382.0 vs 370.0–373.0)"
-      },
-      {
-        "faster": "riverpod · family",
+        "faster": "juice · JuiceSelector",
         "slower": "riverpod · select",
-        "verdict": "faster",
-        "byPercent": 0.302,
-        "reason": "ranges do not overlap"
+        "verdict": "tie",
+        "byPercent": 0.251,
+        "reason": "ranges overlap (379.504–389.31 vs 389.31–405.0)"
       },
       {
         "faster": "riverpod · select",
-        "slower": "juice · JuiceSelector",
+        "slower": "riverpod · family",
         "verdict": "tie",
-        "byPercent": 0.232,
-        "reason": "ranges overlap (374.129–375.116 vs 375.0–379.0)"
+        "byPercent": 0.251,
+        "reason": "ranges overlap (389.31–405.0 vs 390.291–395.194)"
       },
       {
-        "faster": "juice · JuiceSelector",
+        "faster": "riverpod · family",
         "slower": "juice · groups",
-        "verdict": "tie",
-        "byPercent": 1.832,
-        "reason": "ranges overlap (375.0–379.0 vs 374.0–386.0)"
+        "verdict": "faster",
+        "byPercent": 1.937,
+        "reason": "ranges do not overlap"
       },
       {
         "faster": "juice · groups",
+        "slower": "juice · JuiceSelector + groups",
+        "verdict": "tie",
+        "byPercent": 1.238,
+        "reason": "ranges overlap (398.0–417.0 vs 398.0–426.0)"
+      },
+      {
+        "faster": "juice · JuiceSelector + groups",
         "slower": "bloc · BlocSelector",
         "verdict": "faster",
-        "byPercent": 9.796,
+        "byPercent": 7.834,
         "reason": "ranges do not overlap"
       }
     ]
@@ -785,52 +785,52 @@
       "rounds": 3,
       "buildsPerUpdate": 50.0,
       "buildMicrosP50": {
-        "median": 666.0,
-        "min": 664.0,
-        "max": 672.0,
-        "spread": 0.006,
+        "median": 699.0,
+        "min": 697.0,
+        "max": 704.0,
+        "spread": 0.005,
         "rounds": [
-          664.0,
-          666.0,
-          672.0
+          704.0,
+          699.0,
+          697.0
         ]
       },
       "buildMicrosP90": {
-        "median": 710.0,
-        "min": 702.0,
-        "max": 712.0,
-        "spread": 0.007,
+        "median": 790.0,
+        "min": 782.0,
+        "max": 797.0,
+        "spread": 0.009,
         "rounds": [
-          712.0,
-          702.0,
-          710.0
+          782.0,
+          790.0,
+          797.0
         ]
       },
       "clockProbeMicros": {
-        "median": 404.0,
-        "min": 400.0,
-        "max": 410.0,
-        "spread": 0.012,
+        "median": 417.0,
+        "min": 417.0,
+        "max": 431.0,
+        "spread": 0.017,
         "rounds": [
-          400.0,
-          404.0,
-          410.0
+          431.0,
+          417.0,
+          417.0
         ]
       },
-      "rasterMicrosP50": 489.0,
-      "totalSpanMicrosP50": 633.0,
-      "vsyncOverheadMicrosP50": -950.0,
-      "uiThreadMicrosP50": 267.0,
-      "clockFactor": 0.95,
+      "rasterMicrosP50": 496.0,
+      "totalSpanMicrosP50": 683.0,
+      "vsyncOverheadMicrosP50": -948.0,
+      "uiThreadMicrosP50": 281.0,
+      "clockFactor": 1.0,
       "buildMicrosP50Normalized": {
-        "median": 633.03,
-        "min": 631.129,
-        "max": 638.733,
-        "spread": 0.006,
+        "median": 699.0,
+        "min": 697.0,
+        "max": 704.0,
+        "spread": 0.005,
         "rounds": [
-          631.129,
-          633.03,
-          638.733
+          704.0,
+          699.0,
+          697.0
         ]
       }
     },
@@ -842,52 +842,52 @@
       "rounds": 3,
       "buildsPerUpdate": 50.0,
       "buildMicrosP50": {
-        "median": 648.0,
-        "min": 641.0,
-        "max": 655.0,
-        "spread": 0.011,
+        "median": 692.0,
+        "min": 685.0,
+        "max": 703.0,
+        "spread": 0.013,
         "rounds": [
-          641.0,
-          655.0,
-          648.0
+          703.0,
+          685.0,
+          692.0
         ]
       },
       "buildMicrosP90": {
-        "median": 698.0,
-        "min": 678.0,
-        "max": 698.0,
-        "spread": 0.014,
+        "median": 776.0,
+        "min": 744.0,
+        "max": 779.0,
+        "spread": 0.023,
         "rounds": [
-          678.0,
-          698.0,
-          698.0
+          779.0,
+          744.0,
+          776.0
         ]
       },
       "clockProbeMicros": {
-        "median": 407.0,
-        "min": 394.0,
-        "max": 409.0,
-        "spread": 0.018,
+        "median": 429.5,
+        "min": 417.0,
+        "max": 431.0,
+        "spread": 0.016,
         "rounds": [
-          394.0,
-          407.0,
-          409.0
+          417.0,
+          429.5,
+          431.0
         ]
       },
-      "rasterMicrosP50": 497.0,
-      "totalSpanMicrosP50": 620.0,
-      "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": 249.0,
-      "clockFactor": 0.943,
+      "rasterMicrosP50": 493.0,
+      "totalSpanMicrosP50": 686.0,
+      "vsyncOverheadMicrosP50": -949.0,
+      "uiThreadMicrosP50": 262.0,
+      "clockFactor": 0.971,
       "buildMicrosP50Normalized": {
-        "median": 611.381,
-        "min": 604.776,
-        "max": 617.985,
-        "spread": 0.011,
+        "median": 671.86,
+        "min": 665.064,
+        "max": 682.54,
+        "spread": 0.013,
         "rounds": [
-          604.776,
-          617.985,
-          611.381
+          682.54,
+          665.064,
+          671.86
         ]
       }
     },
@@ -899,52 +899,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1339.0,
-        "min": 1325.0,
-        "max": 1341.0,
-        "spread": 0.006,
+        "median": 1535.0,
+        "min": 1523.0,
+        "max": 1546.0,
+        "spread": 0.007,
         "rounds": [
-          1325.0,
-          1341.0,
-          1339.0
+          1535.0,
+          1523.0,
+          1546.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1405.0,
-        "min": 1386.0,
-        "max": 1409.0,
-        "spread": 0.008,
+        "median": 1630.0,
+        "min": 1614.0,
+        "max": 1638.0,
+        "spread": 0.007,
         "rounds": [
-          1386.0,
-          1409.0,
-          1405.0
+          1630.0,
+          1614.0,
+          1638.0
         ]
       },
       "clockProbeMicros": {
-        "median": 394.0,
-        "min": 394.0,
-        "max": 394.0,
-        "spread": 0.0,
+        "median": 457.0,
+        "min": 456.0,
+        "max": 458.0,
+        "spread": 0.002,
         "rounds": [
-          394.0,
-          394.0,
-          394.0
+          458.0,
+          456.0,
+          457.0
         ]
       },
-      "rasterMicrosP50": 477.0,
-      "totalSpanMicrosP50": 1282.0,
-      "vsyncOverheadMicrosP50": -947.0,
-      "uiThreadMicrosP50": 944.0,
-      "clockFactor": 0.975,
+      "rasterMicrosP50": 547.0,
+      "totalSpanMicrosP50": 1619.0,
+      "vsyncOverheadMicrosP50": -943.0,
+      "uiThreadMicrosP50": 1077.0,
+      "clockFactor": 0.912,
       "buildMicrosP50Normalized": {
-        "median": 1305.015,
-        "min": 1291.371,
-        "max": 1306.964,
-        "spread": 0.006,
+        "median": 1400.646,
+        "min": 1389.696,
+        "max": 1410.683,
+        "spread": 0.007,
         "rounds": [
-          1291.371,
-          1306.964,
-          1305.015
+          1400.646,
+          1389.696,
+          1410.683
         ]
       }
     },
@@ -956,52 +956,52 @@
       "rounds": 3,
       "buildsPerUpdate": 50.0,
       "buildMicrosP50": {
-        "median": 688.0,
-        "min": 677.0,
-        "max": 690.0,
-        "spread": 0.009,
+        "median": 751.0,
+        "min": 746.0,
+        "max": 752.0,
+        "spread": 0.004,
         "rounds": [
-          677.0,
-          688.0,
-          690.0
+          746.0,
+          752.0,
+          751.0
         ]
       },
       "buildMicrosP90": {
-        "median": 722.0,
-        "min": 708.0,
-        "max": 726.0,
-        "spread": 0.012,
+        "median": 854.0,
+        "min": 836.0,
+        "max": 859.0,
+        "spread": 0.013,
         "rounds": [
-          708.0,
-          722.0,
-          726.0
+          854.0,
+          836.0,
+          859.0
         ]
       },
       "clockProbeMicros": {
-        "median": 384.0,
-        "min": 384.0,
-        "max": 388.0,
-        "spread": 0.005,
+        "median": 417.0,
+        "min": 417.0,
+        "max": 427.0,
+        "spread": 0.012,
         "rounds": [
-          384.0,
-          384.0,
-          388.0
+          417.0,
+          427.0,
+          417.0
         ]
       },
-      "rasterMicrosP50": 461.0,
-      "totalSpanMicrosP50": 603.0,
-      "vsyncOverheadMicrosP50": -952.0,
-      "uiThreadMicrosP50": 303.0,
+      "rasterMicrosP50": 495.0,
+      "totalSpanMicrosP50": 734.0,
+      "vsyncOverheadMicrosP50": -949.0,
+      "uiThreadMicrosP50": 334.0,
       "clockFactor": 1.0,
       "buildMicrosP50Normalized": {
-        "median": 688.0,
-        "min": 677.0,
-        "max": 690.0,
-        "spread": 0.009,
+        "median": 751.0,
+        "min": 746.0,
+        "max": 752.0,
+        "spread": 0.004,
         "rounds": [
-          677.0,
-          688.0,
-          690.0
+          746.0,
+          752.0,
+          751.0
         ]
       }
     },
@@ -1013,52 +1013,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1498.0,
-        "min": 1468.0,
-        "max": 1534.0,
-        "spread": 0.022,
+        "median": 1712.0,
+        "min": 1700.0,
+        "max": 1714.0,
+        "spread": 0.004,
         "rounds": [
-          1468.0,
-          1534.0,
-          1498.0
+          1700.0,
+          1712.0,
+          1714.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1550.0,
-        "min": 1530.0,
-        "max": 1610.0,
-        "spread": 0.026,
+        "median": 1892.0,
+        "min": 1890.0,
+        "max": 1912.0,
+        "spread": 0.006,
         "rounds": [
-          1530.0,
-          1610.0,
-          1550.0
+          1890.0,
+          1892.0,
+          1912.0
         ]
       },
       "clockProbeMicros": {
-        "median": 401.5,
-        "min": 397.0,
-        "max": 403.5,
-        "spread": 0.008,
+        "median": 458.0,
+        "min": 458.0,
+        "max": 462.0,
+        "spread": 0.004,
         "rounds": [
-          397.0,
-          401.5,
-          403.5
+          462.0,
+          458.0,
+          458.0
         ]
       },
-      "rasterMicrosP50": 479.0,
-      "totalSpanMicrosP50": 1460.0,
-      "vsyncOverheadMicrosP50": -947.0,
-      "uiThreadMicrosP50": 1098.0,
-      "clockFactor": 0.956,
+      "rasterMicrosP50": 550.0,
+      "totalSpanMicrosP50": 1798.0,
+      "vsyncOverheadMicrosP50": -943.0,
+      "uiThreadMicrosP50": 1247.0,
+      "clockFactor": 0.91,
       "buildMicrosP50Normalized": {
-        "median": 1432.707,
-        "min": 1404.015,
-        "max": 1467.138,
-        "spread": 0.022,
+        "median": 1558.742,
+        "min": 1547.817,
+        "max": 1560.563,
+        "spread": 0.004,
         "rounds": [
-          1404.015,
-          1467.138,
-          1432.707
+          1547.817,
+          1558.742,
+          1560.563
         ]
       }
     },
@@ -1070,52 +1070,52 @@
       "rounds": 3,
       "buildsPerUpdate": 50.0,
       "buildMicrosP50": {
-        "median": 723.0,
-        "min": 717.0,
-        "max": 747.0,
-        "spread": 0.021,
+        "median": 804.0,
+        "min": 796.0,
+        "max": 806.0,
+        "spread": 0.006,
         "rounds": [
-          717.0,
-          723.0,
-          747.0
+          806.0,
+          804.0,
+          796.0
         ]
       },
       "buildMicrosP90": {
-        "median": 778.0,
-        "min": 739.0,
-        "max": 828.0,
-        "spread": 0.057,
+        "median": 1026.0,
+        "min": 1025.0,
+        "max": 1026.0,
+        "spread": 0.0,
         "rounds": [
-          739.0,
-          778.0,
-          828.0
+          1026.0,
+          1026.0,
+          1025.0
         ]
       },
       "clockProbeMicros": {
-        "median": 434.0,
-        "min": 431.0,
-        "max": 437.0,
-        "spread": 0.007,
+        "median": 493.5,
+        "min": 492.0,
+        "max": 500.0,
+        "spread": 0.008,
         "rounds": [
-          431.0,
-          434.0,
-          437.0
+          500.0,
+          492.0,
+          493.5
         ]
       },
-      "rasterMicrosP50": 516.0,
-      "totalSpanMicrosP50": 745.0,
-      "vsyncOverheadMicrosP50": -952.0,
-      "uiThreadMicrosP50": 290.0,
-      "clockFactor": 0.885,
+      "rasterMicrosP50": 582.0,
+      "totalSpanMicrosP50": 949.0,
+      "vsyncOverheadMicrosP50": -949.0,
+      "uiThreadMicrosP50": 313.0,
+      "clockFactor": 0.845,
       "buildMicrosP50Normalized": {
-        "median": 639.705,
-        "min": 634.396,
-        "max": 660.94,
-        "spread": 0.021,
+        "median": 679.368,
+        "min": 672.608,
+        "max": 681.058,
+        "spread": 0.006,
         "rounds": [
-          634.396,
-          639.705,
-          660.94
+          681.058,
+          679.368,
+          672.608
         ]
       }
     },
@@ -1127,52 +1127,52 @@
       "rounds": 3,
       "buildsPerUpdate": 50.0,
       "buildMicrosP50": {
-        "median": 792.0,
-        "min": 777.0,
-        "max": 793.0,
-        "spread": 0.01,
+        "median": 840.0,
+        "min": 835.0,
+        "max": 844.0,
+        "spread": 0.005,
         "rounds": [
-          777.0,
-          793.0,
-          792.0
+          835.0,
+          840.0,
+          844.0
         ]
       },
       "buildMicrosP90": {
-        "median": 834.0,
-        "min": 832.0,
-        "max": 835.0,
-        "spread": 0.002,
+        "median": 899.0,
+        "min": 897.0,
+        "max": 945.0,
+        "spread": 0.027,
         "rounds": [
-          832.0,
-          835.0,
-          834.0
+          899.0,
+          897.0,
+          945.0
         ]
       },
       "clockProbeMicros": {
-        "median": 393.0,
-        "min": 392.0,
-        "max": 394.0,
-        "spread": 0.003,
+        "median": 426.0,
+        "min": 417.0,
+        "max": 427.0,
+        "spread": 0.012,
         "rounds": [
-          392.0,
-          393.0,
-          394.0
+          426.0,
+          417.0,
+          427.0
         ]
       },
-      "rasterMicrosP50": 466.0,
-      "totalSpanMicrosP50": 721.0,
-      "vsyncOverheadMicrosP50": -951.0,
-      "uiThreadMicrosP50": 401.0,
-      "clockFactor": 0.977,
+      "rasterMicrosP50": 493.0,
+      "totalSpanMicrosP50": 822.0,
+      "vsyncOverheadMicrosP50": -948.0,
+      "uiThreadMicrosP50": 424.0,
+      "clockFactor": 0.979,
       "buildMicrosP50Normalized": {
-        "median": 773.863,
-        "min": 759.206,
-        "max": 774.84,
-        "spread": 0.01,
+        "median": 822.254,
+        "min": 817.359,
+        "max": 826.169,
+        "spread": 0.005,
         "rounds": [
-          759.206,
-          774.84,
-          773.863
+          817.359,
+          822.254,
+          826.169
         ]
       }
     },
@@ -1184,52 +1184,52 @@
       "rounds": 3,
       "buildsPerUpdate": 1000.0,
       "buildMicrosP50": {
-        "median": 1330.0,
-        "min": 1323.0,
-        "max": 1337.0,
-        "spread": 0.005,
+        "median": 1522.0,
+        "min": 1509.0,
+        "max": 1528.0,
+        "spread": 0.006,
         "rounds": [
-          1323.0,
-          1330.0,
-          1337.0
+          1509.0,
+          1528.0,
+          1522.0
         ]
       },
       "buildMicrosP90": {
-        "median": 1385.0,
-        "min": 1385.0,
-        "max": 1399.0,
-        "spread": 0.005,
+        "median": 1601.0,
+        "min": 1590.0,
+        "max": 1657.0,
+        "spread": 0.021,
         "rounds": [
-          1385.0,
-          1385.0,
-          1399.0
+          1590.0,
+          1601.0,
+          1657.0
         ]
       },
       "clockProbeMicros": {
-        "median": 400.0,
-        "min": 394.0,
-        "max": 405.0,
-        "spread": 0.014,
+        "median": 457.0,
+        "min": 447.5,
+        "max": 458.0,
+        "spread": 0.011,
         "rounds": [
-          394.0,
-          400.0,
-          405.0
+          457.0,
+          447.5,
+          458.0
         ]
       },
-      "rasterMicrosP50": 473.0,
-      "totalSpanMicrosP50": 1277.0,
-      "vsyncOverheadMicrosP50": -950.0,
-      "uiThreadMicrosP50": 933.0,
-      "clockFactor": 0.96,
+      "rasterMicrosP50": 543.0,
+      "totalSpanMicrosP50": 1597.0,
+      "vsyncOverheadMicrosP50": -945.0,
+      "uiThreadMicrosP50": 1066.0,
+      "clockFactor": 0.912,
       "buildMicrosP50Normalized": {
-        "median": 1276.8,
-        "min": 1270.08,
-        "max": 1283.52,
-        "spread": 0.005,
+        "median": 1388.783,
+        "min": 1376.921,
+        "max": 1394.258,
+        "spread": 0.006,
         "rounds": [
-          1270.08,
-          1276.8,
-          1283.52
+          1376.921,
+          1394.258,
+          1388.783
         ]
       }
     }
@@ -1239,61 +1239,124 @@
       {
         "faster": "wide · juice · JuiceSelector + groups",
         "slower": "wide · juice · groups",
-        "verdict": "faster",
-        "byPercent": 2.703,
-        "reason": "ranges do not overlap"
+        "verdict": "tie",
+        "byPercent": 1.001,
+        "reason": "ranges overlap (685.0–703.0 vs 697.0–704.0)"
       },
       {
         "faster": "wide · juice · groups",
         "slower": "wide · bloc · BlocSelector",
         "verdict": "faster",
-        "byPercent": 3.198,
+        "byPercent": 6.924,
         "reason": "ranges do not overlap"
       },
       {
         "faster": "wide · bloc · BlocSelector",
         "slower": "wide · riverpod · family",
         "verdict": "faster",
-        "byPercent": 4.841,
+        "byPercent": 6.592,
         "reason": "ranges do not overlap"
       },
       {
         "faster": "wide · riverpod · family",
         "slower": "wide · riverpod · select",
         "verdict": "faster",
-        "byPercent": 8.712,
+        "byPercent": 4.286,
         "reason": "ranges do not overlap"
       }
     ],
     "tunedP50Normalized": [
       {
         "faster": "wide · juice · JuiceSelector + groups",
+        "slower": "wide · riverpod · family",
+        "verdict": "tie",
+        "byPercent": 1.105,
+        "reason": "ranges overlap (665.064–682.54 vs 672.608–681.058)"
+      },
+      {
+        "faster": "wide · riverpod · family",
         "slower": "wide · juice · groups",
         "verdict": "faster",
-        "byPercent": 3.42,
+        "byPercent": 2.809,
         "reason": "ranges do not overlap"
       },
       {
         "faster": "wide · juice · groups",
-        "slower": "wide · riverpod · family",
-        "verdict": "tie",
-        "byPercent": 1.044,
-        "reason": "ranges overlap (631.129–638.733 vs 634.396–660.94)"
-      },
-      {
-        "faster": "wide · riverpod · family",
         "slower": "wide · bloc · BlocSelector",
         "verdict": "faster",
-        "byPercent": 7.02,
+        "byPercent": 6.924,
         "reason": "ranges do not overlap"
       },
       {
         "faster": "wide · bloc · BlocSelector",
         "slower": "wide · riverpod · select",
         "verdict": "faster",
-        "byPercent": 11.095,
+        "byPercent": 8.666,
         "reason": "ranges do not overlap"
       }
     ]
+  },
+  "framesParent": [
+    {
+      "variant": "parent · juice · groups",
+      "framework": "juice",
+      "cells": 1000,
+      "updates": 300,
+      "rounds": 3,
+      "buildsPerUpdate": 1000.0,
+      "buildMicrosP50": {
+        "median": 1089.0,
+        "min": 1080.0,
+        "max": 1097.0,
+        "spread": 0.008,
+        "rounds": [
+          1089.0,
+          1080.0,
+          1097.0
+        ]
+      },
+      "buildMicrosP90": {
+        "median": 1207.0,
+        "min": 1204.0,
+        "max": 1209.0,
+        "spread": 0.002,
+        "rounds": [
+          1207.0,
+          1204.0,
+          1209.0
+        ]
+      },
+      "clockProbeMicros": {
+        "median": 435.0,
+        "min": 435.0,
+        "max": 439.0,
+        "spread": 0.005,
+        "rounds": [
+          435.0,
+          439.0,
+          435.0
+        ]
+      },
+      "rasterMicrosP50": 446.0,
+      "totalSpanMicrosP50": 1048.0,
+      "vsyncOverheadMicrosP50": -946.0,
+      "uiThreadMicrosP50": 656.0,
+      "clockFactor": 1.0,
+      "buildMicrosP50Normalized": {
+        "median": 1089.0,
+        "min": 1080.0,
+        "max": 1097.0,
+        "spread": 0.008,
+        "rounds": [
+          1089.0,
+          1080.0,
+          1097.0
+        ]
+      }
+    }
+  ],
+  "frameParentComparisons": {
+    "tunedP50": [],
+    "tunedP50Normalized": []
   }
 }

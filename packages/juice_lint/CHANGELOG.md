@@ -2,6 +2,15 @@
 
 ## [0.3.0] - unreleased (tracks juice 2.0.0; the package is not yet on pub.dev)
 
+### Docs
+- A fresh-project check against Flutter 3.44.4 / Dart 3.12.2 (juice 2.0.0
+  from pub.dev; all six rules reported by `dart analyze`; the quick fix
+  offered as an IDE code action) corrected three README statements:
+  a `git:` plugin source is silently ignored by the analysis server (0.2.0
+  listed it as an option) — use a version or `path:`; `flutter analyze`
+  shows none of the findings on 3.44.4 as well as 3.47.5; and `dart fix`
+  does not apply the quick fix — it is an IDE code action only.
+
 ### Removed
 - `juice_missing_concurrency_mode` (the one opt-in rule). juice 2.0.0 makes
   `concurrency:` a required parameter on every builder, so a bare builder is

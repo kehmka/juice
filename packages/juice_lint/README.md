@@ -10,12 +10,12 @@ so its diagnostics are reported by the stock `dart analyze` CLI and in CI —
 not only in an IDE. Requires a Dart 3.10+ / Flutter 3.38+ SDK at analysis
 time.
 
-> **`flutter analyze` caveat (verified on Flutter 3.47.5):** `flutter
-> analyze` drives the analysis server over LSP and exits as soon as the
-> server reports analysis done — before the plugin isolate has published
-> its results — so it prints "No issues found!" even when juice_lint has
-> findings. Use `dart analyze` (it works on Flutter packages too) for the
-> CLI/CI gate.
+> **`flutter analyze` caveat (verified on Flutter 3.44.4 and 3.47.5):**
+> `flutter analyze` drives the analysis server over LSP and exits as soon
+> as the server reports analysis done — before the plugin isolate has
+> published its results — so it shows none of juice_lint's findings, even
+> when there are some. Use `dart analyze` (it works on Flutter packages
+> too) for the CLI/CI gate.
 
 ## Rules
 
@@ -26,7 +26,7 @@ all but one are **enabled by default**.
 | Rule | Default | Flags | Why |
 | --- | --- | --- | --- |
 | `juice_generic_event` | on | a concrete generic `EventBase` subclass (`Foo<T>`); abstract/sealed generic bases are exempt | events match by EXACT runtime type, so `typeOfEvent: Foo` never fires for `Foo<T>` — a silent dead event (gotcha 2) |
-| `juice_mutable_state_field` | on | a non-`final` instance field on a `BlocState` | state is an immutable value changed only through `copyWith`. **Quick fix:** make it `final` |
+| `juice_mutable_state_field` | on | a non-`final` instance field on a `BlocState` | state is an immutable value changed only through `copyWith`. **Quick fix** (an IDE code action — see below): make it `final` |
 | `juice_behavior_in_state` | on | a function/`Timer`/`StreamSubscription`/`StreamController`/`*Controller`/`*Bloc` field on a `BlocState` | state holds DATA, not behavior (gotcha 5) |
 | `juice_send_in_build` | on | `bloc.send(...)` / `sendCancellable(...)` directly in a `build`/`onBuild` body | dispatches on every rebuild. Calls inside a closure (`onPressed:`, `builder:`) are not flagged |
 | `juice_lease_in_build` | on | `BlocScope.lease(...)` / `leaseAsync(...)` directly in a `build`/`onBuild` body | a new, never-released lease per rebuild — lease in `initState`, release in `dispose` |
@@ -78,14 +78,23 @@ section (not the legacy `analyzer: plugins:` list):
 
 ```yaml
 plugins:
-  juice_lint: ^0.3.0          # once published; until then, a path or git source:
+  juice_lint: ^0.3.0          # once published; until then, a path source:
   # juice_lint:
   #   path: ../juice_lint     # relative to this analysis_options.yaml
 ```
 
+> **No git sources.** A `git:` entry under `plugins:` is ignored without
+> a warning (verified on Dart 3.12.2: the analysis server builds no plugin
+> for it, so the rules simply never run). Use a version or a `path:`.
+
 Then `dart analyze` reports the rules (see the `flutter analyze` caveat
 above). After changing
 the `plugins:` section, restart the IDE's analysis server.
+
+The quick fix (`juice_mutable_state_field` → make the field `final`) is
+offered by the IDE as a code action, beside the ignore actions. `dart fix`
+does not apply analyzer-plugin fixes, so it is not available from the CLI
+(verified on Dart 3.12.2).
 
 ### Turning rules on and off
 

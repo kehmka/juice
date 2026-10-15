@@ -27,8 +27,8 @@ dart analyze
 
 The rules are reported by `dart analyze` and the IDE (juice_lint 0.1.0, on
 custom_lint, only reported through `dart run custom_lint`). `flutter
-analyze` on Flutter 3.47.5 exits before plugin results arrive, so it
-shows none of them.
+analyze` (Flutter 3.44.4 and 3.47.5) exits before plugin results arrive,
+so it shows none of them.
 
 ## 1 · `juice_generic_event`
 

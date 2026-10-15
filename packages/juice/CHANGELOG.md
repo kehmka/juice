@@ -209,6 +209,11 @@ step-by-step guide is
 - `StateManager` allocates nothing per emit when nothing taps it.
 - A Juice widget's `error:` builder receives the builder's own
   `BuildContext`, not the `State`'s outer one.
+- `BlocTester` records emissions synchronously, inside the emit — the same
+  tap `sendAndWait` completes from — so an assertion right after
+  `sendAndWaitForResult` sees the status it returned. The stream-fed record
+  ran one microtask behind (`expectWasFailure()` after a returned
+  `FailureStatus` could fail).
 
 ### Performance
 - **A send costs 0.66 µs with the telemetry chatter on and 0.44 µs with it

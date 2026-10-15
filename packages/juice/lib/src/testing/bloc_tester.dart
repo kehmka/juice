@@ -26,9 +26,13 @@ import '../bloc/bloc.dart';
 class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
   /// Creates a BlocTester for the given bloc.
   ///
-  /// Automatically subscribes to the bloc's stream to track emissions.
+  /// Records every emission synchronously, inside the emit — the same tap
+  /// `sendAndWait` completes from — so the record is complete the moment an
+  /// awaiter of [sendAndWaitForResult] resumes. (Recording from the
+  /// bloc's stream ran one microtask behind: an assertion right after the
+  /// await could miss the very status the call returned.)
   BlocTester(this.bloc) {
-    _subscription = bloc.stream.listen(_emissions.add);
+    _untap = bloc.tapEmissions(_emissions.add);
   }
 
   /// The bloc being tested.
@@ -38,7 +42,7 @@ class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
   List<StreamStatus<TState>> get emissions => List.unmodifiable(_emissions);
 
   final List<StreamStatus<TState>> _emissions = [];
-  StreamSubscription<StreamStatus<TState>>? _subscription;
+  void Function()? _untap;
 
   /// Sends an event to the bloc and waits for processing.
   ///
@@ -223,8 +227,8 @@ class BlocTester<TBloc extends JuiceBloc<TState>, TState extends BlocState> {
 
   /// Disposes of the tester and closes the bloc.
   Future<void> dispose() async {
-    await _subscription?.cancel();
-    _subscription = null;
+    _untap?.call();
+    _untap = null;
     await bloc.close();
   }
 }

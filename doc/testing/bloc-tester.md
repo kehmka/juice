@@ -60,7 +60,9 @@ timeout: it returns the terminal status emitted FOR THAT EVENT (updating,
 failure or canceling), ignoring other events' emissions. It fails loud with
 a `StateError` — at once, not after the timeout — when the event is dropped
 by a `droppable` builder, has no use case, or its use case emitted nothing,
-and with a `TimeoutException` when a terminal status never arrives.
+and with a `TimeoutException` when a terminal status never arrives. The
+tester's record is complete when the call returns: the returned status is
+already `lastStatus`, and `expectWasFailure()` sees a returned failure.
 
 ```dart
 test('API call completes successfully', () async {

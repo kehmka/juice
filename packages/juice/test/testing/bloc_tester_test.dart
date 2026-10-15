@@ -89,4 +89,21 @@ void main() {
     t.expectStatusSequence([UpdatingStatus], skip: 1);
     await t.dispose();
   });
+
+  test(
+      'the record holds the terminal status the moment sendAndWaitForResult '
+      'resolves', () async {
+    // The tester records inside the emit, like sendAndWait completes; a
+    // stream-fed record was one microtask behind and an assertion right
+    // after the await missed the very status the call returned.
+    final t = BlocTester<_B, _S>(_B());
+    final status = await t.sendAndWaitForResult(_Fail());
+    expect(status, isA<FailureStatus<_S>>());
+    t.expectWasFailure();
+    expect(t.lastStatus, same(status));
+    await t.dispose();
+    await t.bloc.send(_Inc());
+    expect(t.emissions, hasLength(1), reason: 'disposed: records nothing');
+    await t.bloc.close();
+  });
 }

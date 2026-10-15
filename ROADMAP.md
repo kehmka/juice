@@ -683,7 +683,18 @@ any minor. Pub package-skills (A), mason brick (M): tooling, not core.
 (`restartable` and `bindStream` were pulled INTO 2.0 and are built on
 `v2`.)
 
-### Family wave (built 2026-10-13, unpublished)
+### Family wave (built 2026-10-13, published 2026-10-15)
+
+**Published 2026-10-15 (Kevin: "publish the wave in order and tag as you
+go"):** juice 2.0.0 first; then storage 3.0.0, routing 2.0.0, observability
+0.6.0 (extension bundle rebuilt and validated), analytics, connectivity,
+flags, forms, lifecycle, llm, location, media, notifications, paging,
+permissions, power, realtime; then auth 0.4.0, network 0.14.0, i18n, sync,
+theme; then auth_network and auth_routing 0.2.0 — each level after the
+previous was indexed. All 24 tagged `<pkg>-v<ver>` at `0ded801` and the tags
+pushed. Gates before: Amoli dogfood clean on the 17, CI green on the pinned
+3.47.5 toolchain including the lint gate. The 40 retroactive tags for older
+publishes remain local until reviewed.
 
 Kevin: "start the family wave." Every package's versions, constraints and
 notes are in `doc/guides/upgrading-to-2.0.md` ("The family wave" table)
@@ -768,7 +779,7 @@ their version-bump commits (annotated as such; delete before `git push
    (a "Breaking" section per item with the migration in one line).
 3. Family wave: bump every `juice: ^1.x` to `^2.0.0`, run the hygiene
    gate per package, publish in dependency order, tag `<package>-v<ver>`.
-   **BUILT 2026-10-13, unpublished** — see "Family wave" below.
+   **BUILT 2026-10-13, PUBLISHED 2026-10-15** — see "Family wave" below.
 4. AGENTS.md, llms.txt, every AI card's `requires`, the skill bundle:
    one sync pass (`tool/sync_skill.sh`, `tool/check_cards.sh`).
 

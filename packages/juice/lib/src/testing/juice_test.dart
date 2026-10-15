@@ -131,6 +131,9 @@ Future<List<JuiceEmission<TState>>>
   try {
     bloc = build();
     if (seed != null) {
+      // `package:juice/testing.dart` is the test helper library; this is the
+      // one place outside a test file that may use the testing seam.
+      // ignore: invalid_use_of_visible_for_testing_member
       bloc.seedState(seed());
     }
     // Recording starts after the seed.

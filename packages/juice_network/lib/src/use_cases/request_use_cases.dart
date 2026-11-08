@@ -486,6 +486,7 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
       DioExceptionType.connectionTimeout => true,
       DioExceptionType.sendTimeout => true,
       DioExceptionType.receiveTimeout => true,
+      DioExceptionType.transformTimeout => true,
       DioExceptionType.connectionError => true,
       // Bad response - check status code
       DioExceptionType.badResponse =>

@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_network
-version: 0.14.0
+version: 0.14.1
 requires:
   juice: ">=2.0.0"
   juice_storage: ">=1.2.0 <4.0.0"
-updated: 2026-10-13
+updated: 2026-11-08
 ---
 
 # juice_network — AI card
@@ -34,7 +34,7 @@ errors / dedup / observability. A single endpoint utility can just use Dio.
 
 ```yaml
 dependencies:
-  juice_network: ^0.14.0
+  juice_network: ^0.14.1
   juice_storage: ^3.0.0   # required — cache persistence
   dio: ^5.4.0             # the injected transport
 ```

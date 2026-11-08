@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-11-08
+
+### Fixed
+
+- **Compiles against dio 5.10 and later.** dio 5.10.0 added
+  `DioExceptionType.transformTimeout`; the retry classifier's exhaustive
+  switch did not name it, so pub.dev's analysis (which resolves the newest
+  dio the constraint allows) failed and 0.14.0 scored 90/160. A transform
+  timeout is retryable like the other timeouts. `dio` is now `^5.10.0` so
+  the value exists at every allowed version.
+
 ## [0.14.0] - 2026-10-14
 
 ### Changed

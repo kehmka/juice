@@ -61,6 +61,14 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
     return true;
   }
 
+  bool _sameQuery(Map<String, String> a, Map<String, String> b) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (a[key] != b[key]) return false;
+    }
+    return true;
+  }
+
   Future<void> _executeNavigation({
     required String path,
     Object? extra,
@@ -104,10 +112,30 @@ class NavigateUseCase extends BlocUseCase<RoutingBloc, NavigateEvent> {
 
     switch (result) {
       case GuardPipelineAllowed():
+        // A guard redirect never stacks a second copy of the page already on
+        // top. Landing on the very same location changes nothing; landing on
+        // the same path with a different query (a newer `returnTo`) replaces
+        // the top entry. Without this, a guarded initial path redirected to
+        // /login at startup, and the platform's cold-start report of that
+        // same initial path then pushed /login a second time.
+        final current = bloc.state.current;
+        final redirectedOntoCurrent = redirectCount > 0 &&
+            current != null &&
+            current.path == resolved.matchedPath;
+        if (redirectedOntoCurrent &&
+            _sameQuery(current.query, resolved.query)) {
+          log('Redirect landed on the current location: ${current.path}');
+          emitUpdate(
+            newState: bloc.state.copyWith(clearPending: true),
+            groupsToRebuild: {RoutingGroups.pending},
+          );
+          _processQueue();
+          return;
+        }
         _commitNavigation(
           resolved: resolved,
           extra: extra,
-          replace: replace,
+          replace: replace || redirectedOntoCurrent,
           transition: transition,
         );
 

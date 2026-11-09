@@ -62,6 +62,22 @@ class ConditionalGuard extends RouteGuard {
   }
 }
 
+/// Allows, after a delay: holds a navigation pending for [delay].
+class SlowAllowGuard extends RouteGuard {
+  final Duration delay;
+
+  SlowAllowGuard(this.delay);
+
+  @override
+  String get name => 'SlowAllowGuard';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    await Future<void>.delayed(delay);
+    return const GuardResult.allow();
+  }
+}
+
 class ThrowingGuard extends RouteGuard {
   @override
   String get name => 'ThrowingGuard';
@@ -384,12 +400,339 @@ void main() {
         bloc = RoutingBloc.withConfig(config);
         await Future.delayed(const Duration(milliseconds: 50));
 
+        // The initial path '/' is guarded too: the global guard has run once.
+        expect(executionLog, ['global']);
+        executionLog.clear();
+
         bloc.navigate('/protected');
         await Future.delayed(const Duration(milliseconds: 50));
 
         // Global guards are added first, then sorted together
         // So with global=100 and route=50, route runs first
         expect(executionLog, ['route', 'global']);
+      });
+    });
+
+    group('initial path', () {
+      Future<void> settle() =>
+          Future<void>.delayed(const Duration(milliseconds: 50));
+
+      RouteConfig route(String path, [List<RouteGuard> guards = const []]) =>
+          RouteConfig(
+              path: path, builder: (_) => const SizedBox(), guards: guards);
+
+      test('an allowed initial path is seeded', () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [AllowGuard()]),
+        ]));
+        await settle();
+
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/');
+        expect(bloc.state.isNavigating, isFalse);
+        expect(bloc.state.error, isNull);
+      });
+
+      test('a route guard redirects the initial path', () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [RedirectGuard('/login')]),
+          route('/login'),
+        ]));
+        await settle();
+
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/login');
+        expect(bloc.state.isNavigating, isFalse);
+      });
+
+      test('a global guard runs on the initial path', () async {
+        var authenticated = false;
+        bloc = RoutingBloc.withConfig(RoutingConfig(
+          routes: [route('/'), route('/login')],
+          globalGuards: [
+            _LoginWall(() => authenticated),
+          ],
+        ));
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/login');
+
+        authenticated = true;
+        bloc.resetStack('/');
+        await settle();
+        expect(bloc.state.currentPath, '/');
+      });
+
+      test('the redirect target of the initial path is guarded in turn',
+          () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [RedirectGuard('/a')]),
+          route('/a', [RedirectGuard('/b')]),
+          route('/b'),
+        ]));
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/b');
+      });
+
+      test('an overridden initial path is guarded', () async {
+        bloc = RoutingBloc.withConfig(
+          RoutingConfig(routes: [
+            route('/'),
+            route('/admin', [RedirectGuard('/')]),
+          ]),
+          initialPath: '/admin',
+        );
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/');
+      });
+
+      test('a blocked initial path seeds nothing and reports the block',
+          () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [BlockGuard(blockReason: 'closed')]),
+        ]));
+        await settle();
+
+        expect(bloc.state.stack, isEmpty);
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.isNavigating, isFalse);
+        final error = bloc.state.error;
+        expect(error, isA<GuardBlockedError>());
+        expect((error as GuardBlockedError).path, '/');
+        expect(error.reason, 'closed');
+      });
+
+      test('a guard that throws on the initial path seeds nothing', () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [ThrowingGuard()]),
+        ]));
+        await settle();
+
+        expect(bloc.state.stack, isEmpty);
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.isNavigating, isFalse);
+        expect(bloc.state.error, isA<GuardExceptionError>());
+      });
+
+      test('a redirect loop from the initial path seeds nothing', () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [RedirectGuard('/b')]),
+          route('/b', [RedirectGuard('/')]),
+        ]));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        expect(bloc.state.stack, isEmpty);
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.isNavigating, isFalse);
+        expect(bloc.state.error, isA<RedirectLoopError>());
+      });
+
+      test('an unknown redirect target from the initial path seeds nothing',
+          () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [RedirectGuard('/nowhere')]),
+        ]));
+        await settle();
+
+        expect(bloc.state.stack, isEmpty);
+        expect(bloc.state.isInitialized, isTrue);
+        expect(bloc.state.isNavigating, isFalse);
+        expect(bloc.state.error, isA<RouteNotFoundError>());
+      });
+
+      test('a navigation sent while the initial guards run follows the seed',
+          () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [SlowAllowGuard(const Duration(milliseconds: 40))]),
+          route('/settings'),
+        ]));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(bloc.state.isNavigating, isTrue); // the guard is still running
+        expect(bloc.state.stack, isEmpty);
+
+        bloc.navigate('/settings');
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        expect(bloc.state.stack.map((e) => e.path), ['/', '/settings']);
+        expect(bloc.state.isNavigating, isFalse);
+      });
+
+      test(
+          'the cold-start report of a redirected initial path does not push '
+          'the redirect target a second time', () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [AuthGuard(isAuthenticated: () => false)]),
+          route('/login'),
+        ]));
+        // No pre-wait: the report races initialization, as on a real launch.
+        bloc.send(NavigateEvent(path: '/', fromPlatform: true));
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/login');
+        expect(bloc.state.current!.query['returnTo'], '/');
+        expect(bloc.state.isNavigating, isFalse);
+      });
+
+      test('a late cold-start report of a redirected initial path is the same',
+          () async {
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          route('/', [AuthGuard(isAuthenticated: () => false)]),
+          route('/login'),
+        ]));
+        await settle();
+        final seeded = bloc.state.current!.key;
+
+        bloc.send(NavigateEvent(path: '/', fromPlatform: true));
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.current!.key, seeded); // the entry was not rebuilt
+        expect(bloc.state.isNavigating, isFalse);
+      });
+    });
+
+    group('returnTo', () {
+      Future<void> settle() =>
+          Future<void>.delayed(const Duration(milliseconds: 50));
+
+      late bool authenticated;
+
+      RoutingConfig config() => RoutingConfig(routes: [
+            RouteConfig(path: '/', builder: (_) => const SizedBox()),
+            RouteConfig(
+              path: '/login',
+              builder: (_) => const SizedBox(),
+              guards: [GuestGuard(isAuthenticated: () => authenticated)],
+            ),
+            RouteConfig(
+              path: '/profile/:userId',
+              builder: (_) => const SizedBox(),
+              guards: [AuthGuard(isAuthenticated: () => authenticated)],
+            ),
+            RouteConfig(
+              path: '/search',
+              builder: (_) => const SizedBox(),
+              guards: [AuthGuard(isAuthenticated: () => authenticated)],
+            ),
+          ]);
+
+      setUp(() => authenticated = false);
+
+      test('a redirect carries returnTo as a query parameter', () async {
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+
+        bloc.navigate('/profile/123');
+        await settle();
+
+        expect(bloc.state.currentPath, '/login');
+        expect(bloc.state.current!.query['returnTo'], '/profile/123');
+        expect(bloc.state.stack.length, 2);
+      });
+
+      test('a returnTo that has its own query survives the round trip',
+          () async {
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+
+        bloc.navigate('/search?q=a%20b&page=2');
+        await settle();
+
+        expect(bloc.state.currentPath, '/login');
+        final returnTo = bloc.state.current!.query['returnTo'];
+        expect(returnTo, '/search?q=a%20b&page=2');
+
+        authenticated = true;
+        bloc.navigate(returnTo!, replace: true);
+        await settle();
+        expect(bloc.state.currentPath, '/search');
+        expect(bloc.state.current!.query, {'q': 'a b', 'page': '2'});
+      });
+
+      test('resetStack carries returnTo the same way', () async {
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+
+        bloc.resetStack('/profile/7');
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.currentPath, '/login');
+        expect(bloc.state.current!.query['returnTo'], '/profile/7');
+      });
+
+      test('a redirect without returnTo adds no query parameter', () async {
+        authenticated = true;
+        bloc = RoutingBloc.withConfig(RoutingConfig(routes: [
+          RouteConfig(path: '/', builder: (_) => const SizedBox()),
+          RouteConfig(
+            path: '/old',
+            builder: (_) => const SizedBox(),
+            guards: [RedirectGuard('/new?tab=a')],
+          ),
+          RouteConfig(path: '/new', builder: (_) => const SizedBox()),
+        ]));
+        await settle();
+
+        bloc.navigate('/old');
+        await settle();
+
+        expect(bloc.state.currentPath, '/new');
+        expect(bloc.state.current!.query, {'tab': 'a'});
+      });
+
+      test('the login flow resumes the captured destination', () async {
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+        bloc.navigate('/profile/123');
+        await settle();
+
+        authenticated = true;
+        bloc.navigate(bloc.state.current!.query['returnTo']!, replace: true);
+        await settle();
+
+        expect(bloc.state.stack.map((e) => e.path), ['/', '/profile/123']);
+        expect(bloc.state.current!.params['userId'], '123');
+      });
+
+      test(
+          'a second redirect onto the page already on top replaces it with '
+          'the newer returnTo', () async {
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+        bloc.navigate('/profile/1');
+        await settle();
+        expect(bloc.state.stack.length, 2);
+
+        bloc.navigate('/profile/2');
+        await settle();
+
+        expect(bloc.state.stack.map((e) => e.path), ['/', '/login']);
+        expect(bloc.state.current!.query['returnTo'], '/profile/2');
+        expect(bloc.state.isNavigating, isFalse);
+      });
+
+      test('a redirect onto the current location changes nothing', () async {
+        authenticated = true;
+        bloc = RoutingBloc.withConfig(config());
+        await settle();
+        final home = bloc.state.current!.key;
+
+        bloc.navigate('/login'); // the guest guard sends it back to '/'
+        await settle();
+
+        expect(bloc.state.stack.length, 1);
+        expect(bloc.state.current!.key, home);
+        expect(bloc.state.isNavigating, isFalse);
+        expect(bloc.state.error, isNull);
       });
     });
 
@@ -432,6 +775,24 @@ void main() {
       });
     });
   });
+}
+
+/// Redirects every path but /login to /login until authenticated.
+class _LoginWall extends RouteGuard {
+  final bool Function() isAuthenticated;
+
+  _LoginWall(this.isAuthenticated);
+
+  @override
+  String get name => '_LoginWall';
+
+  @override
+  Future<GuardResult> check(RouteContext context) async {
+    if (isAuthenticated() || context.targetPath == '/login') {
+      return const GuardResult.allow();
+    }
+    return const GuardResult.redirect('/login');
+  }
 }
 
 class _CallTrackingGuard extends RouteGuard {

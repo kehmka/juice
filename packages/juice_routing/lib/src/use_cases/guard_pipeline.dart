@@ -16,7 +16,8 @@ final class GuardPipelineAllowed extends GuardPipelineResult {
 
 /// A guard redirected to a different path.
 final class GuardPipelineRedirected extends GuardPipelineResult {
-  /// The path to redirect to.
+  /// The path to redirect to. When the guard named a `returnTo`, it rides on
+  /// this path as the `returnTo` query parameter.
   final String redirectPath;
 
   /// The accumulated redirect chain including this redirect.
@@ -178,10 +179,11 @@ Future<GuardPipelineResult> runGuardPipeline({
         continue;
 
       case RedirectResult():
-        log('Guard ${guard.name} redirecting to ${result.path}');
+        final target = _redirectTarget(result);
+        log('Guard ${guard.name} redirecting to $target');
         return GuardPipelineRedirected(
-          redirectPath: result.path,
-          redirectChain: [...redirectChain, result.path],
+          redirectPath: target,
+          redirectChain: [...redirectChain, target],
         );
 
       case BlockResult():
@@ -194,4 +196,18 @@ Future<GuardPipelineResult> runGuardPipeline({
   }
 
   return const GuardPipelineAllowed();
+}
+
+/// Where a redirect lands: the guard's path, with its `returnTo` (when it
+/// named one) carried as the `returnTo` query parameter. The entry the
+/// redirect commits then exposes it as `state.current?.query['returnTo']`,
+/// which is where a login flow reads the destination to resume. A `returnTo`
+/// already present in the guard's path is replaced by the named one.
+String _redirectTarget(RedirectResult result) {
+  final returnTo = result.returnTo;
+  if (returnTo == null) return result.path;
+  final uri = Uri.parse(result.path);
+  return uri.replace(
+    queryParameters: {...uri.queryParameters, 'returnTo': returnTo},
+  ).toString();
 }

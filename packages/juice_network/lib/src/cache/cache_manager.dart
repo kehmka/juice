@@ -26,7 +26,11 @@ class CacheManager {
   static const String cacheBoxName = 'fetch_cache';
 
   /// Maximum cache size in bytes.
-  final int maxCacheSize;
+  ///
+  /// `FetchBloc` sets this from [FetchConfig.maxCacheSize] when it
+  /// initializes. The limit is checked on each write, against the bytes
+  /// written since this manager was created.
+  int maxCacheSize;
 
   /// Maximum memory cache size as percentage of maxCacheSize.
   /// Memory cache is a hot cache subset of the total.

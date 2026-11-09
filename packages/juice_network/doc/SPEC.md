@@ -644,6 +644,11 @@ String? _hashIdentityHeaders(Map<String, String> headers) {
 
 This separates auth identity from auth credentials — the token value doesn't affect the key, only the scope/user identity does.
 
+> **As implemented** (see Implementation Notes): `authScope` is the string
+> `authIdentityProvider` returns. With no provider, a request that carries an
+> explicit `Authorization` header is scoped by `cred-` plus the first 16 hex
+> characters of the SHA-256 of the header value. With neither, it is null.
+
 #### 5. Variant / Namespace
 
 Optional escape hatch for "same URL, different meaning":
@@ -3152,6 +3157,32 @@ Before marking spec as frozen for v0.1.0, verify all items:
 These are the intentional divergences between this design contract and the
 shipping implementation. **The code is the source of truth**; this section
 documents where it deviates and why.
+
+### Auth scope and the identity requirement
+
+`authScope` in the shipping key is resolved per request, in this order:
+
+1. the string returned by `FetchBloc.authIdentityProvider`, when it is non-null;
+2. otherwise, for a request with an explicit `Authorization` header (matched
+   case-insensitively), `cred-` plus the first 16 hex characters of the SHA-256
+   of the header value, so two credentials never share an entry and the
+   credential is never stored in a key;
+3. otherwise null.
+
+An `AuthInterceptor` adds its header after the key is computed, so rule 2 cannot
+see it. `FetchBloc` therefore refuses an `AuthInterceptor` (or a subclass) when
+no `authIdentityProvider` was given: `FetchBloc.withConfig` throws
+`ArgumentError`; `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log
+and emit a failure carrying a `StateError`, leaving the bloc uninitialized or
+its installed interceptors unchanged. A custom interceptor that injects
+credentials is not detected.
+
+### `maxCacheSize` is applied at initialization
+
+`FetchConfig.maxCacheSize` is copied onto the `CacheManager` by
+`InitializeFetchEvent` (and `withConfig`). The limit is checked against bytes
+written since the manager was created, not against the full size of the box on
+disk.
 
 ### Request key is path-relative (host/scheme/port excluded)
 

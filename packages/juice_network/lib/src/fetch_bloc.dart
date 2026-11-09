@@ -8,6 +8,7 @@ import 'cache/cache_manager.dart';
 import 'fetch_config.dart';
 import 'fetch_events.dart';
 import 'fetch_state.dart';
+import 'interceptors/auth_identity_requirement.dart';
 import 'interceptors/interceptor.dart';
 import 'request/request_coalescer.dart';
 import 'use_cases/cache_use_cases.dart';
@@ -27,6 +28,9 @@ class FetchBloc extends JuiceBloc<FetchState> {
   ///
   /// **IMPORTANT**: If you use an AuthInterceptor to inject authentication,
   /// you MUST provide this to ensure cache/coalescing safety across users.
+  /// This is enforced: an AuthInterceptor on a bloc without a provider is
+  /// refused at [FetchBloc.withConfig], at initialization and at
+  /// [ReconfigureInterceptorsEvent].
   final AuthIdentityProvider? authIdentityProvider;
 
   /// Cache manager for HTTP responses.
@@ -62,22 +66,9 @@ class FetchBloc extends JuiceBloc<FetchState> {
                   useCaseGenerator: () => ResetFetchUseCase(),
                   concurrency: EventConcurrency.sequential,
                 ),
-            () => InlineUseCaseBuilder<FetchBloc, FetchState,
-                    ReconfigureInterceptorsEvent>(
+            () => UseCaseBuilder(
                   typeOfEvent: ReconfigureInterceptorsEvent,
-                  handler: (ctx, event) async {
-                    // Clear existing interceptors
-                    ctx.bloc.dio.interceptors.clear();
-
-                    // Add new interceptors (sorted by priority)
-                    final sorted = event.interceptors.toList()
-                      ..sort((a, b) => a.priority.compareTo(b.priority));
-
-                    for (final interceptor in sorted) {
-                      ctx.bloc.dio.interceptors
-                          .add(FetchInterceptorAdapter(interceptor));
-                    }
-                  },
+                  useCaseGenerator: () => ReconfigureInterceptorsUseCase(),
                   concurrency: EventConcurrency.sequential,
                 ),
 
@@ -193,6 +184,10 @@ class FetchBloc extends JuiceBloc<FetchState> {
   /// Create and initialize in one step — matches the family's `withConfig`
   /// convention (cf. `AuthBloc.withConfig`). Equivalent to constructing a
   /// [FetchBloc] and sending [InitializeFetchEvent].
+  ///
+  /// Throws an [ArgumentError] when [interceptors] holds an `AuthInterceptor`
+  /// and [authIdentityProvider] is null: the cache and the coalescer could
+  /// not tell one user's responses from another's.
   factory FetchBloc.withConfig(
     FetchConfig config, {
     required StorageBloc storageBloc,
@@ -200,6 +195,9 @@ class FetchBloc extends JuiceBloc<FetchState> {
     AuthIdentityProvider? authIdentityProvider,
     List<FetchInterceptor>? interceptors,
   }) {
+    final violation = authIdentityViolation(interceptors, authIdentityProvider);
+    if (violation != null) throw ArgumentError(violation);
+
     final bloc = FetchBloc(
       storageBloc: storageBloc,
       dio: dio,

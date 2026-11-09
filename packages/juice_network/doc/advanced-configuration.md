@@ -140,7 +140,7 @@ This ensures:
 - Requests don't coalesce across different users
 - No data leaks between authenticated sessions
 
-**Important:** This is **required** when using `AuthInterceptor`. Without it, one user could receive another user's cached responses.
+**Enforced:** `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had. Without the identity, one user could receive another user's cached responses.
 
 ---
 

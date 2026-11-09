@@ -317,4 +317,6 @@ This ensures:
 - One user's cached data is never served to another
 - Request coalescing respects user boundaries
 
-**Important:** If you use `AuthInterceptor` without providing `authIdentityProvider`, cached authenticated responses could leak between users.
+**Enforced:** `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had.
+
+A request that carries its own `Authorization` header is scoped too. With an `authIdentityProvider` the scope is the identity it returns. Without one the scope is a short hash of the header value, so two different tokens never share a cached or in-flight response. The token itself is never written into the key.

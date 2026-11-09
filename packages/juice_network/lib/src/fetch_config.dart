@@ -7,7 +7,8 @@ import 'cache/cache_policy.dart';
 ///
 /// **IMPORTANT**: If you use an AuthInterceptor to inject authentication headers,
 /// you MUST provide an [AuthIdentityProvider] to ensure cache/coalescing safety.
-/// Without this, responses may be incorrectly shared between different users.
+/// Without this, responses would be shared between different users, so
+/// `FetchBloc` refuses an AuthInterceptor when no provider is set.
 ///
 /// The returned string should be:
 /// - Unique per user (e.g., user ID, hashed email, session ID)

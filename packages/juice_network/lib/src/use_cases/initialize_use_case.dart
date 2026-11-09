@@ -4,12 +4,29 @@ import 'package:juice/juice.dart';
 import '../fetch_bloc.dart';
 import '../fetch_events.dart';
 import '../fetch_state.dart';
+import '../interceptors/auth_identity_requirement.dart';
 import '../interceptors/interceptor.dart';
+
+/// Replaces the Dio interceptors with [interceptors], sorted by priority.
+void _installInterceptors(FetchBloc bloc, List<FetchInterceptor> interceptors) {
+  bloc.dio.interceptors.clear();
+
+  final sorted = interceptors.toList()
+    ..sort((a, b) => a.priority.compareTo(b.priority));
+
+  for (final interceptor in sorted) {
+    bloc.dio.interceptors.add(FetchInterceptorAdapter(interceptor));
+  }
+}
 
 /// Use case to initialize FetchBloc.
 ///
 /// Sets up Dio with configuration and interceptors.
 /// Idempotent - calling twice is safe.
+///
+/// An `AuthInterceptor` on a bloc with no `authIdentityProvider` is refused:
+/// the use case logs and emits a failure, and the bloc stays uninitialized
+/// with Dio untouched. See [authIdentityViolation].
 class InitializeFetchUseCase
     extends BlocUseCase<FetchBloc, InitializeFetchEvent> {
   @override
@@ -20,6 +37,15 @@ class InitializeFetchUseCase
     }
 
     final config = event.config;
+
+    final violation =
+        authIdentityViolation(event.interceptors, bloc.authIdentityProvider);
+    if (violation != null) {
+      final error = StateError(violation);
+      logError(error, StackTrace.current);
+      emitFailure(newState: bloc.state, error: error);
+      return;
+    }
 
     // Configure Dio
     bloc.dio.options = BaseOptions(
@@ -35,20 +61,12 @@ class InitializeFetchUseCase
           : (status) => true,
     );
 
-    // Clear existing interceptors
-    bloc.dio.interceptors.clear();
+    // Replace existing interceptors with the configured ones
+    _installInterceptors(bloc, event.interceptors ?? const []);
 
-    // Add custom interceptors (sorted by priority)
-    if (event.interceptors != null && event.interceptors!.isNotEmpty) {
-      final sorted = event.interceptors!.toList()
-        ..sort((a, b) => a.priority.compareTo(b.priority));
-
-      for (final interceptor in sorted) {
-        bloc.dio.interceptors.add(FetchInterceptorAdapter(interceptor));
-      }
-    }
-
-    // Initialize cache manager
+    // Initialize cache manager. It was built before this config existed, so
+    // the configured size limit is applied here.
+    bloc.cacheManager.maxCacheSize = config.maxCacheSize;
     await bloc.cacheManager.initialize();
 
     // Emit initialized state
@@ -59,6 +77,28 @@ class InitializeFetchUseCase
         config: config,
       ),
     );
+  }
+}
+
+/// Use case to replace the interceptors of a FetchBloc.
+///
+/// An `AuthInterceptor` on a bloc with no `authIdentityProvider` is refused:
+/// the use case logs and emits a failure, and the interceptors already
+/// installed stay as they are. See [authIdentityViolation].
+class ReconfigureInterceptorsUseCase
+    extends BlocUseCase<FetchBloc, ReconfigureInterceptorsEvent> {
+  @override
+  Future<void> execute(ReconfigureInterceptorsEvent event) async {
+    final violation =
+        authIdentityViolation(event.interceptors, bloc.authIdentityProvider);
+    if (violation != null) {
+      final error = StateError(violation);
+      logError(error, StackTrace.current);
+      emitFailure(newState: bloc.state, error: error);
+      return;
+    }
+
+    _installInterceptors(bloc, event.interceptors);
   }
 }
 

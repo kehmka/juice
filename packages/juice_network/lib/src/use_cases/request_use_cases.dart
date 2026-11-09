@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:juice/juice.dart';
 
@@ -30,30 +31,36 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
     return newUri.toString();
   }
 
+  /// The value of the request's own `Authorization` header, whatever the
+  /// case of its name, or null when the request carries none.
+  static String? _authorizationHeader(Map<String, String>? headers) {
+    if (headers == null) return null;
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == 'authorization') return entry.value;
+    }
+    return null;
+  }
+
   /// Get auth scope for cache/coalescing key.
   ///
-  /// Priority:
-  /// 1. AuthIdentityProvider on FetchBloc (recommended for interceptor-injected auth)
-  /// 2. Explicit headers passed to the request (legacy/fallback)
+  /// 1. The AuthIdentityProvider on FetchBloc, when it names a user. This is
+  ///    the only source that covers interceptor-injected auth.
+  /// 2. An `Authorization` header passed on the request itself: the scope is
+  ///    a digest of that credential, so two different credentials never
+  ///    share a cache entry or an in-flight request.
   ///
-  /// When using AuthInterceptor, the provider returns a user-specific identifier
-  /// ensuring cache isolation between users.
+  /// Null means the request is unauthenticated as far as the key can tell.
   String? getAuthScope(Map<String, String>? headers) {
-    // Prefer auth identity provider (safe for interceptor-injected auth)
     final identity = bloc.authIdentityProvider?.call();
     if (identity != null) {
       return identity;
     }
 
-    // Fallback: detect from explicit headers (only safe if auth is passed directly)
-    final authHeader = headers?['Authorization'] ?? headers?['authorization'];
+    final authHeader = _authorizationHeader(headers);
     if (authHeader == null) return null;
 
-    // Return generic type indicator - NOT user-specific
-    // This is only safe when headers are passed directly, not via interceptor
-    if (authHeader.startsWith('Bearer ')) return 'bearer';
-    if (authHeader.startsWith('Basic ')) return 'basic';
-    return 'auth';
+    final digest = sha256.convert(utf8.encode(authHeader)).toString();
+    return 'cred-${digest.substring(0, 16)}';
   }
 
   /// Execute HTTP request with caching and coalescing.
@@ -527,7 +534,7 @@ mixin RequestUseCaseMixin<TEvent extends EventBase>
   ) async {
     if (!cachePolicy.shouldCache) return;
 
-    final hasAuth = headers?.containsKey('Authorization') ?? false;
+    final hasAuth = _authorizationHeader(headers) != null;
     if (hasAuth && !cacheAuthResponses) return;
 
     if (_isSensitiveEndpoint(url) && !forceCache) return;

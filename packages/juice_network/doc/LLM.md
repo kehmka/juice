@@ -46,7 +46,10 @@ so scope-based auto-cancel works. `StorageBloc` must also be registered/passed.
 
 `storageBloc` is **required** (cache persistence). Dio is optional (a default
 `Dio()` is created). If any interceptor injects auth, you **must** also pass
-`authIdentityProvider` or cache/coalescing will leak responses across users.
+`authIdentityProvider` or cache/coalescing would leak responses across users.
+This is enforced for `AuthInterceptor` and its subclasses: `withConfig` throws
+`ArgumentError`; `InitializeFetchEvent` / `ReconfigureInterceptorsEvent` emit a
+failure with a `StateError` and install nothing.
 
 ```dart
 final fetch = FetchBloc.withConfig(
@@ -210,8 +213,10 @@ expect(fetch.state.stats.successCount, 1);
 
 ## Anti-patterns
 
-- ❌ Injecting an `AuthInterceptor` without an `authIdentityProvider` — cached
-  responses leak across users after logout/login on the same device.
+- ❌ Injecting an `AuthInterceptor` without an `authIdentityProvider` — refused
+  (the bloc stays uninitialized), because cached responses would leak across
+  users after logout/login on the same device. A custom interceptor that adds
+  credentials is not detected; pass the provider yourself.
 - ❌ Treating a request event as awaitable (`await event.result`) — it isn't;
   observe the `fetch:request:<canonical>` group / `state.getStatus(key)`.
 - ❌ `retryable: true` on `PostEvent`/`PatchEvent` without an `idempotencyKey` —

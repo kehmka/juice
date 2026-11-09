@@ -43,6 +43,8 @@ AuthInterceptor(
 | `prefix` | `String` | `'Bearer '` | Prefix before the token |
 | `skipAuth` | `bool Function(String)?` | null | Skip auth for certain paths |
 
+**Requires an identity.** The `FetchBloc` must be built with an `authIdentityProvider` (the signed-in user's id, or null when signed out). The interceptor adds credentials after the cache key is computed, so the identity is the only thing that keeps one user's cached or in-flight response away from another. `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had. See [Authenticated Cache Isolation](caching.md#authenticated-cache-isolation).
+
 **Example with different auth schemes:**
 
 ```dart

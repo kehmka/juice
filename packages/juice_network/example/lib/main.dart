@@ -5,6 +5,15 @@ import 'package:juice_storage/juice_storage.dart';
 import 'blocs/blocs.dart';
 import 'screens/home_screen.dart';
 
+/// The demo's signed-in user: present only while the Interceptors screen has
+/// its auth switch on.
+String? _demoIdentity() {
+  if (!BlocScope.isRegistered<InterceptorsBloc>()) return null;
+  return BlocScope.get<InterceptorsBloc>().state.authEnabled
+      ? 'demo-user'
+      : null;
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -28,7 +37,13 @@ Future<void> main() async {
   // Register FetchBloc as permanent (app-wide service)
   if (!BlocScope.isRegistered<FetchBloc>()) {
     BlocScope.register<FetchBloc>(
-      () => FetchBloc(storageBloc: storageBloc),
+      () => FetchBloc(
+        storageBloc: storageBloc,
+        // The Interceptors screen can switch on an AuthInterceptor. FetchBloc
+        // refuses one unless it can name the signed-in user, so the demo names
+        // its one fake user while that switch is on.
+        authIdentityProvider: _demoIdentity,
+      ),
       lifecycle: BlocLifecycle.permanent,
     );
   }

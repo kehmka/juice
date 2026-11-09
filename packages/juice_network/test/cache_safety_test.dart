@@ -59,20 +59,11 @@ void main() {
     );
   }
 
-  /// Whether anything was written to the cache for [url].
-  Future<bool> isCached(String url,
-      {Map<String, String>? authScopeHeaders}) async {
-    final key = RequestKey.from(
-      method: 'GET',
-      url: url,
-      // Auth requests carry an authScope derived from the Authorization header.
-      authScope:
-          authScopeHeaders?['Authorization']?.startsWith('Bearer ') ?? false
-              ? 'bearer'
-              : null,
-    );
-    final record = await fetchBloc.cacheManager.get(key);
-    return record != null;
+  /// Whether anything was written to the cache for a GET of [url], under
+  /// any auth scope.
+  Future<bool> isCached(String url) async {
+    final keys = await fetchBloc.cacheManager.getAllKeys();
+    return keys.any((key) => key == 'GET:$url' || key.startsWith('GET:$url:'));
   }
 
   group('Authorization', () {
@@ -88,7 +79,7 @@ void main() {
         headers: auth,
       ));
 
-      expect(await isCached('/profile', authScopeHeaders: auth), isFalse);
+      expect(await isCached('/profile'), isFalse);
     });
 
     test('authorized response IS cached when cacheAuthResponses: true',
@@ -105,7 +96,7 @@ void main() {
         cacheAuthResponses: true,
       ));
 
-      expect(await isCached('/profile', authScopeHeaders: auth), isTrue);
+      expect(await isCached('/profile'), isTrue);
     });
   });
 

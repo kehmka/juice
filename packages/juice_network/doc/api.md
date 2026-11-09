@@ -86,6 +86,8 @@ ReconfigureInterceptorsEvent({
 })
 ```
 
+A list that contains an `AuthInterceptor` is refused when the bloc has no `authIdentityProvider`: the event emits a failure with a `StateError` and the installed interceptors stay as they were.
+
 ### GetEvent
 
 Make an HTTP GET request.
@@ -327,6 +329,8 @@ typedef AuthIdentityProvider = String? Function();
 ```
 
 Provides a user-specific identity for cache isolation. **Required** when using `AuthInterceptor` to prevent cross-user cache leaks.
+
+**Enforced:** `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had.
 
 ```dart
 FetchBloc(

@@ -29,6 +29,18 @@ class LoginUseCase extends BlocUseCase<AuthBloc, LoginEvent> {
       return;
     }
 
+    // A cooldown that has run out ends the attempt window: the count starts
+    // again from zero. Without this the count stayed at the maximum, so the
+    // first attempt after every cooldown armed the next cooldown and no
+    // attempt ever reached the provider again.
+    if (bloc.state.loginCooldownUntil != null) {
+      log('Login cooldown expired, attempt window reset');
+      emitUpdate(
+        newState: bloc.state.copyWith(loginAttempts: 0, clearCooldown: true),
+        groupsToRebuild: {AuthGroups.error},
+      );
+    }
+
     if (bloc.state.loginAttempts >= bloc.config.maxLoginAttempts) {
       final cooldownUntil = DateTime.now().add(bloc.config.loginCooldown);
       log('Max login attempts reached, cooldown until $cooldownUntil',

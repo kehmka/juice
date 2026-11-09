@@ -533,6 +533,101 @@ void main() {
       });
     });
 
+    group('login cooldown', () {
+      const cooldown = Duration(milliseconds: 150);
+
+      setUp(() async {
+        bloc = AuthBloc.withConfig(
+          AuthConfig(
+            providers: {'email': emailProvider},
+            restoreSessionOnInit: false,
+            maxLoginAttempts: 2,
+            loginCooldown: cooldown,
+          ),
+          storageBloc: storageBloc,
+        );
+        await Future.delayed(_delay);
+      });
+
+      /// Fails twice (the maximum), then makes the attempt that arms the
+      /// cooldown. Leaves the bloc rate-limited.
+      Future<void> lockOut() async {
+        when(() => emailProvider.authenticate(any()))
+            .thenThrow(const AuthProviderException('Bad password'));
+        for (var i = 0; i < 2; i++) {
+          bloc.loginWithEmail('test@example.com', 'wrong');
+          await Future.delayed(_delay);
+        }
+        bloc.loginWithEmail('test@example.com', 'wrong');
+        await Future.delayed(_delay);
+        expect(bloc.state.isRateLimited, isTrue);
+        expect(bloc.state.lastError, isA<RateLimitedError>());
+        clearInteractions(emailProvider);
+      }
+
+      test('an attempt during the cooldown never reaches the provider',
+          () async {
+        await lockOut();
+
+        bloc.loginWithEmail('test@example.com', 'right');
+        await Future.delayed(const Duration(milliseconds: 20));
+
+        verifyNever(() => emailProvider.authenticate(any()));
+        expect(bloc.state.lastError, isA<RateLimitedError>());
+        expect(bloc.state.status, isNot(AuthStatus.authenticated));
+      });
+
+      test('a login after the cooldown expires reaches the provider', () async {
+        await lockOut();
+        await Future.delayed(cooldown + _delay);
+        expect(bloc.state.isRateLimited, isFalse);
+
+        when(() => emailProvider.authenticate(any()))
+            .thenAnswer((_) async => _makeResult());
+        bloc.loginWithEmail('test@example.com', 'right');
+        await Future.delayed(_delay);
+
+        verify(() => emailProvider.authenticate(any())).called(1);
+        expect(bloc.state.status, AuthStatus.authenticated);
+        expect(bloc.state.loginAttempts, 0);
+        expect(bloc.state.loginCooldownUntil, isNull);
+      });
+
+      test('an expired cooldown starts a fresh attempt window', () async {
+        await lockOut();
+        await Future.delayed(cooldown + _delay);
+
+        // Still the wrong password: this is failure 1 of a new window, not
+        // another lockout.
+        bloc.loginWithEmail('test@example.com', 'wrong');
+        await Future.delayed(_delay);
+
+        verify(() => emailProvider.authenticate(any())).called(1);
+        expect(bloc.state.lastError, isA<ProviderAuthError>());
+        expect(bloc.state.loginAttempts, 1);
+        expect(bloc.state.loginCooldownUntil, isNull);
+        expect(bloc.state.isRateLimited, isFalse);
+      });
+
+      test('the new window locks out again at the maximum', () async {
+        await lockOut();
+        await Future.delayed(cooldown + _delay);
+
+        for (var i = 0; i < 2; i++) {
+          bloc.loginWithEmail('test@example.com', 'wrong');
+          await Future.delayed(_delay);
+        }
+        verify(() => emailProvider.authenticate(any())).called(2);
+
+        bloc.loginWithEmail('test@example.com', 'wrong');
+        await Future.delayed(_delay);
+
+        verifyNoMoreInteractions(emailProvider);
+        expect(bloc.state.isRateLimited, isTrue);
+        expect(bloc.state.lastError, isA<RateLimitedError>());
+      });
+    });
+
     group('logout', () {
       setUp(() async {
         bloc = AuthBloc.withConfig(

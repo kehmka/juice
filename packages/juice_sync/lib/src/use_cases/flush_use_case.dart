@@ -22,11 +22,20 @@ List<Mutation> _remove(List<Mutation> list, String id) => [
 /// than starting a second loop (closes the missed-wakeup race). Within a pass,
 /// mutations sharing an `orderingKey` are strict FIFO; independent partitions
 /// proceed past a blocked one.
+///
+/// Nothing is sent while the online signal says offline: every trigger (the
+/// periodic retry, a backoff timer, a manual `flush()`) is skipped, and a pass
+/// already running stops before its next send. A send that cannot reach the
+/// backend would only spend one of the mutation's attempts.
 class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
   @override
   Future<void> execute(FlushRequestedEvent event) async {
     if (bloc.isFlushing) {
       bloc.requestFlushAgain();
+      return;
+    }
+    if (!bloc.state.online) {
+      log('Flush skipped: offline (${bloc.state.pending.length} pending)');
       return;
     }
     bloc.beginFlush();
@@ -49,9 +58,10 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
     }
   }
 
-  /// One pass over the current pending snapshot. Returns true if a storage
-  /// failure forced a hard stop.
+  /// One pass over the current pending snapshot. Returns true if the flush
+  /// must stop: a storage failure, or the online signal went offline.
   Future<bool> _pass() async {
+    if (!bloc.state.online) return true;
     emitUpdate(
       newState: bloc.state.copyWith(status: SyncStatus.syncing),
       groupsToRebuild: {SyncGroups.status},
@@ -62,6 +72,12 @@ class FlushUseCase extends BlocUseCase<SyncBloc, FlushRequestedEvent> {
 
     for (final m in snapshot) {
       if (bloc.isClosing) return false;
+      // The link dropped during this pass: stop before the next send. The
+      // online edge starts a new flush.
+      if (!bloc.state.online) {
+        log('Flush stopped: went offline mid-pass');
+        return true;
+      }
       // Skip if removed/changed since the snapshot.
       if (!bloc.state.pending.any((p) => p.id == m.id)) continue;
 

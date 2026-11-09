@@ -53,6 +53,7 @@ void main() {
     Stream<bool>? online,
     int maxAttempts = 8,
     Duration initialBackoff = const Duration(milliseconds: 20),
+    Duration? periodicRetry,
   }) =>
       SyncBloc.withConfig(SyncConfig(
         executor: ex.call,
@@ -61,6 +62,7 @@ void main() {
         maxAttempts: maxAttempts,
         initialBackoff: initialBackoff,
         maxBackoff: const Duration(milliseconds: 200),
+        periodicRetry: periodicRetry,
       ));
 
   group('SyncState model', () {
@@ -270,6 +272,138 @@ void main() {
       onlineCtrl.add(true);
       await settle();
       expect(ex.sent.map((m) => m.type), contains('q'));
+      expect(bloc.state.pending, isEmpty);
+
+      await onlineCtrl.close();
+      await bloc.close();
+    });
+
+    test('a manual flush while offline sends nothing and spends no attempt',
+        () async {
+      final ex = FakeExecutor();
+      final store = InMemorySyncStore();
+      final onlineCtrl = StreamController<bool>.broadcast();
+      final bloc = build(ex, store, online: onlineCtrl.stream);
+      await settle();
+      onlineCtrl.add(false);
+      await settle();
+
+      await bloc.enqueue('q', {});
+      await settle(); // the mutation is in the queue before the flush runs
+      expect(bloc.state.pending.length, 1);
+      bloc.flush();
+      await settle();
+
+      expect(ex.sent, isEmpty);
+      expect(bloc.state.pending.single.attempts, 0);
+      expect(bloc.state.pending.single.status, MutationStatus.pending);
+      expect((await store.loadAll()).single.attempts, 0);
+      expect(bloc.state.status, SyncStatus.idle);
+
+      await onlineCtrl.close();
+      await bloc.close();
+    });
+
+    test('the periodic retry while offline never dead-letters the queue',
+        () async {
+      // Every send fails, so a flush that ran offline would spend all three
+      // attempts and dead-letter the mutation well inside the wait below.
+      final ex = FakeExecutor()..retryableTimes['q'] = 1000;
+      final onlineCtrl = StreamController<bool>.broadcast();
+      final bloc = build(
+        ex,
+        InMemorySyncStore(),
+        online: onlineCtrl.stream,
+        maxAttempts: 3,
+        initialBackoff: const Duration(milliseconds: 5),
+        periodicRetry: const Duration(milliseconds: 10),
+      );
+      await settle();
+      onlineCtrl.add(false);
+      await settle();
+
+      await bloc.enqueue('q', {});
+      await settle(200);
+
+      expect(ex.sent, isEmpty);
+      expect(bloc.state.failed, isEmpty);
+      expect(bloc.state.pending.single.attempts, 0);
+
+      await onlineCtrl.close();
+      await bloc.close();
+    });
+
+    test(
+        'a backoff timer that fires while offline sends nothing; the online '
+        'edge resends', () async {
+      final ex = FakeExecutor()..retryableTimes['q'] = 1;
+      final onlineCtrl = StreamController<bool>.broadcast();
+      final bloc = build(
+        ex,
+        InMemorySyncStore(),
+        online: onlineCtrl.stream,
+        initialBackoff: const Duration(milliseconds: 60),
+      );
+      await settle();
+
+      await bloc.enqueue('q', {});
+      await settle();
+      expect(ex.sent.length, 1); // failed once; the backoff timer is armed
+      expect(bloc.state.pending.single.attempts, 1);
+
+      onlineCtrl.add(false);
+      await settle(150); // the backoff timer fires in here, offline
+
+      expect(ex.sent.length, 1);
+      expect(bloc.state.pending.single.attempts, 1);
+
+      onlineCtrl.add(true);
+      await settle();
+      expect(ex.sent.length, 2);
+      expect(bloc.state.pending, isEmpty);
+      expect(bloc.state.processedCount, 1);
+
+      await onlineCtrl.close();
+      await bloc.close();
+    });
+
+    test('going offline mid-pass stops the pass before its next send',
+        () async {
+      final onlineCtrl = StreamController<bool>.broadcast();
+      final sent = <Mutation>[];
+      final bloc = SyncBloc.withConfig(SyncConfig(
+        store: InMemorySyncStore(),
+        onlineSignal: onlineCtrl.stream,
+        executor: (m) async {
+          sent.add(m);
+          if (sent.length == 1) {
+            // The link drops while the first send is in the air.
+            onlineCtrl.add(false);
+            await settle();
+          }
+        },
+      ));
+      await settle();
+      onlineCtrl.add(false);
+      await settle();
+
+      await bloc.enqueue('a', {});
+      await bloc.enqueue('b', {});
+      await settle();
+      expect(sent, isEmpty);
+
+      onlineCtrl.add(true); // one pass over both mutations starts
+      await settle(80);
+
+      expect(sent.map((m) => m.type), ['a']);
+      expect(bloc.state.online, isFalse);
+      expect(bloc.state.pending.single.type, 'b');
+      expect(bloc.state.pending.single.attempts, 0);
+      expect(bloc.state.status, SyncStatus.idle);
+
+      onlineCtrl.add(true);
+      await settle();
+      expect(sent.map((m) => m.type), ['a', 'b']);
       expect(bloc.state.pending, isEmpty);
 
       await onlineCtrl.close();

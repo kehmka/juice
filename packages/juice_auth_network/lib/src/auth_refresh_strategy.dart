@@ -13,7 +13,9 @@ import 'package:juice_network/juice_network.dart';
 /// 2. Trigger `AuthBloc.refreshToken()` (its own singleflight collapses
 ///    concurrent triggers into one provider call).
 /// 3. Resolve with the new `accessToken` once `isRefreshing` transitions back
-///    to `false`, or with `null` if the session expires (refresh failed).
+///    to `false`, or with `null` as soon as the refresh fails: the session
+///    expired, the refresh event failed before it started (no refresh token),
+///    or the bloc closed.
 ///
 /// Returning `null` (rather than throwing) on failure matches the
 /// [RefreshTokenInterceptor] contract: a null token signals refresh-failed, so
@@ -46,23 +48,35 @@ class AuthBlocRefreshStrategy {
       completer.complete(token);
     }
 
-    sub = authBloc.stream.listen((status) {
-      final state = status.state;
+    sub = authBloc.stream.listen(
+      (status) {
+        final state = status.state;
 
-      // Refresh failed → session expired. Signal failure with null.
-      if (state.status == AuthStatus.sessionExpired) {
-        finish(null);
-        return;
-      }
+        // Refresh failed → session expired. Signal failure with null.
+        if (state.status == AuthStatus.sessionExpired) {
+          finish(null);
+          return;
+        }
 
-      if (state.isRefreshing) {
-        sawRefreshing = true;
-      } else if (sawRefreshing) {
-        // Refresh cycle completed (true → false). The session now carries the
-        // new token (or none, if something cleared it).
-        finish(state.session?.accessToken);
-      }
-    });
+        // The refresh event itself failed. A refresh with no refresh token
+        // fails before `isRefreshing` is ever set, so the true → false edge
+        // below never comes; without this the caller waited out the timeout.
+        if (status is FailureStatus && status.event is RefreshTokenEvent) {
+          finish(null);
+          return;
+        }
+
+        if (state.isRefreshing) {
+          sawRefreshing = true;
+        } else if (sawRefreshing) {
+          // Refresh cycle completed (true → false). The session now carries
+          // the new token (or none, if something cleared it).
+          finish(state.session?.accessToken);
+        }
+      },
+      // The bloc closed: no refresh will complete.
+      onDone: () => finish(null),
+    );
 
     // Trigger after subscribing so we never miss a fast emission.
     authBloc.refreshToken();
@@ -85,7 +99,11 @@ class AuthBlocRefreshStrategy {
 ///
 /// ```dart
 /// final dio = Dio();
-/// final fetchBloc = FetchBloc(storageBloc: storageBloc, dio: dio);
+/// final fetchBloc = FetchBloc(
+///   storageBloc: storageBloc,
+///   dio: dio,
+///   authIdentityProvider: AuthBlocIdentityProvider(authBloc).call,
+/// );
 /// fetchBloc.send(InitializeFetchEvent(
 ///   config: FetchConfig(baseUrl: 'https://api.example.com'),
 ///   interceptors: [

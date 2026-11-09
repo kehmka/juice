@@ -8,7 +8,14 @@ import 'package:juice_network/juice_network.dart';
 /// When there is no active session the token provider returns `null` and
 /// `AuthInterceptor` adds no `Authorization` header.
 ///
+/// `FetchBloc` refuses this interceptor unless it was built with an
+/// `authIdentityProvider`; pair it with [AuthBlocIdentityProvider].
+///
 /// ```dart
+/// final fetchBloc = FetchBloc(
+///   storageBloc: storageBloc,
+///   authIdentityProvider: AuthBlocIdentityProvider(authBloc).call,
+/// );
 /// fetchBloc.send(InitializeFetchEvent(
 ///   config: FetchConfig(baseUrl: 'https://api.example.com'),
 ///   interceptors: [AuthBlocAuthInterceptor(authBloc)],

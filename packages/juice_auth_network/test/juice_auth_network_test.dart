@@ -145,7 +145,11 @@ void main() {
       when(() => fetchStorage.hiveRead<dynamic>(any(), any()))
           .thenAnswer((_) async => null);
 
-      final fetchBloc = FetchBloc(storageBloc: fetchStorage, dio: dio);
+      final fetchBloc = FetchBloc(
+        storageBloc: fetchStorage,
+        dio: dio,
+        authIdentityProvider: AuthBlocIdentityProvider(authBloc).call,
+      );
 
       // Capture the outgoing Authorization header after the auth interceptor
       // has run. Registered after init so it sits later in the request chain.
@@ -188,6 +192,65 @@ void main() {
   });
 
   group('AuthBlocRefreshStrategy', () {
+    // The strategy's own timeout stays at its 30 s default in these tests.
+    // An answer inside one second means the strategy saw the failure itself.
+    const prompt = Duration(seconds: 1);
+
+    test('resolves null at once when the session has no refresh token',
+        () async {
+      await login(accessToken: 'old', refreshToken: null);
+      expect(authBloc.state.session?.refreshToken, isNull);
+
+      final strategy = AuthBlocRefreshStrategy(authBloc);
+      final token = await strategy.refresh().timeout(prompt);
+
+      expect(token, isNull);
+      expect(authBloc.state.lastError, isA<NoRefreshTokenError>());
+      expect(authBloc.state.isRefreshing, isFalse);
+      verifyNever(() => provider.refreshToken(any()));
+    });
+
+    test('resolves null at once when there is no session', () async {
+      await Future.delayed(_delay);
+      expect(authBloc.state.session, isNull);
+
+      final strategy = AuthBlocRefreshStrategy(authBloc);
+      final token = await strategy.refresh().timeout(prompt);
+
+      expect(token, isNull);
+      verifyNever(() => provider.refreshToken(any()));
+    });
+
+    test('resolves null at once when the bloc is closed', () async {
+      await login(accessToken: 'old', refreshToken: 'refresh-token');
+      await authBloc.close();
+
+      final strategy = AuthBlocRefreshStrategy(authBloc);
+      final token = await strategy.refresh().timeout(prompt);
+
+      expect(token, isNull);
+      verifyNever(() => provider.refreshToken(any()));
+    });
+
+    test('resolves null when the bloc closes while a refresh is in flight',
+        () async {
+      await login(accessToken: 'old', refreshToken: 'refresh-token');
+      final gate = Completer<AuthResult>();
+      when(() => provider.refreshToken('refresh-token'))
+          .thenAnswer((_) => gate.future);
+
+      final strategy = AuthBlocRefreshStrategy(authBloc);
+      final pending = strategy.refresh();
+      await Future.delayed(_delay);
+      expect(authBloc.state.isRefreshing, isTrue);
+
+      await authBloc.close();
+      final token = await pending.timeout(prompt);
+
+      expect(token, isNull);
+      gate.complete(_result(accessToken: 'late'));
+    });
+
     test('triggers refresh and resolves with the new access token', () async {
       await login(accessToken: 'old', refreshToken: 'refresh-token');
 

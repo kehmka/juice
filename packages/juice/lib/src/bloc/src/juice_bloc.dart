@@ -8,6 +8,7 @@ import 'stream_status.dart';
 import 'juice_logger.dart';
 import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
+import 'juice_exception.dart';
 import 'cancellable_event.dart';
 import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
@@ -497,8 +498,105 @@ class JuiceBloc<TState extends BlocState>
     return done.future;
   }
 
-  /// The `sendAndWait`s still pending, each as the closure that fails it; a
-  /// close runs them so no wait is left to time out.
+  /// Waits until [predicate] holds for this bloc's state and returns the
+  /// state it held for.
+  ///
+  /// The predicate sees state only. It is checked against the current state
+  /// first — a wait for something already true returns that state — and
+  /// then against every emission, of every status kind, SYNCHRONOUSLY (the
+  /// tap [sendAndWait] uses), so a state that holds for one emission is not
+  /// missed.
+  ///
+  /// [timeout] is required: there is no default and no "forever".
+  ///
+  /// Every other exit fails loud:
+  /// - nothing matched within [timeout]: [TimeoutException], naming the
+  ///   bloc;
+  /// - the bloc is closed or closing at the call, or closes while the wait
+  ///   is pending: [StateError];
+  /// - [predicate] throws: the wait fails with that error and is over. A
+  ///   throw on an emission never reaches the use case that emitted.
+  ///
+  /// Called inside a `restartable` use case the wait belongs to that run:
+  /// when the run is superseded the wait fails with a [CancelledException]
+  /// (at once, if the run is superseded already) instead of holding a
+  /// fenced run until [timeout]. A superseded run that ends on that
+  /// exception is not a failure: its span closes flagged superseded and the
+  /// error handler is not called.
+  ///
+  /// ```dart
+  /// final s = await llm.waitFor(
+  ///   (s) => s.isReady || s.modelStatus == LlmModelStatus.error,
+  ///   timeout: const Duration(minutes: 8),
+  /// );
+  /// if (!s.isReady) return;
+  /// ```
+  Future<TState> waitFor(
+    bool Function(TState state) predicate, {
+    required Duration timeout,
+  }) {
+    // The CALLER's run (the zone's), not this bloc's: a wait is usually on
+    // another bloc.
+    final run = RestartableRun.current;
+    if (run?.isSuperseded ?? false) {
+      return Future<TState>.error(
+          CancelledException(
+              'waitFor on $runtimeType: the calling run was superseded'),
+          StackTrace.current);
+    }
+    if (isClosing) {
+      return Future<TState>.error(
+          StateError('waitFor on a closed or closing $runtimeType'),
+          StackTrace.current);
+    }
+    try {
+      if (predicate(state)) return Future<TState>.value(state);
+    } catch (error, stackTrace) {
+      return Future<TState>.error(error, stackTrace);
+    }
+
+    final done = Completer<TState>();
+    late final void Function() untap;
+    late final Timer timer;
+    late final void Function() failOnClose;
+    // Every exit goes through here once: the tap, the timer and the close
+    // hook are all removed, so a finished wait leaves nothing behind.
+    bool settle() {
+      if (done.isCompleted) return false;
+      untap();
+      timer.cancel();
+      _pendingWaits.remove(failOnClose);
+      return true;
+    }
+
+    void fail(Object error, [StackTrace? stackTrace]) {
+      if (settle()) done.completeError(error, stackTrace);
+    }
+
+    untap = tapEmissions((status) {
+      // Inside the emit of whichever use case changed the state: a throwing
+      // predicate fails THIS wait, it does not unwind into that use case.
+      final bool matched;
+      try {
+        matched = predicate(status.state);
+      } catch (error, stackTrace) {
+        fail(error, stackTrace);
+        return;
+      }
+      if (matched && settle()) done.complete(status.state);
+    });
+    timer = Timer(timeout,
+        () => fail(TimeoutException('waitFor on $runtimeType', timeout)));
+    failOnClose = () =>
+        fail(StateError('$runtimeType closed while a waitFor was pending'));
+    _pendingWaits.add(failOnClose);
+    run?.whenSuperseded.then((_) => fail(CancelledException(
+        'waitFor on $runtimeType: the calling run was superseded')));
+    return done.future;
+  }
+
+  /// The `sendAndWait`s and `waitFor`s still pending, each as the closure
+  /// that fails it; a close runs them so no wait is left to time out.
   final Set<void Function()> _pendingWaits = {};
 
   /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream

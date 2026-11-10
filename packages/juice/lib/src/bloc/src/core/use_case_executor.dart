@@ -4,6 +4,7 @@ import '../bloc_state.dart';
 import '../bloc_event.dart';
 import '../cancellable_event.dart';
 import '../juice_bloc.dart';
+import '../juice_exception.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
 import 'restartable_run.dart';
@@ -124,6 +125,10 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
   /// when the use case started; a generator that throws then closes a span
   /// that never opened). A span consumer closes on whichever arrives.
   /// Below the telemetry floor only the error line is built.
+  ///
+  /// One throw is not an error: a [CancelledException] out of a run that
+  /// was superseded (`restartable`) closes the span as `use_case_completed`
+  /// flagged `superseded`, and the error handler is not called.
   Future<void> execute(UseCaseBuilderBase builder, EventBase event) async {
     final executionId = _nextExecutionId++;
     // Built only when a line will carry them: the two type names and the
@@ -160,6 +165,24 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       }
     } catch (error, stackTrace) {
       run?.complete();
+      if (error is CancelledException && (run?.isSuperseded ?? false)) {
+        // A superseded run that ends on a cancel — the `waitFor` it was
+        // parked in, or its own `throw CancelledException` — has ended, not
+        // failed: the span closes flagged superseded, and nothing reaches
+        // the error handler. Any other throw from a superseded run is
+        // still a failure, below.
+        if (chatter) {
+          _logger.record(JuiceTelemetry(
+            JuiceTelemetryKind.useCaseCompleted,
+            useCase: typeName((useCase ?? builder).runtimeType),
+            event: typeName(event.runtimeType),
+            executionId: executionId,
+            elapsedMicros: stopwatch!.elapsedMicroseconds,
+            superseded: true,
+          ));
+        }
+        return;
+      }
       _logger.record(JuiceTelemetry(
         JuiceTelemetryKind.useCaseFailed,
         // A generator that threw left no use case: the builder names it.

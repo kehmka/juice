@@ -42,7 +42,7 @@
 /// ## Features
 ///
 /// - **Group-based rebuilds**: Optimize UI performance with selective widget updates
-/// - **Cross-bloc communication**: StateRelay and StatusRelay for bloc-to-bloc data flow
+/// - **Cross-bloc communication**: Reaction (`bloc.react`) — one bloc reacting to another's state
 /// - **Navigation**: Integrated Aviator system for declarative navigation
 /// - **Comprehensive logging**: Built-in logging for debugging and observability
 ///

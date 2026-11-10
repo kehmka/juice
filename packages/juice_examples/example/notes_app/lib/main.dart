@@ -7,13 +7,13 @@
 //   soft-deleted notes, each with independent key spaces.
 // - [enableLeakDetection]: Debug-mode tooling that tracks bloc creations
 //   and lease acquisitions, flagging unreleased leases.
+// - Nothing here wires NotesBloc to SettingsBloc: NotesBloc attaches its own
+//   [Reaction] in its constructor (see notes_bloc.dart).
 import 'package:flutter/foundation.dart';
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 import 'blocs/notes/notes_bloc.dart';
-import 'blocs/notes/notes_events.dart';
 import 'blocs/settings/settings_bloc.dart';
-import 'blocs/settings/settings_state.dart';
 import 'blocs/editor/editor_bloc.dart';
 import 'screens/notes_list_screen.dart';
 
@@ -56,18 +56,6 @@ void main() async {
   BlocScope.register<EditorBloc>(
     () => EditorBloc(),
     lifecycle: BlocLifecycle.leased,
-  );
-
-  // StateRelay: every SettingsBloc state change reaches NotesBloc as a
-  // SettingsChangedEvent — cross-bloc reactivity with no manual forwarding.
-  // Built here, after both registrations: a relay leases both blocs (which
-  // creates them), so it cannot live inside either bloc's constructor. Both
-  // blocs are permanent, so the relay lives for the app's lifetime.
-  StateRelay<SettingsBloc, NotesBloc, SettingsState>(
-    toEvent: (state) => SettingsChangedEvent(
-      sortOrder: state.sortOrder,
-      viewMode: state.viewMode,
-    ),
   );
 
   runApp(const NotesApp());

@@ -11,7 +11,7 @@ This is the recommended first example for evaluating Juice because it demonstrat
 - `BlocLifecycle.leased` for editor-session state
 - rebuild groups for targeted UI updates
 - `StatefulUseCaseBuilder` for debounced autosave
-- relay-based cross-bloc coordination between settings and notes
+- a `Reaction` for cross-bloc coordination: the notes bloc reacts to the settings bloc's state
 
 ## Run
 
@@ -23,6 +23,6 @@ flutter run
 
 - `NotesBloc`: persistent notes and trash state
 - `EditorBloc`: leased editing session with autosave
-- `SettingsBloc`: persisted view/sort preferences relayed into the notes list
+- `SettingsBloc`: persisted view/sort preferences; `NotesBloc` reacts to them
 
 This app is intentionally closer to a production-style reference than the repository-root showcase app.

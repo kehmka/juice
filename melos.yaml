@@ -18,7 +18,7 @@ scripts:
     description: Run analyzer in all packages (juice_lint_example is the rules' planted-violation fixture suite — its warnings are the point; lint:juice verifies it)
 
   test:
-    run: dart run melos exec --concurrency=1 --dir-exists=test --ignore=notes_app -- flutter test
+    run: dart run melos exec --concurrency=1 --dir-exists=test -- flutter test
     description: Run tests in all packages
 
   lint:juice:

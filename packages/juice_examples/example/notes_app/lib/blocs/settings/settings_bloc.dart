@@ -2,11 +2,10 @@
 // - [InlineUseCaseBuilder]: View mode toggle and sort order change are
 //   trivial state mutations — perfect for inline lambdas instead of
 //   separate use case class files.
-// - [StateRelay] (wired in main.dart): when settings change, a
-//   [SettingsChangedEvent] auto-dispatches to [NotesBloc] so it re-sorts /
-//   re-layouts — zero manual event forwarding. The relay leases both blocs,
-//   so it is built in the composition root, never inside a bloc's own
-//   constructor.
+// - [Reaction] (attached in NotesBloc's constructor): NotesBloc reacts to
+//   this bloc's state, so it re-sorts / re-layouts when the sort order or
+//   the view mode changes. This bloc knows nothing about it — it only emits
+//   its own state.
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 import '../rebuild_groups.dart';

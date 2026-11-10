@@ -7,13 +7,16 @@
 //   a batch deletion mid-operation.
 // - [skipIfSame]: Search emits with skipIfSame to prevent redundant rebuilds
 //   when the query hasn't changed (e.g., same debounced value sent twice).
-// - [StateRelay]: SettingsChangedEvent arrives automatically from SettingsBloc
-//   via StateRelay — zero manual forwarding.
+// - [Reaction]: this bloc reacts to SettingsBloc's state. When the sort order
+//   or the view mode changes there, a SettingsChangedEvent is sent here —
+//   attached with react() in the constructor body, owned by this bloc.
 import 'dart:convert';
 import 'package:juice/juice.dart';
 import 'package:juice_storage/juice_storage.dart';
 import '../../models/note.dart';
 import '../rebuild_groups.dart';
+import '../settings/settings_bloc.dart';
+import '../settings/settings_state.dart';
 import 'notes_state.dart';
 import 'notes_events.dart';
 import 'use_cases/load_notes_use_case.dart';
@@ -117,7 +120,8 @@ class NotesBloc extends JuiceBloc<NotesState> {
                   concurrency: EventConcurrency.sequential,
                 ),
 
-            // Settings changed — relay from SettingsBloc, just update local state
+            // Settings changed — sent by the reaction below, just update
+            // local state
             () => InlineUseCaseBuilder<NotesBloc, NotesState,
                     SettingsChangedEvent>(
                   typeOfEvent: SettingsChangedEvent,
@@ -133,7 +137,22 @@ class NotesBloc extends JuiceBloc<NotesState> {
                   concurrency: EventConcurrency.sequential,
                 ),
           ],
-        );
+        ) {
+    // Reaction: this bloc follows SettingsBloc's sort order and view mode.
+    // `changes` fires when the selected pair is no longer == to what it was
+    // (records compare by value), so an emission that leaves both alone
+    // sends nothing. catchUp: whatever SettingsBloc already holds when this
+    // bloc is built counts — this bloc must not depend on which of the two
+    // was created, or finished loading, first.
+    react(Reaction<SettingsBloc, SettingsState>.changes(
+      (settings) => (settings.sortOrder, settings.viewMode),
+      send: (settings) => SettingsChangedEvent(
+        sortOrder: settings.sortOrder,
+        viewMode: settings.viewMode,
+      ),
+      atAttach: AtAttach.catchUp,
+    ));
+  }
 }
 
 /// Search use case — class-based to use [skipIfSame].

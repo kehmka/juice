@@ -5,6 +5,13 @@ import '../../core/type_names.dart';
 
 /// Subscribes to specific events from another bloc and executes a local use case.
 ///
+/// **Deprecated — removed in 3.0.0.** Use [Reaction] with `JuiceBloc.react`.
+/// A reaction sees state and nothing else, so an `EventSubscription` has NO
+/// drop-in port: it is keyed on the TYPE of a source event, which a reaction
+/// is never shown. Put what the destination needs in a state field of the
+/// source and react to that, or — when it is the outcome of one operation —
+/// have its caller take it as a typed result (`sendForResult`).
+///
 /// EventSubscription enables loosely-coupled bloc-to-bloc communication by
 /// allowing a bloc to react to specific events emitted by another bloc,
 /// without needing to know the source bloc's state structure.
@@ -33,6 +40,11 @@ import '../../core/type_names.dart';
 ///   ], []);
 /// }
 /// ```
+@Deprecated('Use Reaction with JuiceBloc.react. A reaction sees state only: an '
+    'EventSubscription is keyed on a source event type and has no drop-in '
+    'port. Put what the destination needs in a state field of the source '
+    'and react to that, or have the caller of the operation take its '
+    'outcome as a typed result (sendForResult). Removed in 3.0.0.')
 class EventSubscription<
     TSourceBloc extends JuiceBloc<BlocState>,
     TSourceEvent extends EventBase,

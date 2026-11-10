@@ -80,7 +80,8 @@ class PermanentDeleteEvent extends EventBase {
       : super(groupsToRebuild: {NotesGroups.trash}.toStringSet());
 }
 
-/// Dispatched by [StateRelay] from [SettingsBloc] — no manual wiring needed.
+/// Sent by [NotesBloc]'s reaction to [SettingsBloc] when the sort order or
+/// the view mode changes.
 class SettingsChangedEvent extends EventBase {
   final SortOrder sortOrder;
   final ViewMode viewMode;

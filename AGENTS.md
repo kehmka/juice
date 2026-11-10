@@ -186,7 +186,7 @@ primary fix, not a hand-rolled guard:
 () => UseCaseBuilder(
   typeOfEvent: SaveEvent,
   useCaseGenerator: () => SaveUseCase(),
-  concurrency: EventConcurrency.sequential,   // required: .sequential, .droppable, .restartable or .concurrent
+  concurrency: EventConcurrency.sequential,   // required: .sequential, .droppable, .singleflight, .restartable or .concurrent
 ),
 ```
 
@@ -195,6 +195,16 @@ primary fix, not a hand-rolled guard:
   read-before-await race is impossible.
 - **`droppable`** — for **exclusive flows** (flush, connect, pick): a same-type
   event arriving while one runs is ignored. Replaces a manual `if (_busy) return`.
+- **`singleflight`** — for **one flight, many callers** (a token refresh, a
+  permission prompt, a pull-to-refresh): a same-type event arriving while one
+  runs JOINS it. It does not run and is not dropped: its `send` completes
+  with the running one's, `sendAndWait` answers with the running one's
+  status, `sendForResult` returns its value or throws its error. Where
+  `droppable` says "the rest did not happen", `singleflight` says "the rest
+  are answered by it" — use it whenever a caller AWAITS the event. Events
+  join by type; `joinKey: (e) => ...` on `UseCaseBuilder` narrows that to
+  equal keys (two requests for the SAME permission), and different keys run
+  side by side. A join is logged `event_joined`.
 - **`restartable`** — for **latest-input-wins** (search,
   filter, select, load-by-id, scrubbing): a same-type event arriving while
   one runs SUPERSEDES it and starts at once. Dart cannot kill the old run, so
@@ -223,6 +233,21 @@ ends with no terminal status — dropped by `droppable`, no use case, a use
 case that emitted nothing, a close mid-wait — instead of waiting out the
 timeout. `sendAndWaitResult` / `sendForResult` (typed `ResultEvent`s) and
 `BlocTester.sendAndWaitForResult` are built on it.
+
+**An operation's outcome belongs to its caller, as a typed result.** Make
+the event a `ResultEvent<T>` and the caller writes
+`final session = await auth.sendForResult(RefreshTokenEvent())` — no
+Completer field, no `fooNow()` twin method, no watching state for an edge.
+The use case emits a terminal status AND calls `event.succeed(value)`. Two
+rules it must follow:
+- "The status" a waiter gets is the FIRST one that is not waiting. If that
+  is an in-progress update (`isRefreshing: true`), the waiter is already past
+  it and waiting on the value: on a later failure call `event.fail(e, st)`
+  as well as `emitFailure`, or the waiter times out.
+- To REFUSE an event without touching the stream, `event.fail(error)` and
+  emit nothing: `sendForResult` throws that error.
+A failure status throws from `sendForResult`; so does a close before the
+value arrives.
 
 When you *do* stay `concurrent`, follow the discipline:
 
@@ -320,6 +345,75 @@ instead of rebuilding. Two rules:
 > top-level `plugins: juice_lint:` section in `analysis_options.yaml` (no
 > pubspec dependency); suppress one site with `// ignore: juice_lint/<rule>`.
 
+## 4e. Bloc to bloc
+
+Four tools, one per kind of coupling. Pick by what the other bloc needs.
+
+**It needs to FOLLOW another bloc's state → a reaction.** The destination
+owns it, in its constructor body:
+
+```dart
+class NotesBloc extends JuiceBloc<NotesState> {
+  NotesBloc() : super(const NotesState(), [/* … */]) {
+    react(Reaction<SettingsBloc, SettingsState>.changes(
+      (s) => (s.sortOrder, s.viewMode),          // what to watch
+      send: (s) => SettingsChangedEvent(s.sortOrder, s.viewMode),
+      atAttach: AtAttach.catchUp,                // required: catchUp or skip
+    ));
+  }
+}
+```
+
+- Three forms: `Reaction.becomes(predicate)` (false → true),
+  `.changes(select)` (the selected value is no longer `==`),
+  `.edge((old, now) => …)` (anything else).
+- It sees STATE and nothing else — `oldState` and `state` of every
+  emission, never the status kind, the event or the groups. An operation's
+  outcome is not a reaction's business; it is the caller's typed result.
+- `atAttach` has no default: `catchUp` when the destination must not depend
+  on which bloc was built or loaded first (the usual answer), `skip` when
+  only future changes count. `edge` takes none.
+- The event is sent a microtask after the emission, never inside the
+  emitting use case. The source is resolved by type (`BlocScope.get`), or
+  passed as `source:` — REQUIRED for a `leased` source (a reaction holds no
+  lease and never keeps its source alive; when the source closes the
+  reaction ends, logged `reaction`/`end`).
+- A chain of reactions longer than `Reaction.maxHops` (8) is refused and
+  logged as an error (`reaction`/`refused`): a ring, or a chain that should
+  be one use case. A reaction's own throw is logged (`reaction`/`error`)
+  and the reaction stays attached.
+- `react` returns a `ReactionBinding` (`cancel()`); the destination's close
+  ends it. No field, no cancel in `close()`.
+
+**It needs to WAIT for another bloc to reach a state → `waitFor`.**
+`final s = await session.waitFor((s) => s.isReady, timeout: …)` — inside a
+use case that cannot proceed until then. `timeout` is required; every other
+exit is loud (timeout, the bloc closing, a superseded restartable run).
+
+**It needs the OUTCOME of an operation → `sendForResult`** (§4). Never a
+reaction watching for the state edge an operation leaves behind.
+
+**It needs something to happen LATER → `sendAfter`.**
+`bloc.sendAfter(SearchEvent(text), kDebounce, key: 'search')` — the bloc
+owns the timer. The same key REPLACES the pending send (that replace is a
+debounce); `cancelSend(key)` cancels; a close discards it (logged
+`event_ignored`). A bloc never holds a `Timer` field, an `isClosed` guard
+in a timer callback, or a cancel in `close()`. Periodic work is
+`bindStream(Stream<void>.periodic(interval), (_) => send(TickEvent()),
+key: 'poll')`. A bloc that routinely closes with a send pending calls
+`cancelSend` in its own `close` first (a discard at close is a warning).
+
+**A coordinator is a bloc.** Its events are the ones reactions send it; its
+use cases orchestrate with `waitFor` and `sendForResult`. No special type.
+
+`StateRelay`, `StatusRelay` and `EventSubscription` are DEPRECATED (removed
+in 3.0.0): a relay sent on every emission and was owned by nobody; a
+reaction says which change it means and is owned by its destination. Two
+old uses have no drop-in port — a `StatusRelay` mapping a waiting/failure
+STATUS to an event, an `EventSubscription` keyed on an event TYPE: put what
+the destination needs in a state field of the source, or give the caller a
+typed result.
+
 ## 5. Gotchas — what AI models get wrong about Juice
 
 1. **`StatelessJuiceWidget` subclasses CANNOT be `const`.** `const MyWidget()`
@@ -363,13 +457,14 @@ instead of rebuilding. Two rules:
    fresh instance per event). If an event suddenly reports "No handler
    registered", restart before debugging.
 
-11. **Never build a relay, or lease a bloc, inside a bloc's own constructor.**
-   `StateRelay` / `StatusRelay` / `EventSubscription` resolve their blocs
-   synchronously; a bloc that leases ITSELF while its factory runs fails at
-   the scope with a `StateError`. Wire relays in the composition root, after
-   the registrations. An `EventSubscription` in a builder list leases its
-   SOURCE from the constructor — fine, unless two blocs subscribe to each
-   other.
+11. **A bloc reacts to another in its own constructor — and never leases
+   itself there.** `react(Reaction<SourceBloc, …>…)` in the constructor body
+   resolves the SOURCE, so the source must be registered first; two blocs
+   that each react to the other by type cannot both be built first — pass
+   one as `source:`. The deprecated `StateRelay` / `StatusRelay` lease BOTH
+   blocs, so they could only be built in the composition root; a bloc that
+   leases ITSELF while its factory runs fails at the scope with a
+   `StateError`.
 
 ---
 
@@ -407,6 +502,35 @@ expect them), and a use
 case still running at close fails it. `wait:` is only for deliberate timers or
 debounces. Construct with the plain constructor and send the init event in
 `act` — `withConfig` fires it without returning the future.
+
+For SEVERAL blocs and the reactions between them, **`juiceFlowTest`**:
+
+```dart
+juiceFlowTest('a settings change reaches notes', (flow) async {
+  final settings = flow.register<SettingsBloc>(() => SettingsBloc());
+  final notes = flow.register<NotesBloc>(() => NotesBloc());
+
+  await flow.send(settings, ToggleViewModeEvent());   // sends, then waits for idle
+
+  flow.expect(settings, [isUpdatingStatus(state: isGrid)]);
+  flow.expect(notes, [isUpdatingStatus(state: isGrid)]);
+}, virtualTime: true);
+```
+
+It knows when every bloc is idle (no send in flight, no reaction hop
+pending, no `sendAfter` waiting), so there is nothing to sleep for.
+`flow.send` / `flow.settle()` wait for idle; `flow.elapse(d)` lets time pass
+WITHOUT waiting (act in the middle of a debounce, then settle);
+`flow.expect(bloc, [...])` consumes what that bloc emitted since its last
+expect; `flow.expectErrors` claims recorded errors. The test fails on
+anything it did not account for: an unconsumed emission, work in flight at
+the end, a refused reaction chain, an unclaimed error. `flow.register`
+registers in `BlocScope` (what a type-resolved reaction finds); `flow.add`
+watches an instance; build blocs INSIDE the flow, without a `logger:`.
+`virtualTime: true` makes every timer virtual — a 300 ms debounce takes no
+time — but real I/O (Hive, sqflite, a platform channel) never completes
+under it and the test fails saying so: fake the seam, or stay on the real
+clock.
 
 Examples are **juice-pure**: only the juice family + flutter; a `Demo*` seam impl
 so the app runs with no device/backend; a trivial smoke test.

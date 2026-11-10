@@ -131,15 +131,16 @@ Only groups that actually changed are emitted; an unchanged reading is a no-op
 ## Recipes
 
 ```dart
-// 1. Gate expensive work on a relay — NOT a stream.listen with a _wasPlugged field.
-StateRelay<PowerBloc, WellBloc, PowerState>(
-  toEvent: (_) => PauseWellEvent(),
-  when: (s) => s.oldState.isPluggedIn && !s.state.isPluggedIn,
-);
-StateRelay<PowerBloc, WellBloc, PowerState>(
-  toEvent: (_) => ResumeWellEvent(),
-  when: (s) => !s.oldState.isPluggedIn && s.state.isPluggedIn,
-);
+// 1. Gate expensive work on a reaction — NOT a stream.listen with a
+//    _wasPlugged field. In the constructor of the bloc that does the work:
+react(Reaction<PowerBloc, PowerState>.edge(
+  (old, now) => old.isPluggedIn && !now.isPluggedIn,
+  send: (_) => PauseWellEvent(),
+));
+react(Reaction<PowerBloc, PowerState>.edge(
+  (old, now) => !old.isPluggedIn && now.isPluggedIn,
+  send: (_) => ResumeWellEvent(),
+));
 
 // 2. The gate itself, inside the use case that does the work — so it refuses
 //    rather than trusting whoever sent the event.
@@ -192,7 +193,7 @@ fake.setSilently(...);   // a level that moves with NO status change → only th
 ## Anti-patterns
 
 - ❌ A `_wasPluggedIn` field and a `stream.listen` in the consumer to detect
-  the unplug — that is a relay (`StateRelay`, Recipe 1). The bloc already
+  the unplug — that is a reaction (`Reaction.edge`, Recipe 1). The bloc already
   emits only real changes with precise groups.
 - ❌ Policy in the bloc or the provider ("pause below 20%"). It belongs in the
   use case that does the expensive work (Recipe 2), which alone knows the cost.

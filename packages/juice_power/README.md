@@ -47,18 +47,19 @@ class ChargeBadge extends StatelessJuiceWidget<PowerBloc> {
 ```
 
 The usual reason to reach for this package is gating expensive background work.
-Express that as a relay, not a listener:
+Express that as a reaction, not a listener — in the constructor of the bloc
+that does the work:
 
 ```dart
 // Stop when the cable comes out; start again when it goes back in.
-StateRelay<PowerBloc, WellBloc, PowerState>(
-  toEvent: (_) => PauseWellEvent(),
-  when: (s) => s.oldState.isPluggedIn && !s.state.isPluggedIn,
-);
-StateRelay<PowerBloc, WellBloc, PowerState>(
-  toEvent: (_) => ResumeWellEvent(),
-  when: (s) => !s.oldState.isPluggedIn && s.state.isPluggedIn,
-);
+react(Reaction<PowerBloc, PowerState>.edge(
+  (old, now) => old.isPluggedIn && !now.isPluggedIn,
+  send: (_) => PauseWellEvent(),
+));
+react(Reaction<PowerBloc, PowerState>.edge(
+  (old, now) => !old.isPluggedIn && now.isPluggedIn,
+  send: (_) => ResumeWellEvent(),
+));
 ```
 
 ## Three values that can be unknown

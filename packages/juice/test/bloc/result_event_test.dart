@@ -24,6 +24,12 @@ class _Silent extends ResultEvent<int> {}
 /// Refused by its use case: failed, with nothing emitted for it.
 class _Refused extends ResultEvent<int> {}
 
+/// Emits progress at once, and its value only when [gate] opens.
+class _Progress extends ResultEvent<int> {
+  _Progress(this.gate);
+  final Future<void> gate;
+}
+
 /// Succeeded by its use case, with nothing emitted for it.
 class _SilentSuccess extends ResultEvent<int> {}
 
@@ -69,6 +75,16 @@ class _SilentSuccessUC extends BlocUseCase<_B, _SilentSuccess> {
   Future<void> execute(_SilentSuccess e) async => e.succeed(5);
 }
 
+class _ProgressUC extends BlocUseCase<_B, _Progress> {
+  @override
+  Future<void> execute(_Progress e) async {
+    emitUpdate(newState: const _S(1));
+    await e.gate;
+    emitUpdate(newState: const _S(2));
+    e.succeed(2);
+  }
+}
+
 class _SlowUC extends BlocUseCase<_B, _Slow> {
   @override
   Future<void> execute(_Slow e) async {
@@ -88,6 +104,8 @@ class _B extends JuiceBloc<_S> {
           () => UseCaseBuilder.typed(() => _CancelUC(),
               concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder.typed(() => _SilentUC(),
+              concurrency: EventConcurrency.concurrent),
+          () => UseCaseBuilder.typed(() => _ProgressUC(),
               concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder.typed(() => _RefusedUC(),
               concurrency: EventConcurrency.concurrent),
@@ -170,6 +188,59 @@ void main() {
         throwsA(isA<StateError>().having((e) => e.message, 'message',
             contains('finished without a terminal status'))));
     expect(await event.result, 5);
+  });
+
+  test(
+      'a bloc that closes AFTER the first status and before the value '
+      'fails the wait at the close, not after the timeout', () async {
+    final gate = Completer<void>();
+    final event = _Progress(gate.future);
+    final sw = Stopwatch()..start();
+    final waiting =
+        b.sendForResult(event, timeout: const Duration(seconds: 30));
+    final outcome = expectLater(
+        waiting,
+        throwsA(isA<StateError>().having((e) => e.message, 'message',
+            '_B closed while _Progress was waiting for its result')));
+    await Future<void>.delayed(Duration.zero);
+    expect(b.state.n, 1, reason: 'the first status is out');
+
+    await b.close();
+    await outcome;
+    expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+
+    // The run comes back to a closed bloc: nothing more happens.
+    gate.complete();
+    await Future<void>.delayed(Duration.zero);
+    await expectLater(event.result, throwsStateError);
+  });
+
+  test(
+      'a close that begins in the same breath as the first status fails '
+      'the wait too', () async {
+    final gate = Completer<void>();
+    // The use case runs to its first emit inside this call…
+    final waiting = b.sendForResult(_Progress(gate.future),
+        timeout: const Duration(seconds: 30));
+    final outcome = expectLater(
+        waiting,
+        throwsA(isA<StateError>().having((e) => e.message, 'message',
+            '_B closed while _Progress was waiting for its result')));
+    // …and the bloc starts closing before the waiter has resumed.
+    final closing = b.close();
+    await outcome;
+    await closing;
+    gate.complete();
+  });
+
+  test('a result that arrives in time is unaffected by a later close',
+      () async {
+    final gate = Completer<void>();
+    final waiting = b.sendForResult(_Progress(gate.future), timeout: fast);
+    await Future<void>.delayed(Duration.zero);
+    gate.complete();
+    expect(await waiting, 2);
+    await b.close();
   });
 
   test('an event dropped by a droppable builder fails loud', () async {

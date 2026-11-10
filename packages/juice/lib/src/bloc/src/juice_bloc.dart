@@ -957,6 +957,16 @@ class JuiceBloc<TState extends BlocState>
   /// it).
   final Set<void Function()> _closeHooks = {};
 
+  /// Framework-internal: run [hook] when this bloc closes — after its
+  /// bindings are cancelled, before its use cases close. Returns the
+  /// remover. `sendAndWaitResult` uses it so a wait on an event's RESULT
+  /// fails at the close, as a wait on its status already does.
+  @internal
+  void Function() onClose(void Function() hook) {
+    _closeHooks.add(hook);
+    return () => _closeHooks.remove(hook);
+  }
+
   /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream
   /// delivery). Returns the remover. Framework-internal — `sendAndWaitResult`
   /// uses it to know an event's terminal status the moment processing ends.

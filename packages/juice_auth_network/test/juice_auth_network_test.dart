@@ -268,6 +268,39 @@ void main() {
       expect(authBloc.state.session?.accessToken, 'refreshed');
     });
 
+    test(
+        'callers during a refresh join it: one provider call, and every '
+        'caller resolves with the new token', () async {
+      await login(accessToken: 'old', refreshToken: 'refresh-token');
+      final gate = Completer<AuthResult>();
+      when(() => provider.refreshToken('refresh-token'))
+          .thenAnswer((_) => gate.future);
+
+      final strategy = AuthBlocRefreshStrategy(authBloc);
+      final callers = [
+        strategy.refresh(),
+        strategy.refresh(),
+        strategy.refresh(),
+      ];
+      await Future.delayed(_delay);
+      gate.complete(_result(accessToken: 'new', refreshToken: 'refresh-2'));
+
+      expect(await Future.wait(callers), ['new', 'new', 'new']);
+      verify(() => provider.refreshToken('refresh-token')).called(1);
+    });
+
+    test('resolves null when its own timeout runs out', () async {
+      await login(accessToken: 'old', refreshToken: 'refresh-token');
+      final gate = Completer<AuthResult>();
+      when(() => provider.refreshToken('refresh-token'))
+          .thenAnswer((_) => gate.future);
+
+      final strategy = AuthBlocRefreshStrategy(authBloc,
+          timeout: const Duration(milliseconds: 60));
+      expect(await strategy.refresh().timeout(prompt), isNull);
+      gate.complete(_result(accessToken: 'late'));
+    });
+
     test('resolves null when refresh fails (session expired)', () async {
       await login(accessToken: 'old', refreshToken: 'refresh-token');
 

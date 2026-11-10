@@ -6,22 +6,21 @@ import 'package:juice_network/juice_network.dart';
 ///
 /// `juice_network`'s [RefreshTokenInterceptor] expects a
 /// `Future<String?> Function()` that triggers a refresh and resolves with the
-/// new access token. `AuthBloc.refreshToken()` is fire-and-forget, so this
-/// strategy bridges the gap by **watching the bloc's state stream**:
-///
-/// 1. Snapshot whether a refresh is already in flight.
-/// 2. Trigger `AuthBloc.refreshToken()` (its own singleflight collapses
-///    concurrent triggers into one provider call).
-/// 3. Resolve with the new `accessToken` once `isRefreshing` transitions back
-///    to `false`, or with `null` as soon as the refresh fails: the session
-///    expired, the refresh event failed before it started (no refresh token),
-///    or the bloc closed.
+/// new access token. That is one call: `RefreshTokenEvent` is a result
+/// event, so `sendForResult` returns the refreshed session — and it is
+/// `singleflight`, so a refresh requested while one is running (by another
+/// 401, or by the bloc's own expiry timer) joins it: one provider call, and
+/// every caller gets its token.
 ///
 /// Returning `null` (rather than throwing) on failure matches the
 /// [RefreshTokenInterceptor] contract: a null token signals refresh-failed, so
-/// the original 401 propagates and `onRefreshFailed` fires.
+/// the original 401 propagates and `onRefreshFailed` fires. Every way a
+/// refresh can fail to produce a token is that one signal: no refresh token,
+/// the provider refused (the session expired), the bloc is closed or closes
+/// meanwhile, or [timeout] ran out. The bloc itself has already said why —
+/// in its state (`lastError`) and its telemetry.
 class AuthBlocRefreshStrategy {
-  /// The auth bloc whose refresh lifecycle is observed.
+  /// The auth bloc whose refresh is driven.
   final AuthBloc authBloc;
 
   /// Maximum time to wait for a refresh to resolve before giving up.
@@ -34,60 +33,14 @@ class AuthBlocRefreshStrategy {
 
   /// Trigger a refresh and resolve with the new access token, or `null` on
   /// failure / session expiry / timeout.
-  Future<String?> refresh() {
-    final completer = Completer<String?>();
-    late StreamSubscription<StreamStatus<AuthState>> sub;
-
-    // Seed from the current state so an already-in-flight refresh (started by
-    // another caller) is detected even if we miss its isRefreshing:true edge.
-    var sawRefreshing = authBloc.state.isRefreshing;
-
-    void finish(String? token) {
-      if (completer.isCompleted) return;
-      sub.cancel();
-      completer.complete(token);
+  Future<String?> refresh() async {
+    try {
+      final session =
+          await authBloc.sendForResult(RefreshTokenEvent(), timeout: timeout);
+      return session.accessToken;
+    } catch (_) {
+      return null;
     }
-
-    sub = authBloc.stream.listen(
-      (status) {
-        final state = status.state;
-
-        // Refresh failed → session expired. Signal failure with null.
-        if (state.status == AuthStatus.sessionExpired) {
-          finish(null);
-          return;
-        }
-
-        // The refresh event itself failed. A refresh with no refresh token
-        // fails before `isRefreshing` is ever set, so the true → false edge
-        // below never comes; without this the caller waited out the timeout.
-        if (status is FailureStatus && status.event is RefreshTokenEvent) {
-          finish(null);
-          return;
-        }
-
-        if (state.isRefreshing) {
-          sawRefreshing = true;
-        } else if (sawRefreshing) {
-          // Refresh cycle completed (true → false). The session now carries
-          // the new token (or none, if something cleared it).
-          finish(state.session?.accessToken);
-        }
-      },
-      // The bloc closed: no refresh will complete.
-      onDone: () => finish(null),
-    );
-
-    // Trigger after subscribing so we never miss a fast emission.
-    authBloc.refreshToken();
-
-    return completer.future.timeout(
-      timeout,
-      onTimeout: () {
-        sub.cancel();
-        return null;
-      },
-    );
   }
 }
 

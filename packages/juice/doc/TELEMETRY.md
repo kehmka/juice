@@ -110,10 +110,11 @@ per kind: the facts are the fields.
 | kind | type · action | level | fields | when |
 |---|---|---|---|---|
 | `useCaseStarted` | `use_case_execution` | info | `useCase`, `event`, `executionId` | a use case is about to execute; opens the span |
-| `useCaseCompleted` | `use_case_completed` | info | `useCase`, `event`, `executionId`, `elapsedMicros`, `superseded` | the use case returned; closes the span |
+| `useCaseCompleted` | `use_case_completed` | info | `useCase`, `event`, `executionId`, `elapsedMicros`, `superseded` | the use case returned, or a superseded `restartable` run ended on a `CancelledException` (the `waitFor` it was parked in, or its own throw); closes the span |
 | `useCaseFailed` | `use_case_error` | error | `useCase`, `event`, `executionId`, `elapsedMicros`*, `superseded`, `error`, `stackTrace` | the use case threw, or its generator did (then `useCase` is the builder's name and no start was recorded); closes the span |
 | `sequentialRunFailed` | `sequential_run_error` | error | `event`, `error`, `stackTrace` | a `sequential` run's failure escaped the executor (an `onError` override that throws); the queue goes on; no span |
 | `useCaseSuperseded` | `use_case_superseded` | info | `event`, `cancellable` | a `restartable` run was superseded by a newer same-type event |
+| `eventDropped` | `event_dropped` | info | `event`, `reason` | an event was dropped before any use case ran for it: a `droppable` builder had an earlier one of its type still running |
 | `supersedeFailed` | `supersede_error` | error | `event`, `error`, `stackTrace` | superseding threw (a throwing `cancel()`, logger or binding cancel); the new run still starts |
 
 \* `elapsedMicros` is set when the span was being timed — the chatter was on
@@ -125,14 +126,27 @@ use-case error produces TWO entries: `useCaseFailed` (the span's close) and
 `blocError` (the bloc's `onError` hook). Span consumers key on the first,
 error counters on the second.
 
+One throw is not an error: a `CancelledException` out of a run that was
+superseded closes its span as `useCaseCompleted` flagged `superseded`, with
+no `useCaseFailed`, no `blocError` and no error-handler call. Any other
+throw from a superseded run is a `useCaseFailed` flagged `superseded`.
+
 ### Emissions
 
 | kind | type · action | level | fields | when |
 |---|---|---|---|---|
-| `stateEmitted` | `state_emission` | info (never gated when `status` is `failure`) | `status`, `state`, `bloc`, `groups`, `event`; `error`, `stackTrace` on a failure | a status is being put on the stream |
-| `emissionSkipped` | `state_emission_skipped` | info | `bloc`, `event` | `emitUpdate(skipIfSame: true)` found `newState == state` |
-| `emissionSuperseded` | `state_emission_superseded` | info | `bloc`, `event`, `status` (`update`, `waiting`, `failure`, `cancel`, `event` or `navigate`) | the restartable fence dropped an emission or navigation of a superseded run |
-| `emissionAfterClose` | `emission_after_close` | warning | `status`, `bloc`, `event`; `error` on a failure | an in-flight use case emitted after its bloc closed; the emit was dropped |
+| `stateEmitted` | `state_emission` | info (never gated when `status` is `failure`) | `status`, `state`, `bloc`, `groups`, `event`, `executionId`; `error`, `stackTrace` on a failure | a status is being put on the stream |
+| `emissionSkipped` | `state_emission_skipped` | info | `bloc`, `event`, `executionId` | `emitUpdate(skipIfSame: true)` found `newState == state` |
+| `emissionSuperseded` | `state_emission_superseded` | info | `bloc`, `event`, `executionId`, `status` (`update`, `waiting`, `failure`, `cancel`, `event` or `navigate`) | the restartable fence dropped an emission or navigation of a superseded run |
+| `emissionAfterClose` | `emission_after_close` | warning | `status`, `bloc`, `event`, `executionId`†; `error` on a failure | an in-flight use case emitted after its bloc closed; the emit was dropped |
+
+`executionId` is the id of the run that made the emission — the one on its
+`use_case_execution` span — so an emission pairs with its run even when two
+events of one type overlap. It is absent on an emission no run made
+(`seedState`).
+
+† Set when the dropped emit was a status. A re-emitted event
+(`emitEvent`) dropped after close carries none.
 
 `status` is an `EmissionKind`; its `wire` string is what `toMap()` emits.
 `groups` is the set the caller passed (`null` means every widget). The

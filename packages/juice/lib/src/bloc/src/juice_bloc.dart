@@ -799,23 +799,28 @@ class JuiceBloc<TState extends BlocState>
   late final void Function(String?, Map<String, dynamic>?) _sharedNavigate =
       _aviatorManager.navigate;
 
-  UseCaseContext<JuiceBloc<TState>, TState> _createContext(EventBase event) {
+  /// [executionId] is the run's id (the executor's): every status the run
+  /// emits carries it on its telemetry entry.
+  UseCaseContext<JuiceBloc<TState>, TState> _createContext(
+      EventBase event, int executionId) {
     if (_dispatcher.isRestartable(event.runtimeType)) {
-      return _fencedContext(event);
+      return _fencedContext(event, executionId);
     }
     return UseCaseContext(
       bloc: this,
       emitUpdate: (newState, groups, {bool skipIfSame = false}) =>
           _statusEmitter.emitUpdate(event, newState, groups,
-              skipIfSame: skipIfSame),
-      emitWaiting: (newState, groups) =>
-          _statusEmitter.emitWaiting(event, newState, groups),
+              skipIfSame: skipIfSame, executionId: executionId),
+      emitWaiting: (newState, groups) => _statusEmitter
+          .emitWaiting(event, newState, groups, executionId: executionId),
       emitFailure: (newState, groups,
               {Object? error, StackTrace? errorStackTrace}) =>
           _statusEmitter.emitFailure(event, newState, groups,
-              error: error, errorStackTrace: errorStackTrace),
-      emitCancel: (newState, groups) =>
-          _statusEmitter.emitCancel(event, newState, groups),
+              error: error,
+              errorStackTrace: errorStackTrace,
+              executionId: executionId),
+      emitCancel: (newState, groups) => _statusEmitter
+          .emitCancel(event, newState, groups, executionId: executionId),
       emitEvent: _sharedEmitEvent,
       navigate: _sharedNavigate,
     );
@@ -831,7 +836,8 @@ class JuiceBloc<TState extends BlocState>
   /// dropped once the run is superseded, each drop logged as
   /// `state_emission_superseded`. Built only for restartable types, so the
   /// other modes pay nothing for the fence.
-  UseCaseContext<JuiceBloc<TState>, TState> _fencedContext(EventBase event) {
+  UseCaseContext<JuiceBloc<TState>, TState> _fencedContext(
+      EventBase event, int executionId) {
     // The RUN, not the event, is what gets superseded: the same event
     // instance sent twice is two runs, and only the first is fenced. The
     // context is created inside the run's zone (the executor runs there),
@@ -850,6 +856,7 @@ class JuiceBloc<TState extends BlocState>
           JuiceTelemetryKind.emissionSuperseded,
           bloc: _blocName,
           event: typeName(event.runtimeType),
+          executionId: executionId,
           status: status,
         ));
       }
@@ -861,21 +868,25 @@ class JuiceBloc<TState extends BlocState>
       emitUpdate: (newState, groups, {bool skipIfSame = false}) {
         if (fenced(EmissionKind.update)) return;
         _statusEmitter.emitUpdate(event, newState, groups,
-            skipIfSame: skipIfSame);
+            skipIfSame: skipIfSame, executionId: executionId);
       },
       emitWaiting: (newState, groups) {
         if (fenced(EmissionKind.waiting)) return;
-        _statusEmitter.emitWaiting(event, newState, groups);
+        _statusEmitter.emitWaiting(event, newState, groups,
+            executionId: executionId);
       },
       emitFailure: (newState, groups,
           {Object? error, StackTrace? errorStackTrace}) {
         if (fenced(EmissionKind.failure)) return;
         _statusEmitter.emitFailure(event, newState, groups,
-            error: error, errorStackTrace: errorStackTrace);
+            error: error,
+            errorStackTrace: errorStackTrace,
+            executionId: executionId);
       },
       emitCancel: (newState, groups) {
         if (fenced(EmissionKind.cancel)) return;
-        _statusEmitter.emitCancel(event, newState, groups);
+        _statusEmitter.emitCancel(event, newState, groups,
+            executionId: executionId);
       },
       emitEvent: (EventBase? e) {
         if (e == null || fenced(EmissionKind.event)) return;

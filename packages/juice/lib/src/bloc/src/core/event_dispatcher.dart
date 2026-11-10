@@ -224,6 +224,13 @@ class EventDispatcher<Event extends Object> {
   Future<void> _droppable(Type type, EventHandler<Event> handler, Event event) {
     if (_running[type] == true) {
       _dropped[event] = true;
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        _log.record(JuiceTelemetry(
+          JuiceTelemetryKind.eventDropped,
+          event: typeName(type),
+          reason: 'droppable: an earlier ${typeName(type)} is still running',
+        ));
+      }
       return Future<void>.value();
     }
     if (_disposed) return Future<void>.value();

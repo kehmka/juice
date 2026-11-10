@@ -54,14 +54,19 @@ enum JuiceTelemetryKind {
   /// A `restartable` run was superseded by a newer same-type event.
   useCaseSuperseded('use_case_superseded', 'Use case superseded'),
 
+  /// An event was dropped before any use case ran for it (`reason`): a
+  /// `droppable` builder had an earlier one of its type still running.
+  eventDropped('event_dropped', 'Event dropped'),
+
   /// Superseding a run threw (a throwing `cancel()`, logger or binding
   /// cancel); the new run still starts.
   supersedeFailed('supersede_error', 'Error while superseding a run',
       level: Level.error),
 
   // --- emissions
-  /// A status is being put on the stream: `status`, `state`, `groups`;
-  /// `error` and `stackTrace` on a failure.
+  /// A status is being put on the stream: `status`, `state`, `groups`,
+  /// the `executionId` of the run emitting it; `error` and `stackTrace` on
+  /// a failure.
   stateEmitted('state_emission', 'State emitted'),
 
   /// `emitUpdate(skipIfSame: true)` found `newState == state`.
@@ -299,7 +304,8 @@ final class JuiceTelemetry {
   /// The use case's type name (the builder's, when the generator threw).
   final String? useCase;
 
-  /// The span id shared by a use case's start and end entries.
+  /// The span id shared by a use case's start and end entries, and by the
+  /// entries of every status that run emits.
   final int? executionId;
 
   /// The span's duration, when the span was being timed (the chatter was

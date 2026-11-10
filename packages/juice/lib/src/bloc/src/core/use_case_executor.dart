@@ -80,7 +80,7 @@ class UseCaseContext<TBloc, TState extends BlocState> {
 /// Example:
 /// ```dart
 /// final executor = UseCaseExecutor(
-///   contextFactory: (event) => UseCaseContext(...),
+///   contextFactory: (event, executionId) => UseCaseContext(...),
 ///   onError: (error, stack, event) => handleError(error),
 ///   logger: logger,
 /// );
@@ -90,11 +90,14 @@ class UseCaseContext<TBloc, TState extends BlocState> {
 class UseCaseExecutor<TBloc, TState extends BlocState> {
   /// Creates a UseCaseExecutor.
   ///
-  /// [contextFactory] creates a fresh context for each event execution.
+  /// [contextFactory] creates a fresh context for each event execution; it
+  /// is handed the execution's id so the emissions made through the context
+  /// carry it.
   /// [onError] is called when use case execution fails.
   /// [logger] is used for logging execution details.
   UseCaseExecutor({
-    required UseCaseContext<TBloc, TState> Function(EventBase event)
+    required UseCaseContext<TBloc, TState> Function(
+            EventBase event, int executionId)
         contextFactory,
     required void Function(Object error, StackTrace stack, EventBase event)
         onError,
@@ -103,7 +106,8 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
         _onError = onError,
         _logger = logger;
 
-  final UseCaseContext<TBloc, TState> Function(EventBase event) _contextFactory;
+  final UseCaseContext<TBloc, TState> Function(EventBase event, int executionId)
+      _contextFactory;
   final void Function(Object error, StackTrace stack, EventBase event) _onError;
   final JuiceLogger _logger;
 
@@ -141,7 +145,7 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       // The generator and the context are inside the try: a throwing
       // generator (a DI lookup) is a use-case error, not a silent miss.
       useCase = builder.generator();
-      final context = _contextFactory(event);
+      final context = _contextFactory(event, executionId);
       if (chatter) {
         _logger.record(JuiceTelemetry(
           JuiceTelemetryKind.useCaseStarted,

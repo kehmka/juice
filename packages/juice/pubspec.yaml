@@ -32,6 +32,9 @@ dependencies:
   # juiceTest (package:juice/testing.dart) registers tests through
   # test_api's public scaffolding — the same `test` flutter_test re-exports.
   test_api: ">=0.7.0 <0.8.0"
+  # juiceFlowTest's virtual time (package:juice/testing.dart). Pure Dart; the
+  # same package flutter_test drives `testWidgets` with.
+  fake_async: ^1.3.0
   meta: ^1.15.0
 
 dev_dependencies:

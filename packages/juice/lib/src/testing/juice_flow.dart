@@ -1,6 +1,8 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:logger/web.dart' show Level;
 import 'package:matcher/expect.dart' as m;
 import 'package:meta/meta.dart';
+import 'package:test_api/hooks.dart' show TestFailure;
 import 'package:test_api/scaffolding.dart' as scaffolding;
 
 import '../bloc/bloc.dart';
@@ -44,17 +46,48 @@ import 'juice_test.dart';
 /// is registered there, because the reset at its end would destroy it. One
 /// flow runs at a time.
 ///
-/// Runs on the real clock.
+/// ## Time
+///
+/// Idle includes time: a `sendAfter` still pending is not idle, so
+/// [JuiceFlow.send] and [JuiceFlow.settle] wait for it to fire, and a
+/// debounce is tested by letting it run out. [JuiceFlow.elapse] lets a
+/// stated amount of time pass WITHOUT waiting for idle — the way to act in
+/// the middle of a delay:
+///
+/// ```dart
+/// juiceFlowTest('a second keystroke replaces the search', (flow) async {
+///   final shelf = flow.add(ShelfBloc());
+///   shelf.typed('j');                                  // sendAfter, 300 ms
+///   await flow.elapse(const Duration(milliseconds: 100));
+///   shelf.typed('ju');                                 // replaces it
+///   await flow.settle();
+///   flow.expect(shelf, [isUpdatingStatus(state: resultsFor('ju'))]);
+/// }, virtualTime: true);
+/// ```
+///
+/// By default a flow runs on the real clock: a 300 ms debounce takes
+/// 300 ms. With [virtualTime] the same test runs on a virtual clock
+/// (`package:fake_async`): whenever the test is waiting and nothing can
+/// happen until time passes, the clock JUMPS to the next timer, so the test
+/// reads the same and takes no time. Every timer is virtual — a
+/// `sendAfter`, a `Future.delayed` in a use case, a `waitFor` timeout, the
+/// 5 seconds [JuiceFlow.settle] allows — and so is the microtask queue.
+///
+/// What a virtual clock cannot advance is the real world: Hive, sqflite, a
+/// platform channel, anything that completes on the real event loop. A
+/// virtual-time test that waits on one fails at once, saying so. Keep
+/// those tests on the real clock, or fake the seam.
 @isTest
 void juiceFlowTest(
   String description,
   FutureOr<void> Function(JuiceFlow flow) body, {
+  bool virtualTime = false,
   Object? tags,
   Object? skipTest,
 }) {
   scaffolding.test(
     description,
-    () => runJuiceFlow(body),
+    () => runJuiceFlow(body, virtualTime: virtualTime),
     tags: tags,
     skip: skipTest,
   );
@@ -63,8 +96,40 @@ void juiceFlowTest(
 /// The body of [juiceFlowTest], callable directly — from a test with its
 /// own setup, or inside `testWidgets` through `tester.runAsync` (a flow
 /// waits on the real clock, which `testWidgets` replaces).
-Future<void> runJuiceFlow(FutureOr<void> Function(JuiceFlow flow) body) async {
-  final flow = JuiceFlow._start();
+Future<void> runJuiceFlow(
+  FutureOr<void> Function(JuiceFlow flow) body, {
+  bool virtualTime = false,
+}) async {
+  final flow = JuiceFlow._start(virtualTime);
+  if (!virtualTime) return _run(flow, body);
+
+  // The whole flow — body, end checks, closing — runs on the virtual
+  // clock; what it ended with is reported out here, on the real one.
+  final time = _VirtualTime(FakeAsync());
+  var outcome = await time.drive(() => _run(flow, body));
+  if (outcome.stuck) {
+    // Parked on the real world, for ever: nothing in the body will reach
+    // the end of the flow. Close what it holds, and say so.
+    final waitedOn = outcome.waitedOn;
+    final closing = await time.drive(flow._close);
+    outcome = _Outcome.threw(
+        TestFailure('juiceFlowTest: under virtual time the test is waiting '
+            'on something $waitedOn — real I/O (Hive, sqflite, a platform '
+            'channel) or a future nobody completes. In flight: '
+            '${flow._probe.describeInFlight()}. Virtual time cannot advance '
+            'the real world: run this test on the real clock, or fake the '
+            'seam.${closing.stuck ? ' Closing the blocs did not finish '
+                'either.' : ''}'),
+        StackTrace.current);
+  }
+  // Whatever happened in there, the logger and the probe go back.
+  flow._handBack();
+  final error = outcome.error;
+  if (error != null) Error.throwWithStackTrace(error, outcome.stackTrace!);
+}
+
+Future<void> _run(
+    JuiceFlow flow, FutureOr<void> Function(JuiceFlow flow) body) async {
   final problems = <String>[];
   try {
     await body(flow);
@@ -89,11 +154,11 @@ String _bullets(List<String> lines) => lines.map((l) => '- $l').join('\n');
 
 /// The blocs of one [juiceFlowTest]: what the test body is handed.
 final class JuiceFlow {
-  JuiceFlow._(this._previousLogger) {
+  JuiceFlow._(this._previousLogger, this._virtualTime) {
     _recorder = _FlowRecorder(_previousLogger);
   }
 
-  factory JuiceFlow._start() {
+  factory JuiceFlow._start(bool virtualTime) {
     if (JuiceActivityProbe.current != null) {
       throw StateError('juiceFlowTest: a flow is already running. One flow '
           'runs at a time — it is told about every send in the process.');
@@ -104,7 +169,7 @@ final class JuiceFlow {
           'destroy it: register inside the flow (flow.register, or '
           'BlocScope.register in the body) and nowhere before it.');
     }
-    final flow = JuiceFlow._(JuiceLoggerConfig.logger);
+    final flow = JuiceFlow._(JuiceLoggerConfig.logger, virtualTime);
     JuiceLoggerConfig.configureLogger(flow._recorder);
     JuiceActivityProbe.current = flow._probe;
     return flow;
@@ -115,6 +180,7 @@ final class JuiceFlow {
   static const Duration defaultTimeout = Duration(seconds: 5);
 
   final JuiceLogger _previousLogger;
+  final bool _virtualTime;
   late final _FlowRecorder _recorder;
   final _FlowProbe _probe = _FlowProbe();
 
@@ -192,11 +258,14 @@ final class JuiceFlow {
   }
 
   /// Waits until every bloc in the process is idle: no send in flight
-  /// (waiting in a `sequential` queue counts), no reaction hop pending —
-  /// and still none one turn of the event loop later.
+  /// (waiting in a `sequential` queue counts), no reaction hop pending, no
+  /// `sendAfter` still waiting to fire — and still none one turn of the
+  /// event loop later.
   ///
   /// Fails the test if that has not happened within [timeout], naming what
-  /// is still in flight.
+  /// is still in flight. Under virtual time the [timeout] is virtual too: a
+  /// timer that re-arms itself for ever fails after [timeout] of virtual
+  /// time, which takes none.
   Future<void> settle({Duration timeout = defaultTimeout}) {
     _checkRunning();
     final done = Completer<void>();
@@ -223,15 +292,30 @@ final class JuiceFlow {
     }
 
     timer = Timer(timeout, () {
-      try {
-        m.fail('juiceFlowTest: the blocs were not idle after $timeout. '
-            'Still in flight: ${_probe.describeInFlight()}');
-      } catch (failure, stackTrace) {
-        done.completeError(failure, stackTrace);
-      }
+      done.completeError(
+          TestFailure('juiceFlowTest: the blocs were not idle after '
+              '$timeout${_virtualTime ? ' of virtual time' : ''}. '
+              'Still in flight: ${_probe.describeInFlight()}'
+              '${_virtualTime ? '. Under virtual time a use case waiting '
+                  'on real I/O (Hive, sqflite, a platform channel) never '
+                  'finishes.' : ''}'),
+          StackTrace.current);
     });
     check();
     return done.future;
+  }
+
+  /// Lets [duration] pass — exactly that much — and whatever falls due in
+  /// it run. It does NOT wait for idle: use it to act in the middle of a
+  /// delay, then [settle]. On the real clock it really waits; under virtual
+  /// time the clock jumps.
+  Future<void> elapse(Duration duration) {
+    _checkRunning();
+    if (duration.isNegative) {
+      throw ArgumentError.value(
+          duration, 'duration', 'juiceFlowTest: time cannot run backwards');
+    }
+    return Future<void>.delayed(duration);
   }
 
   /// Asserts on what [bloc] emitted since its last [expect] (or since it
@@ -309,9 +393,16 @@ final class JuiceFlow {
     } catch (error) {
       problems.add('resetting BlocScope threw: $error');
     }
+    _handBack();
+    return problems;
+  }
+
+  /// The logger that was configured and the probe go back. Idempotent: a
+  /// virtual-time flow whose close never finished still hands them back.
+  void _handBack() {
+    if (!identical(JuiceActivityProbe.current, _probe)) return;
     JuiceLoggerConfig.configureLogger(_previousLogger);
     JuiceActivityProbe.current = null;
-    return problems;
   }
 
   /// What is wrong once everything is closed.
@@ -351,7 +442,8 @@ class _FlowProbe implements JuiceActivityProbe {
 
   void onNextIdle(void Function() callback) => _idleWaiters.add(callback);
 
-  String describeInFlight() => _inFlight.join(', ');
+  String describeInFlight() =>
+      _inFlight.isEmpty ? 'nothing' : _inFlight.join(', ');
 
   @override
   void began(JuiceWork work) {
@@ -408,4 +500,114 @@ class _FlowRecorder implements JuiceLogger {
   void logError(String message, Object error, StackTrace stackTrace,
           {Map<String, dynamic>? context}) =>
       _inner.logError(message, error, stackTrace, context: context);
+}
+
+/// How a driven future ended: completed, failed with [error], or [stuck] —
+/// parked with no timer left that could ever resume it.
+class _Outcome {
+  const _Outcome.done()
+      : error = null,
+        stackTrace = null,
+        waitedOn = null;
+  const _Outcome.threw(Object this.error, StackTrace this.stackTrace)
+      : waitedOn = null;
+  const _Outcome.parked(String this.waitedOn)
+      : error = null,
+        stackTrace = null;
+
+  final Object? error;
+  final StackTrace? stackTrace;
+
+  /// For a stuck wait: what kind of nothing it was waiting on.
+  final String? waitedOn;
+
+  bool get stuck => waitedOn != null;
+}
+
+/// The virtual clock of one flow: runs async work inside `fake_async`,
+/// jumping to the next timer whenever everything is parked.
+class _VirtualTime {
+  _VirtualTime(this._clock);
+
+  final FakeAsync _clock;
+
+  /// When each timer was created, on the virtual clock. `fake_async` does
+  /// not say when a timer is next due; from this it follows.
+  final Expando<Duration> _createdAt = Expando('juice.flow.timer');
+
+  Timer _note(Timer timer) {
+    _createdAt[timer] = _clock.elapsed;
+    return timer;
+  }
+
+  /// How much virtual time a wait may spend with ONLY periodic timers
+  /// pending before it is called stuck. A periodic timer never runs out, so
+  /// a test parked on the real world beside one would otherwise jump the
+  /// clock for ever. The same hour `fake_async` allows its own
+  /// `flushTimers`.
+  static const Duration periodicOnlyLimit = Duration(hours: 1);
+
+  /// When the earliest pending timer is due, or null with none pending.
+  Duration? _nextDue() {
+    Duration? next;
+    for (final timer in _clock.pendingTimers) {
+      final due = _createdAt[timer]! + timer.duration * (timer.tick + 1);
+      if (next == null || due < next) next = due;
+    }
+    return next;
+  }
+
+  /// One turn of the REAL event loop, so the real microtask queue drains.
+  /// Not everything a virtual clock runs is virtual: a future that was
+  /// completed in the root zone — a stream subscription's `cancel()`, which
+  /// every bloc's close awaits — resumes its listeners on the real queue.
+  /// One turn, and no more: real I/O is not waited for.
+  static Future<void> _realTurn() {
+    final turned = Completer<void>();
+    Timer.run(turned.complete);
+    return turned.future;
+  }
+
+  /// Runs [work] to its end on the virtual clock. Every timer and
+  /// microtask [work] creates is virtual. Called on the real clock.
+  Future<_Outcome> drive(Future<Object?> Function() work) async {
+    _Outcome? outcome;
+    _clock.run((_) => runZoned(
+          () => work().then<void>(
+            (_) => outcome = const _Outcome.done(),
+            onError: (Object error, StackTrace stackTrace) =>
+                outcome = _Outcome.threw(error, stackTrace),
+          ),
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, callback) =>
+                _note(parent.createTimer(zone, duration, callback)),
+            createPeriodicTimer: (self, parent, zone, period, callback) =>
+                _note(parent.createPeriodicTimer(zone, period, callback)),
+          ),
+        ));
+    Duration? periodicOnlySince;
+    while (true) {
+      _clock.flushMicrotasks();
+      if (outcome != null) return outcome!;
+      await _realTurn();
+      _clock.flushMicrotasks();
+      if (outcome != null) return outcome!;
+
+      final next = _nextDue();
+      if (next == null) {
+        return const _Outcome.parked('no timer will complete');
+      }
+      if (_clock.pendingTimers.every((timer) => timer.isPeriodic)) {
+        periodicOnlySince ??= _clock.elapsed;
+        if (next - periodicOnlySince > periodicOnlyLimit) {
+          return const _Outcome.parked('only periodic timers were left '
+              'beside, for an hour of virtual time');
+        }
+      } else {
+        periodicOnlySince = null;
+      }
+      // Everything is parked until a timer fires: jump to the next one.
+      _clock.elapse(next - _clock.elapsed);
+    }
+  }
 }

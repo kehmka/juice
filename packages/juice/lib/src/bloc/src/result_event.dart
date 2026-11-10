@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import 'bloc_event.dart';
 import 'bloc_state.dart';
 import 'juice_bloc.dart';
@@ -43,6 +45,16 @@ abstract class ResultEvent<TResult> extends EventBase {
       // when the result is never awaited (e.g., in tests).
       _completer.future.ignore();
     }
+  }
+
+  /// Framework-internal: complete this event with whatever [leader]
+  /// completes with — the event joined [leader]'s `singleflight` run
+  /// instead of running, so the leader's result is its own.
+  @internal
+  void follow(ResultEvent<Object?> leader) {
+    leader.result.then((value) => succeed(value as TResult),
+        onError: (Object error, StackTrace stackTrace) =>
+            fail(error, stackTrace));
   }
 }
 

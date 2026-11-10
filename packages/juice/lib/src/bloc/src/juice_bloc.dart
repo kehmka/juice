@@ -16,6 +16,7 @@ import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
 import 'delayed_send.dart';
 import 'reaction.dart';
+import 'result_event.dart';
 import 'stream_binding.dart';
 import 'telemetry.dart';
 import 'core/type_names.dart';
@@ -89,6 +90,8 @@ class JuiceBloc<TState extends BlocState>
     _dispatcher = EventDispatcher<EventBase>(
       onUnhandledEvent: _handleUnhandledEvent,
       onSuperseded: _cancelBindingsOf,
+      onFlight: _watchFlight,
+      onJoined: _joinFlight,
       logger: _logger,
     );
 
@@ -567,6 +570,41 @@ class JuiceBloc<TState extends BlocState>
   }
 
   // ============================================================
+  // Singleflight
+  // ============================================================
+
+  /// A `singleflight` run started: keep the first status it emits that is
+  /// not a waiting one — the answer `sendAndWait` gives — for an event that
+  /// joins after it was emitted.
+  void _watchFlight(Flight<EventBase> flight) {
+    late final void Function() untap;
+    untap = tapEmissions((status) {
+      if (identical(status.event, flight.leader) &&
+          status is! WaitingStatus<TState>) {
+        flight.firstStatus = status;
+        untap();
+      }
+    });
+    flight.onEnd = untap;
+  }
+
+  /// [event] joined [flight] instead of running: recorded, and — for a
+  /// result event — completed with whatever the running event completes
+  /// with.
+  void _joinFlight(EventBase event, Flight<EventBase> flight) {
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventJoined,
+        bloc: _blocName,
+        event: typeName(event.runtimeType),
+        key: flight.key?.toString(),
+      ));
+    }
+    final leader = flight.leader;
+    if (event is ResultEvent && leader is ResultEvent) event.follow(leader);
+  }
+
+  // ============================================================
   // Delayed sends
   // ============================================================
 
@@ -757,8 +795,13 @@ class JuiceBloc<TState extends BlocState>
       }
     }
 
+    // The event whose emissions answer this wait: the event itself — or,
+    // once it has joined a `singleflight` run, the event that is running.
+    EventBase answeredBy = event;
     untap = tapEmissions((s) {
-      if (identical(s.event, event) && s is! WaitingStatus<TState>) finish(s);
+      if (identical(s.event, answeredBy) && s is! WaitingStatus<TState>) {
+        finish(s);
+      }
     });
     timer = Timer(timeout, () {
       finish(
@@ -771,7 +814,16 @@ class JuiceBloc<TState extends BlocState>
     _closeHooks.add(failOnClose);
 
     final restartable = _dispatcher.isRestartable(event.runtimeType);
-    send(event).then((_) {
+    final sent = send(event);
+    final flight = _dispatcher.flightJoinedBy(event);
+    if (flight != null) {
+      // Joined: answered by the run in flight — at once, if that run
+      // already emitted its answer.
+      answeredBy = flight.leader;
+      final answer = flight.firstStatus;
+      if (answer != null) finish(answer as StreamStatus<TState>);
+    }
+    sent.then((_) {
       // Processing is over. A restartable run that was superseded answers
       // below; anything else that emitted nothing never will.
       if (done.isCompleted ||
@@ -1090,6 +1142,7 @@ class JuiceBloc<TState extends BlocState>
       (event) => _useCaseExecutor.execute(builder, event),
       eventType: builder.eventType,
       concurrency: builder.concurrency,
+      joinKey: builder is UseCaseBuilder ? builder.joinKey : null,
     );
   }
 

@@ -117,6 +117,46 @@ void main() {
   });
 
   group('EventDispatcher', () {
+    test(
+        'singleflight: a handler whose future fails fails every joined '
+        'dispatch with it, and the flight is over — the next event runs',
+        () async {
+      final d = EventDispatcher<EventBase>();
+      final gate = Completer<void>();
+      var runs = 0;
+      d.register<_A>((_) async {
+        runs++;
+        await gate.future;
+        throw StateError('handler broke');
+      }, eventType: _A, concurrency: EventConcurrency.singleflight);
+
+      final first = d.dispatch(_A());
+      final second = d.dispatch(_A());
+      final broke = throwsA(isA<StateError>()
+          .having((e) => e.message, 'message', 'handler broke'));
+      final outcomes = [expectLater(first, broke), expectLater(second, broke)];
+      gate.complete();
+      await Future.wait(outcomes);
+      expect(runs, 1);
+
+      await expectLater(d.dispatch(_A()), broke);
+      expect(runs, 2);
+    });
+
+    test('singleflight: a cleared dispatcher runs nothing', () async {
+      final d = EventDispatcher<EventBase>();
+      var runs = 0;
+      d.register<_A>((_) async => runs++,
+          eventType: _A, concurrency: EventConcurrency.singleflight);
+      d.clear();
+      // (clear also drops the handlers: registered again, as a bloc never
+      // does, the disposed flag alone must stop the run.)
+      d.register<_A>((_) async => runs++,
+          eventType: _A, concurrency: EventConcurrency.singleflight);
+      await d.dispatch(_A());
+      expect(runs, 0);
+    });
+
     test('routes by exact runtime type and reports handler count', () async {
       final d = EventDispatcher<EventBase>();
       final seen = <String>[];

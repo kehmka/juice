@@ -60,6 +60,11 @@ enum JuiceTelemetryKind {
   /// when it had one). Not an error.
   eventDropped('event_dropped', 'Event dropped'),
 
+  /// An event joined the `singleflight` run already in flight for its type
+  /// (and `key`, as text, when its builder has a `joinKey`) instead of
+  /// running: it is answered with that run's outcome.
+  eventJoined('event_joined', 'Event joined'),
+
   /// Superseding a run threw (a throwing `cancel()`, logger or binding
   /// cancel); the new run still starts.
   supersedeFailed('supersede_error', 'Error while superseding a run',
@@ -354,7 +359,8 @@ final class JuiceTelemetry {
   /// widget).
   final Set<String>? groups;
 
-  /// A stream binding's key, or a delayed send's.
+  /// A stream binding's key, a delayed send's, or — as text — the join key
+  /// of a `singleflight` join.
   final String? key;
 
   /// Why: a refusal's or an ignored event's cause (`bloc is closed`,

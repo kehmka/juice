@@ -146,6 +146,7 @@ void main() {
       ('sequential_run_error', null, 'error'),
       ('use_case_superseded', null, 'info'),
       ('event_dropped', null, 'info'),
+      ('event_joined', null, 'info'),
       ('supersede_error', null, 'error'),
       ('state_emission', null, 'info'),
       ('state_emission_skipped', null, 'info'),

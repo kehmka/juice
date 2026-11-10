@@ -19,6 +19,22 @@ enum EventConcurrency {
   /// Replaces hand-rolled "busy" guard flags for exclusive flows.
   droppable,
 
+  /// A same-type event arriving **while one is already running JOINS it**:
+  /// it does not run, and it is not dropped — it gets the running one's
+  /// outcome. Its `send` completes when the running one's does,
+  /// `sendAndWait` answers with the running one's terminal status, and
+  /// `sendForResult` returns the running one's value or throws its error.
+  /// One flight, however many callers: a token refresh, a permission
+  /// prompt, a pull-to-refresh.
+  ///
+  /// Events join by type. `UseCaseBuilder`'s `joinKey:` narrows that: two
+  /// events join only when their keys are equal too (two requests for the
+  /// SAME permission), and events with different keys run side by side.
+  ///
+  /// Where `droppable` says "one at a time, and the rest did not happen",
+  /// `singleflight` says "one at a time, and the rest are answered by it".
+  singleflight,
+
   /// A same-type event arriving **while one is running supersedes it** and
   /// starts immediately: typeahead, search, filter, select —
   /// the latest input must win. Dart cannot kill the superseded run, so it

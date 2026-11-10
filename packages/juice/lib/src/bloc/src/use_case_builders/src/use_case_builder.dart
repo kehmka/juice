@@ -85,25 +85,46 @@ class UseCaseBuilder implements UseCaseBuilderBase {
   /// [typeOfEvent] - The event type this use case handles.
   /// [useCaseGenerator] - Factory function to create use case instances.
   /// [initialEventBuilder] - Optional factory for an initial event.
+  /// [joinKey] - With `EventConcurrency.singleflight` only: two events join
+  /// when the keys this returns for them are `==` (and events with
+  /// different keys run side by side). Without it, events join by type.
   UseCaseBuilder({
     required this.typeOfEvent,
     required this.useCaseGenerator,
     UseCaseEventBuilder? initialEventBuilder,
     required this.concurrency,
+    this.joinKey,
   })  : _initialEventBuilder = initialEventBuilder,
         _acceptsBloc = null,
-        _useCaseBlocType = null;
+        _useCaseBlocType = null {
+    _checkJoinKey();
+  }
 
   UseCaseBuilder._typed({
     required this.typeOfEvent,
     required this.useCaseGenerator,
     required UseCaseEventBuilder? initialEventBuilder,
     required this.concurrency,
+    required this.joinKey,
     required bool Function(JuiceBloc bloc) acceptsBloc,
     required Type useCaseBlocType,
   })  : _initialEventBuilder = initialEventBuilder,
         _acceptsBloc = acceptsBloc,
-        _useCaseBlocType = useCaseBlocType;
+        _useCaseBlocType = useCaseBlocType {
+    _checkJoinKey();
+  }
+
+  /// With `EventConcurrency.singleflight`: what two events must have equal
+  /// to join. Null joins by event type alone.
+  final Object? Function(EventBase event)? joinKey;
+
+  void _checkJoinKey() {
+    if (joinKey != null && concurrency != EventConcurrency.singleflight) {
+      throw ArgumentError('UseCaseBuilder for $typeOfEvent: joinKey only '
+          'means something with EventConcurrency.singleflight, and this '
+          'builder is ${concurrency.name}');
+    }
+  }
 
   /// Type-checked registration: the event type is INFERRED from the use
   /// case, so it cannot disagree with it.
@@ -130,12 +151,14 @@ class UseCaseBuilder implements UseCaseBuilderBase {
     UseCase<TBloc, TEvent> Function() useCaseGenerator, {
     required EventConcurrency concurrency,
     TEvent Function()? initialEventBuilder,
+    Object? Function(TEvent event)? joinKey,
   }) {
     return UseCaseBuilder._typed(
       typeOfEvent: TEvent,
       useCaseGenerator: useCaseGenerator,
       initialEventBuilder: initialEventBuilder,
       concurrency: concurrency,
+      joinKey: joinKey == null ? null : (event) => joinKey(event as TEvent),
       acceptsBloc: (bloc) => bloc is TBloc,
       useCaseBlocType: TBloc,
     );

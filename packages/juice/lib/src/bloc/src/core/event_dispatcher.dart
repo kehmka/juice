@@ -12,6 +12,34 @@ import '../telemetry.dart';
 /// Signature for async event handlers.
 typedef EventHandler<E> = Future<void> Function(E event);
 
+/// One `singleflight` run in flight: the event that is running, and
+/// everything a later same-key event needs to join it.
+class Flight<Event extends Object> {
+  /// Creates the flight [leader] started; [key] is its join key, when its
+  /// builder has one.
+  Flight(this.leader, this.key);
+
+  /// The event whose use case is running.
+  final Event leader;
+
+  /// The join key the builder derived from [leader]; null without one.
+  final Object? key;
+
+  final Completer<void> _done = Completer<void>();
+
+  /// Completes when the leader's processing is over — what a joined
+  /// event's `send` returns.
+  Future<void> get done => _done.future;
+
+  /// The first status the leader emitted that was not a waiting one — what
+  /// `sendAndWait` answers the leader with, kept so an event that joins
+  /// AFTER it was emitted is answered with it too. Set by the bloc.
+  Object? firstStatus;
+
+  /// Run when the flight ends. Set by the bloc.
+  void Function()? onEnd;
+}
+
 /// Routes events to their registered handlers.
 ///
 /// Each event type can have exactly one handler registered.
@@ -39,9 +67,13 @@ class EventDispatcher<Event extends Object> {
   EventDispatcher({
     void Function(Event event)? onUnhandledEvent,
     void Function(RestartableRun run)? onSuperseded,
+    void Function(Flight<Event> flight)? onFlight,
+    void Function(Event event, Flight<Event> flight)? onJoined,
     JuiceLogger? logger,
   })  : _onUnhandledEvent = onUnhandledEvent,
         _onSuperseded = onSuperseded,
+        _onFlight = onFlight,
+        _onJoined = onJoined,
         _logger = logger;
 
   /// The owning bloc's logger; the global one when constructed bare.
@@ -55,6 +87,26 @@ class EventDispatcher<Event extends Object> {
   /// cancelled and before the new run starts — the bloc cancels the run's
   /// stream bindings here.
   final void Function(RestartableRun run)? _onSuperseded;
+
+  /// Called when a `singleflight` run starts, before its use case does.
+  final void Function(Flight<Event> flight)? _onFlight;
+
+  /// Called when an event joins a `singleflight` run instead of running.
+  final void Function(Event event, Flight<Event> flight)? _onJoined;
+
+  /// `singleflight` runs in flight, by event type and join key.
+  final _flights = <(Type, Object?), Flight<Event>>{};
+
+  /// The flight each joined event joined (identity keyed).
+  final _joined = Expando<Flight<Object>>('juice.joined');
+
+  /// Event types registered `singleflight`.
+  final _singleflightTypes = <Type>{};
+
+  /// The flight [event] joined instead of running; null for an event that
+  /// ran (or was never dispatched `singleflight`).
+  Flight<Event>? flightJoinedBy(Event event) =>
+      _singleflightTypes.isEmpty ? null : _joined[event] as Flight<Event>?;
 
   /// Event types registered `restartable`, and their in-flight run.
   final _restartableTypes = <Type>{};
@@ -98,11 +150,13 @@ class EventDispatcher<Event extends Object> {
   /// );
   /// ```
   /// [concurrency] is how same-type events are processed relative to one
-  /// another; every registration declares it.
+  /// another; every registration declares it. [joinKey] narrows a
+  /// `singleflight` join to events whose keys are equal.
   void register<E extends Event>(
     EventHandler<E> handler, {
     required Type eventType,
     required EventConcurrency concurrency,
+    Object? Function(Event event)? joinKey,
   }) {
     if (_handlers.containsKey(eventType)) {
       throw StateError('Handler already registered for $eventType');
@@ -126,9 +180,14 @@ class EventDispatcher<Event extends Object> {
           _droppable(eventType, outsideRun, event),
       EventConcurrency.restartable => (event) =>
           _restartable(eventType, raw, event),
+      EventConcurrency.singleflight => (event) =>
+          _singleflight(eventType, outsideRun, event, joinKey),
     };
     if (concurrency == EventConcurrency.restartable) {
       _restartableTypes.add(eventType);
+    }
+    if (concurrency == EventConcurrency.singleflight) {
+      _singleflightTypes.add(eventType);
     }
   }
 
@@ -238,6 +297,48 @@ class EventDispatcher<Event extends Object> {
     return handler(event).whenComplete(() => _running[type] = false);
   }
 
+  /// `singleflight`: run [event], or — if an event of its type and key is
+  /// already running — join that run: the event is not run, and the
+  /// returned future is the running one's.
+  Future<void> _singleflight(Type type, EventHandler<Event> handler,
+      Event event, Object? Function(Event event)? joinKey) {
+    if (_disposed) return Future<void>.value();
+    final Object? key;
+    try {
+      key = joinKey?.call(event);
+    } catch (e, st) {
+      // Delivered as a failed future, like every other dispatch failure:
+      // never thrown into the sender's frame.
+      return Future<void>.error(e, st);
+    }
+    final running = _flights[(type, key)];
+    if (running != null) {
+      _joined[event] = running;
+      _onJoined?.call(event, running);
+      return running.done;
+    }
+    // In the table BEFORE the handler runs: a same-key event sent from
+    // inside the use case joins this flight rather than starting another.
+    final flight = Flight<Event>(event, key);
+    _flights[(type, key)] = flight;
+    _onFlight?.call(flight);
+    void end() {
+      if (identical(_flights[(type, key)], flight)) {
+        _flights.remove((type, key));
+      }
+      flight.onEnd?.call();
+    }
+
+    handler(event).then((_) {
+      end();
+      flight._done.complete();
+    }, onError: (Object e, StackTrace st) {
+      end();
+      flight._done.completeError(e, st);
+    });
+    return flight.done;
+  }
+
   /// Checks if a handler is registered for the given event type.
   bool hasHandler(Type eventType) => _handlers.containsKey(eventType);
 
@@ -277,5 +378,6 @@ class EventDispatcher<Event extends Object> {
     _running.clear();
     _restartableTypes.clear();
     _current.clear();
+    _flights.clear();
   }
 }

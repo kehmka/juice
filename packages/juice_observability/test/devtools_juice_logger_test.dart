@@ -183,6 +183,22 @@ void main() {
       expect(inner.logs, ['State emitted'], reason: 'inner always forwards');
     });
 
+    test(
+        'EVERY kind posts its own level and wire type — the DevTools panel '
+        'decides what is a problem by that level, not by a list of names', () {
+      for (final kind in JuiceTelemetryKind.values) {
+        posted.clear();
+        logger.record(JuiceTelemetry(
+          kind,
+          error: kind.isError ? StateError('x') : null,
+        ));
+        final (type, data) = posted.single;
+        expect(type, 'juice:${kind.wireType}', reason: kind.name);
+        expect(data['level'], kind.level.name, reason: kind.name);
+        expect(data['action'], kind.wireAction, reason: kind.name);
+      }
+    });
+
     test('an error entry carries error and stackTrace, clipped', () {
       logger.record(JuiceTelemetry(
         JuiceTelemetryKind.useCaseFailed,

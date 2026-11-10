@@ -8,7 +8,9 @@ It listens to the `juice:<type>` extension events `DevtoolsJuiceLogger`
 posts and shows: a transitions **Timeline**, use-case duration **Spans**
 (paired by `executionId` — honest even under `concurrent` overlap), a
 per-**Bloc** view with the rebuild groups each emission targeted, and
-**Problems** (errors, unhandled events, leak detection).
+**Problems** (every error-level entry). On the timeline a row's type is
+coloured by its level first: only an error is drawn in the error colour,
+a warning in amber, and a type the panel does not know is left plain.
 
 ## Develop
 

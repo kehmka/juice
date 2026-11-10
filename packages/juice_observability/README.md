@@ -63,8 +63,10 @@ once when prompted). Four views:
   paired by `executionId`.
 - **Blocs** — per bloc: emission count, groups touched, last event, and a
   summary of the current state.
-- **Problems** — framework problems only: failed use cases, unhandled
-  events, leaks, error-handler errors. Errors your app *reports* through
+- **Problems** — framework problems only: every error-level entry
+  (failed use cases, unhandled events, error-handler errors, and the
+  rest). A leak report is printed with `debugPrint`; it does not reach
+  the panel. Errors your app *reports* through
   this bloc are data, and show in Blocs' state summary instead.
 
 The panel listens from the moment it opens; the VM event stream has no

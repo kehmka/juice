@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'telemetry_store.dart';
+import 'tone_color.dart';
 
 bool _hit(String filter, Iterable<String?> fields) {
   if (filter.isEmpty) return true;
@@ -13,19 +14,6 @@ String _hms(DateTime t) =>
     '${t.second.toString().padLeft(2, '0')}.${(t.millisecond ~/ 10).toString().padLeft(2, '0')}';
 
 String _ms(int micros) => '${(micros / 1000).toStringAsFixed(1)} ms';
-
-Color _kindColor(BuildContext context, String kind) {
-  final s = Theme.of(context).colorScheme;
-  return switch (kind) {
-    'use_case_execution' => s.primary,
-    'use_case_completed' => s.tertiary,
-    'state_emission' => s.secondary,
-    'state_emission_skipped' => s.outline,
-    'bloc_lifecycle' => s.outline,
-    'event_subscription' => s.outline,
-    _ => s.error,
-  };
-}
 
 /// Every event, newest at the bottom — the framework narrating itself.
 class TimelineView extends StatelessWidget {
@@ -56,7 +44,7 @@ class TimelineView extends StatelessWidget {
                 width: 190,
                 child: Text(
                   e.kind,
-                  style: mono?.copyWith(color: _kindColor(context, e.kind)),
+                  style: mono?.copyWith(color: toneColor(context, e.tone)),
                 ),
               ),
               SizedBox(

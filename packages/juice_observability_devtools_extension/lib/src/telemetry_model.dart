@@ -1,5 +1,33 @@
 import 'package:flutter/foundation.dart';
 
+/// How a timeline row reads at a glance. Severity decides first — an entry
+/// is a [problem] or a [warning] by the level it was posted with, whatever
+/// its type — and only then the type picks one of the calm tones. A type
+/// the panel has no tone for is [plain]: it is never assumed to be an error.
+enum JuiceEventTone {
+  /// An error-level entry (see [JuiceEvent.isProblem]).
+  problem,
+
+  /// A warning-level entry: not a failure, and not to be missed.
+  warning,
+
+  /// A use case is starting.
+  started,
+
+  /// A use case returned.
+  completed,
+
+  /// A status went onto the stream.
+  emission,
+
+  /// Housekeeping: a skipped emission, a dropped event, lifecycle and
+  /// subscription entries.
+  quiet,
+
+  /// Everything else at info level or below.
+  plain,
+}
+
 /// One `juice:<type>` event as received from the VM.
 class JuiceEvent {
   JuiceEvent({
@@ -30,8 +58,12 @@ class JuiceEvent {
   String? get level => data['level']?.toString();
 
   /// A problem is any error-level entry — every error kind juice 2.0.0's
-  /// vocabulary defines, whatever its name — plus the 1.x names kept for
-  /// payloads that carry no level, and the leak report.
+  /// vocabulary defines, whatever its name — plus the 1.x error names, kept
+  /// for payloads that carry no level.
+  ///
+  /// `leak_detection` is not one of them: the only entry juice has ever
+  /// posted under that type is the info line "Leak detection enabled" (a
+  /// leak report goes to `debugPrint`, never to the logger).
   bool get isProblem =>
       level == 'error' ||
       level == 'fatal' ||
@@ -41,8 +73,23 @@ class JuiceEvent {
         'error_handler_error',
         'error',
         'unhandled_event',
-        'leak_detection',
       }.contains(kind);
+
+  /// The row's tone on the timeline: the level first, then the type.
+  JuiceEventTone get tone {
+    if (isProblem) return JuiceEventTone.problem;
+    if (level == 'warning') return JuiceEventTone.warning;
+    return switch (kind) {
+      'use_case_execution' => JuiceEventTone.started,
+      'use_case_completed' => JuiceEventTone.completed,
+      'state_emission' => JuiceEventTone.emission,
+      'state_emission_skipped' ||
+      'bloc_lifecycle' ||
+      'event_subscription' ||
+      'event_dropped' => JuiceEventTone.quiet,
+      _ => JuiceEventTone.plain,
+    };
+  }
 }
 
 /// A use-case execution paired by `executionId`: start → completed|error.

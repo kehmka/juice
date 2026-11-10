@@ -73,8 +73,10 @@ from this dependency alone — a `juice_observability` tab appears; enable it
 once when prompted. Four views: **Timeline** (every entry as it arrives),
 **Spans** (one row per use-case run, paired by `executionId`, with
 duration), **Blocs** (per bloc: emission count, groups touched, last event,
-state summary), **Problems** (FRAMEWORK problems only — `use_case_error`,
-unhandled events, leaks, error-handler errors; errors the app *reports*
+state summary), **Problems** (FRAMEWORK problems only — every
+error-level entry: `use_case_error`, unhandled events, error-handler
+errors and the rest, decided by the entry's level; a leak report goes to
+`debugPrint` and never reaches the panel; errors the app *reports*
 through this bloc are data and show in Blocs' state summary). It listens
 from the moment it opens — the VM event stream has no replay.
 

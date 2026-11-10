@@ -14,6 +14,7 @@ import 'core/activity_probe.dart';
 import 'core/event_cause.dart';
 import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
+import 'delayed_send.dart';
 import 'reaction.dart';
 import 'stream_binding.dart';
 import 'telemetry.dart';
@@ -565,6 +566,122 @@ class JuiceBloc<TState extends BlocState>
     return _dispatcher.dispatch(event).whenComplete(() => probe.ended(work));
   }
 
+  // ============================================================
+  // Delayed sends
+  // ============================================================
+
+  /// Every pending delayed send; keyed ones are also in
+  /// [_keyedDelayedSends].
+  final Map<DelayedSend, _PendingSend> _delayedSends = {};
+  final Map<String, DelayedSend> _keyedDelayedSends = {};
+
+  /// Sends [event] once [delay] has elapsed. The bloc owns the timer: no
+  /// `Timer` field, no `isClosed` guard, no cancel in `close()`.
+  ///
+  /// ```dart
+  /// // A debounce: each keystroke replaces the search still waiting.
+  /// bloc.sendAfter(SearchEvent(text), kSearchDebounce, key: 'search');
+  /// ```
+  ///
+  /// [key] makes it replaceable: a later `sendAfter` with the same key
+  /// REPLACES the pending one — its event is never sent — and
+  /// [cancelSend] cancels it by name. An anonymous delayed send is
+  /// cancelled through the returned [DelayedSend.cancel].
+  ///
+  /// A replaced or cancelled send is not an error: it is recorded as
+  /// `event_dropped`, with the reason.
+  ///
+  /// When the bloc closes, a pending delayed send is DISCARDED — recorded
+  /// as `event_ignored` — never sent early. Called on a closing or closed
+  /// bloc, `sendAfter` is refused the same way and returns a handle that
+  /// was never pending.
+  ///
+  /// A zero [delay] sends on the next timer turn, never synchronously; a
+  /// negative one throws [ArgumentError].
+  ///
+  /// The event is sent as a fresh one: whatever chain of reactions the
+  /// caller was part of does not continue through a delay (a hop count
+  /// starts again at zero).
+  DelayedSend sendAfter(EventBase event, Duration delay, {String? key}) {
+    if (delay.isNegative) {
+      throw ArgumentError.value(
+          delay, 'delay', 'sendAfter: a delay cannot be negative');
+    }
+    final eventName = typeName(event.runtimeType);
+    if (isClosing) {
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventIgnored,
+        bloc: _blocName,
+        event: eventName,
+        key: key,
+        reason: 'sendAfter: $_closedReason',
+      ));
+      return DelayedSend.inert(key);
+    }
+    if (key != null) {
+      final replaced = _keyedDelayedSends[key];
+      if (replaced != null) {
+        _dropDelayedSend(replaced, 'sendAfter: replaced by a later $eventName');
+      }
+    }
+
+    final handle = DelayedSend.create(
+        key, (send) => _dropDelayedSend(send, 'sendAfter: cancelled'));
+    // A test flow knows the send is pending from here until it is over.
+    final probe = JuiceActivityProbe.current;
+    final work =
+        probe == null ? null : JuiceWork.delayed(_blocName, eventName, delay);
+    if (work != null) probe!.began(work);
+    final timer = Timer(delay, () {
+      final pending = _takeDelayedSend(handle)!;
+      EventCause.clear(event);
+      // The send begins before the delayed work ends: no idle moment
+      // between the two for a flow to mistake for the end.
+      send(event);
+      pending.over();
+    });
+    _delayedSends[handle] = _PendingSend(timer, eventName, probe, work);
+    if (key != null) _keyedDelayedSends[key] = handle;
+    return handle;
+  }
+
+  /// Cancels the pending [sendAfter] that was given [key]: its event is not
+  /// sent. Nothing happens if none is pending.
+  void cancelSend(String key) {
+    final pending = _keyedDelayedSends[key];
+    if (pending != null) _dropDelayedSend(pending, 'sendAfter: cancelled');
+  }
+
+  /// Takes [handle] out of the pending sends, timer cancelled: its event
+  /// will not be sent by the timer. Null if it was already over.
+  _PendingSend? _takeDelayedSend(DelayedSend handle) {
+    final pending = _delayedSends.remove(handle);
+    if (pending == null) return null;
+    pending.timer.cancel();
+    // A pending keyed send is the one its key names: a replace drops the
+    // earlier one before the later one takes the key.
+    if (handle.key != null) _keyedDelayedSends.remove(handle.key);
+    DelayedSend.end(handle);
+    return pending;
+  }
+
+  /// [handle]'s event will not be sent — cancelled or replaced ([reason]);
+  /// recorded as a dropped event.
+  void _dropDelayedSend(DelayedSend handle, String reason) {
+    final pending = _takeDelayedSend(handle);
+    if (pending == null) return;
+    if (JuiceLoggerConfig.logs(Level.info)) {
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventDropped,
+        bloc: _blocName,
+        event: pending.eventName,
+        key: handle.key,
+        reason: reason,
+      ));
+    }
+    pending.over();
+  }
+
   /// Sends a cancellable event and returns it for cancellation control.
   ///
   /// On a closed or closing bloc the event is refused exactly as [send]
@@ -866,6 +983,20 @@ class JuiceBloc<TState extends BlocState>
     for (final reaction in _reactions.toList()) {
       reaction.cancel();
     }
+    // Pending delayed sends are discarded — at once too, so no timer fires
+    // into the close — and each is recorded: an event the bloc was asked
+    // to send was not.
+    for (final handle in _delayedSends.keys.toList()) {
+      final pending = _takeDelayedSend(handle)!;
+      _logger.record(JuiceTelemetry(
+        JuiceTelemetryKind.eventIgnored,
+        bloc: _blocName,
+        event: pending.eventName,
+        key: handle.key,
+        reason: 'sendAfter: discarded, the bloc closed',
+      ));
+      pending.over();
+    }
 
     if (JuiceLoggerConfig.logs(Level.info)) {
       _logger.record(JuiceTelemetry(
@@ -1119,4 +1250,21 @@ class JuiceBloc<TState extends BlocState>
   /// error reaches [onError] (the `bloc_error` hook and the error handler).
   void _handleUseCaseError(Object error, StackTrace stack, EventBase event) =>
       onError(error, stack);
+}
+
+/// A delayed send the bloc is holding: its timer, and what a test flow was
+/// told about it.
+class _PendingSend {
+  _PendingSend(this.timer, this.eventName, this._probe, this._work);
+
+  final Timer timer;
+  final String eventName;
+  final JuiceActivityProbe? _probe;
+  final JuiceWork? _work;
+
+  /// The delayed send is over, however it ended.
+  void over() {
+    final work = _work;
+    if (work != null) _probe!.ended(work);
+  }
 }

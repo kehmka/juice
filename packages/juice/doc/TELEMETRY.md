@@ -114,7 +114,7 @@ per kind: the facts are the fields.
 | `useCaseFailed` | `use_case_error` | error | `useCase`, `event`, `executionId`, `elapsedMicros`*, `superseded`, `error`, `stackTrace` | the use case threw, or its generator did (then `useCase` is the builder's name and no start was recorded); closes the span |
 | `sequentialRunFailed` | `sequential_run_error` | error | `event`, `error`, `stackTrace` | a `sequential` run's failure escaped the executor (an `onError` override that throws); the queue goes on; no span |
 | `useCaseSuperseded` | `use_case_superseded` | info | `event`, `cancellable` | a `restartable` run was superseded by a newer same-type event |
-| `eventDropped` | `event_dropped` | info | `event`, `reason` | an event was dropped before any use case ran for it: a `droppable` builder had an earlier one of its type still running |
+| `eventDropped` | `event_dropped` | info | `event`, `reason`; for a delayed send also `bloc`, and `key` when it had one | an event was dropped before any use case ran for it: a `droppable` builder had an earlier one of its type still running, or a `sendAfter` was replaced by a later one with its key (`sendAfter: replaced by a later <Event>`) or cancelled (`sendAfter: cancelled`). Not an error |
 | `supersedeFailed` | `supersede_error` | error | `event`, `error`, `stackTrace` | superseding threw (a throwing `cancel()`, logger or binding cancel); the new run still starts |
 
 \* `elapsedMicros` is set when the span was being timed — the chatter was on
@@ -157,7 +157,7 @@ adopts the caller's set, later emits merge into a new one.
 
 | kind | type · action | level | fields | when |
 |---|---|---|---|---|
-| `eventIgnored` | `bloc_lifecycle` · `event_ignored` | warning | `bloc`, `event`, `reason` (`bloc is closed` / `bloc is closing`) | `send` on a closed or closing bloc; the event is refused |
+| `eventIgnored` | `bloc_lifecycle` · `event_ignored` | warning | `bloc`, `event`, `reason` (`bloc is closed` / `bloc is closing`; for a delayed send `sendAfter: bloc is closed` / `sendAfter: bloc is closing` / `sendAfter: discarded, the bloc closed`), `key` for a delayed send that had one | `send` or `sendAfter` on a closed or closing bloc: the event is refused. Or a close found a `sendAfter` still pending: its event is discarded, never sent early |
 | `blocCloseStarted` | `bloc_lifecycle` · `close` | info | `bloc`, `bindingCount` | `close()` started; one entry per bloc |
 | `blocRegistered` | `bloc_lifecycle` · `register` | info | `bloc`, `lifecycle`, `scope` (the key, `global` when none) | `BlocScope.register` registered a new type (a repeat registration records nothing) |
 | `blocCreated` | `bloc_lifecycle` · `create` | info | `bloc`, `lifecycle` | the scope ran a factory |

@@ -15,6 +15,7 @@ export 'src/entity_status.dart';
 export 'src/juice_bloc.dart';
 export 'src/juice_exception.dart';
 export 'src/juice_logger.dart';
+export 'src/delayed_send.dart';
 export 'src/reaction.dart';
 export 'src/lifecycle/lifecycle.dart';
 export 'src/result_event.dart';

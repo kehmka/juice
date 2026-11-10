@@ -34,6 +34,10 @@ final class EventCause {
   static void stamp(Object event, EventCause cause) => _of[event] = cause;
 
   /// The hop depth of [event]: zero for no event, or one no reaction sent.
+  /// Forget [event]'s cause: an event sent after a delay starts a chain of
+  /// its own.
+  static void clear(Object event) => _of[event] = null;
+
   static int depthOf(Object? event) =>
       event == null ? 0 : (_of[event]?.hopDepth ?? 0);
 }

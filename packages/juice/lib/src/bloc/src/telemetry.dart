@@ -55,7 +55,9 @@ enum JuiceTelemetryKind {
   useCaseSuperseded('use_case_superseded', 'Use case superseded'),
 
   /// An event was dropped before any use case ran for it (`reason`): a
-  /// `droppable` builder had an earlier one of its type still running.
+  /// `droppable` builder had an earlier one of its type still running, or a
+  /// `sendAfter` was replaced or cancelled (then with `bloc`, and `key`
+  /// when it had one). Not an error.
   eventDropped('event_dropped', 'Event dropped'),
 
   /// Superseding a run threw (a throwing `cancel()`, logger or binding
@@ -82,7 +84,9 @@ enum JuiceTelemetryKind {
       level: Level.warning),
 
   // --- the bloc's lifecycle
-  /// A `send` on a closed or closing bloc was refused (`reason`).
+  /// A `send` on a closed or closing bloc was refused (`reason`) — or a
+  /// `sendAfter` was (`key` when it had one), or a pending one was discarded
+  /// because the bloc closed.
   eventIgnored('bloc_lifecycle', 'Event ignored',
       action: 'event_ignored', level: Level.warning),
 
@@ -350,7 +354,7 @@ final class JuiceTelemetry {
   /// widget).
   final Set<String>? groups;
 
-  /// A stream binding's key.
+  /// A stream binding's key, or a delayed send's.
   final String? key;
 
   /// Why: a refusal's or an ignored event's cause (`bloc is closed`,

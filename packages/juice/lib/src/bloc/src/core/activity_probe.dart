@@ -1,35 +1,50 @@
 import 'package:meta/meta.dart';
 
-/// One piece of framework work a test flow waits for: a send that has not
-/// finished processing, or a reaction hop decided but not yet sent.
+/// One piece of framework work a test flow knows about: a send that has not
+/// finished processing, a reaction hop decided but not yet sent, or an event
+/// a bloc will send after a delay.
 @internal
 final class JuiceWork {
   /// [event] sent to [bloc], until its processing is over — the time it
   /// waits in a `sequential` queue included.
   JuiceWork.send(this.bloc, this.event)
       : kind = 'send',
-        source = null;
+        source = null,
+        delay = null;
 
   /// A reaction of [bloc] to [source] fired; its event is not sent yet.
   JuiceWork.hop(String this.source, this.bloc)
       : kind = 'hop',
-        event = null;
+        event = null,
+        delay = null;
 
-  /// `send` or `hop`.
+  /// [bloc] will send [event] once [delay] has elapsed (`sendAfter`), until
+  /// it is sent, cancelled, replaced or discarded.
+  JuiceWork.delayed(this.bloc, this.event, Duration this.delay)
+      : kind = 'delayed',
+        source = null;
+
+  /// `send`, `hop` or `delayed`.
   final String kind;
 
   /// The bloc doing the work: the one sent to, or a hop's destination.
   final String bloc;
 
-  /// A send's event type name.
+  /// A send's (or a delayed send's) event type name.
   final String? event;
+
+  /// A delayed send's delay.
+  final Duration? delay;
 
   /// A hop's source bloc.
   final String? source;
 
   @override
-  String toString() =>
-      kind == 'send' ? 'send $event to $bloc' : 'hop $source → $bloc';
+  String toString() => switch (kind) {
+        'send' => 'send $event to $bloc',
+        'hop' => 'hop $source → $bloc',
+        _ => 'delayed send $event to $bloc (after $delay)',
+      };
 }
 
 /// What the framework tells a test flow (`juiceFlowTest`) so it knows when

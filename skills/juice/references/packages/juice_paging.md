@@ -77,7 +77,7 @@ PageFetcher<T> get fetcher;
 | Event | Concurrency | Effect |
 |---|---|---|
 | `InitializePagingEvent` | `droppable` | awaits `RefreshPageEvent` if `loadOnInit` |
-| `RefreshPageEvent` | `droppable` | `fetch(null)`, replace items; existing items stay visible during load |
+| `RefreshPageEvent` | `singleflight` | `fetch(null)`, replace items; existing items stay visible during load. A result event: `await paging.sendForResult(RefreshPageEvent())` completes when the first page is in state. **Not run** while a load-more is running: `refresh()` is then a no-op and the awaited form throws `StateError` |
 | `LoadMoreEvent` | `droppable` | `fetch(nextCursor)`, append; **no-op** if loading, at `end`, or status still `initial` |
 | `RetryPageEvent` | `droppable` | awaits refresh (empty list) or loadMore (non-empty) |
 
@@ -105,8 +105,9 @@ class PagingState<T> {        // BlocState
 
 ## Concurrency
 
-All four event types are explicitly `droppable`, so duplicate same-type
-requests are coalesced for the full delegated operation. The bloc-wide boolean
+Three event types are `droppable` and refresh is `singleflight`, so duplicate
+same-type requests are coalesced for the full delegated operation (a duplicate
+refresh joins the one running and is answered by it). The bloc-wide boolean
 guard `_loading` (`isLoading` / `beginLoad` / `endLoad`) is intentionally
 retained because Juice concurrency modes are keyed by exact event type:
 `refresh` and `loadMore` must also exclude each other. A scroll listener firing

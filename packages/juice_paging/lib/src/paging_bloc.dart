@@ -39,7 +39,9 @@ class PagingBloc<T> extends JuiceBloc<PagingState<T>> {
             () => UseCaseBuilder(
                 typeOfEvent: RefreshPageEvent,
                 useCaseGenerator: () => RefreshPageUseCase<T>(),
-                concurrency: EventConcurrency.droppable),
+                // A refresh requested while one runs joins it: one fetch,
+                // and every awaiting caller is answered by it.
+                concurrency: EventConcurrency.singleflight),
             () => UseCaseBuilder(
                 typeOfEvent: LoadMoreEvent,
                 useCaseGenerator: () => LoadMoreUseCase<T>(),

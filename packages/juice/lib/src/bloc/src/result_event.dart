@@ -106,7 +106,9 @@ extension ResultEventOps<TState extends BlocState> on JuiceBloc<TState> {
   /// closed or closing bloc, a close during the wait, an event dropped by a
   /// `droppable` builder or whose use case emitted nothing, all throw
   /// [StateError] (the event's `result` is failed with it too); a
-  /// superseded `restartable` run answers canceled. On success the wait on
+  /// superseded `restartable` run answers canceled. One exception: a use
+  /// case that emitted nothing but FAILED the event itself (`event.fail`) —
+  /// a refusal that should not touch the stream — throws that error. On success the wait on
   /// the value is bounded by [timeout] as well, in case the use case
   /// emitted success but never called `succeed`.
   ///
@@ -120,6 +122,10 @@ extension ResultEventOps<TState extends BlocState> on JuiceBloc<TState> {
     try {
       status = await sendAndWait(event, timeout: timeout);
     } catch (error, stackTrace) {
+      // A use case that REFUSED the event — failed it and emitted nothing
+      // for it — has already said why: its error is the answer, not the
+      // wait's "finished without a terminal status".
+      if (event.isCompleted) await event.result;
       event.fail(error, stackTrace);
       rethrow;
     }

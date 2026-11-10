@@ -21,6 +21,12 @@ class _Cancel extends ResultEvent<int> {}
 
 class _Silent extends ResultEvent<int> {}
 
+/// Refused by its use case: failed, with nothing emitted for it.
+class _Refused extends ResultEvent<int> {}
+
+/// Succeeded by its use case, with nothing emitted for it.
+class _SilentSuccess extends ResultEvent<int> {}
+
 class _Slow extends ResultEvent<int> {
   _Slow(this.gate);
   final Future<void> gate;
@@ -52,6 +58,17 @@ class _SilentUC extends BlocUseCase<_B, _Silent> {
   Future<void> execute(_Silent e) async {}
 }
 
+class _RefusedUC extends BlocUseCase<_B, _Refused> {
+  @override
+  Future<void> execute(_Refused e) async =>
+      e.fail(ArgumentError('not now'), StackTrace.current);
+}
+
+class _SilentSuccessUC extends BlocUseCase<_B, _SilentSuccess> {
+  @override
+  Future<void> execute(_SilentSuccess e) async => e.succeed(5);
+}
+
 class _SlowUC extends BlocUseCase<_B, _Slow> {
   @override
   Future<void> execute(_Slow e) async {
@@ -71,6 +88,10 @@ class _B extends JuiceBloc<_S> {
           () => UseCaseBuilder.typed(() => _CancelUC(),
               concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder.typed(() => _SilentUC(),
+              concurrency: EventConcurrency.concurrent),
+          () => UseCaseBuilder.typed(() => _RefusedUC(),
+              concurrency: EventConcurrency.concurrent),
+          () => UseCaseBuilder.typed(() => _SilentSuccessUC(),
               concurrency: EventConcurrency.concurrent),
           () => UseCaseBuilder.typed(() => _SlowUC(),
               concurrency: EventConcurrency.droppable),
@@ -128,6 +149,27 @@ void main() {
         b.sendAndWaitResult(_Silent(), timeout: const Duration(seconds: 30)),
         throwsStateError);
     expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+  });
+
+  test(
+      'a use case that REFUSES the event — fails it and emits nothing — has '
+      'said why: its error is the one thrown', () async {
+    final notNow = throwsA(
+        isA<ArgumentError>().having((e) => e.message, 'message', 'not now'));
+    await expectLater(b.sendForResult(_Refused(), timeout: fast), notNow);
+    await expectLater(b.sendAndWaitResult(_Refused(), timeout: fast), notNow);
+    expect(b.state.n, 0, reason: 'nothing was emitted');
+  });
+
+  test(
+      'a use case that succeeds the event but emits nothing still fails '
+      'loud: a value is not a terminal status', () async {
+    final event = _SilentSuccess();
+    await expectLater(
+        b.sendForResult(event, timeout: fast),
+        throwsA(isA<StateError>().having((e) => e.message, 'message',
+            contains('finished without a terminal status'))));
+    expect(await event.result, 5);
   });
 
   test('an event dropped by a droppable builder fails loud', () async {

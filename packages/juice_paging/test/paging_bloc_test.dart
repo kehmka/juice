@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart' show ResultEventOps;
 import 'package:juice_paging/juice_paging.dart';
 
 /// Sentinel so "no failure configured" can't collide with a null cursor.
@@ -145,6 +146,108 @@ void main() {
       expect(bloc.state.items, [0, 1, 2, 3, 4]);
       expect(bloc.state.status, PagingStatus.end);
       await bloc.close();
+    });
+
+    test('sendForResult completes when the first page is in state', () async {
+      final be = FakeBackend(total: 25);
+      final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
+      await settle();
+      bloc.loadMore();
+      await settle();
+      expect(bloc.state.items.length, 20);
+
+      be.total = 5;
+      await bloc.sendForResult(RefreshPageEvent());
+
+      // No settle: the future IS the refresh.
+      expect(bloc.state.items, [0, 1, 2, 3, 4]);
+      expect(bloc.state.status, PagingStatus.end);
+      await bloc.close();
+    });
+
+    test(
+        'refreshes requested while one runs join it: one fetch, and every '
+        'awaiting caller is answered by it', () async {
+      final be = FakeBackend(total: 25);
+      final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
+      await settle();
+      final callsBefore = be.calls;
+      final gate = Completer<void>();
+      be.gateNext = gate;
+
+      var done = 0;
+      final callers = [
+        for (var i = 0; i < 3; i++)
+          bloc.sendForResult(RefreshPageEvent()).then((_) => done++),
+      ];
+      bloc.refresh(); // the void form joins too
+      await settle();
+      expect(be.calls, callsBefore + 1);
+      expect(done, 0);
+
+      gate.complete();
+      await Future.wait(callers);
+      expect(done, 3);
+      expect(be.calls, callsBefore + 1);
+      expect(bloc.state.status, PagingStatus.loaded);
+      await bloc.close();
+    });
+
+    test('a refresh whose fetch fails throws the fetcher\'s error', () async {
+      final be = FakeBackend(total: 25);
+      final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
+      await settle();
+
+      be.failNextCursor = null; // the first page
+      await expectLater(
+          bloc.sendForResult(RefreshPageEvent()),
+          throwsA(isA<StateError>()
+              .having((e) => e.message, 'message', 'boom at null')));
+      expect(bloc.state.status, PagingStatus.error);
+      expect(bloc.isLoading, isFalse);
+      await bloc.close();
+    });
+
+    test(
+        'a refresh while a load-more is running is not run: refresh() is a '
+        'no-op, and the awaited form throws, saying so', () async {
+      final be = FakeBackend(total: 100);
+      final bloc = PagingBloc<int>.withConfig(PagingConfig(fetcher: be.fetch));
+      await settle();
+      final gate = Completer<void>();
+      be.gateNext = gate;
+      bloc.loadMore();
+      await settle();
+      expect(bloc.state.status, PagingStatus.loadingMore);
+      final callsBefore = be.calls;
+      final statuses = <PagingStatus>[];
+      final sub = bloc.stream.listen((s) => statuses.add(s.state.status));
+
+      bloc.refresh();
+      await expectLater(
+          bloc.sendForResult(RefreshPageEvent()),
+          throwsA(isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              'RefreshPageEvent was not run: a page is loading. Refresh '
+                  'again when it has finished.')));
+      await settle();
+
+      expect(be.calls, callsBefore, reason: 'no fetch for either refresh');
+      expect(statuses, isEmpty, reason: 'neither refresh emitted anything');
+
+      gate.complete();
+      await settle();
+      expect(bloc.state.items.length, 20, reason: 'the load-more finished');
+      await bloc.sendForResult(RefreshPageEvent());
+      expect(bloc.state.items.length, 10, reason: 'and now a refresh runs');
+      await sub.cancel();
+      await bloc.close();
+    });
+
+    test('the event is still a paging event, and prints as before', () {
+      expect(RefreshPageEvent(), isA<PagingEvent>());
+      expect(RefreshPageEvent().toString(), 'RefreshPageEvent');
     });
   });
 

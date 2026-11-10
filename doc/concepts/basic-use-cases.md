@@ -317,5 +317,5 @@ class GoodUploadUseCase extends BlocUseCase<Bloc, Event> {
 ## Next Steps
 
 - Learn about [Stateful Use Cases](stateful-use-cases.md)
-- Explore [Relay Use Cases](relay-use-cases.md) for bloc communication
+- Explore [Cross-Bloc Communication](relay-use-cases.md): reactions, typed results, delayed sends
 - See how to [Test Use Cases](../testing/use-cases)

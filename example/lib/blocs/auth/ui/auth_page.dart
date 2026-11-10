@@ -3,11 +3,11 @@ import '../auth_bloc.dart';
 import '../events/auth_events.dart';
 import '../../user_profile/user_profile_bloc.dart';
 
-/// Example page demonstrating EventSubscription for bloc-to-bloc communication.
+/// Example page demonstrating a Reaction for bloc-to-bloc communication.
 ///
 /// This page shows:
 /// - AuthBloc handling login/logout
-/// - UserProfileBloc automatically reacting to auth events via EventSubscription
+/// - UserProfileBloc reacting to AuthBloc's state through a Reaction
 class AuthPage extends StatelessWidget {
   const AuthPage({super.key});
 
@@ -15,7 +15,7 @@ class AuthPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auth & EventSubscription Demo'),
+        title: const Text('Auth & Reactions Demo'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: SingleChildScrollView(
@@ -45,7 +45,7 @@ class AuthPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'EventSubscription Demo',
+              'Reaction Demo',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -54,10 +54,10 @@ class AuthPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'UserProfileBloc subscribes to AuthBloc events:\n'
-              '• LoginSuccessEvent → LoadProfileEvent\n'
-              '• LogoutSuccessEvent → ClearProfileEvent\n\n'
-              'No relay needed - just clean event subscription!',
+              'UserProfileBloc reacts to AuthBloc\'s state:\n'
+              '• becomes authenticated → LoadProfileEvent\n'
+              '• becomes unauthenticated → ClearProfileEvent\n\n'
+              'UserProfileBloc owns both reactions. AuthBloc only emits its state.',
               style: TextStyle(color: Colors.blue.shade800),
             ),
           ],
@@ -130,7 +130,7 @@ class _UserProfileCard extends StatelessJuiceWidget<UserProfileBloc> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'User Profile (via EventSubscription)',
+                  'User Profile (via Reaction)',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -213,7 +213,8 @@ class _LoginForm extends StatelessJuiceWidget<AuthBloc> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.login),
-      label: Text(state.isLoading ? 'Logging in...' : 'Login as demo@example.com'),
+      label:
+          Text(state.isLoading ? 'Logging in...' : 'Login as demo@example.com'),
     );
   }
 }

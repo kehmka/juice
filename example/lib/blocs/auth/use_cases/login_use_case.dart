@@ -15,8 +15,8 @@ class LoginUseCase extends BlocUseCase<AuthBloc, LoginEvent> {
     // Simulate successful login
     final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Update state and emit LoginSuccessEvent
-    // The LoginSuccessEvent can be subscribed to by other blocs
+    // Update state. Other blocs react to the STATE becoming authenticated —
+    // there is no "login succeeded" event to announce it.
     emitUpdate(
       newState: AuthState(
         userId: userId,
@@ -25,8 +25,5 @@ class LoginUseCase extends BlocUseCase<AuthBloc, LoginEvent> {
         isLoading: false,
       ),
     );
-
-    // Emit the success event so other blocs can react
-    emitEvent(event: LoginSuccessEvent(userId: userId, email: event.email));
   }
 }

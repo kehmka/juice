@@ -1,41 +1,55 @@
 import 'package:juice/juice.dart';
 import '../auth/auth_bloc.dart';
-import '../auth/events/auth_events.dart';
+import '../auth/states/auth_state.dart';
 import 'events/user_profile_events.dart';
 import 'states/user_profile_state.dart';
 import 'use_cases/load_profile_use_case.dart';
 import 'use_cases/clear_profile_use_case.dart';
 
-/// UserProfileBloc demonstrates EventSubscription for bloc-to-bloc communication.
+/// UserProfileBloc demonstrates a [Reaction]: one bloc following another's
+/// state.
 ///
-/// This bloc subscribes to AuthBloc's events:
-/// - When LoginSuccessEvent is emitted, it loads the user's profile
-/// - When LogoutSuccessEvent is emitted, it clears the profile
+/// It reacts to [AuthBloc]:
+/// - when the auth state BECOMES authenticated, it loads the user's profile;
+/// - when it becomes unauthenticated, it clears the profile.
 ///
-/// This is a loosely-coupled approach - UserProfileBloc only knows about
-/// AuthBloc's event structure, not its state structure.
+/// The reactions are attached here, in the constructor body, and owned by
+/// this bloc — they end when it closes. AuthBloc knows nothing about them:
+/// it only emits its own state.
 class UserProfileBloc extends JuiceBloc<UserProfileState> {
   UserProfileBloc()
       : super(
           const UserProfileState(),
           [
-            // Subscribe to AuthBloc's LoginSuccessEvent
-            // When user logs in, automatically load their profile
-            () => EventSubscription<AuthBloc, LoginSuccessEvent, LoadProfileEvent>(
-                  toEvent: (loginEvent) => LoadProfileEvent(
-                    userId: loginEvent.userId,
-                    email: loginEvent.email,
-                  ),
+            () => UseCaseBuilder(
+                  typeOfEvent: LoadProfileEvent,
                   useCaseGenerator: () => LoadProfileUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
-
-            // Subscribe to AuthBloc's LogoutSuccessEvent
-            // When user logs out, clear their profile
-            () => EventSubscription<AuthBloc, LogoutSuccessEvent, ClearProfileEvent>(
-                  toEvent: (_) => ClearProfileEvent(),
+            () => UseCaseBuilder(
+                  typeOfEvent: ClearProfileEvent,
                   useCaseGenerator: () => ClearProfileUseCase(),
+                  concurrency: EventConcurrency.concurrent,
                 ),
           ],
           [],
-        );
+        ) {
+    // catchUp: this bloc is leased — built when the page opens. If the user
+    // is ALREADY signed in then, the profile still loads.
+    react(Reaction<AuthBloc, AuthState>.becomes(
+      (auth) => auth.isAuthenticated,
+      send: (auth) => LoadProfileEvent(
+        userId: auth.userId!,
+        email: auth.email!,
+      ),
+      atAttach: AtAttach.catchUp,
+    ));
+
+    // skip: a profile that was never loaded has nothing to clear.
+    react(Reaction<AuthBloc, AuthState>.becomes(
+      (auth) => !auth.isAuthenticated,
+      send: (_) => ClearProfileEvent(),
+      atAttach: AtAttach.skip,
+    ));
+  }
 }

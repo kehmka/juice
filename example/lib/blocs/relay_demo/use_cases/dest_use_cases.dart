@@ -3,12 +3,12 @@ import '../dest_bloc.dart';
 import '../dest_events.dart';
 import '../dest_state.dart';
 
-class StateRelayedUseCase extends BlocUseCase<DestBloc, StateRelayedEvent> {
+class CounterChangedUseCase extends BlocUseCase<DestBloc, CounterChangedEvent> {
   @override
-  Future<void> execute(StateRelayedEvent event) async {
-    final entry = RelayLogEntry(
+  Future<void> execute(CounterChangedEvent event) async {
+    final entry = ReactionLogEntry(
       message: 'Counter changed to ${event.counter}',
-      source: 'StateRelay',
+      form: ReactionLogEntry.changes,
     );
 
     emitUpdate(
@@ -18,12 +18,12 @@ class StateRelayedUseCase extends BlocUseCase<DestBloc, StateRelayedEvent> {
   }
 }
 
-class StatusUpdatingUseCase extends BlocUseCase<DestBloc, StatusUpdatingEvent> {
+class SourceBusyUseCase extends BlocUseCase<DestBloc, SourceBusyEvent> {
   @override
-  Future<void> execute(StatusUpdatingEvent event) async {
-    final entry = RelayLogEntry(
-      message: 'Updating - counter: ${event.counter}',
-      source: 'StatusRelay',
+  Future<void> execute(SourceBusyEvent event) async {
+    final entry = ReactionLogEntry(
+      message: 'Source became busy (async in progress)...',
+      form: ReactionLogEntry.becomes,
     );
 
     emitUpdate(
@@ -33,27 +33,12 @@ class StatusUpdatingUseCase extends BlocUseCase<DestBloc, StatusUpdatingEvent> {
   }
 }
 
-class StatusWaitingUseCase extends BlocUseCase<DestBloc, StatusWaitingEvent> {
+class SourceFailedUseCase extends BlocUseCase<DestBloc, SourceFailedEvent> {
   @override
-  Future<void> execute(StatusWaitingEvent event) async {
-    final entry = RelayLogEntry(
-      message: 'Waiting (async in progress)...',
-      source: 'StatusRelay',
-    );
-
-    emitUpdate(
-      newState: bloc.state.addLogEntry(entry),
-      groupsToRebuild: {'dest'},
-    );
-  }
-}
-
-class StatusFailedUseCase extends BlocUseCase<DestBloc, StatusFailedEvent> {
-  @override
-  Future<void> execute(StatusFailedEvent event) async {
-    final entry = RelayLogEntry(
-      message: 'Failed: ${event.errorMessage ?? "Unknown error"}',
-      source: 'StatusRelay',
+  Future<void> execute(SourceFailedEvent event) async {
+    final entry = ReactionLogEntry(
+      message: 'Source failed: ${event.errorMessage ?? "Unknown error"}',
+      form: ReactionLogEntry.becomes,
     );
 
     emitUpdate(

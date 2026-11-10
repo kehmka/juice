@@ -245,32 +245,23 @@ class WebSocketUseCase extends StatefulUseCaseBuilder<ChatBloc, ConnectEvent> {
 
 ### Cross-Bloc Communication
 
-For connecting multiple blocs, use `StateRelay` or `StatusRelay`:
+For connecting blocs, the bloc that follows another attaches a reaction in
+its own constructor:
 
 ```dart
-// StateRelay - Simple state-to-event transformation
-final authToProfileRelay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => state.isAuthenticated
-      ? LoadProfileEvent(userId: state.userId!)
-      : ClearProfileEvent(),
-  when: (state) => state.userId != null,
-);
-
-// StatusRelay - When you need to handle waiting/error states
-final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (status) => status.when(
-    updating: (state, _, __) => state.isAuthenticated
-        ? LoadProfileEvent(userId: state.userId!)
-        : ClearProfileEvent(),
-    waiting: (_, __, ___) => ProfileLoadingEvent(),
-    failure: (_, __, ___) => ClearProfileEvent(),
-    canceling: (_, __, ___) => ClearProfileEvent(),
-  ),
-);
-
-// Don't forget to close when done
-await authToProfileRelay.close();
+class ProfileBloc extends JuiceBloc<ProfileState> {
+  ProfileBloc() : super(ProfileState(), [/* use cases */]) {
+    react(Reaction<AuthBloc, AuthState>.becomes(
+      (s) => s.isAuthenticated,
+      send: (s) => LoadProfileEvent(userId: s.user!.id),
+      atAttach: AtAttach.catchUp,
+    ));
+  }
+}
 ```
+
+The reaction ends with the bloc that owns it. For the outcome of an operation,
+the caller awaits `sendForResult` on a `ResultEvent<T>` instead.
 
 See [Cross-Bloc Communication](relay-use-cases.md) for more details.
 

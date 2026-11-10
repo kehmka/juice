@@ -1,350 +1,242 @@
-# Cross-Bloc Communication with Relays
+# Cross-Bloc Communication
 
-Relays create connections between blocs, allowing state changes in one bloc to trigger events in another. This enables reactive data flow while maintaining clean separation between features.
+Blocs stay independent: none calls into another's use cases, and none reads
+another's private fields. When one bloc's behaviour depends on another, pick
+the tool by what it needs.
 
-## StateRelay vs StatusRelay
+| The bloc needs to… | Use | Owned by |
+|---|---|---|
+| follow another bloc's state | a **reaction** — `react(Reaction…)` | the bloc that reacts |
+| wait until another bloc reaches a state | **`waitFor`** | the use case that waits |
+| get the outcome of an operation | **`sendForResult`** on a `ResultEvent<T>` | the caller |
+| do something later | **`sendAfter`** | the bloc that will do it |
 
-Juice provides two relay types for different use cases:
+> `StateRelay`, `StatusRelay` and `EventSubscription` are deprecated and will
+> be removed in 3.0.0. See [The deprecated relays](#the-deprecated-relays)
+> below and the [migration guide](../guides/moving-from-relays-to-reactions.md).
 
-| Class | Use When | Receives |
-|-------|----------|----------|
-| `StateRelay` | You only need the state values | `TSourceState` |
-| `StatusRelay` | You need to handle waiting/error states | `StreamStatus<TSourceState>` |
+## Reactions
 
-## StateRelay
-
-`StateRelay` is the simpler and more common choice. Use it when you only need to react to state changes:
-
-```dart
-// Simple: When cart changes, update order total
-final relay = StateRelay<CartBloc, OrderBloc, CartState>(
-  toEvent: (state) => UpdateTotalEvent(
-    total: state.items.fold(0, (sum, item) => sum + item.price),
-  ),
-);
-```
-
-### With Filtering
-
-Use the `when` predicate to filter which state changes trigger the relay:
+A reaction says: when that bloc's state does this, send me that event.
 
 ```dart
-// Only relay when user is authenticated
-final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated && state.userId != null,
-);
-```
-
-### Complete Example
-
-```dart
-// States
-class AuthState extends BlocState {
-  final String? userId;
-  final bool isAuthenticated;
-
-  AuthState({this.userId, this.isAuthenticated = false});
-}
-
-class ProfileState extends BlocState {
-  final UserProfile? profile;
-  final bool isLoaded;
-
-  ProfileState({this.profile, this.isLoaded = false});
-}
-
-// Event
-class LoadProfileEvent extends EventBase {
-  final String userId;
-  LoadProfileEvent({required this.userId});
-}
-
-// Create the relay
-final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated && state.userId != null,
-);
-
-// Don't forget to clean up when done
-await relay.close();
-```
-
-## StatusRelay
-
-Use `StatusRelay` when you need to react differently based on the stream status (waiting, failure, canceling):
-
-```dart
-final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (status) => status.when(
-    updating: (state, oldState, _) {
-      if (state.isAuthenticated) {
-        return LoadProfileEvent(userId: state.userId!);
-      }
-      return ClearProfileEvent();
-    },
-    waiting: (_, __, ___) => ProfileLoadingEvent(),
-    failure: (_, __, ___) => ClearProfileEvent(),
-    canceling: (_, __, ___) => ClearProfileEvent(),
-  ),
-);
-```
-
-### Complete StatusRelay Example
-
-```dart
-// Events for different scenarios
-class LoadProfileEvent extends EventBase {
-  final String userId;
-  LoadProfileEvent({required this.userId});
-}
-
-class ProfileLoadingEvent extends EventBase {}
-class ClearProfileEvent extends EventBase {}
-
-// StatusRelay with full status handling
-final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (status) => status.when(
-    updating: (state, oldState, _) {
-      // React to state transitions
-      if (state.isAuthenticated && !oldState.isAuthenticated) {
-        return LoadProfileEvent(userId: state.userId!);
-      }
-      if (!state.isAuthenticated && oldState.isAuthenticated) {
-        return ClearProfileEvent();
-      }
-      return LoadProfileEvent(userId: state.userId!);
-    },
-    waiting: (_, __, ___) => ProfileLoadingEvent(),
-    failure: (_, __, ___) => ClearProfileEvent(),
-    canceling: (_, __, ___) => ClearProfileEvent(),
-  ),
-  // Optional: filter which statuses trigger relay
-  when: (status) => status is UpdatingStatus,
-);
-```
-
-## How Relays Work
-
-1. The relay monitors the source bloc's stream (e.g., AuthBloc)
-2. When source emits a new status, the transformer creates a destination event
-3. The event is sent to the destination bloc (e.g., ProfileBloc)
-4. A use case in the destination bloc handles the event
-
-```
-┌─────────────┐     state/status     ┌─────────────┐     event      ┌─────────────┐
-│ Source Bloc │ ──────────────────► │    Relay    │ ─────────────► │  Dest Bloc  │
-│  (AuthBloc) │                      │ (transform) │                │(ProfileBloc)│
-└─────────────┘                      └─────────────┘                └─────────────┘
-```
-
-## Using Relays with BlocScope
-
-When using `BlocScope` for dependency injection, relays automatically resolve blocs:
-
-```dart
-// Register blocs first
-BlocScope.register<AuthBloc>(
-  () => AuthBloc(),
-  lifecycle: BlocLifecycle.permanent,
-);
-BlocScope.register<ProfileBloc>(
-  () => ProfileBloc(),
-  lifecycle: BlocLifecycle.permanent,
-);
-
-// Create relay - blocs resolved automatically via BlocScope
-final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated,
-);
-```
-
-A relay resolves both blocs **in its constructor** and throws there when one
-is unregistered or closed (a `StateError` from `BlocScope`, or a custom
-resolver's own error) — where you are looking, not as an uncaught error a
-microtask later. So register both blocs first, and **never build a relay
-inside a bloc's own constructor**: a bloc leased while its own factory is
-running fails at the scope. Wire relays in the composition root, after the
-registrations, as above.
-
-### Using Scoped Blocs
-
-For feature-scoped blocs, specify the scope:
-
-```dart
-final relay = StateRelay<CartBloc, OrderBloc, CartState>(
-  toEvent: (state) => UpdateOrderEvent(items: state.items),
-  sourceScope: checkoutScope,  // Resolve CartBloc from checkout scope
-  destScope: checkoutScope,    // Resolve OrderBloc from checkout scope
-);
-```
-
-## Best Practices
-
-### 1. Choose the Right Relay Type
-```dart
-// Use StateRelay when you only care about state values
-StateRelay<SourceBloc, DestBloc, SourceState>(
-  toEvent: (state) => SomeEvent(value: state.value),
-);
-
-// Use StatusRelay when you need to handle loading/error states
-StatusRelay<SourceBloc, DestBloc, SourceState>(
-  toEvent: (status) => status.when(
-    updating: (state, _, __) => DataEvent(value: state.value),
-    waiting: (_, __, ___) => LoadingEvent(),
-    failure: (_, __, ___) => ErrorEvent(),
-    canceling: (_, __, ___) => CancelEvent(),
-  ),
-);
-```
-
-### 2. Always Clean Up
-```dart
-// Store relay reference
-final relay = StateRelay<...>(...);
-
-// Clean up when done
-await relay.close();
-```
-
-### 3. Use Filtering to Reduce Noise
-```dart
-// Only relay when condition is met
-StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated && state.userId != null,
-);
-```
-
-### 4. Keep Transformers Simple
-```dart
-// Simple and clear transformer
-toEvent: (state) => SetValueEvent(state.value),
-
-// If logic is complex, move to a helper method
-toEvent: _transformState,
-
-EventBase _transformState(SourceState state) {
-  // Complex logic here
-  return SomeEvent(...);
+class NotesBloc extends JuiceBloc<NotesState> {
+  NotesBloc() : super(const NotesState(), [/* use cases */]) {
+    react(Reaction<SettingsBloc, SettingsState>.changes(
+      (settings) => (settings.sortOrder, settings.viewMode),
+      send: (settings) => SettingsChangedEvent(
+        sortOrder: settings.sortOrder,
+        viewMode: settings.viewMode,
+      ),
+      atAttach: AtAttach.catchUp,
+    ));
+  }
 }
 ```
 
-## Common Patterns
+The destination attaches it in its own constructor body and owns it: the
+reaction ends when the destination closes. `SettingsBloc` knows nothing about
+it — it only emits its own state.
 
-### Authentication to Profile Loading
-```dart
-StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated && state.userId != null,
-);
-```
-
-### Cart to Order Summary
-```dart
-StateRelay<CartBloc, OrderBloc, CartState>(
-  toEvent: (state) => UpdateSummaryEvent(
-    subtotal: state.subtotal,
-    tax: state.tax,
-    total: state.total,
-  ),
-);
-```
-
-### Settings to Theme
-```dart
-StateRelay<SettingsBloc, ThemeBloc, SettingsState>(
-  toEvent: (state) => ApplyThemeEvent(
-    isDarkMode: state.isDarkMode,
-    primaryColor: state.primaryColor,
-  ),
-);
-```
-
-## Testing Relays
+### The three forms
 
 ```dart
-void main() {
-  late AuthBloc authBloc;
-  late ProfileBloc profileBloc;
-  late StateRelay relay;
-
-  setUp(() {
-    authBloc = AuthBloc();
-    profileBloc = ProfileBloc();
-
-    // Create relay with test resolver
-    relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      when: (state) => state.isAuthenticated,
-      resolver: TestResolver({
-        AuthBloc: authBloc,
-        ProfileBloc: profileBloc,
-      }),
-    );
-  });
-
-  tearDown(() async {
-    await relay.close();
-    await authBloc.close();
-    await profileBloc.close();
-  });
-
-  test('loads profile when authenticated', () async {
-    // Allow relay to initialize
-    await Future.delayed(Duration(milliseconds: 100));
-
-    // Trigger auth state change
-    await authBloc.send(LoginEvent(userId: '123'));
-    await Future.delayed(Duration(milliseconds: 100));
-
-    // Verify profile loaded
-    expect(profileBloc.state.profile?.userId, equals('123'));
-  });
-}
-```
-
-## Migration from RelayUseCaseBuilder (removed in juice 2.0.0)
-
-`RelayUseCaseBuilder` was deprecated in 1.x and removed in 2.0.0. Here's how to migrate code that still uses it:
-
-```dart
-// Before (1.x, removed in 2.0.0):
-RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
-  typeOfEvent: LoadProfileEvent,
-  useCaseGenerator: () => LoadProfileUseCase(),
-  statusToEventTransformer: (status) => LoadProfileEvent(
-    userId: status.state.userId,
-  ),
+// The predicate went from false to true.
+Reaction<AuthBloc, AuthState>.becomes(
+  (s) => s.isAuthenticated,
+  send: (s) => LoadProfileEvent(userId: s.user!.id),
+  atAttach: AtAttach.catchUp,
 )
 
-// After - StateRelay (if you only need state):
-StateRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-  when: (state) => state.isAuthenticated,
+// The selected value is no longer == to what it was.
+Reaction<CartBloc, CartState>.changes(
+  (s) => s.total,
+  send: (s) => UpdateTotalEvent(s.total),
+  atAttach: AtAttach.catchUp,
 )
 
-// After - StatusRelay (if you need full status):
-StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-  toEvent: (status) => status.when(
-    updating: (state, _, __) => LoadProfileEvent(userId: state.userId!),
-    waiting: (_, __, ___) => ProfileLoadingEvent(),
-    failure: (_, __, ___) => ClearProfileEvent(),
-    canceling: (_, __, ___) => ClearProfileEvent(),
-  ),
+// Any edge you can state over the old state and the new one.
+Reaction<PowerBloc, PowerState>.edge(
+  (old, now) => old.isPluggedIn && !now.isPluggedIn,
+  send: (_) => PauseWorkEvent(),
 )
 ```
 
-Key differences:
-- No `typeOfEvent` needed - the event type is inferred
-- No `useCaseGenerator` needed - the destination bloc handles events normally
-- Simpler API with `toEvent` instead of `statusToEventTransformer`
-- Built-in `when` predicate for filtering
+Every form judges one emission: the state before it against the state after
+it. A reaction keeps no memory of its own.
+
+To watch several fields, select a record — records compare by value:
+`(s) => (s.sortOrder, s.viewMode)`.
+
+### A reaction sees state, and nothing else
+
+It is shown `oldState` and `state` for every emission of the source, whatever
+kind of status carried them. It is never shown the status kind, the event, or
+the rebuild groups. That is deliberate:
+
+- If the destination needs to know the source is busy or failed, the source
+  says so in its state (`isSyncing`, `lastError`).
+- If someone needs the outcome of one operation, that is a
+  [typed result](#outcomes-are-typed-results) for the caller, not a reaction.
+
+### What the state at attach means
+
+`becomes` and `changes` take a required `atAttach`. There is no default,
+because either answer is wrong somewhere.
+
+- `AtAttach.catchUp` — the state the source is already in counts: `becomes`
+  fires if its predicate holds now, `changes` fires once with the current
+  value. Use it when the destination must not depend on which bloc was built,
+  or finished loading, first. This is the usual answer.
+- `AtAttach.skip` — only a change from now on counts.
+
+`edge` has no meaning at attach (there is no old state) and takes none.
+
+### Which source
+
+Without `source:`, the reaction resolves its source type through `BlocScope`
+(`scope:` picks a scoped registration). The source must be registered before
+the reacting bloc is built.
+
+A reaction holds no lease and never keeps its source alive. So a `leased`
+source cannot be resolved by type — pass the instance, from the code that
+holds its lease:
+
+```dart
+editorPreview.react(Reaction<EditorBloc, EditorState>.changes(
+  (s) => s.text,
+  source: editorLease.bloc,
+  send: (s) => RenderPreviewEvent(s.text),
+  atAttach: AtAttach.catchUp,
+));
+```
+
+When the source closes, the reaction ends (recorded as `reaction` / `end`).
+
+### When the event is sent
+
+The edge is judged inside the emission; the event is sent a microtask later,
+never inside the use case that emitted. A catch-up at attach is sent the same
+way.
+
+`react` returns a `ReactionBinding`. Call `cancel()` to detach early; nothing
+is sent after it ends.
+
+### Chains and rings
+
+A reaction's event can cause another reaction. The framework counts the hops
+and refuses to send past `Reaction.maxHops` (8): the hop is not sent and an
+error is recorded (`reaction` / `refused`). That is either a ring — two blocs
+reacting to each other — or a chain that should be one use case. The reaction
+stays attached.
+
+A callback of yours that throws (the predicate, the selector, `send`) is
+recorded as an error (`reaction` / `error`) and never reaches the use case
+that emitted. The reaction stays attached.
+
+## Waiting for a state: `waitFor`
+
+When a use case cannot proceed until another bloc is ready:
+
+```dart
+final session = await sessionBloc.waitFor(
+  (s) => s.isReady,
+  timeout: const Duration(seconds: 10),
+);
+```
+
+It returns the state that satisfied the predicate — at once, if the current
+state already does. The timeout is required. Every other exit is loud: a
+`TimeoutException`, a `StateError` if the bloc closes, a `CancelledException`
+in a `restartable` run that was superseded.
+
+## Outcomes are typed results
+
+The outcome of an operation belongs to whoever asked for it:
+
+```dart
+class RefreshTokenEvent extends ResultEvent<AuthSession> {}
+
+final session = await authBloc.sendForResult(RefreshTokenEvent());
+```
+
+The use case emits a terminal status and calls `event.succeed(value)`. A
+failure status throws from `sendForResult`.
+
+Two rules for the use case:
+
+- A waiter is answered by the FIRST status that is not a waiting one. If that
+  is an in-progress update (`isRefreshing: true`), the waiter is already past
+  it and waiting on the value — so a later failure must call
+  `event.fail(error, stackTrace)` as well as `emitFailure`.
+- To refuse an event without emitting anything, `event.fail(error)` and
+  return: `sendForResult` throws that error.
+
+When several callers may ask at once, register the event
+`EventConcurrency.singleflight`. A second event joins the run in flight and is
+answered by it — one provider call, every caller gets the session.
+`joinKey:` narrows the join to events with equal keys:
+
+```dart
+() => UseCaseBuilder(
+  typeOfEvent: RequestPermissionEvent,
+  useCaseGenerator: () => RequestPermissionUseCase(),
+  concurrency: EventConcurrency.singleflight,
+  joinKey: (event) => (event as RequestPermissionEvent).permission,
+),
+```
+
+## Doing something later: `sendAfter`
+
+```dart
+void typed(String text) =>
+    sendAfter(SearchEvent(text), const Duration(milliseconds: 300),
+        key: 'search');
+```
+
+The bloc owns the timer. A later `sendAfter` with the same key replaces the
+pending one — its event is never sent — which is a debounce.
+`cancelSend('search')` cancels by name; the returned `DelayedSend` cancels an
+anonymous one. A close discards whatever is pending and records it.
+
+For periodic work, bind a periodic stream:
+
+```dart
+bindStream<void>(
+  Stream<void>.periodic(const Duration(minutes: 1)),
+  (_) => send(CheckPowerEvent()),
+  key: 'poll',
+);
+```
+
+No `Timer` field, no `isClosed` guard, no cancel in `close()`.
+
+## A coordinator is a bloc
+
+Orchestration across several blocs needs no special type. Write a bloc whose
+events are the ones reactions send it and whose use cases call `waitFor` and
+`sendForResult` on the others.
+
+## The deprecated relays
+
+`StateRelay`, `StatusRelay` and `EventSubscription` still work and are removed
+in 3.0.0.
+
+A relay sent an event on EVERY emission of its source and was owned by nobody:
+it leased both blocs and lived until something closed it. A reaction says
+which change it means and is owned by its destination.
+
+Two uses have no drop-in replacement, on purpose:
+
+- a `StatusRelay` that mapped a waiting or failure **status** to an event;
+- an `EventSubscription` keyed on a source **event type**.
+
+Both looked at something that is not state. Put what the destination needs in
+a state field of the source and react to that, or give the caller a typed
+result. The [migration guide](../guides/moving-from-relays-to-reactions.md)
+walks through each.
 
 ## Next Steps
 
-- Learn about [EventSubscription](../concepts/event-subscription.md) for event-to-event communication
-- Explore [Testing Patterns](../testing/testing-relay-use-cases.md)
-- See [State Management](state-management.md) for state design
+- Learn how to [test blocs that talk to each other](../testing/testing-relay-use-cases.md)
+- Review the [migration guide](../guides/moving-from-relays-to-reactions.md)

@@ -1,27 +1,20 @@
 import 'package:juice/juice.dart';
 
-/// Event sent by StateRelay when source state changes
-class StateRelayedEvent extends EventBase {
+/// Sent by a `changes` reaction when the source's counter changes.
+class CounterChangedEvent extends EventBase {
   final int counter;
 
-  StateRelayedEvent({required this.counter});
+  CounterChangedEvent({required this.counter});
 }
 
-/// Event sent by StatusRelay when source is updating
-class StatusUpdatingEvent extends EventBase {
-  final int counter;
+/// Sent by a `becomes` reaction when the source becomes busy.
+class SourceBusyEvent extends EventBase {}
 
-  StatusUpdatingEvent({required this.counter});
-}
-
-/// Event sent by StatusRelay when source is waiting (async in progress)
-class StatusWaitingEvent extends EventBase {}
-
-/// Event sent by StatusRelay when source has failed
-class StatusFailedEvent extends EventBase {
+/// Sent by a `becomes` reaction when the source gets an error.
+class SourceFailedEvent extends EventBase {
   final String? errorMessage;
 
-  StatusFailedEvent({this.errorMessage});
+  SourceFailedEvent({this.errorMessage});
 }
 
 /// Clear the log

@@ -128,12 +128,12 @@ class MyHomePage extends StatelessWidget {
             'FeatureScope cleanup, barriers, notifications, leak detection'
       },
       {
-        'title': 'Auth & EventSubscription',
+        'title': 'Auth & Reactions',
         'route': '/auth',
         'subtitle': 'Leased profile bloc reacting to auth events'
       },
       {
-        'title': 'StateRelay & StatusRelay Demo',
+        'title': 'Reactions Demo',
         'route': '/relay-demo',
         'subtitle': 'Cross-bloc communication without widget glue'
       },

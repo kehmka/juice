@@ -30,12 +30,15 @@ class DecrementSourceUseCase
   }
 }
 
-class SimulateAsyncUseCase
-    extends BlocUseCase<SourceBloc, SimulateAsyncEvent> {
+class SimulateAsyncUseCase extends BlocUseCase<SourceBloc, SimulateAsyncEvent> {
   @override
   Future<void> execute(SimulateAsyncEvent event) async {
-    // Emit waiting state - this will be picked up by StatusRelay
-    emitWaiting(groupsToRebuild: {'source'});
+    // "Busy" goes in the STATE: a reaction sees state, never the status
+    // kind. The waiting status is still what this bloc's own widgets show.
+    emitWaiting(
+      newState: bloc.state.copyWith(isProcessing: true, clearError: true),
+      groupsToRebuild: {'source'},
+    );
 
     // Simulate async operation
     await Future.delayed(const Duration(seconds: 2));
@@ -52,11 +55,10 @@ class SimulateAsyncUseCase
   }
 }
 
-class SimulateErrorUseCase
-    extends BlocUseCase<SourceBloc, SimulateErrorEvent> {
+class SimulateErrorUseCase extends BlocUseCase<SourceBloc, SimulateErrorEvent> {
   @override
   Future<void> execute(SimulateErrorEvent event) async {
-    // Emit failure state - this will be picked up by StatusRelay
+    // The error goes in the state too, where a reaction can see it.
     emitFailure(
       newState: bloc.state.copyWith(
         errorMessage: 'Simulated error occurred!',

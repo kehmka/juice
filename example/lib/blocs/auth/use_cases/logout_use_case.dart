@@ -6,7 +6,7 @@ import '../states/auth_state.dart';
 class LogoutUseCase extends BlocUseCase<AuthBloc, LogoutEvent> {
   @override
   Future<void> execute(LogoutEvent event) async {
-    // Clear auth state
+    // Clear auth state. Other blocs react to it becoming unauthenticated.
     emitUpdate(
       newState: const AuthState(
         userId: null,
@@ -15,8 +15,5 @@ class LogoutUseCase extends BlocUseCase<AuthBloc, LogoutEvent> {
         isLoading: false,
       ),
     );
-
-    // Emit the logout event so other blocs can react
-    emitEvent(event: LogoutSuccessEvent());
   }
 }

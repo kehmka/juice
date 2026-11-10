@@ -1,62 +1,23 @@
 import 'package:juice/juice.dart';
 import '../relay_demo.dart';
 
-/// Demo page showing StateRelay and StatusRelay in action.
+/// Demo page showing reactions in action.
 ///
-/// This page demonstrates:
-/// - StateRelay: Simple state-to-event transformation (counter changes)
-/// - StatusRelay: Full status handling (updating, waiting, failure states)
-class RelayDemoPage extends StatefulWidget {
+/// DestBloc follows SourceBloc with three reactions it attaches in its own
+/// constructor (see dest_bloc.dart):
+/// - `changes` on the counter;
+/// - `becomes` busy;
+/// - `becomes` failed.
+///
+/// Nothing is wired here: the page only shows the two blocs.
+class RelayDemoPage extends StatelessWidget {
   const RelayDemoPage({super.key});
-
-  @override
-  State<RelayDemoPage> createState() => _RelayDemoPageState();
-}
-
-class _RelayDemoPageState extends State<RelayDemoPage> {
-  late StateRelay<SourceBloc, DestBloc, SourceState> _stateRelay;
-  late StatusRelay<SourceBloc, DestBloc, SourceState> _statusRelay;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupRelays();
-  }
-
-  void _setupRelays() {
-    // StateRelay: Simple state-to-event transformation
-    // Only reacts to state values, not waiting/error states
-    _stateRelay = StateRelay<SourceBloc, DestBloc, SourceState>(
-      toEvent: (state) => StateRelayedEvent(counter: state.counter),
-      // Optional: filter to only relay when counter > 0
-      // when: (state) => state.counter > 0,
-    );
-
-    // StatusRelay: Full StreamStatus handling
-    // Reacts differently to updating, waiting, and failure states
-    _statusRelay = StatusRelay<SourceBloc, DestBloc, SourceState>(
-      toEvent: (status) => status.when(
-        updating: (state, _, __) => StatusUpdatingEvent(counter: state.counter),
-        waiting: (_, __, ___) => StatusWaitingEvent(),
-        failure: (state, _, __) =>
-            StatusFailedEvent(errorMessage: state.errorMessage),
-        canceling: (_, __, ___) => StatusWaitingEvent(),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _stateRelay.close();
-    _statusRelay.close();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('StateRelay & StatusRelay Demo'),
+        title: const Text('Reactions Demo'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -72,7 +33,7 @@ class _RelayDemoPageState extends State<RelayDemoPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'How Relays Work',
+                      'How Reactions Work',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -80,10 +41,11 @@ class _RelayDemoPageState extends State<RelayDemoPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'This demo shows two blocs connected via relays:\n\n'
-                      '• StateRelay - Transforms state changes into events\n'
-                      '• StatusRelay - Handles all status types (updating, waiting, failure)\n\n'
-                      'Watch the log to see how each relay responds to different actions!',
+                      'DestBloc follows SourceBloc with reactions it owns:\n\n'
+                      '• changes - the counter is no longer what it was\n'
+                      '• becomes - the source became busy, or got an error\n\n'
+                      'A reaction sees state, so the source carries "busy" and "error" in its state. '
+                      'Watch the log to see which actions each reaction answers!',
                     ),
                   ],
                 ),
@@ -134,8 +96,7 @@ class SourceBlocCard extends StatelessJuiceWidget<SourceBloc> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                if (isFailure)
-                  const Icon(Icons.error, color: Colors.red),
+                if (isFailure) const Icon(Icons.error, color: Colors.red),
               ],
             ),
             const Divider(),
@@ -180,8 +141,9 @@ class SourceBlocCard extends StatelessJuiceWidget<SourceBloc> {
                   label: const Text('−1'),
                 ),
                 ElevatedButton.icon(
-                  onPressed:
-                      isWaiting ? null : () => bloc.send(IncrementSourceEvent()),
+                  onPressed: isWaiting
+                      ? null
+                      : () => bloc.send(IncrementSourceEvent()),
                   icon: const Icon(Icons.add),
                   label: const Text('+1'),
                 ),
@@ -263,14 +225,14 @@ class DestBlocCard extends StatelessJuiceWidget<DestBloc> {
             Row(
               children: [
                 _StatChip(
-                  label: 'StateRelay',
-                  count: bloc.state.stateRelayCount,
+                  label: 'changes',
+                  count: bloc.state.changesCount,
                   color: Colors.blue,
                 ),
                 const SizedBox(width: 8),
                 _StatChip(
-                  label: 'StatusRelay',
-                  count: bloc.state.statusRelayCount,
+                  label: 'becomes',
+                  count: bloc.state.becomesCount,
                   color: Colors.orange,
                 ),
               ],
@@ -342,22 +304,22 @@ class _StatChip extends StatelessWidget {
 }
 
 class _LogEntryTile extends StatelessWidget {
-  final RelayLogEntry entry;
+  final ReactionLogEntry entry;
 
   const _LogEntryTile({required this.entry});
 
   @override
   Widget build(BuildContext context) {
-    final isStateRelay = entry.source == 'StateRelay';
-    final color = isStateRelay ? Colors.blue : Colors.orange;
-    final icon = isStateRelay ? Icons.sync_alt : Icons.stream;
+    final isChanges = entry.form == ReactionLogEntry.changes;
+    final color = isChanges ? Colors.blue : Colors.orange;
+    final icon = isChanges ? Icons.sync_alt : Icons.stream;
 
     return ListTile(
       dense: true,
       leading: Icon(icon, color: color, size: 20),
       title: Text(entry.message),
       subtitle: Text(
-        '${entry.source} • ${_formatTime(entry.timestamp)}',
+        '${entry.form} • ${_formatTime(entry.timestamp)}',
         style: TextStyle(color: color, fontSize: 12),
       ),
     );

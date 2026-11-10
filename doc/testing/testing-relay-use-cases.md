@@ -1,569 +1,174 @@
-# Testing State and Status Relays
+# Testing Blocs That Talk to Each Other
 
-This guide covers comprehensive testing patterns for `StateRelay` and `StatusRelay`, ensuring that bloc-to-bloc communication works correctly and reliably.
-
-## Test Setup
-
-First, let's create proper test infrastructure:
+`juiceTest` tests one bloc. When the behaviour under test crosses blocs — a
+reaction, a chain of them, a debounce in the middle — use `juiceFlowTest`. It
+knows when every bloc is idle, so a test never sleeps, and it fails on
+anything the test did not account for.
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juice/juice.dart';
-
-// Test resolver for dependency injection
-class TestResolver implements BlocDependencyResolver {
-  final Map<Type, JuiceBloc> blocs;
-
-  TestResolver(this.blocs);
-
-  @override
-  T resolve<T extends JuiceBloc<BlocState>>({Map<String, dynamic>? args}) {
-    final bloc = blocs[T];
-    if (bloc == null) {
-      throw StateError('Bloc $T not registered');
-    }
-    return bloc as T;
-  }
-
-  @override
-  BlocLease<T> lease<T extends JuiceBloc<BlocState>>({Object? scope}) {
-    return BlocLease<T>(resolve<T>(), () {});
-  }
-
-  @override
-  Future<void> disposeAll() async {
-    for (final bloc in blocs.values) {
-      await bloc.close();
-    }
-  }
-}
+import 'package:juice/testing.dart';
 
 void main() {
-  late AuthBloc authBloc;
-  late ProfileBloc profileBloc;
-  late TestResolver resolver;
+  juiceFlowTest('a settings change reaches notes', (flow) async {
+    final settings = flow.register<SettingsBloc>(() => SettingsBloc());
+    final notes = flow.register<NotesBloc>(() => NotesBloc());
 
-  setUp(() {
-    authBloc = AuthBloc();
-    profileBloc = ProfileBloc();
-    resolver = TestResolver({
-      AuthBloc: authBloc,
-      ProfileBloc: profileBloc,
-    });
-  });
+    await flow.send(settings, ToggleViewModeEvent());
 
-  tearDown(() async {
-    await resolver.disposeAll();
+    flow.expect(settings, [
+      isUpdatingStatus(state: isA<SettingsState>()
+          .having((s) => s.viewMode, 'viewMode', ViewMode.grid)),
+    ]);
+    flow.expect(notes, [
+      isUpdatingStatus(state: isA<NotesState>()
+          .having((s) => s.viewMode, 'viewMode', ViewMode.grid)),
+    ]);
   });
 }
 ```
 
-## Testing StateRelay
+## Handing blocs to the flow
 
-### Basic State Transformation
+- `flow.register<T>(() => T())` registers the bloc in `BlocScope` as
+  permanent, builds it at once and watches it. Use it when another bloc finds
+  this one by type — a reaction without `source:`, a `BlocScope.get`.
+- `flow.add(bloc)` watches an instance the test built. Use it for a bloc that
+  is passed around by instance.
+
+Register a source before the bloc that reacts to it, as an app would.
+
+Build blocs inside the flow and without a `logger:` of their own. The flow
+reads errors from its own logger and refuses to watch a bloc that reports
+elsewhere.
+
+A bloc you do not hand to the flow is not recorded, and the flow does not
+close it. Its sends are still waited for.
+
+The flow owns `BlocScope` for the test. It will not start while anything is
+registered there, and it resets the scope when it ends.
+
+## Acting and settling
+
+- `await flow.send(bloc, event)` sends and waits until every bloc is idle:
+  the run it starts, every reaction that follows, and every run those start.
+- `await flow.settle()` waits alone, after something else acted — a plain
+  `bloc.send(...)`, a bloc method, a fake provider emitting.
+
+Idle means no send in flight (one waiting in a `sequential` queue counts), no
+reaction hop pending, and no `sendAfter` still waiting to fire.
+
+A settle that has not gone idle in 5 seconds fails, naming what is still in
+flight. Pass `timeout:` for something slower.
+
+## Asserting
+
+`flow.expect(bloc, expected)` asserts on what that bloc emitted since its last
+`expect`, exactly and in order, and consumes it.
 
 ```dart
-test('StateRelay transforms and forwards state changes', () async {
-  final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-    when: (state) => state.isAuthenticated,
-    resolver: resolver,
-  );
+await flow.send(cart, AddItemEvent(apple));
+flow.expect(cart, [isUpdatingStatus(state: hasItems(1))]);
+flow.expect(summary, [isUpdatingStatus(state: hasTotal(120))]);
 
-  // Wait for async initialization
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Trigger state change
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Verify destination bloc received the event
-  expect(profileBloc.state.profile?.userId, equals('123'));
-
-  await relay.close();
-});
+await flow.send(cart, AddItemEvent(pear));
+flow.expect(cart, [isUpdatingStatus(state: hasItems(2))]);   // only the new one
+flow.expect(summary, [isUpdatingStatus(state: hasTotal(200))]);
 ```
 
-### Testing the `when` Predicate
+- One matcher per emission: `isUpdatingStatus`, `isWaitingStatus`,
+  `isFailureStatus`, `isCancelingStatus`, each taking `state:` and `groups:`.
+- Or one matcher over the whole list: `isEmpty`, `hasLength(2)`.
+- Order is asserted per bloc, not across blocs.
+
+## What fails the test
+
+When the body returns, the flow closes every bloc it holds and fails if:
+
+- a watched bloc emitted something no `flow.expect` consumed;
+- a send, a hop or a delayed send was still in flight — end on `flow.send` or
+  `flow.settle()`;
+- a chain of reactions was refused for running past `Reaction.maxHops`;
+- an error was recorded that the test did not claim;
+- anything emitted while the blocs were closing.
+
+Every problem is listed in the one failure.
+
+### Errors
+
+An error-level telemetry entry is an error: a use case that threw, a reaction
+callback that threw, a stream-binding error, an event with no use case. Claim
+the ones you expect:
 
 ```dart
-test('StateRelay filters with when predicate', () async {
-  final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-    when: (state) => state.isAuthenticated && state.userId != null,
-    resolver: resolver,
-  );
-
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Send event that doesn't pass filter (not authenticated)
-  await authBloc.send(UpdateUserEvent(userId: '123', authenticated: false));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Profile should not be loaded
-  expect(profileBloc.state.profile, isNull);
-
-  // Now authenticate
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Profile should now be loaded
-  expect(profileBloc.state.profile?.userId, equals('123'));
-
-  await relay.close();
-});
+await flow.send(cart, BrokenEvent());
+flow.expectErrors([isA<StateError>()]);
 ```
 
-### Testing Relay Lifecycle
+A failure the use case handled itself (`emitFailure`) is an emission, asserted
+with `isFailureStatus(error: …)`. A refused reaction chain cannot be claimed.
+
+## Time
+
+A pending `sendAfter` is not idle, so `flow.send` and `flow.settle()` wait a
+debounce out. To act in the middle of a delay, let a stated amount of time
+pass without waiting for idle:
 
 ```dart
-group('StateRelay lifecycle', () {
-  test('closes cleanly', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      resolver: resolver,
-    );
+juiceFlowTest('a second keystroke replaces the search', (flow) async {
+  final shelf = flow.add(ShelfBloc());
 
-    await Future.delayed(const Duration(milliseconds: 100));
+  shelf.typed('j');                                     // sendAfter, 300 ms
+  await flow.elapse(const Duration(milliseconds: 100));
+  shelf.typed('ju');                                    // replaces it
+  await flow.settle();
 
-    // Close should not throw
-    await relay.close();
-    expect(relay.isClosed, isTrue);
-
-    // Multiple close calls should be safe
-    await relay.close();
-  });
-
-  test('stops relaying after close', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      when: (state) => state.isAuthenticated,
-      resolver: resolver,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Initial relay works
-    await authBloc.send(LoginEvent(userId: '123'));
-    await Future.delayed(const Duration(milliseconds: 100));
-    expect(profileBloc.state.profile?.userId, equals('123'));
-
-    // Close relay
-    await relay.close();
-
-    // Clear profile state
-    await profileBloc.send(ClearProfileEvent());
-    await Future.delayed(const Duration(milliseconds: 50));
-
-    // Send another auth event - should not relay
-    await authBloc.send(LoginEvent(userId: '456'));
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Profile should still be cleared
-    expect(profileBloc.state.profile, isNull);
-  });
-});
+  flow.expect(shelf, [isUpdatingStatus(state: hasResultsFor('ju'))]);
+}, virtualTime: true);
 ```
 
-### Testing Error Handling
+By default a flow runs on the real clock: a 300 ms debounce takes 300 ms.
+
+With `virtualTime: true` the same test runs on a virtual clock. Whenever the
+test is waiting and nothing can happen until time passes, the clock jumps to
+the next timer. Every timer is virtual — a `sendAfter`, a `Future.delayed` in
+a use case, a `waitFor` timeout, the settle limit — so the test takes no time.
+A timer that re-arms itself forever never goes idle and fails after 5 virtual
+seconds.
+
+A virtual clock cannot advance the real world. Hive, sqflite and platform
+channels never complete under it, and a test that waits on one fails at once,
+saying so. Fake the seam, or leave that test on the real clock.
+
+## In a test with its own setup
+
+`runJuiceFlow` is the body of `juiceFlowTest`:
 
 ```dart
-test('StateRelay handles transformer errors without closing', () async {
-  int callCount = 0;
-
-  final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (state) {
-      callCount++;
-      if (callCount == 2) {
-        throw Exception('Transformer error');
-      }
-      return LoadProfileEvent(userId: state.userId!);
-    },
-    resolver: resolver,
-  );
-
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // First event works
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 100));
-  expect(profileBloc.state.profile?.userId, equals('123'));
-
-  // Second event throws - relay should continue
-  await authBloc.send(LoginEvent(userId: '456'));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Relay should still be active
-  expect(relay.isClosed, isFalse);
-
-  // Third event should work
-  await authBloc.send(LoginEvent(userId: '789'));
-  await Future.delayed(const Duration(milliseconds: 100));
-  expect(profileBloc.state.profile?.userId, equals('789'));
-
-  await relay.close();
-});
-```
-
-## Testing StatusRelay
-
-### Basic Status Transformation
-
-```dart
-test('StatusRelay transforms and forwards StreamStatus', () async {
-  final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (status) {
-      if (status is UpdatingStatus<AuthState>) {
-        return LoadProfileEvent(userId: status.state.userId!);
-      }
-      return ClearProfileEvent();
-    },
-    resolver: resolver,
-  );
-
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  expect(profileBloc.state.profile?.userId, equals('123'));
-
-  await relay.close();
-});
-```
-
-### Testing Full Status Handling
-
-```dart
-test('StatusRelay handles all status types', () async {
-  final receivedEvents = <Type>[];
-
-  final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (status) => status.when(
-      updating: (state, _, __) {
-        receivedEvents.add(UpdatingStatus);
-        return state.isAuthenticated
-            ? LoadProfileEvent(userId: state.userId!)
-            : ClearProfileEvent();
-      },
-      waiting: (_, __, ___) {
-        receivedEvents.add(WaitingStatus);
-        return ProfileLoadingEvent();
-      },
-      failure: (_, __, ___) {
-        receivedEvents.add(FailureStatus);
-        return ClearProfileEvent();
-      },
-      canceling: (_, __, ___) {
-        receivedEvents.add(CancelingStatus);
-        return ClearProfileEvent();
-      },
-    ),
-    resolver: resolver,
-  );
-
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Trigger login which may emit waiting then updating
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 200));
-
-  // Should have received at least updating status
-  expect(receivedEvents, contains(UpdatingStatus));
-
-  await relay.close();
-});
-```
-
-### Testing Status Filtering
-
-```dart
-test('StatusRelay filters with when predicate on status', () async {
-  int relayCount = 0;
-
-  final relay = StatusRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (status) {
-      relayCount++;
-      return LoadProfileEvent(userId: status.state.userId ?? 'default');
-    },
-    when: (status) => status is UpdatingStatus<AuthState>,
-    resolver: resolver,
-  );
-
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  await authBloc.send(LoginEvent(userId: '123'));
-  await Future.delayed(const Duration(milliseconds: 100));
-
-  // Only updating statuses should trigger relay
-  expect(relayCount, greaterThan(0));
-
-  await relay.close();
-});
-```
-
-## Testing Race Conditions
-
-```dart
-group('Race condition handling', () {
-  test('close during initialization does not cause errors', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      resolver: resolver,
-    );
-
-    // Immediately close before initialization completes
-    await relay.close();
-
-    // Wait for any pending microtasks
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Should not throw
-    expect(relay.isClosed, isTrue);
-  });
-
-  test('multiple relays on same source work independently', () async {
-    final destBloc1 = ProfileBloc();
-    final destBloc2 = ProfileBloc();
-
-    final resolver1 = TestResolver({
-      AuthBloc: authBloc,
-      ProfileBloc: destBloc1,
-    });
-    final resolver2 = TestResolver({
-      AuthBloc: authBloc,
-      ProfileBloc: destBloc2,
-    });
-
-    final relay1 = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: 'relay1-${state.userId}'),
-      resolver: resolver1,
-    );
-
-    final relay2 = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: 'relay2-${state.userId}'),
-      resolver: resolver2,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    await authBloc.send(LoginEvent(userId: '123'));
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Both should have received events
-    expect(destBloc1.state.profile?.userId, equals('relay1-123'));
-    expect(destBloc2.state.profile?.userId, equals('relay2-123'));
-
-    // Close one relay
-    await relay1.close();
-
-    await authBloc.send(LoginEvent(userId: '456'));
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Only relay2 should update
-    expect(destBloc1.state.profile?.userId, equals('relay1-123'));
-    expect(destBloc2.state.profile?.userId, equals('relay2-456'));
-
-    await relay2.close();
-    await destBloc1.close();
-    await destBloc2.close();
-  });
-
-  test('handles dest bloc close gracefully', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      resolver: resolver,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Close destination bloc
-    await profileBloc.close();
-
-    // Send event to source - relay should detect closed dest
-    await authBloc.send(LoginEvent(userId: '123'));
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    expect(relay.isClosed, isTrue);
-  });
-
-  test('handles source bloc close gracefully', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-      resolver: resolver,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Close source bloc
-    await authBloc.close();
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    expect(relay.isClosed, isTrue);
+test('with my own setup', () async {
+  final provider = FakeProvider();
+  await runJuiceFlow((flow) async {
+    final bloc = flow.add(MyBloc(provider));
+    // …
   });
 });
 ```
 
-## Integration Tests
+Inside `testWidgets`, call it through `tester.runAsync`.
 
-```dart
-group('Integration tests', () {
-  test('complete auth flow with profile relay', () async {
-    final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-      toEvent: (state) => state.isAuthenticated
-          ? LoadProfileEvent(userId: state.userId!)
-          : ClearProfileEvent(),
-      resolver: resolver,
-    );
+## One bloc
 
-    await Future.delayed(const Duration(milliseconds: 100));
+For a single bloc, [`juiceTest`](../../AGENTS.md#6-build--test) is shorter:
+build, act, and assert on exactly what it emitted.
 
-    // Login
-    await authBloc.send(LoginEvent(userId: '123'));
-    await Future.delayed(const Duration(milliseconds: 100));
+## The deprecated relays
 
-    expect(profileBloc.state.profile?.userId, equals('123'));
+`StateRelay`, `StatusRelay` and `EventSubscription` are deprecated; port them
+with the [migration guide](../guides/moving-from-relays-to-reactions.md). A
+flow does not count a relay's sends as work in flight, so a test that mixes a
+relay with a flow can fail on a late emission. Port the relay first.
 
-    // Logout
-    await authBloc.send(LogoutEvent());
-    await Future.delayed(const Duration(milliseconds: 100));
+## Next Steps
 
-    expect(profileBloc.state.profile, isNull);
-
-    // Login with different user
-    await authBloc.send(LoginEvent(userId: '456'));
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    expect(profileBloc.state.profile?.userId, equals('456'));
-
-    await relay.close();
-  });
-});
-```
-
-## Testing Utilities
-
-```dart
-/// Waits for a stream to emit a matching value
-Future<T> waitFor<T>(
-  Stream<T> stream,
-  bool Function(T) predicate, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final completer = Completer<T>();
-
-  final subscription = stream.listen((value) {
-    if (predicate(value)) {
-      completer.complete(value);
-    }
-  });
-
-  try {
-    return await completer.future.timeout(timeout);
-  } finally {
-    await subscription.cancel();
-  }
-}
-
-/// Collects all values emitted within a duration
-Future<List<T>> collectFor<T>(
-  Stream<T> stream,
-  Duration duration,
-) async {
-  final values = <T>[];
-  final subscription = stream.listen(values.add);
-
-  await Future.delayed(duration);
-  await subscription.cancel();
-
-  return values;
-}
-```
-
-## Best Practices
-
-### 1. Test Setup
-- Initialize mocks and resolvers in `setUp`
-- Clean up resources in `tearDown`
-- Use fresh instances for each test
-
-### 2. Timing
-- Allow time for async initialization (`Future.delayed`)
-- Don't use exact timing assertions
-- Use stream matchers when possible
-
-### 3. Isolation
-- Test relays independently
-- Mock external dependencies
-- Use test resolvers instead of BlocScope
-
-### 4. Coverage
-- Test all status types for StatusRelay
-- Test the `when` predicate
-- Test error scenarios
-- Test cleanup and disposal
-
-### 5. Common Pitfalls to Avoid
-
-```dart
-// ❌ Bad: Not waiting for initialization
-final relay = StateRelay<...>(...);
-authBloc.send(LoginEvent());  // May not work!
-
-// ✅ Good: Wait for initialization
-final relay = StateRelay<...>(...);
-await Future.delayed(Duration(milliseconds: 100));
-authBloc.send(LoginEvent());
-
-// ❌ Bad: Not cleaning up
-test('my test', () async {
-  final relay = StateRelay<...>(...);
-  // Test code...
-  // Relay not closed!
-});
-
-// ✅ Good: Always clean up
-test('my test', () async {
-  final relay = StateRelay<...>(...);
-  try {
-    // Test code...
-  } finally {
-    await relay.close();
-  }
-});
-```
-
-## Migration from RelayUseCaseBuilder Tests (removed in juice 2.0.0)
-
-If you have tests for `RelayUseCaseBuilder` (removed in 2.0.0), here's how to migrate:
-
-```dart
-// Before (1.x, removed in 2.0.0):
-test('relay test', () async {
-  final relay = RelayUseCaseBuilder<AuthBloc, ProfileBloc, AuthState>(
-    typeOfEvent: LoadProfileEvent,
-    useCaseGenerator: () => LoadProfileUseCase(),
-    statusToEventTransformer: (status) => LoadProfileEvent(
-      userId: status.state.userId,
-    ),
-    resolver: resolver,
-  );
-  // ...
-});
-
-// After - StateRelay:
-test('relay test', () async {
-  final relay = StateRelay<AuthBloc, ProfileBloc, AuthState>(
-    toEvent: (state) => LoadProfileEvent(userId: state.userId!),
-    when: (state) => state.isAuthenticated,
-    resolver: resolver,
-  );
-  // ...
-});
-```
-
-Key differences:
-- Replace `statusToEventTransformer` with `toEvent`
-- Add `when` for filtering instead of checking in transformer
-- Remove `typeOfEvent` and `useCaseGenerator`
-- Test assertions remain the same
+- Read [Cross-Bloc Communication](../concepts/relay-use-cases.md) for the tools under test

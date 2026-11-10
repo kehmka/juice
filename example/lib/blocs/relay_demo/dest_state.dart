@@ -1,55 +1,59 @@
 import 'package:juice/juice.dart';
 
-/// A log entry for tracking relayed events
-class RelayLogEntry {
+/// A log entry: one event a reaction sent the destination.
+class ReactionLogEntry {
+  /// The form of the reaction that sent it.
+  static const changes = 'changes';
+  static const becomes = 'becomes';
+
   final String message;
-  final String source; // 'StateRelay' or 'StatusRelay'
+  final String form; // [changes] or [becomes]
   final DateTime timestamp;
 
-  RelayLogEntry({
+  ReactionLogEntry({
     required this.message,
-    required this.source,
+    required this.form,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
   @override
-  String toString() => '[$source] $message';
+  String toString() => '[$form] $message';
 }
 
-/// State for the destination bloc that receives relayed events.
-/// Logs all events it receives to show how relays work.
+/// State for the destination bloc: a log of what its reactions sent it.
 class DestState extends BlocState {
-  final List<RelayLogEntry> log;
-  final int stateRelayCount;
-  final int statusRelayCount;
+  final List<ReactionLogEntry> log;
+  final int changesCount;
+  final int becomesCount;
 
   DestState({
     this.log = const [],
-    this.stateRelayCount = 0,
-    this.statusRelayCount = 0,
+    this.changesCount = 0,
+    this.becomesCount = 0,
   });
 
   DestState copyWith({
-    List<RelayLogEntry>? log,
-    int? stateRelayCount,
-    int? statusRelayCount,
+    List<ReactionLogEntry>? log,
+    int? changesCount,
+    int? becomesCount,
   }) {
     return DestState(
       log: log ?? this.log,
-      stateRelayCount: stateRelayCount ?? this.stateRelayCount,
-      statusRelayCount: statusRelayCount ?? this.statusRelayCount,
+      changesCount: changesCount ?? this.changesCount,
+      becomesCount: becomesCount ?? this.becomesCount,
     );
   }
 
   /// Add a new log entry
-  DestState addLogEntry(RelayLogEntry entry) {
+  DestState addLogEntry(ReactionLogEntry entry) {
     return copyWith(
       log: [...log, entry],
-      stateRelayCount:
-          entry.source == 'StateRelay' ? stateRelayCount + 1 : stateRelayCount,
-      statusRelayCount: entry.source == 'StatusRelay'
-          ? statusRelayCount + 1
-          : statusRelayCount,
+      changesCount: entry.form == ReactionLogEntry.changes
+          ? changesCount + 1
+          : changesCount,
+      becomesCount: entry.form == ReactionLogEntry.becomes
+          ? becomesCount + 1
+          : becomesCount,
     );
   }
 

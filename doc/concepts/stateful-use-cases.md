@@ -296,5 +296,5 @@ void main() {
 
 ## Next Steps
 
-- Learn about [Relay Use Cases](relay-use-cases.md) for bloc communication
+- Learn about [Cross-Bloc Communication](relay-use-cases.md): reactions, typed results, delayed sends
 - Explore [Advanced Use Cases](advanced-use-cases.md) for complex patterns

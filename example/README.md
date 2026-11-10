@@ -4,7 +4,7 @@ This app is the repository-level showcase for Juice concepts.
 
 Use it for:
 
-- quickly browsing framework behaviors like selectors, relays, event subscriptions, and lifecycle cleanup
+- quickly browsing framework behaviors like selectors, reactions between blocs, and lifecycle cleanup
 - validating widget-level integration patterns
 - smoke-testing leased vs permanent showcase blocs
 

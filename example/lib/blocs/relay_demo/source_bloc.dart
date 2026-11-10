@@ -3,8 +3,8 @@ import 'source_state.dart';
 import 'source_events.dart';
 import 'use_cases/source_use_cases.dart';
 
-/// Source bloc for the relay demo.
-/// This bloc's state changes will be relayed to the DestBloc.
+/// Source bloc for the reactions demo.
+/// DestBloc reacts to this bloc's state; this bloc knows nothing about it.
 class SourceBloc extends JuiceBloc<SourceState> {
   SourceBloc()
       : super(

@@ -60,7 +60,7 @@ class BlocRegistry {
       lifecycle: BlocLifecycle.leased,
     );
 
-    // Relay demo blocs stay permanent because the page wires relays up once
+    // Reactions demo blocs stay permanent: DestBloc reacts to SourceBloc by type,
     // and expects both sides to be available for the duration of the session.
     BlocScope.register<SourceBloc>(
       () => SourceBloc(),

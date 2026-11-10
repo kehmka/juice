@@ -45,7 +45,6 @@ import 'adapters/hive_gateway_impl.dart';
 class StorageBloc extends JuiceBloc<StorageState> {
   final StorageConfig _config;
   final CacheIndex _cacheIndex;
-  Timer? _cleanupTimer;
   bool _cleanupRunning = false;
   Future<void> _storageMutationTail = Future<void>.value();
 
@@ -281,10 +280,11 @@ class StorageBloc extends JuiceBloc<StorageState> {
     }
   }
 
+  // A binding to a periodic stream: the bloc owns it, and a second start
+  // replaces the first.
   void _startBackgroundCleanup() {
-    _cleanupTimer?.cancel();
-    _cleanupTimer = Timer.periodic(
-      _config.cacheCleanupInterval,
+    bindStream<void>(
+      Stream<void>.periodic(_config.cacheCleanupInterval),
       (_) async {
         if (_cleanupRunning) return;
         _cleanupRunning = true;
@@ -297,8 +297,11 @@ class StorageBloc extends JuiceBloc<StorageState> {
           _cleanupRunning = false;
         }
       },
+      key: _cleanupKey,
     );
   }
+
+  static const _cleanupKey = 'cacheCleanup';
 
   // ===========================================================================
   // Hive Helpers
@@ -487,7 +490,9 @@ class StorageBloc extends JuiceBloc<StorageState> {
 
   @override
   Future<void> close() async {
-    _cleanupTimer?.cancel();
+    // Stopped here, not left to super.close(): the cache index closes
+    // before that, and no cleanup may start against a closed index.
+    unbind(_cleanupKey);
     await _storageMutationTail;
     await _cacheIndex.close();
     await super.close();

@@ -21,7 +21,6 @@ import 'use_cases/initialize_connectivity_use_case.dart';
 /// ```
 class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
   ConnectivityConfig? _config;
-  Timer? _debounce;
 
   ConnectivityBloc()
       : super(
@@ -86,21 +85,22 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
   /// close cancels it before the use cases close. A stream error goes to
   /// the bloc's error handler; the binding keeps listening, as the old
   /// subscription did.
+  ///
+  /// The debounce is a keyed `sendAfter`: each snapshot replaces the one
+  /// still waiting, and the bloc owns the timer — a close discards it.
   void startListening() {
     bindStream<ConnectivitySnapshot>(
       provider.changes,
-      (snapshot) {
-        _debounce?.cancel();
-        _debounce = Timer(config.debounce, () {
-          if (!isClosing) send(ConnectivityChangedEvent(snapshot));
-        });
-      },
+      (snapshot) => sendAfter(
+          ConnectivityChangedEvent(snapshot), config.debounce,
+          key: _debounceKey),
       key: _changesKey,
       cancelOnError: false,
     );
   }
 
   static const _changesKey = 'changes';
+  static const _debounceKey = 'debounce';
 
   /// Manually re-read current connectivity.
   void check() => send(CheckConnectivityEvent());
@@ -113,7 +113,6 @@ class ConnectivityBloc extends JuiceBloc<ConnectivityState> {
   Future<void>? _closeOnce;
 
   Future<void> _close(Future<void> closing) async {
-    _debounce?.cancel();
     // The bloc closes first: its changes binding is cancelled before the
     // provider it listens to is disposed. An uninitialized bloc has no
     // provider.

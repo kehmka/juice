@@ -36,9 +36,6 @@ class FormsBloc extends JuiceBloc<FormsState> {
   /// Per-field behavior (validators/async/debounce). Not serializable state.
   final Map<String, FieldConfig> _configs = {};
 
-  /// Active debounce timers, per field.
-  final Map<String, Timer> _debounce = {};
-
   /// Monotonic validation token per field — bumped on every change so a stale
   /// async result can be dropped.
   final Map<String, int> _token = {};
@@ -170,19 +167,24 @@ class FormsBloc extends JuiceBloc<FormsState> {
 
   /// Arm a debounced async validation for [name], bumping its token so any
   /// in-flight check is invalidated. Fires [RunAsyncValidationEvent].
+  ///
+  /// The debounce is a `sendAfter` keyed by field: a later keystroke in the
+  /// same field replaces the check still waiting, and the bloc owns the
+  /// timer. The token still guards a check ALREADY running — a debounce
+  /// cannot recall that.
   void scheduleAsyncValidation(String name) {
     final token = (_token[name] ?? 0) + 1;
     _token[name] = token;
-    _debounce[name]?.cancel();
-    _debounce[name] = Timer(debounceFor(name), () {
-      if (!isClosed) send(RunAsyncValidationEvent(name, token));
-    });
+    sendAfter(RunAsyncValidationEvent(name, token), debounceFor(name),
+        key: _debounceKey(name));
   }
+
+  static String _debounceKey(String name) => 'asyncValidation:$name';
 
   /// Invalidate any pending/in-flight async for [name] without scheduling new.
   void cancelAsyncValidation(String name) {
     _token[name] = (_token[name] ?? 0) + 1;
-    _debounce.remove(name)?.cancel();
+    cancelSend(_debounceKey(name));
   }
 
   /// Invalidate async for every field (used before validate/submit/reset).
@@ -237,13 +239,4 @@ class FormsBloc extends JuiceBloc<FormsState> {
 
   /// Typed read of a field's current value.
   T? value<T>(String name) => state.fields[name]?.value as T?;
-
-  @override
-  Future<void> close() async {
-    for (final t in _debounce.values) {
-      t.cancel();
-    }
-    _debounce.clear();
-    await super.close();
-  }
 }

@@ -24,7 +24,6 @@ import 'use_cases/power_changed_use_case.dart';
 /// ```
 class PowerBloc extends JuiceBloc<PowerState> {
   PowerConfig? _config;
-  Timer? _poll;
 
   PowerBloc()
       : super(
@@ -113,14 +112,22 @@ class PowerBloc extends JuiceBloc<PowerState> {
   /// Begin re-reading the charge level on [PowerConfig.pollInterval].
   ///
   /// No-op when the interval is [Duration.zero].
+  ///
+  /// The poll is a binding to a periodic stream, so the bloc owns it like
+  /// the changes binding: a second start replaces the first, and close
+  /// cancels it before the use cases close.
   void startPolling() {
-    _poll?.cancel();
+    unbind(_pollKey);
     final interval = config.pollInterval;
     if (interval == Duration.zero) return;
-    _poll = Timer.periodic(interval, (_) {
-      if (!isClosing) send(CheckPowerEvent());
-    });
+    bindStream<void>(
+      Stream<void>.periodic(interval),
+      (_) => send(CheckPowerEvent()),
+      key: _pollKey,
+    );
   }
+
+  static const _pollKey = 'poll';
 
   /// Manually re-read the current power situation.
   void check() => send(CheckPowerEvent());
@@ -133,7 +140,6 @@ class PowerBloc extends JuiceBloc<PowerState> {
   Future<void>? _closeOnce;
 
   Future<void> _close(Future<void> closing) async {
-    _poll?.cancel();
     // The bloc closes first: its changes binding is cancelled before the
     // provider it listens to is disposed. An uninitialized bloc has no
     // provider.

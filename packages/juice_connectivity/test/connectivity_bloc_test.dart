@@ -248,6 +248,47 @@ void main() {
       expect(bloc.state.isOffline, isTrue);
       await bloc.close();
     });
+
+    test(
+        'each reading REPLACES the one still waiting: a burst applies one '
+        'change, not one per reading', () async {
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(
+        cfg(p, debounce: const Duration(milliseconds: 60)),
+      );
+      await settle();
+      final applied = <ConnectionType>[];
+      final sub =
+          bloc.stream.listen((s) => applied.add(s.state.connectionType));
+
+      p.emit(const ConnectivitySnapshot(type: ConnectionType.none));
+      await settle(10);
+      p.emit(const ConnectivitySnapshot(type: ConnectionType.cellular));
+      await settle(10);
+      p.emit(const ConnectivitySnapshot(type: ConnectionType.none));
+      await settle(160);
+
+      expect(applied, [ConnectionType.none]);
+      await sub.cancel();
+      await bloc.close();
+    });
+
+    test(
+        'a reading still debouncing when the bloc closes is discarded: it '
+        'is never applied, and nothing fires after the close', () async {
+      final p = FakeConnectivityProvider();
+      final bloc = ConnectivityBloc.withConfig(
+        cfg(p, debounce: const Duration(milliseconds: 40)),
+      );
+      await settle();
+
+      p.emit(const ConnectivitySnapshot(type: ConnectionType.none));
+      await settle(5);
+      await bloc.close();
+      await settle(80); // well past the debounce window
+
+      expect(bloc.state.connectionType, ConnectionType.wifi);
+    });
   });
 
   group('ConnectivityBloc review pins (2.0.0)', () {

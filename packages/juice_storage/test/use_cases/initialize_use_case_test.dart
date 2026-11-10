@@ -136,4 +136,53 @@ void main() {
         reason: 'the pulled log must say WHY prefs are dead');
     await b.close();
   });
+
+  group('background cache cleanup', () {
+    StorageBloc cleaning({required bool enabled}) => StorageBloc(
+          config: StorageConfig(
+            hiveBoxesToOpen: const ['pins'],
+            cacheCleanupInterval: const Duration(milliseconds: 20),
+            enableBackgroundCleanup: enabled,
+          ),
+          cacheIndex: CacheIndex(),
+          hiveGateway: _FlakyGateway(failuresBeforeSuccess: 0),
+        );
+
+    test('after initialize the bloc cleans on its interval, again and again',
+        () async {
+      final b = cleaning(enabled: true);
+      await b.initialize();
+      expect(b.state.cacheStats.lastCleanupAt, isNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      final first = b.state.cacheStats.lastCleanupAt;
+      expect(first, isNotNull, reason: 'the interval fired');
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(b.state.cacheStats.lastCleanupAt!.isAfter(first!), isTrue,
+          reason: 'and fired again');
+      await b.close();
+    });
+
+    test('disabled: nothing cleans on its own', () async {
+      final b = cleaning(enabled: false);
+      await b.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(b.state.cacheStats.lastCleanupAt, isNull);
+      await b.close();
+    });
+
+    test('close stops it: no cleanup starts after the bloc closed', () async {
+      final b = cleaning(enabled: true);
+      await b.initialize();
+      await b.close();
+      logger.errors.clear();
+      logger.logs.clear();
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(logger.errors, isEmpty);
+      expect(logger.logs, isEmpty,
+          reason: 'a tick after close would be refused, and say so');
+    });
+  });
 }

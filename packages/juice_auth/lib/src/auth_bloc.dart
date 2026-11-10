@@ -44,7 +44,6 @@ import 'use_cases/token_expiry_use_case.dart';
 class AuthBloc extends JuiceBloc<AuthState> {
   late AuthConfig _config;
   final StorageBloc storageBloc;
-  Timer? _refreshTimer;
 
   AuthBloc({required this.storageBloc})
       : super(
@@ -120,7 +119,9 @@ class AuthBloc extends JuiceBloc<AuthState> {
   // Token Refresh Timer
   // ===========================================================
 
-  /// Schedule a token refresh before expiry.
+  /// Schedule a token refresh before expiry. A keyed `sendAfter`: the bloc
+  /// owns the timer, and scheduling again replaces the refresh still
+  /// waiting.
   void scheduleRefresh(DateTime? expiresAt) {
     cancelRefreshTimer();
     if (expiresAt == null) return;
@@ -134,18 +135,13 @@ class AuthBloc extends JuiceBloc<AuthState> {
       return;
     }
 
-    _refreshTimer = Timer(timeUntilRefresh, () {
-      if (!isClosed) {
-        send(TokenExpiryEvent());
-      }
-    });
+    sendAfter(TokenExpiryEvent(), timeUntilRefresh, key: _refreshKey);
   }
 
+  static const _refreshKey = 'tokenRefresh';
+
   /// Cancel the refresh timer.
-  void cancelRefreshTimer() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
-  }
+  void cancelRefreshTimer() => cancelSend(_refreshKey);
 
   // ===========================================================
   // Token Persistence Helpers

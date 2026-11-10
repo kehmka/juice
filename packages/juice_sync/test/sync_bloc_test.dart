@@ -1,6 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart'
+    show
+        JuiceLogger,
+        JuiceLoggerConfig,
+        JuiceTelemetry,
+        JuiceTelemetryKind,
+        Level;
 import 'package:juice_sync/juice_sync.dart';
 
 /// Controllable executor: behavior keyed by mutation `type`.
@@ -41,6 +48,27 @@ class FailingLoadStore extends InMemorySyncStore {
   @override
   Future<List<Mutation>> loadAll() async =>
       throw const StorageSyncError('corrupt');
+}
+
+/// Counts the flush use cases the bloc starts.
+class _FlushCounter implements JuiceLogger {
+  int started = 0;
+
+  @override
+  void record(JuiceTelemetry e) {
+    if (e.kind == JuiceTelemetryKind.useCaseStarted &&
+        e.event == 'FlushRequestedEvent') {
+      started++;
+    }
+  }
+
+  @override
+  void log(String message,
+      {Level level = Level.info, Map<String, dynamic>? context}) {}
+
+  @override
+  void logError(String message, Object error, StackTrace stackTrace,
+      {Map<String, dynamic>? context}) {}
 }
 
 void main() {
@@ -302,6 +330,31 @@ void main() {
 
       await onlineCtrl.close();
       await bloc.close();
+    });
+
+    test(
+        'the periodic retry asks for a flush on its interval with nothing '
+        'else asking, and stops when the bloc closes', () async {
+      final flushes = _FlushCounter();
+      final saved = JuiceLoggerConfig.logger;
+      JuiceLoggerConfig.configureLogger(flushes);
+      addTearDown(() => JuiceLoggerConfig.configureLogger(saved));
+      final bloc = build(
+        FakeExecutor(),
+        InMemorySyncStore(),
+        periodicRetry: const Duration(milliseconds: 20),
+      );
+      await settle(30);
+      final before = flushes.started;
+
+      // An idle, online, empty queue: only the interval asks.
+      await settle(130);
+      expect(flushes.started - before, greaterThanOrEqualTo(3));
+
+      await bloc.close();
+      final atClose = flushes.started;
+      await settle(80);
+      expect(flushes.started, atClose);
     });
 
     test('the periodic retry while offline never dead-letters the queue',

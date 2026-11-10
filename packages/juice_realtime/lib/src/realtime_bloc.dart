@@ -34,7 +34,6 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
 
   RealtimeConnection? _connection;
   StreamBinding<RealtimeMessage>? _messageBinding;
-  Timer? _reconnectTimer;
   bool _manualClose = false;
   bool _connecting = false;
   int _connectionEpoch = 0;
@@ -125,8 +124,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   int beginConnecting({bool userInitiated = false}) {
     if (userInitiated) {
       _manualClose = false;
-      _reconnectTimer?.cancel();
-      _reconnectTimer = null;
+      cancelSend(_reconnectKey);
     }
     _connecting = true;
     return ++_connectionEpoch;
@@ -237,8 +235,7 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
     _manualClose = true;
     _connecting = false;
     final epoch = ++_connectionEpoch;
-    _reconnectTimer?.cancel();
-    _reconnectTimer = null;
+    cancelSend(_reconnectKey);
     return epoch;
   }
 
@@ -271,14 +268,15 @@ class RealtimeBloc extends JuiceBloc<RealtimeState> {
   }
 
   /// Schedule a reconnect with exponential backoff for [attempt] (1-based).
+  /// A keyed `sendAfter`: the bloc owns the timer, and scheduling again
+  /// replaces the reconnect still waiting.
   void scheduleReconnect(int attempt) {
-    _reconnectTimer?.cancel();
     final base = config.initialBackoff * math.pow(2, attempt - 1).toDouble();
     final delay = base > config.maxBackoff ? config.maxBackoff : base;
-    _reconnectTimer = Timer(delay, () {
-      if (!isClosing) send(ReconnectEvent());
-    });
+    sendAfter(ReconnectEvent(), delay, key: _reconnectKey);
   }
+
+  static const _reconnectKey = 'reconnect';
 
   // === Convenience API ===
 

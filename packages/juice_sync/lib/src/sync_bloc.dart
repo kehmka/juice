@@ -41,8 +41,6 @@ class SyncBloc extends JuiceBloc<SyncState> {
   /// Per-partition earliest-retry time (a partition in backoff is skipped).
   final Map<String, DateTime> _partitionRetryAt = {};
 
-  Timer? _backoffTimer;
-  Timer? _periodicTimer;
   StreamSubscription<bool>? _onlineSub;
 
   SyncBloc()
@@ -124,9 +122,12 @@ class SyncBloc extends JuiceBloc<SyncState> {
     }
     final period = _config.periodicRetry;
     if (period != null) {
-      _periodicTimer = Timer.periodic(period, (_) {
-        if (!isClosed) send(FlushRequestedEvent());
-      });
+      // A binding to a periodic stream: the bloc owns it.
+      bindStream<void>(
+        Stream<void>.periodic(period),
+        (_) => send(FlushRequestedEvent()),
+        key: _periodicKey,
+      );
     }
   }
 
@@ -160,10 +161,11 @@ class SyncBloc extends JuiceBloc<SyncState> {
     return base > _config.maxBackoff ? _config.maxBackoff : base;
   }
 
-  /// Schedule a single timer for the soonest blocked partition.
+  /// Schedule a single timer for the soonest blocked partition. A keyed
+  /// `sendAfter`: the bloc owns the timer, and scheduling again replaces
+  /// the flush still waiting.
   void scheduleBackoffTimer() {
-    _backoffTimer?.cancel();
-    _backoffTimer = null;
+    cancelSend(_backoffKey);
     if (_partitionRetryAt.isEmpty) return;
     final now = DateTime.now();
     DateTime? soonest;
@@ -174,10 +176,12 @@ class SyncBloc extends JuiceBloc<SyncState> {
     }
     if (soonest == null) return;
     final delay = soonest.difference(now);
-    _backoffTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
-      if (!isClosed) send(FlushRequestedEvent());
-    });
+    sendAfter(FlushRequestedEvent(), delay.isNegative ? Duration.zero : delay,
+        key: _backoffKey);
   }
+
+  static const _backoffKey = 'backoff';
+  static const _periodicKey = 'periodicRetry';
 
   // === Public API ===
 
@@ -218,8 +222,8 @@ class SyncBloc extends JuiceBloc<SyncState> {
   @override
   Future<void> close() async {
     _closed = true;
-    _backoffTimer?.cancel();
-    _periodicTimer?.cancel();
+    cancelSend(_backoffKey);
+    unbind(_periodicKey);
     await _onlineSub?.cancel();
     try {
       await _config.store.dispose();

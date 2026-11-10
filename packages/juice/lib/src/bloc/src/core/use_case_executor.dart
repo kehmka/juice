@@ -7,6 +7,7 @@ import '../juice_bloc.dart';
 import '../juice_exception.dart';
 import '../usecase.dart';
 import '../juice_logger.dart';
+import 'event_cause.dart';
 import 'restartable_run.dart';
 import 'type_names.dart';
 import '../telemetry.dart';
@@ -147,11 +148,16 @@ class UseCaseExecutor<TBloc, TState extends BlocState> {
       useCase = builder.generator();
       final context = _contextFactory(event, executionId);
       if (chatter) {
+        // A run a reaction caused names the run it came from, and how deep
+        // the chain is — the link a trace follows across blocs.
+        final cause = EventCause.of(event);
         _logger.record(JuiceTelemetry(
           JuiceTelemetryKind.useCaseStarted,
           useCase: typeName(useCase.runtimeType),
           event: typeName(event.runtimeType),
           executionId: executionId,
+          causeExecutionId: cause?.executionId,
+          hopDepth: cause?.hopDepth,
         ));
       }
       _wireUseCase(useCase, context);

@@ -10,8 +10,10 @@ import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'juice_exception.dart';
 import 'cancellable_event.dart';
+import 'core/event_cause.dart';
 import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
+import 'reaction.dart';
 import 'stream_binding.dart';
 import 'telemetry.dart';
 import 'core/type_names.dart';
@@ -241,6 +243,169 @@ class JuiceBloc<TState extends BlocState>
     return binding;
   }
 
+  // ============================================================
+  // Reactions
+  // ============================================================
+
+  /// The reactions this bloc owns (it is their destination).
+  final Set<ReactionBinding> _reactions = {};
+
+  /// Attach [reaction]: from now on, when its source's state does what the
+  /// reaction describes, THIS bloc is sent the reaction's event.
+  ///
+  /// This bloc owns the reaction — it ends when this bloc closes, with no
+  /// field to keep and nothing to cancel in `close()`. Call it in the
+  /// constructor body for wiring the bloc always has, or from whoever holds
+  /// the bloc for wiring that depends on what else exists.
+  ///
+  /// - The edge is judged SYNCHRONOUSLY on each emission of the source (no
+  ///   state is missed); the event is built and sent a microtask later, so
+  ///   another bloc's use case never runs inside the emitting one.
+  /// - The event must be one this bloc has a use case for; one it has not
+  ///   is an `unhandled_event`, as from any `send`.
+  /// - A catch-up fire ([AtAttach.catchUp]) is an ordinary hop: a microtask
+  ///   after the attach, never synchronously in a constructor.
+  /// - A chain of reactions deeper than [Reaction.maxHops] is refused at
+  ///   the hop that would exceed it, and recorded as an error
+  ///   (`reaction` / `refused`); the reaction stays attached.
+  /// - A throw from the reaction's own callbacks is recorded (`reaction` /
+  ///   `error`, with the `site`) and nothing is sent; the reaction stays
+  ///   attached, and the throw never reaches the use case that emitted.
+  /// - When the SOURCE closes the reaction ends (`reaction` / `end`). It
+  ///   holds no lease on the source and is not re-attached to a new
+  ///   instance of it.
+  ///
+  /// Throws [StateError] if this bloc is closed or closing, or if the
+  /// source is unregistered, a `leased` bloc resolved by type, closed or
+  /// closing: wiring is set up once, and a reaction that cannot work is a
+  /// bug to see now.
+  ///
+  /// Returns the [ReactionBinding], to detach early.
+  ReactionBinding react<TBloc extends JuiceBloc<TSourceState>,
+      TSourceState extends BlocState>(Reaction<TBloc, TSourceState> reaction) {
+    if (isClosing) {
+      throw StateError('react on a closed or closing $runtimeType');
+    }
+    final TBloc source = reaction.resolveSource();
+    if (source.isClosing) {
+      throw StateError(
+          'react: the source ${source.runtimeType} is closed or closing');
+    }
+    final sourceName = source._blocName;
+
+    late final ReactionBinding binding;
+    late final void Function() untap;
+    late final void Function() onSourceClosed;
+
+    void failed(String site, Object error, StackTrace stackTrace) =>
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.reactionFailed,
+          sourceBloc: sourceName,
+          destBloc: _blocName,
+          reaction: reaction.form,
+          site: site,
+          error: error,
+          stackTrace: stackTrace,
+        ));
+
+    // One hop: [state] is what the reaction fired on, [depth] where the
+    // chain will be once the event is sent.
+    void hop(TSourceState state, int depth, int? causeExecutionId,
+        {bool atAttach = false}) {
+      if (depth > Reaction.maxHops) {
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.reactionRefused,
+          sourceBloc: sourceName,
+          destBloc: _blocName,
+          reaction: reaction.form,
+          hopDepth: depth,
+          error: StateError('A chain of reactions reached hop $depth, past '
+              'Reaction.maxHops (${Reaction.maxHops}): $sourceName → '
+              '$_blocName was not sent. A ring of reactions, or a chain '
+              'that should be one use case.'),
+          stackTrace: StackTrace.current,
+        ));
+        return;
+      }
+      scheduleMicrotask(() {
+        // Ended in the meantime (cancelled, or either bloc closed): the
+        // hop is discarded.
+        if (!binding.isActive) return;
+        final EventBase event;
+        try {
+          event = reaction.send(state);
+        } catch (error, stackTrace) {
+          failed('send', error, stackTrace);
+          return;
+        }
+        EventCause.stamp(event, EventCause(causeExecutionId, depth));
+        if (JuiceLoggerConfig.logs(Level.info)) {
+          _logger.record(JuiceTelemetry(
+            JuiceTelemetryKind.reactionFired,
+            sourceBloc: sourceName,
+            destBloc: _blocName,
+            reaction: reaction.form,
+            event: typeName(event.runtimeType),
+            causeExecutionId: causeExecutionId,
+            hopDepth: depth,
+            reason: atAttach ? 'attach' : null,
+          ));
+        }
+        send(event);
+      });
+    }
+
+    binding = ReactionBinding.create(() {
+      untap();
+      source._closeHooks.remove(onSourceClosed);
+      _reactions.remove(binding);
+    });
+    untap = source.tapEmissions((status) {
+      // Inside the emit of whichever use case changed the source's state:
+      // nothing here may throw into it.
+      final emitter = source._statusEmitter;
+      // A re-emitted event repeats the last status's states: not a
+      // transition, so not judged as one.
+      if (emitter.reEmitting) return;
+      final bool fires;
+      try {
+        fires = reaction.fires(status.oldState, status.state);
+      } catch (error, stackTrace) {
+        failed(reaction.judgeSite, error, stackTrace);
+        return;
+      }
+      if (!fires) return;
+      hop(status.state, EventCause.depthOf(status.event) + 1,
+          emitter.emittingExecutionId);
+    });
+    onSourceClosed = () {
+      binding.cancel();
+      if (JuiceLoggerConfig.logs(Level.info)) {
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.reactionEnded,
+          sourceBloc: sourceName,
+          destBloc: _blocName,
+          reaction: reaction.form,
+          reason: 'source closed',
+        ));
+      }
+    };
+    source._closeHooks.add(onSourceClosed);
+    _reactions.add(binding);
+
+    if (reaction.atAttach == AtAttach.catchUp) {
+      final now = source.state;
+      var fires = false;
+      try {
+        fires = reaction.firesAtAttach(now);
+      } catch (error, stackTrace) {
+        failed(reaction.judgeSite, error, stackTrace);
+      }
+      if (fires) hop(now, 1, null, atAttach: true);
+    }
+    return binding;
+  }
+
   /// A binding `bindStream` will not create: recorded as [kind] with the
   /// [reason], returned inert (already done, never active). A refusal on a
   /// closing bloc is a warning and is recorded whatever the floor says,
@@ -445,7 +610,7 @@ class JuiceBloc<TState extends BlocState>
       if (done.isCompleted) return;
       untap();
       timer.cancel();
-      _pendingWaits.remove(failOnClose);
+      _closeHooks.remove(failOnClose);
       if (error != null) {
         done.completeError(error, stackTrace);
       } else {
@@ -464,7 +629,7 @@ class JuiceBloc<TState extends BlocState>
         null,
         StateError(
             '$runtimeType closed while sendAndWait(${event.runtimeType}) was pending'));
-    _pendingWaits.add(failOnClose);
+    _closeHooks.add(failOnClose);
 
     final restartable = _dispatcher.isRestartable(event.runtimeType);
     send(event).then((_) {
@@ -565,7 +730,7 @@ class JuiceBloc<TState extends BlocState>
       if (done.isCompleted) return false;
       untap();
       timer.cancel();
-      _pendingWaits.remove(failOnClose);
+      _closeHooks.remove(failOnClose);
       return true;
     }
 
@@ -589,15 +754,17 @@ class JuiceBloc<TState extends BlocState>
         () => fail(TimeoutException('waitFor on $runtimeType', timeout)));
     failOnClose = () =>
         fail(StateError('$runtimeType closed while a waitFor was pending'));
-    _pendingWaits.add(failOnClose);
+    _closeHooks.add(failOnClose);
     run?.whenSuperseded.then((_) => fail(CancelledException(
         'waitFor on $runtimeType: the calling run was superseded')));
     return done.future;
   }
 
-  /// The `sendAndWait`s and `waitFor`s still pending, each as the closure
-  /// that fails it; a close runs them so no wait is left to time out.
-  final Set<void Function()> _pendingWaits = {};
+  /// What a close of THIS bloc must tell: every pending `sendAndWait` and
+  /// `waitFor` (as the closure that fails it, so no wait is left to time
+  /// out) and every reaction observing this bloc (as the closure that ends
+  /// it).
+  final Set<void Function()> _closeHooks = {};
 
   /// Observes every emission SYNCHRONOUSLY (inside the emit, before stream
   /// delivery). Returns the remover. Framework-internal — `sendAndWaitResult`
@@ -617,6 +784,7 @@ class JuiceBloc<TState extends BlocState>
   @visibleForTesting
   @override
   void emit(StreamStatus<TState> status) {
+    _statusEmitter.emittingExecutionId = null;
     _stateManager.emit(status);
   }
 
@@ -670,6 +838,12 @@ class JuiceBloc<TState extends BlocState>
   Future<void> _close() async {
     if (isClosed) return;
     _closing = true;
+    // The reactions this bloc owns end with it, silently — and at once,
+    // before the first await: a hop already decided must not be built for
+    // a bloc that will refuse it.
+    for (final reaction in _reactions.toList()) {
+      reaction.cancel();
+    }
 
     if (JuiceLoggerConfig.logs(Level.info)) {
       _logger.record(JuiceTelemetry(
@@ -680,8 +854,9 @@ class JuiceBloc<TState extends BlocState>
     }
 
     await _cancelBindings();
-    for (final fail in _pendingWaits.toList()) {
-      fail();
+    // Whoever was waiting on this bloc or reacting to it is told.
+    for (final hook in _closeHooks.toList()) {
+      hook();
     }
     await _useCaseRegistry.closeAll();
     await _aviatorManager.closeAll();

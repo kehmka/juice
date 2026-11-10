@@ -206,6 +206,28 @@ enum JuiceTelemetryKind {
   /// `transform` or `stream`). An `initialize` failure is also thrown.
   relayFailed('relay_error', 'Relay failed', level: Level.error),
 
+  // --- reactions
+  /// A reaction fired: its event is being sent to the destination
+  /// (`sourceBloc`, `destBloc`, `reaction`, `event`, `hopDepth`, and the
+  /// `causeExecutionId` of the run whose emission it observed; `reason` is
+  /// `attach` for a catch-up fire).
+  reactionFired('reaction', 'Reaction fired', action: 'fire'),
+
+  /// A reaction did NOT send: the hop would be deeper than
+  /// `Reaction.maxHops` (`sourceBloc`, `destBloc`, `reaction`, `hopDepth`).
+  /// A ring of reactions, or a chain that should be one use case.
+  reactionRefused('reaction', 'Reaction refused: the chain is too long',
+      action: 'refused', level: Level.error),
+
+  /// A reaction ended because its source closed (`sourceBloc`, `destBloc`,
+  /// `reaction`, `reason`).
+  reactionEnded('reaction', 'Reaction ended', action: 'end'),
+
+  /// A reaction's own callback threw (`site`: `predicate`, `select`,
+  /// `edge` or `send`). Nothing was sent; the reaction stays attached.
+  reactionFailed('reaction', 'Reaction failed',
+      action: 'error', level: Level.error),
+
   /// `BlocScope.enableLeakDetection`.
   leakDetectionEnabled('leak_detection', 'Leak detection enabled',
       action: 'enable');
@@ -276,6 +298,9 @@ final class JuiceTelemetry {
     this.localEvent,
     this.destBloc,
     this.relay,
+    this.reaction,
+    this.causeExecutionId,
+    this.hopDepth,
   });
 
   /// What happened.
@@ -386,6 +411,18 @@ final class JuiceTelemetry {
   /// A relay's type name (`StateRelay`, `StatusRelay`).
   final String? relay;
 
+  /// A reaction's form: `becomes`, `changes` or `edge`.
+  final String? reaction;
+
+  /// The `executionId` of the run whose emission a reaction observed — on
+  /// the reaction's `reactionFired` entry and on the start entry of the run
+  /// its event causes. Absent when no run made that emission.
+  final int? causeExecutionId;
+
+  /// How many reaction hops deep a chain is at this entry (1 for the first
+  /// reaction in it).
+  final int? hopDepth;
+
   /// The entry as the context map it was before 2.0.0 — `type`, `action`
   /// and every field that is set, under the keys the 1.x entries used
   /// (`streamBindings`, `blocsEnded`), values live. For loggers and tools
@@ -420,5 +457,8 @@ final class JuiceTelemetry {
         if (localEvent != null) 'localEvent': localEvent,
         if (destBloc != null) 'destBloc': destBloc,
         if (relay != null) 'relay': relay,
+        if (reaction != null) 'reaction': reaction,
+        if (causeExecutionId != null) 'causeExecutionId': causeExecutionId,
+        if (hopDepth != null) 'hopDepth': hopDepth,
       };
 }

@@ -109,7 +109,7 @@ per kind: the facts are the fields.
 
 | kind | type · action | level | fields | when |
 |---|---|---|---|---|
-| `useCaseStarted` | `use_case_execution` | info | `useCase`, `event`, `executionId` | a use case is about to execute; opens the span |
+| `useCaseStarted` | `use_case_execution` | info | `useCase`, `event`, `executionId`; `causeExecutionId`, `hopDepth` when a reaction sent the event | a use case is about to execute; opens the span |
 | `useCaseCompleted` | `use_case_completed` | info | `useCase`, `event`, `executionId`, `elapsedMicros`, `superseded` | the use case returned, or a superseded `restartable` run ended on a `CancelledException` (the `waitFor` it was parked in, or its own throw); closes the span |
 | `useCaseFailed` | `use_case_error` | error | `useCase`, `event`, `executionId`, `elapsedMicros`*, `superseded`, `error`, `stackTrace` | the use case threw, or its generator did (then `useCase` is the builder's name and no start was recorded); closes the span |
 | `sequentialRunFailed` | `sequential_run_error` | error | `event`, `error`, `stackTrace` | a `sequential` run's failure escaped the executor (an `onError` override that throws); the queue goes on; no span |
@@ -203,6 +203,28 @@ adopts the caller's set, later emits merge into a new one.
 | `eventSubscriptionFailed` | `event_subscription` · `error` | error | `site` (`initialize` / `transform` / `stream`), `sourceBloc`, `sourceEvent`, `localEvent`, `error`, `stackTrace` | the subscription failed at that step; an `initialize` failure is also thrown to the constructor's caller |
 | `relayFailed` | `relay_error` | error | `relay` (`StateRelay` / `StatusRelay`), `site` (`initialize` / `transform` / `stream`), `sourceBloc`, `destBloc`, `error`, `stackTrace` | the relay failed at that step; an `initialize` failure is also thrown |
 | `leakDetectionEnabled` | `leak_detection` · `enable` | info | — | `BlocScope.enableLeakDetection` (debug builds only: it runs inside an `assert`) |
+
+### Reactions
+
+| kind | type · action | level | fields | when |
+|---|---|---|---|---|
+| `reactionFired` | `reaction` · `fire` | info | `sourceBloc`, `destBloc`, `reaction` (`becomes` / `changes` / `edge`), `event`, `hopDepth`, `causeExecutionId`; `reason` (`attach`) on a catch-up fire | a reaction's event is being sent to its destination |
+| `reactionRefused` | `reaction` · `refused` | error | `sourceBloc`, `destBloc`, `reaction`, `hopDepth`, `error`, `stackTrace` | the hop would be deeper than `Reaction.maxHops`; nothing was sent, the reaction stays attached |
+| `reactionEnded` | `reaction` · `end` | info | `sourceBloc`, `destBloc`, `reaction`, `reason` (`source closed`) | the reaction's source closed |
+| `reactionFailed` | `reaction` · `error` | error | `sourceBloc`, `destBloc`, `reaction`, `site` (`predicate` / `select` / `edge` / `send`), `error`, `stackTrace` | the reaction's own callback threw; nothing was sent, the reaction stays attached |
+
+A chain across blocs is followed by two fields. `causeExecutionId` is the
+`executionId` of the run whose emission the reaction observed: it is on the
+hop's `reactionFired` entry and on the `useCaseStarted` entry of the run
+that hop causes, so run → hop → run links by id. It is absent when no run
+made that emission (a catch-up fire, a seeded state). `hopDepth` is how many
+reactions deep the chain is — 1 for the first — and a hop past
+`Reaction.maxHops` (8) is refused. An event sent by anything other than a
+reaction starts a new chain: a use case that calls another bloc's `send`
+itself carries no cause.
+
+A reaction that ends because its destination closed, or at `cancel()`,
+records nothing.
 
 ## 4. The DevTools wire
 

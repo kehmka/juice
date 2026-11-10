@@ -57,6 +57,16 @@ class StatusEmitter<TState extends BlocState> {
   /// Whether the underlying state manager is closed.
   bool get isClosed => _stateManager.isClosed;
 
+  /// The id of the run making the emission that is going out RIGHT NOW —
+  /// read by a synchronous tap (a reaction) from inside that emission; null
+  /// when no run made it. Meaningless between emissions.
+  int? emittingExecutionId;
+
+  /// True while an event is being RE-emitted ([emitEvent]): the status that
+  /// goes out repeats the last one's states, so it is not a transition and
+  /// a reaction must not judge it as one.
+  bool reEmitting = false;
+
   /// Emits an updating status.
   ///
   /// Used for normal state transitions after successful operations.
@@ -135,7 +145,13 @@ class StatusEmitter<TState extends BlocState> {
   /// groups: a signal to listeners that watch events.
   void emitEvent(EventBase event) {
     if (_droppedAfterClose(EmissionKind.event, event)) return;
-    _stateManager.emit(_stateManager.current.copyWith(event: event));
+    emittingExecutionId = null;
+    reEmitting = true;
+    try {
+      _stateManager.emit(_stateManager.current.copyWith(event: event));
+    } finally {
+      reEmitting = false;
+    }
   }
 
   /// The close fence. A use case still running when its bloc closes (the
@@ -200,6 +216,7 @@ class StatusEmitter<TState extends BlocState> {
 
     final current = state;
     final next = newState ?? current;
+    emittingExecutionId = executionId;
     _stateManager.emit(switch (kind) {
       EmissionKind.update => UpdatingStatus<TState>(next, current, event),
       EmissionKind.waiting => WaitingStatus<TState>(next, current, event),

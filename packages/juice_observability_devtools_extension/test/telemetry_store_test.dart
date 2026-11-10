@@ -181,6 +181,10 @@ void main() {
       ('event_subscription', 'close', 'info'),
       ('event_subscription', 'error', 'error'),
       ('relay_error', null, 'error'),
+      ('reaction', 'fire', 'info'),
+      ('reaction', 'refused', 'error'),
+      ('reaction', 'end', 'info'),
+      ('reaction', 'error', 'error'),
       ('leak_detection', 'enable', 'info'),
     ];
 

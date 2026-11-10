@@ -4,6 +4,10 @@
 ///   then assert on exactly what the bloc emitted (groups as widgets saw
 ///   them), with the bloc closed before asserting and every use-case or
 ///   stream-binding error reported. The default.
+/// - [juiceFlowTest] / [runJuiceFlow]: the same for SEVERAL blocs and the
+///   reactions between them — it knows when every bloc is idle, so a test
+///   sends, waits for the whole chain to finish, and asserts on exactly
+///   what each bloc emitted.
 /// - [BlocTester]: an imperative recorder with assertion helpers.
 ///
 /// ```dart

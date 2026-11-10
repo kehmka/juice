@@ -566,13 +566,25 @@ class BlocScope {
     );
   }
 
+  /// Whether anything is registered, in any scope. A test flow asks before
+  /// it starts: it resets the scope when it ends.
+  @internal
+  static bool get hasRegistrations => _entries.isNotEmpty;
+
   /// Clear all registrations (for testing).
+  ///
+  /// Every registration is gone afterwards, even when a bloc's `close`
+  /// threw — the error still reaches the caller, but a reset that left
+  /// registrations behind would fail every test after this one.
   @visibleForTesting
   static Future<void> reset() async {
-    await endAll();
-    _entries.clear();
-    FeatureScope.resetTracking();
-    // ignore: invalid_use_of_visible_for_testing_member
-    LeakDetector.reset();
+    try {
+      await endAll();
+    } finally {
+      _entries.clear();
+      FeatureScope.resetTracking();
+      // ignore: invalid_use_of_visible_for_testing_member
+      LeakDetector.reset();
+    }
   }
 }

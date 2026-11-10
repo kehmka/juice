@@ -10,6 +10,7 @@ import 'bloc_use_case.dart';
 import 'bloc_error_handler.dart';
 import 'juice_exception.dart';
 import 'cancellable_event.dart';
+import 'core/activity_probe.dart';
 import 'core/event_cause.dart';
 import 'core/event_concurrency.dart';
 import 'core/restartable_run.dart';
@@ -110,6 +111,13 @@ class JuiceBloc<TState extends BlocState>
 
   /// Internal logger instance
   final JuiceLogger _logger;
+
+  /// Whether this bloc's telemetry goes to [logger] — false for a bloc given
+  /// its own `logger:`, or built while another logger was configured. A test
+  /// flow asks before it watches a bloc: it reads errors from its own
+  /// logger and would not see this bloc's.
+  @internal
+  bool reportsTo(JuiceLogger logger) => identical(_logger, logger);
 
   /// This bloc's type name, for telemetry.
   late final String _blocName = typeName(runtimeType);
@@ -327,31 +335,39 @@ class JuiceBloc<TState extends BlocState>
         ));
         return;
       }
+      // A test flow counts the hop from here until it is sent or dropped.
+      final probe = JuiceActivityProbe.current;
+      final work = probe == null ? null : JuiceWork.hop(sourceName, _blocName);
+      if (work != null) probe!.began(work);
       scheduleMicrotask(() {
-        // Ended in the meantime (cancelled, or either bloc closed): the
-        // hop is discarded.
-        if (!binding.isActive) return;
-        final EventBase event;
         try {
-          event = reaction.send(state);
-        } catch (error, stackTrace) {
-          failed('send', error, stackTrace);
-          return;
+          // Ended in the meantime (cancelled, or either bloc closed): the
+          // hop is discarded.
+          if (!binding.isActive) return;
+          final EventBase event;
+          try {
+            event = reaction.send(state);
+          } catch (error, stackTrace) {
+            failed('send', error, stackTrace);
+            return;
+          }
+          EventCause.stamp(event, EventCause(causeExecutionId, depth));
+          if (JuiceLoggerConfig.logs(Level.info)) {
+            _logger.record(JuiceTelemetry(
+              JuiceTelemetryKind.reactionFired,
+              sourceBloc: sourceName,
+              destBloc: _blocName,
+              reaction: reaction.form,
+              event: typeName(event.runtimeType),
+              causeExecutionId: causeExecutionId,
+              hopDepth: depth,
+              reason: atAttach ? 'attach' : null,
+            ));
+          }
+          send(event);
+        } finally {
+          if (work != null) probe!.ended(work);
         }
-        EventCause.stamp(event, EventCause(causeExecutionId, depth));
-        if (JuiceLoggerConfig.logs(Level.info)) {
-          _logger.record(JuiceTelemetry(
-            JuiceTelemetryKind.reactionFired,
-            sourceBloc: sourceName,
-            destBloc: _blocName,
-            reaction: reaction.form,
-            event: typeName(event.runtimeType),
-            causeExecutionId: causeExecutionId,
-            hopDepth: depth,
-            reason: atAttach ? 'attach' : null,
-          ));
-        }
-        send(event);
       });
     }
 
@@ -540,7 +556,13 @@ class JuiceBloc<TState extends BlocState>
       ));
       return Future<void>.value();
     }
-    return _dispatcher.dispatch(event);
+    final probe = JuiceActivityProbe.current;
+    if (probe == null) return _dispatcher.dispatch(event);
+    // Inside a test flow: the send is in flight until its processing is
+    // over (one microtask later than outside a flow).
+    final work = JuiceWork.send(_blocName, typeName(event.runtimeType));
+    probe.began(work);
+    return _dispatcher.dispatch(event).whenComplete(() => probe.ended(work));
   }
 
   /// Sends a cancellable event and returns it for cancellation control.

@@ -372,6 +372,28 @@ void main() {
       });
     });
 
+    group('reset', () {
+      test(
+          'a reset resets even when a close threw: the error reaches the '
+          'caller and no registration is left behind', () async {
+        BlocScope.register<_CloseThrowsBloc>(() => _CloseThrowsBloc());
+        BlocScope.register<TestBloc>(
+            () => TestBloc(initialState: TestState(value: 0)));
+        final broken = BlocScope.get<_CloseThrowsBloc>();
+        final other = BlocScope.get<TestBloc>();
+
+        await expectLater(
+            BlocScope.reset(),
+            throwsA(isA<StateError>()
+                .having((e) => e.message, 'message', 'close broke')));
+
+        expect(broken.isClosed, isTrue);
+        expect(other.isClosed, isTrue);
+        expect(BlocScope.isRegistered<_CloseThrowsBloc>(), isFalse);
+        expect(BlocScope.isRegistered<TestBloc>(), isFalse);
+      });
+    });
+
     group('Edge Cases', () {
       test('Closing bloc during active use is safe', () async {
         BlocScope.register<TestBloc>(
@@ -444,4 +466,14 @@ void main() {
       });
     });
   });
+}
+
+class _CloseThrowsBloc extends JuiceBloc<TestState> {
+  _CloseThrowsBloc() : super(TestState(value: 0), const []);
+
+  @override
+  Future<void> close() async {
+    await super.close();
+    throw StateError('close broke');
+  }
 }

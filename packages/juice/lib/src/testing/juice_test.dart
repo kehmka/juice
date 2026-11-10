@@ -163,7 +163,7 @@ Future<List<JuiceEmission<TState>>>
   final recorded = emissions.skip(skip).toList();
   if (expect != null) {
     final expected = expect();
-    m.expect(recorded, _asEmissionsMatcher(expected),
+    m.expect(recorded, asEmissionsMatcher(expected),
         reason: 'juiceTest: emitted $recorded');
   }
 
@@ -187,7 +187,11 @@ Future<List<JuiceEmission<TState>>>
   return emissions;
 }
 
-m.Matcher _asEmissionsMatcher(Object expected) {
+/// What an `expect:` value means as a matcher over the recorded emissions:
+/// a matcher as it is, a list as its elements in order. Shared with
+/// `juiceFlowTest`; not exported.
+@internal
+m.Matcher asEmissionsMatcher(Object expected) {
   if (expected is m.Matcher) return expected;
   if (expected is Iterable) {
     return m

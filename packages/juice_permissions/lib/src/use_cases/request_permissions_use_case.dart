@@ -13,7 +13,13 @@ class RequestPermissionsUseCase
   @override
   Future<void> execute(RequestPermissionsEvent event) async {
     final ps = event.permissions;
-    if (ps.isEmpty) return;
+    if (ps.isEmpty) {
+      // Nothing to prompt for. Still answered: an emission that rebuilds
+      // nothing, and the empty result.
+      emitStatuses(const {});
+      event.succeed(const {});
+      return;
+    }
 
     emitUpdate(
       newState: bloc.state.copyWith(inFlight: {...bloc.state.inFlight, ...ps}),
@@ -29,6 +35,7 @@ class RequestPermissionsUseCase
         results,
         inFlight: {...bloc.state.inFlight}..removeAll(ps),
       );
+      event.succeed(results);
     } catch (error, stackTrace) {
       emitFailure(
         newState: bloc.state.copyWith(
@@ -41,6 +48,7 @@ class RequestPermissionsUseCase
         error: error,
         errorStackTrace: stackTrace,
       );
+      event.fail(error, stackTrace);
     }
   }
 }

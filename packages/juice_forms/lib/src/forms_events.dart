@@ -56,20 +56,27 @@ class RunAsyncValidationEvent extends FormsEvent {
 }
 
 /// Validate every field (sync + awaited async) and mark all touched.
-class ValidateFormEvent extends FormsEvent {
-  /// Completed by the use case with the post-validation `isValid` — lets a
-  /// caller `await` the pass (`FormsBloc.validateNow`).
-  final Completer<bool>? completion;
-  ValidateFormEvent({this.completion});
+///
+/// A result event: `await bloc.sendForResult(ValidateFormEvent())` is the
+/// post-validation `isValid`.
+class ValidateFormEvent extends ResultEvent<bool> implements FormsEvent {
+  ValidateFormEvent();
+
+  @override
+  String toString() => runtimeType.toString();
 }
 
 /// Validate all, then run the submit handler if the form is valid.
-class SubmitFormEvent extends FormsEvent {
-  /// Completed by the use case: `true` once the submit handler succeeded,
-  /// `false` when validation failed, no handler was configured, or the
-  /// handler threw (`FormsBloc.submitNow`).
-  final Completer<bool>? completion;
-  SubmitFormEvent({this.completion});
+///
+/// A result event: `await bloc.sendForResult(SubmitFormEvent())` is `true`
+/// once the submit handler succeeded and `false` when validation failed. It
+/// THROWS when no handler is configured (a [StateError]) or the handler
+/// threw (the handler's error) — the failure the bloc also emits.
+class SubmitFormEvent extends ResultEvent<bool> implements FormsEvent {
+  SubmitFormEvent();
+
+  @override
+  String toString() => runtimeType.toString();
 }
 
 /// Reset every field to its initial value and clear submit status.

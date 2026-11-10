@@ -88,14 +88,20 @@ Built-in `Validators`: `required`, `minLength`, `maxLength`, `email`, `matches`,
 ### Awaitable validate/submit (0.2)
 
 `validate()`/`submit()` are fire-and-forget events. For "validate, then act"
-flows, the awaitable forms complete with the outcome — no settle-delays:
+flows, send the event for its result (`sendForResult` is from
+`package:juice/juice.dart`) — no settle-delays:
 
 ```dart
-if (!await form.validateNow()) return;   // full sync+async pass → isValid
+if (!await form.sendForResult(ValidateFormEvent())) return; // → isValid
 saveDraft(form.state.values);
 
-final ok = await form.submitNow();       // true only if the handler succeeded
+// true once the handler succeeded, false when the form is invalid;
+// THROWS when no handler is configured or the handler threw.
+final ok = await form.sendForResult(SubmitFormEvent());
 ```
+
+`validateNow()` and `submitNow()` are deprecated for these. `submitNow()`
+answered `false` where `sendForResult(SubmitFormEvent())` throws.
 
 ## State
 

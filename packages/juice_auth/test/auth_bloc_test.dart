@@ -764,6 +764,94 @@ void main() {
 
         expect(bloc.state.lastError, isA<NoRefreshTokenError>());
       });
+
+      test('sendForResult returns the refreshed session', () async {
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async => _makeResult(
+                  accessToken: 'new-access',
+                  refreshToken: 'new-refresh',
+                  expiresAt: DateTime.now().add(const Duration(hours: 2)),
+                ));
+
+        final session = await bloc.sendForResult(RefreshTokenEvent());
+
+        expect(session.accessToken, 'new-access');
+        expect(session.refreshToken, 'new-refresh');
+        expect(identical(bloc.state.session, session), isTrue);
+        expect(bloc.state.isRefreshing, false);
+      });
+
+      test(
+          'refreshes requested while one runs join it: one provider call, '
+          'and every caller gets its session', () async {
+        final gate = Completer<void>();
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async {
+          await gate.future;
+          return _makeResult(
+            accessToken: 'new-access',
+            refreshToken: 'new-refresh',
+            expiresAt: DateTime.now().add(const Duration(hours: 2)),
+          );
+        });
+
+        final callers = [
+          bloc.sendForResult(RefreshTokenEvent()),
+          bloc.sendForResult(RefreshTokenEvent()),
+          bloc.sendForResult(RefreshTokenEvent()),
+        ];
+        bloc.refreshToken(); // the void form joins too
+        await Future.delayed(_delay);
+        expect(bloc.state.isRefreshing, true);
+
+        gate.complete();
+        final sessions = await Future.wait(callers);
+
+        expect(sessions.map((s) => s.accessToken), everyElement('new-access'));
+        expect(identical(sessions[0], sessions[2]), isTrue);
+        verify(() => emailProvider.refreshToken('refresh-token')).called(1);
+      });
+
+      test('a refresh that fails throws RefreshFailedError to every caller',
+          () async {
+        final gate = Completer<void>();
+        when(() => emailProvider.refreshToken('refresh-token'))
+            .thenAnswer((_) async {
+          await gate.future;
+          throw const AuthProviderException('Token revoked');
+        });
+
+        final callers = [
+          bloc.sendForResult(RefreshTokenEvent()),
+          bloc.sendForResult(RefreshTokenEvent()),
+        ];
+        final outcomes = [
+          for (final caller in callers)
+            expectLater(caller, throwsA(isA<RefreshFailedError>())),
+        ];
+        gate.complete();
+        await Future.wait(outcomes);
+
+        expect(bloc.state.status, AuthStatus.sessionExpired);
+        verify(() => emailProvider.refreshToken('refresh-token')).called(1);
+      });
+
+      test('with no refresh token sendForResult throws NoRefreshTokenError',
+          () async {
+        when(() => emailProvider.authenticate(any()))
+            .thenAnswer((_) async => _makeResult(refreshToken: null));
+        bloc.loginWithEmail('test@example.com', 'password');
+        await Future.delayed(_delay);
+
+        await expectLater(bloc.sendForResult(RefreshTokenEvent()),
+            throwsA(isA<NoRefreshTokenError>()));
+        verifyNever(() => emailProvider.refreshToken(any()));
+      });
+
+      test('the event is still an auth event, and prints as before', () {
+        expect(RefreshTokenEvent(), isA<AuthEvent>());
+        expect(RefreshTokenEvent().toString(), 'RefreshTokenEvent()');
+      });
     });
 
     group('update user', () {

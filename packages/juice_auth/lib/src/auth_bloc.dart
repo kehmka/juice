@@ -75,9 +75,10 @@ class AuthBloc extends JuiceBloc<AuthState> {
             () => UseCaseBuilder(
                   typeOfEvent: RefreshTokenEvent,
                   useCaseGenerator: () => RefreshTokenUseCase(),
-                  // Framework-level singleflight: all observers watch the
-                  // same isRefreshing lifecycle, so extra triggers can drop.
-                  concurrency: EventConcurrency.droppable,
+                  // One refresh at a time, and nobody left out: a refresh
+                  // requested while one runs joins it and gets its session
+                  // (or its error).
+                  concurrency: EventConcurrency.singleflight,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: UpdateUserEvent,

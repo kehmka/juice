@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart' show ResultEventOps;
 import 'package:juice_forms/juice_forms.dart';
 
 /// Records the rebuild groups emitted by a bloc, so we can assert selective
@@ -460,6 +461,115 @@ void main() {
       expect(bloc.state.submitted, isFalse);
 
       await bloc.close();
+    });
+  });
+
+  group('Typed results: sendForResult', () {
+    FormsBloc form({Future<void> Function(Map<String, Object?>)? onSubmit}) =>
+        FormsBloc.withConfig(FormsConfig(
+          fields: [
+            FieldConfig(name: 'x', validators: [Validators.required()])
+          ],
+          onSubmit: onSubmit,
+        ));
+
+    test('ValidateFormEvent returns isValid', () async {
+      final bloc = form();
+      await settle();
+
+      expect(await bloc.sendForResult(ValidateFormEvent()), isFalse);
+      bloc.change('x', 'v');
+      await settle();
+      expect(await bloc.sendForResult(ValidateFormEvent()), isTrue);
+      await bloc.close();
+    });
+
+    test('SubmitFormEvent: true once the handler succeeded', () async {
+      var called = 0;
+      final bloc = form(onSubmit: (_) async => called++);
+      await settle();
+      bloc.change('x', 'v');
+      await settle();
+
+      expect(await bloc.sendForResult(SubmitFormEvent()), isTrue);
+      expect(called, 1);
+      expect(bloc.state.submitted, isTrue);
+      await bloc.close();
+    });
+
+    test('SubmitFormEvent: false when the form is invalid — not an error',
+        () async {
+      var called = 0;
+      final bloc = form(onSubmit: (_) async => called++);
+      await settle();
+
+      expect(await bloc.sendForResult(SubmitFormEvent()), isFalse);
+      expect(called, 0);
+      await bloc.close();
+    });
+
+    test(
+        'SubmitFormEvent THROWS the handler\'s error, where submitNow '
+        'answered false', () async {
+      final boom = Exception('boom');
+      final bloc = form(onSubmit: (_) async => throw boom);
+      await settle();
+      bloc.change('x', 'v');
+      await settle();
+
+      await expectLater(
+          bloc.sendForResult(SubmitFormEvent()), throwsA(same(boom)));
+      expect(bloc.state.submitError, contains('boom'));
+      // The deprecated form still answers as it always did.
+      // ignore: deprecated_member_use_from_same_package
+      expect(await bloc.submitNow(), isFalse);
+      await bloc.close();
+    });
+
+    test('SubmitFormEvent THROWS when no handler is configured', () async {
+      final bloc = form();
+      await settle();
+      bloc.change('x', 'v');
+      await settle();
+
+      await expectLater(
+          bloc.sendForResult(SubmitFormEvent()),
+          throwsA(isA<StateError>().having((e) => e.message, 'message',
+              'FormsBloc.submit() called with no onSubmit handler')));
+      expect(bloc.state.submitError, 'No submit handler configured');
+      await bloc.close();
+    });
+
+    test(
+        'every caller of an overlapping submit gets its own answer, in '
+        'order', () async {
+      final gate = Completer<void>();
+      var calls = 0;
+      final bloc = form(onSubmit: (_) async {
+        calls++;
+        if (calls == 1) await gate.future;
+      });
+      await settle();
+      bloc.change('x', 'v');
+      await settle();
+
+      final first = bloc.sendForResult(SubmitFormEvent());
+      final second = bloc.sendForResult(SubmitFormEvent());
+      await settle(1);
+      expect(calls, 1, reason: 'sequential: the second waits');
+
+      gate.complete();
+      expect(await first, isTrue);
+      expect(await second, isTrue);
+      expect(calls, 2);
+      await bloc.close();
+    });
+
+    test('the two events are still forms events, and print as before', () {
+      expect(ValidateFormEvent(), isA<FormsEvent>());
+      expect(SubmitFormEvent(), isA<FormsEvent>());
+      expect(ValidateFormEvent().toString(), 'ValidateFormEvent');
+      expect(SubmitFormEvent().toString(), 'SubmitFormEvent');
     });
   });
 }

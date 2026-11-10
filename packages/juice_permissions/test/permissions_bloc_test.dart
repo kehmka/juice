@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juice/juice.dart' show ResultEventOps;
 import 'package:juice_permissions/juice_permissions.dart';
 
 /// Pure-Dart fake provider — drives the bloc without any platform plugin.
@@ -71,6 +72,26 @@ class FakePermissionProvider implements PermissionProvider {
 
   @override
   Future<void> dispose() async {}
+}
+
+/// A provider whose prompts fail once [gate] opens.
+class BrokenPermissionProvider extends FakePermissionProvider {
+  final gate = Completer<void>();
+
+  @override
+  Future<PermissionStatus> request(JuicePermission p) async {
+    requestCalls++;
+    await gate.future;
+    throw StateError('prompt failed');
+  }
+
+  @override
+  Future<Map<JuicePermission, PermissionStatus>> requestAll(
+      Set<JuicePermission> ps) async {
+    requestCalls++;
+    await gate.future;
+    throw StateError('batch failed');
+  }
 }
 
 void main() {
@@ -355,6 +376,133 @@ void main() {
       expect(seen, isEmpty);
       binding.dispose();
       await bloc.close();
+    });
+  });
+
+  group('Typed results: sendForResult', () {
+    test('RequestPermissionEvent returns the status the user left it in',
+        () async {
+      final p = FakePermissionProvider(requestResults: {
+        camera: PermissionStatus.granted,
+        mic: PermissionStatus.permanentlyDenied,
+      });
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      expect(await bloc.sendForResult(RequestPermissionEvent(camera)),
+          PermissionStatus.granted);
+      expect(await bloc.sendForResult(RequestPermissionEvent(mic)),
+          PermissionStatus.permanentlyDenied);
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
+    test(
+        'callers asking for the same permission while it prompts all get '
+        'the one prompt\'s answer; another permission prompts beside it',
+        () async {
+      final cameraGate = Completer<void>();
+      final p = FakePermissionProvider(requestResults: {
+        camera: PermissionStatus.limited,
+        mic: PermissionStatus.denied,
+      })
+        ..requestGates[camera] = cameraGate;
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      final first = bloc.sendForResult(RequestPermissionEvent(camera));
+      final second = bloc.sendForResult(RequestPermissionEvent(camera));
+      final other = bloc.sendForResult(RequestPermissionEvent(mic));
+
+      expect(await other, PermissionStatus.denied,
+          reason: 'not held up by the camera prompt');
+      expect(p.requestStarts, [camera, mic], reason: 'one camera prompt');
+      expect(bloc.state.inFlight, {camera});
+
+      cameraGate.complete();
+      expect(await Future.wait([first, second]),
+          [PermissionStatus.limited, PermissionStatus.limited]);
+      expect(p.requestCalls, 2);
+      await bloc.close();
+    });
+
+    test('a prompt that fails throws to every caller that joined it', () async {
+      final p = BrokenPermissionProvider();
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      final callers = [
+        bloc.sendForResult(RequestPermissionEvent(camera)),
+        bloc.sendForResult(RequestPermissionEvent(camera)),
+      ];
+      final outcomes = [
+        for (final caller in callers)
+          expectLater(
+              caller,
+              throwsA(isA<StateError>()
+                  .having((e) => e.message, 'message', 'prompt failed'))),
+      ];
+      p.gate.complete();
+      await Future.wait(outcomes);
+
+      expect(p.requestCalls, 1);
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
+    test('RequestPermissionsEvent returns the status of each permission',
+        () async {
+      final p = FakePermissionProvider(requestResults: {
+        camera: PermissionStatus.granted,
+        mic: PermissionStatus.denied,
+      });
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      expect(await bloc.sendForResult(RequestPermissionsEvent({camera, mic})),
+          {camera: PermissionStatus.granted, mic: PermissionStatus.denied});
+      await bloc.close();
+    });
+
+    test(
+        'RequestPermissionsEvent for no permissions prompts nothing and '
+        'returns nothing', () async {
+      final p = FakePermissionProvider();
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+      final before = bloc.state;
+
+      expect(await bloc.sendForResult(RequestPermissionsEvent({})), isEmpty);
+      expect(p.requestCalls, 0);
+      expect(bloc.state.statuses, before.statuses);
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
+    test('a batch that fails throws', () async {
+      final p = BrokenPermissionProvider();
+      final bloc = PermissionsBloc.withConfig(PermissionsConfig(provider: p));
+      await settle();
+
+      final batch = bloc.sendForResult(RequestPermissionsEvent({camera, mic}));
+      final outcome = expectLater(
+          batch,
+          throwsA(isA<StateError>()
+              .having((e) => e.message, 'message', 'batch failed')));
+      p.gate.complete();
+      await outcome;
+      expect(bloc.state.inFlight, isEmpty);
+      await bloc.close();
+    });
+
+    test('the two events are still permissions events, and print as before',
+        () {
+      expect(RequestPermissionEvent(camera), isA<PermissionsEvent>());
+      expect(RequestPermissionsEvent({camera}), isA<PermissionsEvent>());
+      expect(
+          RequestPermissionEvent(camera).toString(), 'RequestPermissionEvent');
+      expect(RequestPermissionsEvent({camera}).toString(),
+          'RequestPermissionsEvent');
     });
   });
 }

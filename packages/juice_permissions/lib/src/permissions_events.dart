@@ -21,16 +21,35 @@ class CheckPermissionEvent extends PermissionsEvent {
   CheckPermissionEvent(this.permission);
 }
 
-/// Prompt the user for a permission (singleflight per permission).
-class RequestPermissionEvent extends PermissionsEvent {
+/// Prompt the user for a permission (singleflight per permission: a
+/// request arriving while one for the SAME permission is prompting joins
+/// it, and gets its answer).
+///
+/// A result event: `await bloc.sendForResult(RequestPermissionEvent(p))` is
+/// the status the user left the permission in. It throws what the provider
+/// threw.
+class RequestPermissionEvent extends ResultEvent<PermissionStatus>
+    implements PermissionsEvent {
   final JuicePermission permission;
   RequestPermissionEvent(this.permission);
+
+  @override
+  String toString() => runtimeType.toString();
 }
 
 /// Prompt the user for several permissions at once.
-class RequestPermissionsEvent extends PermissionsEvent {
+///
+/// A result event: `await bloc.sendForResult(RequestPermissionsEvent(ps))`
+/// is the status of each permission asked for (empty for an empty set). It
+/// throws what the provider threw.
+class RequestPermissionsEvent
+    extends ResultEvent<Map<JuicePermission, PermissionStatus>>
+    implements PermissionsEvent {
   final Set<JuicePermission> permissions;
   RequestPermissionsEvent(this.permissions);
+
+  @override
+  String toString() => runtimeType.toString();
 }
 
 /// Open the app's system settings page (for permanently-denied permissions).

@@ -6,8 +6,8 @@ import '../forms_events.dart';
 import '../forms_state.dart';
 
 /// Handles [ValidateFormEvent] — full sync+async pass over every field, marking
-/// all touched. Rebuilds every field widget plus `valid`. Completes the event's
-/// [ValidateFormEvent.completion] (if any) with the resulting `isValid`.
+/// all touched. Rebuilds every field widget plus `valid`. Completes the event
+/// with the resulting `isValid`.
 class ValidateFormUseCase extends BlocUseCase<FormsBloc, ValidateFormEvent> {
   @override
   Future<void> execute(ValidateFormEvent event) async {
@@ -33,12 +33,10 @@ class ValidateFormUseCase extends BlocUseCase<FormsBloc, ValidateFormEvent> {
           ...bloc.state.fields.keys.map(FormsGroups.field),
         },
       );
-      event.completion?.complete(bloc.state.isValid);
-    } catch (e) {
+      event.succeed(bloc.state.isValid);
+    } catch (e, stackTrace) {
       // Never leave an awaiting caller hanging.
-      if (event.completion?.isCompleted == false) {
-        event.completion!.completeError(e);
-      }
+      event.fail(e, stackTrace);
       rethrow;
     }
   }

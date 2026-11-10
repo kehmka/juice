@@ -19,7 +19,7 @@ updated: 2026-10-13
 
 **Owns:** the auth state machine (`unknown → unauthenticated / authenticated /
 sessionExpired`), token/session persistence (secure storage via `juice_storage`),
-the proactive refresh timer + droppable singleflight, and login rate-limiting.
+the proactive refresh timer + singleflight refresh, and login rate-limiting.
 **Does NOT own:** how a backend authenticates (the `AuthProvider` seam — REST,
 Firebase, Supabase…), HTTP token injection (use `juice_auth_network`), or route
 guarding (use `juice_auth_routing`).
@@ -79,6 +79,8 @@ void loginWithEmail(String email, String password);
 void loginWithOAuth(String provider, String idToken, {String? accessToken});
 void logout({bool force = false});      // force → skip provider revocation
 void refreshToken();                    // usually automatic; manual override
+// Awaitable: await auth.sendForResult(RefreshTokenEvent()) → the refreshed AuthSession;
+// throws NoRefreshTokenError / RefreshFailedError. Callers during a refresh join it.
 void updateUser(AuthUser user);
 AuthConfig get config;
 ```
@@ -90,7 +92,7 @@ AuthConfig get config;
 | `InitializeAuthEvent(config)` | `droppable` | set config; restore session if `restoreSessionOnInit` |
 | `LoginEvent(providerName, credentials)` | `droppable` | authenticate via the named provider, persist, schedule refresh |
 | `LogoutEvent(force?)` | `droppable` | revoke (unless `force`), clear storage, → `unauthenticated` |
-| `RefreshTokenEvent()` | `droppable` | manual token refresh (singleflight) |
+| `RefreshTokenEvent()` | `singleflight` | manual token refresh; a result event → the refreshed `AuthSession` |
 | `UpdateUserEvent(updatedUser)` | `sequential` | replace `state.user` |
 | `TokenExpiryEvent()` *internal* | `droppable` | fired by the refresh timer at `expiresAt − refreshBuffer` |
 

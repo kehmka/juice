@@ -2,6 +2,7 @@ import 'package:juice/juice.dart';
 
 import 'auth_credentials.dart';
 import 'auth_config.dart';
+import 'auth_session.dart';
 import 'auth_user.dart';
 
 /// Base class for all auth events.
@@ -55,7 +56,15 @@ class LogoutEvent extends AuthEvent {
 /// Manually trigger a token refresh.
 ///
 /// Usually not needed — AuthBloc refreshes proactively before expiry.
-class RefreshTokenEvent extends AuthEvent {
+///
+/// A result event: `await bloc.sendForResult(RefreshTokenEvent())` is the
+/// refreshed [AuthSession], and throws [NoRefreshTokenError] or
+/// [RefreshFailedError] when there is none. It is `singleflight`: a refresh
+/// requested while one is running joins it — one provider call, and every
+/// caller gets its session or its error.
+class RefreshTokenEvent extends ResultEvent<AuthSession> implements AuthEvent {
+  RefreshTokenEvent();
+
   @override
   String toString() => 'RefreshTokenEvent()';
 }

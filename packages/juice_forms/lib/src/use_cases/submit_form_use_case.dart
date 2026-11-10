@@ -35,21 +35,23 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
 
     if (errors.values.any((e) => e != null)) {
       emitUpdate(newState: validated, groupsToRebuild: fieldGroups);
-      event.completion?.complete(false);
+      event.succeed(false);
       return;
     }
 
     final handler = bloc.onSubmit;
     if (handler == null) {
+      final error =
+          StateError('FormsBloc.submit() called with no onSubmit handler');
       emitFailure(
         newState: validated.copyWith(
           submitting: false,
           submitError: 'No submit handler configured',
         ),
         groupsToRebuild: {FormsGroups.status},
-        error: StateError('FormsBloc.submit() called with no onSubmit handler'),
+        error: error,
       );
-      event.completion?.complete(false);
+      event.fail(error, StackTrace.current);
       return;
     }
 
@@ -64,15 +66,19 @@ class SubmitFormUseCase extends BlocUseCase<FormsBloc, SubmitFormEvent> {
         newState: bloc.state.copyWith(submitting: false, submitted: true),
         groupsToRebuild: {FormsGroups.status},
       );
-      event.completion?.complete(true);
-    } catch (e) {
+      event.succeed(true);
+    } catch (e, stackTrace) {
       emitFailure(
         newState:
             bloc.state.copyWith(submitting: false, submitError: e.toString()),
         groupsToRebuild: {FormsGroups.status},
         error: e,
+        errorStackTrace: stackTrace,
       );
-      event.completion?.complete(false);
+      // The first status this event emitted was `submitting: true`, so an
+      // awaiting caller is already past the status and waiting on the
+      // result: it has to be failed here.
+      event.fail(e, stackTrace);
     }
   }
 }

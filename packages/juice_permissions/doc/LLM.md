@@ -83,8 +83,8 @@ PermissionProvider get provider;
 |---|---|---|---|
 | `InitializePermissionsEvent(config)` | `droppable` | store provider, pre-read `precheck` | `permissions:status`, per-permission |
 | `CheckPermissionEvent(p)` | `concurrent` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
-| `RequestPermissionEvent(p)` | `concurrent` | prompt (singleflight per permission) | above + `permissions:inflight` |
-| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no coalescing) | as above |
+| `RequestPermissionEvent(p)` | `singleflight` by permission | prompt; a result event → `PermissionStatus` | above + `permissions:inflight` |
+| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no coalescing); a result event → the status of each | as above |
 | `OpenAppSettingsEvent` | `droppable` | open OS settings | — |
 
 ## State
@@ -113,10 +113,10 @@ class PermissionsState extends BlocState {
 
 ## Concurrency
 
-`RequestPermissionEvent` remains intentionally `concurrent`: requests for the
-same `JuicePermission` share one OS prompt via
-`PermissionsBloc.requestsInFlight` (a per-permission `Completer` map,
-authoritative), while different permissions may proceed independently.
+`RequestPermissionEvent` is `singleflight`, keyed by its permission: a request
+arriving while one for the same `JuicePermission` is prompting joins it — one
+OS prompt, and every caller of `sendForResult(RequestPermissionEvent(p))` gets
+its `PermissionStatus` — while different permissions proceed independently.
 `CheckPermissionEvent` is also `concurrent` and merges current state only after
 its provider await. Batch requests mutate a shared in-flight set and therefore
 run `sequential`ly; they do not coalesce. Initialization and opening app
@@ -212,8 +212,8 @@ expect(bloc.state.isUsable(JuicePermission.camera), isTrue);
 ## Invariants
 
 - One grant-state machine for the whole app — capabilities never own their own.
-- `requestsInFlight` (the Completer map) is authoritative for coalescing;
-  `state.inFlight` is its UI mirror.
+- The `singleflight` registration of `RequestPermissionEvent` is what
+  coalesces prompts; `state.inFlight` shows them to the UI.
 - Per-permission groups (`permissions:status:<name>`) let widgets rebuild on one
   permission without thrashing on unrelated ones.
 

@@ -5,23 +5,26 @@ import '../auth_errors.dart';
 import '../auth_events.dart';
 import '../auth_state.dart';
 
-/// Handles [RefreshTokenEvent] — a droppable, singleflight token refresh.
+/// Handles [RefreshTokenEvent] — a singleflight token refresh.
 ///
-/// The bloc's event registration drops overlapping refresh events, so only one
-/// provider call executes while observers follow the shared state lifecycle.
+/// The bloc registers the event `singleflight`: a refresh requested while
+/// this one runs joins it, so only one provider call executes and every
+/// caller is answered with its session or its error.
 class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
   @override
   Future<void> execute(RefreshTokenEvent event) async {
     final session = bloc.state.session;
     if (session?.refreshToken == null) {
       log('No refresh token available', level: Level.warning);
+      final error = NoRefreshTokenError();
       emitFailure(
         newState: bloc.state.copyWith(
-          lastError: NoRefreshTokenError(),
+          lastError: error,
         ),
         groupsToRebuild: {AuthGroups.error},
-        error: NoRefreshTokenError(),
+        error: error,
       );
+      event.fail(error, StackTrace.current);
       return;
     }
 
@@ -58,16 +61,18 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
         groupsToRebuild: {AuthGroups.session},
       );
 
+      event.succeed(newSession);
       log('Token refresh successful');
     } catch (e, st) {
       logError(e, st);
+      final error = RefreshFailedError(e.toString());
 
       // Refresh failed → session expired (not unauthenticated)
       emitFailure(
         newState: bloc.state.copyWith(
           status: AuthStatus.sessionExpired,
           isRefreshing: false,
-          lastError: RefreshFailedError(e.toString()),
+          lastError: error,
         ),
         groupsToRebuild: {
           AuthGroups.status,
@@ -75,9 +80,12 @@ class RefreshTokenUseCase extends BlocUseCase<AuthBloc, RefreshTokenEvent> {
           AuthGroups.error
         },
         aviatorName: 'sessionExpired',
-        error: RefreshFailedError(e.toString()),
+        error: error,
         errorStackTrace: st,
       );
+      // `isRefreshing: true` was this event's first status, so an awaiting
+      // caller is past it and waiting on the result.
+      event.fail(error, st);
     }
   }
 }

@@ -87,13 +87,13 @@ class FormsBloc extends JuiceBloc<FormsState> {
                 typeOfEvent: ValidateFormEvent,
                 useCaseGenerator: () => ValidateFormUseCase(),
                 // Every awaitable validation must run and complete its own
-                // Completer, while whole-form passes must not overlap.
+                // event, while whole-form passes must not overlap.
                 concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: SubmitFormEvent,
                 useCaseGenerator: () => SubmitFormUseCase(),
-                // Sequential, not droppable: submitNow callers each require a
-                // completion, and submit handlers must never overlap.
+                // Sequential, not droppable: every caller awaiting a submit
+                // gets its own answer, and submit handlers must never overlap.
                 concurrency: EventConcurrency.sequential),
             () => UseCaseBuilder(
                 typeOfEvent: ResetFormEvent,
@@ -211,19 +211,28 @@ class FormsBloc extends JuiceBloc<FormsState> {
   /// Run a full (sync + awaited async) validation pass and complete with the
   /// resulting `isValid` — the awaitable form of [validate] for flows like
   /// "validate, then save".
+  @Deprecated('Use sendForResult(ValidateFormEvent()): the same isValid, '
+      'with a timeout and a loud failure on a closed bloc. Removed in the '
+      'next major.')
   Future<bool> validateNow() {
-    final completion = Completer<bool>();
-    send(ValidateFormEvent(completion: completion));
-    return completion.future;
+    final event = ValidateFormEvent();
+    send(event);
+    return event.result;
   }
 
   /// Validate and, if valid, run the submit handler; completes `true` only
   /// when the handler succeeded (`false` on invalid, no handler, or throw —
   /// details surface in state as usual).
+  @Deprecated('Use sendForResult(SubmitFormEvent()). It returns false when '
+      'the form is invalid, and — unlike submitNow, which returned false — '
+      'THROWS when no handler is configured or the handler threw. Removed '
+      'in the next major.')
   Future<bool> submitNow() {
-    final completion = Completer<bool>();
-    send(SubmitFormEvent(completion: completion));
-    return completion.future;
+    final event = SubmitFormEvent();
+    send(event);
+    // As it always answered: false for anything that is not a submit that
+    // succeeded.
+    return event.result.then((submitted) => submitted, onError: (_) => false);
   }
 
   /// Typed read of a field's current value.

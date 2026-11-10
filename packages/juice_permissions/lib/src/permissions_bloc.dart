@@ -24,11 +24,6 @@ import 'use_cases/request_permissions_use_case.dart';
 class PermissionsBloc extends JuiceBloc<PermissionsState> {
   late PermissionsConfig _config;
 
-  /// Per-permission singleflight: concurrent requests for the same permission
-  /// share one prompt. Authoritative for coalescing; `state.inFlight` mirrors
-  /// it for the UI.
-  final Map<JuicePermission, Completer<PermissionStatus>> requestsInFlight = {};
-
   PermissionsBloc()
       : super(
           PermissionsState.initial,
@@ -47,9 +42,12 @@ class PermissionsBloc extends JuiceBloc<PermissionsState> {
             () => UseCaseBuilder(
                   typeOfEvent: RequestPermissionEvent,
                   useCaseGenerator: () => RequestPermissionUseCase(),
-                  // Different permissions may prompt independently; duplicate
-                  // permissions join requestsInFlight in the use case.
-                  concurrency: EventConcurrency.concurrent,
+                  // One prompt per permission: a duplicate request joins
+                  // the one prompting and gets its answer; different
+                  // permissions prompt independently.
+                  concurrency: EventConcurrency.singleflight,
+                  joinKey: (event) =>
+                      (event as RequestPermissionEvent).permission,
                 ),
             () => UseCaseBuilder(
                   typeOfEvent: RequestPermissionsEvent,

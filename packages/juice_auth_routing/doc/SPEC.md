@@ -29,6 +29,20 @@ Each adapter is a thin subclass:
 Evaluated by the routing pipeline on each navigation; the closures read live
 `AuthBloc` state.
 
+**Each adapter waits for the answer first.** `AuthState` starts as
+`AuthStatus.unknown` and leaves it when the stored session has been restored
+or found absent. Before it reads its predicate, an adapter awaits
+`authBloc.waitFor((s) => s.status != AuthStatus.unknown, timeout:
+restoreTimeout)` (`restoreTimeout` defaults to
+`AuthBlocAuthGuard.defaultRestoreTimeout`, 10 seconds); a session already
+known answers at once. `juice_routing` guards the initial path, so without
+the wait a cold start read "not yet known" as "signed out" and started a
+signed-in user on the login page (juice ISSUES #29). The wait's failures are
+not caught: a timeout (`TimeoutException`) or a bloc that closes
+(`StateError`) leaves the guard as a throw, which the pipeline reports as a
+`GuardExceptionError` and refuses the navigation. No adapter falls back to
+"signed out".
+
 ### 2. Reactive bridge (push, on auth change)
 
 `AuthBlocRoutingBridge(authBloc, routingBloc, {loginPath, onAuthenticated})`

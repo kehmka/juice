@@ -3,10 +3,10 @@ card_schema: "1.0"
 package: juice_auth_routing
 version: 0.3.0
 requires:
-  juice: ">=2.0.0"
+  juice: ">=2.1.0"
   juice_auth: ">=0.5.0"
   juice_routing: ">=2.0.0"
-updated: 2026-10-13
+updated: 2026-11-10
 ---
 
 # juice_auth_routing — AI card
@@ -67,17 +67,18 @@ bridge.dispose();
 
 | Adapter | Wraps | Behavior |
 |---|---|---|
-| `AuthBlocAuthGuard(authBloc, {loginPath})` | `AuthGuard` | `isAuthenticated: () => authBloc.state.isAuthenticated`. Unauthenticated → `redirect(loginPath, returnTo: targetPath)`. |
-| `AuthBlocGuestGuard(authBloc, {redirectPath})` | `GuestGuard` | Keeps *authenticated* users out of guest-only routes (login/signup) → redirect to `redirectPath` (default `/`). |
-| `AuthBlocRoleGuard(authBloc, roleName)` | `RoleGuard` | `hasRole: () => authBloc.state.hasRole(roleName)`. Lacking the role → block. |
+| `AuthBlocAuthGuard(authBloc, {loginPath, restoreTimeout})` | `AuthGuard` | Waits until the session is known, then `isAuthenticated: () => authBloc.state.isAuthenticated`. Unauthenticated → `redirect(loginPath, returnTo: targetPath)`. |
+| `AuthBlocGuestGuard(authBloc, {redirectPath, restoreTimeout})` | `GuestGuard` | Waits until the session is known, then keeps *authenticated* users out of guest-only routes (login/signup) → redirect to `redirectPath` (default `/`). |
+| `AuthBlocRoleGuard(authBloc, roleName, {restoreTimeout})` | `RoleGuard` | Waits until the session is known, then `hasRole: () => authBloc.state.hasRole(roleName)`. Lacking the role → block. |
 | `AuthBlocRoutingBridge(authBloc, routingBloc, {loginPath, onAuthenticated})` | (subscription) | Watches `authBloc.stream`: lose auth (→ unauthenticated/sessionExpired) → `navigate(loginPath, replace: true)`; gain auth → `onAuthenticated(state)`. Owns no state. |
 
 ## API
 
 ```dart
-class AuthBlocAuthGuard  extends AuthGuard  { AuthBlocAuthGuard(AuthBloc, {String loginPath}); }
-class AuthBlocGuestGuard extends GuestGuard { AuthBlocGuestGuard(AuthBloc, {String redirectPath}); }
-class AuthBlocRoleGuard  extends RoleGuard  { AuthBlocRoleGuard(AuthBloc, String roleName); }
+class AuthBlocAuthGuard  extends AuthGuard  { AuthBlocAuthGuard(AuthBloc, {String loginPath, Duration restoreTimeout});
+                                              static const defaultRestoreTimeout = Duration(seconds: 10); }
+class AuthBlocGuestGuard extends GuestGuard { AuthBlocGuestGuard(AuthBloc, {String redirectPath, Duration restoreTimeout}); }
+class AuthBlocRoleGuard  extends RoleGuard  { AuthBlocRoleGuard(AuthBloc, String roleName, {Duration restoreTimeout}); }
 class AuthBlocRoutingBridge {
   AuthBlocRoutingBridge(AuthBloc, RoutingBloc, {String loginPath, void Function(AuthState)? onAuthenticated});
   void start();    // begin watching
@@ -119,6 +120,14 @@ expect(routing.state.currentPath, '/login');       // bridge evicted on logout
   the login screen if you need to.
 - Guard *throws* propagate as `GuardExceptionError` from `juice_routing` — these
   adapters don't throw for expected denials (they redirect/block).
+- **A session not yet known is not a denial.** `AuthBloc` is `AuthStatus.unknown`
+  until its stored session is restored; each guard WAITS for that
+  (`authBloc.waitFor`, `restoreTimeout`, default 10 s) before it decides, so a
+  cold start stays pending (`routingBloc.state.pending` — draw a splash) and
+  never shows the login page to a signed-in user. If the restore has not
+  answered in time, or the `AuthBloc` closes, the guard THROWS
+  (`TimeoutException` / `StateError` inside a `GuardExceptionError`) and the
+  navigation is refused. It never falls back to "signed out".
 - The bridge must be `start()`-ed after both blocs exist and `dispose()`-d on
   teardown; it leaks a stream subscription otherwise.
 

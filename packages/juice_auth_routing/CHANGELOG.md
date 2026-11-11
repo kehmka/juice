@@ -7,10 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-11-10
 
+### Fixed
+
+- **A signed-in user's cold start landed on the login page.** `AuthBloc` is
+  `AuthStatus.unknown` until a stored session has been restored, and the
+  guards read that as "signed out". juice_routing 2.1.0 runs the guards on
+  the initial path, so an app that built its routing before the restore
+  finished started on `/login?returnTo=/` and stayed there.
+  `AuthBlocAuthGuard`, `AuthBlocGuestGuard` and `AuthBlocRoleGuard` now
+  WAIT until the session is known (`authBloc.waitFor`), then decide: the
+  initial navigation stays pending — draw a splash from `state.pending` —
+  and the login page is never shown to a signed-in user.
+
+### Added
+
+- **`restoreTimeout` on the three guards** (default
+  `AuthBlocAuthGuard.defaultRestoreTimeout`, 10 seconds). A restore that
+  has not answered by then makes the guard throw: juice_routing refuses
+  the navigation with a `GuardExceptionError` carrying the
+  `TimeoutException`. No guard falls back to "signed out".
+- Each guard exposes its `authBloc`.
+
 ### Changed
 
-- **Requires `juice_auth ^0.5.0`.** No API change in this package: a
-  caret on 0.4 does not admit 0.5.
+- **Requires `juice ^2.1.0`** (`waitFor`) and `juice_auth ^0.5.0` (a caret
+  on 0.4 does not admit 0.5).
 
 ## [0.2.0] - 2026-10-14
 

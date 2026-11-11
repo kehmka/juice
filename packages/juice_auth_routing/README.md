@@ -43,6 +43,16 @@ final routing = RoutingBloc.withConfig(RoutingConfig(routes: [
 | `AuthBlocGuestGuard` | authenticated → redirect to `redirectPath` (keeps you out of login/signup) |
 | `AuthBlocRoleGuard` | missing role → block |
 
+**The guards wait for the answer.** `AuthBloc` starts as
+`AuthStatus.unknown` and stays there until a stored session has been
+restored. `juice_routing` runs the guards on the initial path too, so at a
+cold start the navigation stays pending until the session is known —
+draw a splash from `routingBloc.state.pending` — and a signed-in user
+never sees the login page. Each guard takes a `restoreTimeout` (default
+10 seconds); a restore that has not answered by then refuses the
+navigation with a `GuardExceptionError` carrying the `TimeoutException`.
+No guard reads "not yet known" as "signed out".
+
 ## Reactive bridge (auth changes mid-session)
 
 Guards run *on navigation* — they don't evict a user who logs out (or whose

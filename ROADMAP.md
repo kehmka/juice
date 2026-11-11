@@ -428,6 +428,14 @@ throttle and not a delayed send. `AuthBlocRefreshStrategy` is one
 `sendForResult`. Ruled and left as they are: `AuthBlocRoutingBridge` and
 `PermissionBinding`.
 
+**One consequence of a fix, caught before it shipped** (ISSUES #29):
+routing now guards the initial path, and the AuthBloc guards read a
+session still being restored as "signed out" — a signed-in user's cold
+start landed on the login page. The three guards in juice_auth_routing
+wait for the answer (`waitFor`, a `restoreTimeout` of 10 seconds by
+default) and refuse the navigation loudly if it does not come; none
+falls back to "signed out".
+
 **Six defects in published packages, fixed** (ISSUES #24): the auth
 login cooldown that never cleared; the auth_network refresh that waited
 out 30 seconds; the sync flush that burned attempts while offline; the
@@ -457,7 +465,7 @@ stored field to the entry.**
 **Versions, accepted by Kevin 2026-11-10** — juice 2.1.0; forms,
 permissions and auth 0.5.0; paging 0.4.0; network 0.15.0; routing 2.1.0;
 sync, connectivity and realtime 0.3.1; power 0.2.1; storage 3.0.1;
-auth_network and auth_routing 0.3.0; observability 0.6.1. Eight packages
+auth_network and auth_routing 0.3.0; observability 0.6.1. Nine packages
 require `juice ^2.1.0` (the ones whose code uses the new API); the other
 ten published packages are untouched and are not republished.
 

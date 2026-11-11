@@ -440,7 +440,7 @@ different lifecycle does throw. Under the house rule a discarded factory
 is a silent fallback: it should be loud, or there should be an explicit
 `override` for tests (ROADMAP, "Not in this wave" item 2).
 
-### 29. `AuthBlocAuthGuard` treats a session still being restored as signed out
+### 29. ~~`AuthBlocAuthGuard` treats a session still being restored as signed out~~ FIXED in juice_auth_routing 0.3.0 (unpublished as of 2026-11-10)
 
 **File:** `packages/juice_auth_routing/lib/src/auth_bloc_auth_guard.dart`
 
@@ -449,10 +449,34 @@ The guard asks `authBloc.state.isAuthenticated`, which is true only for
 so until a session restore finishes the guard answers "not signed in".
 **This matters more from juice_routing 2.1.0**, where the initial path
 runs the guard pipeline: an app that initializes routing before its
-session restore has finished would send a signed-in user to the login
-page at cold start (read from the code; not reproduced in a test). An
-app that awaits the restore first is unaffected. Not fixed: what a guard should do while the answer is unknown (wait with
-`waitFor`, block, or redirect) is a design decision.
+session restore has finished starts a signed-in user on the login page.
+**Reproduced 2026-11-10** with the real blocs, the restore's provider
+call held open (`packages/juice_auth_routing/test/cold_start_restore_test.dart`):
+the user lands on `/login?returnTo=/` and stays there after the restore
+succeeds, because a guard is asked on navigation only; with
+`AuthBlocRoutingBridge` sending them back, the login page is shown first
+and then home, at every cold start, for as long as the restore takes. An
+app that awaits the restore before it builds routing starts on home and
+never shows the login page (the same file). The guest guard reads the
+same getter; the role guard reads `hasRole`, which is also false while
+there is no user yet.
+
+**Fixed 2026-11-10** (Kevin: "wait for the answer"). The three AuthBloc
+guards await `authBloc.waitFor((s) => s.status != AuthStatus.unknown,
+timeout: restoreTimeout)` before they read their predicate
+(`restoreTimeout`, default 10 seconds, on each constructor). At a cold
+start the initial navigation stays pending until the session is known,
+and the login page is never shown to a signed-in user. A restore that
+has not answered in time, or an `AuthBloc` that closes meanwhile, is not
+caught: the guard throws and juice_routing refuses the navigation with a
+`GuardExceptionError`. No guard falls back to "signed out". The test
+file above now states that behaviour: the wait, a failed restore, the
+timeout, a deep link to the login page, a role-guarded start, and a
+close during the wait.
+
+**Left as it is:** juice_routing's own `AuthGuard`, `GuestGuard` and
+`RoleGuard` take plain callbacks and cannot wait. An app that wires them
+to its own auth by hand has the same decision to make.
 
 ### 30. The family's tests hand-roll `settle()`; nothing outside the core uses the test harnesses
 
@@ -509,8 +533,8 @@ and never read in three packages.
 | Tests | 4 | All Fixed (#15-18) |
 | Docs | 3 | Open (#19-21) |
 | Family debt | 2 | Resolved (#22, #23) |
-| November 2026 review and the 2.1 wave | 12 | 3 Fixed (#24-26; #26's cause open), 9 Open (#27-35) |
-| **Total** | **35** | **23 Fixed or resolved, 12 Open** |
+| November 2026 review and the 2.1 wave | 12 | 4 Fixed (#24-26, #29; #26's cause open), 8 Open (#27, #28, #30-35) |
+| **Total** | **35** | **24 Fixed or resolved, 11 Open** |
 
 ---
 
@@ -525,5 +549,5 @@ and never read in three packages.
 7. ~~**Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages~~ DONE 2026-09-15
 8. ~~**Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)~~ DONE 2026-09-16
 9. ~~**The 2.1 wave:** #24-26 — six published defects, three core paths, the telemetry entry's cost~~ BUILT 2026-11-10, unpublished
-10. **Before or with the 2.1 publish:** #29 — decide what `AuthBlocAuthGuard` does while the session is unknown, now that the initial path is guarded
+10. ~~**Before or with the 2.1 publish:** #29 — decide what `AuthBlocAuthGuard` does while the session is unknown, now that the initial path is guarded~~ DONE 2026-11-10: the guards wait for the answer
 11. **Next:** #27 and #28 (one file, both loud-failure fixes), then #31 and #32 (repository hygiene), then #30 (the family's tests onto the harness)

@@ -26,7 +26,7 @@ juice_routing makes navigation atomic, observable, and testable—routes become 
 
 ```yaml
 dependencies:
-  juice_routing: ^2.0.0
+  juice_routing: ^2.1.0
 ```
 
 ## Quick Example

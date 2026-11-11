@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_paging
-version: 0.3.0
+version: 0.4.0
 requires:
-  juice: ">=2.0.0"
+  juice: ">=2.1.0"
 updated: 2026-10-13
 ---
 
@@ -29,7 +29,7 @@ use `juice_network`.
 
 ```yaml
 dependencies:
-  juice_paging: ^0.3.0
+  juice_paging: ^0.4.0
 ```
 
 ## Construct

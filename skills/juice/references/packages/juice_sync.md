@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_sync
-version: 0.3.0
+version: 0.3.1
 requires:
-  juice: ">=2.0.0"
+  juice: ">=2.1.0"
   juice_storage: ">=1.2.0 <4.0.0"
 updated: 2026-10-13
 ---
@@ -30,8 +30,8 @@ streams use `juice_realtime`.
 
 ```yaml
 dependencies:
-  juice_sync: ^0.3.0
-  juice_storage: ^3.0.0   # for the durable StorageSyncStore
+  juice_sync: ^0.3.1
+  juice_storage: ^3.0.1   # for the durable StorageSyncStore
 ```
 
 ## Construct

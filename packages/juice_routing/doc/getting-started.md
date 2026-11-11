@@ -20,7 +20,7 @@ Add the dependency to your `pubspec.yaml`:
 ```yaml
 dependencies:
   juice: ^2.0.0
-  juice_routing: ^2.0.0
+  juice_routing: ^2.1.0
 ```
 
 Then run:

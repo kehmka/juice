@@ -21,8 +21,8 @@ Add the dependencies to your `pubspec.yaml`:
 ```yaml
 dependencies:
   juice: ^2.0.0
-  juice_network: ^0.14.0
-  juice_storage: ^3.0.0
+  juice_network: ^0.15.0
+  juice_storage: ^3.0.1
 ```
 
 Then run:

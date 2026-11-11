@@ -1,11 +1,11 @@
 ---
 card_schema: "1.0"
 package: juice_auth_network
-version: 0.2.0
+version: 0.3.0
 requires:
-  juice: ">=2.0.0"
-  juice_auth: ">=0.4.0"
-  juice_network: ">=0.14.0"
+  juice: ">=2.1.0"
+  juice_auth: ">=0.5.0"
+  juice_network: ">=0.15.0"
 updated: 2026-10-13
 ---
 
@@ -27,9 +27,9 @@ only bridges them. It adds no events, state, or rebuild groups of its own.
 
 ```yaml
 dependencies:
-  juice_auth_network: ^0.2.0
-  juice_auth: ^0.4.0
-  juice_network: ^0.14.0
+  juice_auth_network: ^0.3.0
+  juice_auth: ^0.5.0
+  juice_network: ^0.15.0
   # juice_storage + dio come in transitively via the two packages above
 ```
 

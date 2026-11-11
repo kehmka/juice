@@ -1,7 +1,7 @@
 ---
 card_schema: "1.0"
 package: juice_routing
-version: 2.0.0
+version: 2.1.0
 requires:
   juice: ">=2.0.0"
 updated: 2026-10-13
@@ -26,7 +26,7 @@ parsing.
 
 ```yaml
 dependencies:
-  juice_routing: ^2.0.0
+  juice_routing: ^2.1.0
 ```
 
 No platform setup. Optionally register `ScopeLifecycleBloc` (core juice) so a

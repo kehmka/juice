@@ -26,7 +26,7 @@ updated: 2026-10-13
 ```yaml
 dependencies:
   juice_theme: ^0.3.0
-  juice_storage: ^3.0.0   # for the default StorageThemePersistence
+  juice_storage: ^3.0.1   # for the default StorageThemePersistence
 ```
 
 ## Construct

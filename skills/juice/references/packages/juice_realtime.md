@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_realtime
-version: 0.3.0
+version: 0.3.1
 requires:
-  juice: ">=2.0.0"
+  juice: ">=2.1.0"
   web_socket_channel: ">=3.0.0"
 updated: 2026-10-13
 ---
@@ -30,7 +30,7 @@ For request/response use `juice_network`; for durable offline writes use
 
 ```yaml
 dependencies:
-  juice_realtime: ^0.3.0
+  juice_realtime: ^0.3.1
 ```
 
 ## Construct

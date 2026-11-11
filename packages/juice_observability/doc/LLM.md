@@ -1,7 +1,7 @@
 ---
 card_schema: "1.0"
 package: juice_observability
-version: 0.6.0
+version: 0.6.1
 requires:
   juice: ">=2.0.0"
 updated: 2026-10-13
@@ -31,7 +31,7 @@ each report. For event/screen tracking use `juice_analytics`.
 
 ```yaml
 dependencies:
-  juice_observability: ^0.6.0
+  juice_observability: ^0.6.1
 ```
 
 ## DevTools mirror + extension

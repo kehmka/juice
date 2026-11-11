@@ -32,7 +32,7 @@ For formatting reach for `intl`; this owns string selection only.
 ```yaml
 dependencies:
   juice_i18n: ^0.3.0
-  juice_storage: ^3.0.0   # for the default StorageLocalePersistence
+  juice_storage: ^3.0.1   # for the default StorageLocalePersistence
 ```
 
 ## Construct

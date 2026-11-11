@@ -1,6 +1,6 @@
 name: juice_power
 description: Battery and charging state as a Juice bloc — plugged-in, charge level and power-saver mode behind a swappable provider seam.
-version: 0.2.0
+version: 0.2.1
 
 repository: https://github.com/kehmka/juice/tree/main/packages/juice_power
 issue_tracker: https://github.com/kehmka/juice/issues

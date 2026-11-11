@@ -2813,7 +2813,7 @@ dependencies:
   flutter:
     sdk: flutter
   juice: ^2.0.0
-  juice_storage: ^3.0.0  # For cache persistence
+  juice_storage: ^3.0.1  # For cache persistence
   dio: ^5.4.0
   crypto: ^3.0.3         # For body hashing
 

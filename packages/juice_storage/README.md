@@ -35,7 +35,7 @@ Local storage, caching, and secure storage for the [Juice](https://pub.dev/packa
 ```yaml
 dependencies:
   juice: ^2.0.0
-  juice_storage: ^3.0.0
+  juice_storage: ^3.0.1
 ```
 
 ### Platform setup — secure storage

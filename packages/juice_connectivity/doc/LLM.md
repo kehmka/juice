@@ -1,9 +1,9 @@
 ---
 card_schema: "1.0"
 package: juice_connectivity
-version: 0.3.0
+version: 0.3.1
 requires:
-  juice: ">=2.0.0"
+  juice: ">=2.1.0"
   connectivity_plus: ">=6.1.0 <8.0.0"
 updated: 2026-10-13
 ---
@@ -32,7 +32,7 @@ feed an `onlineSignal` to `juice_sync`. For the requests themselves use
 
 ```yaml
 dependencies:
-  juice_connectivity: ^0.3.0   # pulls connectivity_plus for the default provider
+  juice_connectivity: ^0.3.1   # pulls connectivity_plus for the default provider
 ```
 
 ## Construct

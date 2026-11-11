@@ -100,7 +100,7 @@ class CounterBloc extends JuiceBloc<CounterState> {
 
 ```yaml
 dependencies:
-  juice: ^2.0.0
+  juice: ^2.1.0
 ```
 
 ## Start Here

@@ -19,9 +19,9 @@ ends while they're sitting on a protected route.
 
 ```yaml
 dependencies:
-  juice_auth: ^0.4.0
-  juice_routing: ^2.0.0
-  juice_auth_routing: ^0.2.0
+  juice_auth: ^0.5.0
+  juice_routing: ^2.1.0
+  juice_auth_routing: ^0.3.0
 ```
 
 ## Guards (checked on navigation)

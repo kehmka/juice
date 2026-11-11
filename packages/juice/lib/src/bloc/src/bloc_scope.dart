@@ -479,7 +479,7 @@ class BlocScope {
 
     if (JuiceLoggerConfig.logs(Level.info)) {
       JuiceLoggerConfig.logger
-          .record(const JuiceTelemetry(JuiceTelemetryKind.allBlocsEnded));
+          .record(JuiceTelemetry(JuiceTelemetryKind.allBlocsEnded));
     }
   }
 

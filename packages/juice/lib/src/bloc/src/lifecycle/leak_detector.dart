@@ -65,8 +65,8 @@ class LeakDetector {
     assert(() {
       _enabled = true;
       if (JuiceLoggerConfig.logs(Level.info)) {
-        JuiceLoggerConfig.logger.record(
-            const JuiceTelemetry(JuiceTelemetryKind.leakDetectionEnabled));
+        JuiceLoggerConfig.logger
+            .record(JuiceTelemetry(JuiceTelemetryKind.leakDetectionEnabled));
       }
       return true;
     }());

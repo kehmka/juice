@@ -163,7 +163,7 @@ void main() {
 
   group('record (juice 2.0.0 telemetry)', () {
     test('a telemetry entry posts juice:<type> with its fields', () {
-      logger.record(const JuiceTelemetry(
+      logger.record(JuiceTelemetry(
         JuiceTelemetryKind.stateEmitted,
         status: EmissionKind.update,
         bloc: 'FooBloc',

@@ -1,4 +1,4 @@
-# Results — the lab record, 2026-09-28 to 2026-10-13
+# Results — the lab record, 2026-09-28 to 2026-11-10
 
 ## Where it stands
 
@@ -6,8 +6,8 @@ The current number for each claim, the machine and section it comes from,
 and its caveat. Everything below this table is the lab record, in the
 order it was measured; later sections supersede earlier ones where they
 say so. Versions: juice 1.9.1 for §1–§8, 1.10.0 for §9–§13, **2.0.0** (the
-`v2` tree, then `main`) for §14–§17; bloc 9.2.1 / flutter_bloc 9.1.1;
-flutter_riverpod 3.4.3. Method and the tie rule: `README.md`. Every Mac and
+`v2` tree, then `main`) for §14–§17, **2.1.0** (the `bloc-to-bloc` branch)
+for §18; bloc 9.2.1 / flutter_bloc 9.1.1; flutter_riverpod 3.4.3. Method and the tie rule: `README.md`. Every Mac and
 phone run in this record is on Flutter 3.44.4 against the 3.47.5 pin (a
 drift run); the pinned numbers are the Linux ones.
 
@@ -18,6 +18,7 @@ drift run); the pinned numbers are the Linux ones.
 | **Frame cost, wide** (built to hurt groups) | against the selector forms groups hold (2.0.0 phone: JuiceSelector+groups 692, groups 699, BlocSelector 751, Riverpod select 840 µs p50; naive 1,522–1,712); against Riverpod's **family** form a tie band, no winner — the Mac has family vs groups at 1.1% raw, where §11 had 16%, and the phone has family at 804 raw / 679 probe-normalized beside groups' 699 | §16 (2.0.0, Mac), §17 (2.0.0, phone), §10 (phone, pinned), §11 (family, Mac + phone) | drift toolchain both; the family variant's probe ran high on the phone (434 vs 384–407) so its raw number is the suspect one |
 | **Dispatch** (sequential: await each update) | 2.0.0 (§15–§17; drift toolchain): the dispatch scenario's release-default send is **0.73 µs on the Mac against bloc's 1.04 and Riverpod's 0.42, and 0.63 on the phone against bloc's 1.03**; with every telemetry record built, 1.00 / 0.88 — a tie with bloc on both. The last recorded befores (3.12 Mac, 1.93 phone) predate 1.10.0, whose default-logger declaration took the first third (§13); the rest is 2.0.0's. In BURST (fire all, await the last) bloc stays ahead: Mac 0.83 vs Juice 1.94, phone 0.85 vs 1.46 (a tie by range there). On the bare breakdown bloc (its own history, not a bloc comparison) a send is 0.66 µs with the chatter on and 0.44 off, from 2.83 and 1.95 on the `v2` tree before the fixes. Earlier: Juice ~3× bloc per event on desktops, 2.6× on the phone (1.87 vs 0.76 µs); ~1.5× with the chatter not built (§3, §6, §9, §13). The burst-slower-than-sequential number was the 20,000-deep in-flight chain (§12); at 2.0.0 the 20k burst is 1.93 µs per send | §15 (2.0.0, Mac), §3 (Linux), §6 (phone), §9 (knob), §12 (burst), §13 (default), §14 (hops) | §15 is a drift-toolchain Mac run: the pinned Linux and phone numbers are taken at publish time. What remains: the two awaited async frames (~0.5 µs), the status object and the broadcast add — the shape of the design |
 | **Where a send goes** | 2.0.0 (§15–§17): of the 0.44 µs release-default send, the emission is 0.23 (the raw store 0.02 of it) and the two awaited async frames are the `2 awaited async hops` row (§17b); the three telemetry records and the type-name memo are what the chatter-on send adds (0.66 − 0.44 = 0.22 µs, records included). Earlier: telemetry context ~40%, async executor ~25%, fresh use-case instance ~6% (§4, §6) | §15–§17 (Mac, phone), §4 (Linux), §6 (phone) | what remains is the shape of the design: an awaited use case and a broadcast add |
+| **2.1.0 against 2.0.0** | the numbers above hold on the Mac: release-default send 0.72 µs in the dispatch scenario (0.73), 0.99 with every record built (1.00); 0.44 / 0.66 on the bare breakdown bloc (0.43 / 0.63); the tuned Juice and Riverpod frame forms tie and BlocSelector trails by 14%. One regression was found and fixed before release: three fields added to the telemetry entry tripled the cost of building one (0.05 → 0.18 µs for three), and a thirtieth stored field alone is enough | §18 (Mac) | drift toolchain; no phone run for 2.1.0 yet; the parent-rebuild row moved 16% between two runs of the same code that day, so its +8% on §16 is inside its run-to-run noise |
 | **The knob, and the default** | a logger declares what it keeps and nothing below it is built; the default logger keeps nothing in release, so the saving is the default (§13; `DefaultJuiceLogger(logger:)` with a caller's `Logger` declares everything). In 2.0.0 the chatter is 0.22 µs of a 0.66 µs send on the Mac, 0.14 of 0.50 on the phone (§16, §17) | §9, §13, §16, §17 | ranges do not overlap |
 
 Superseded and kept as measured: §5's and §6's frame tables (the phone's
@@ -1201,3 +1202,182 @@ four. Same machines, same tree plus the review's fixes, 5 rounds, median
   the emission (0.16 / 0.07). The rows are measured alone and do not sum
   to the send (the loops carry their own overhead); read them as
   magnitudes.
+
+---
+
+## 18. The 2.1.0 run — Mac, and the thirtieth field (2026-11-10)
+
+The whole suite (`tool/run.sh`) on the Mac, twice in one evening, on the
+`bloc-to-bloc` branch: juice 2.1.0 as it will ship — `Reaction`,
+`waitFor`, `sendAfter`, `singleflight`, the run id on every emission's
+telemetry entry. Flutter 3.44.4, a drift run, as every Mac run in this
+record. bloc 9.2.1 / flutter_bloc 9.1.1, flutter_riverpod 3.4.3. "2.0.0"
+is §16–§17b's committed `results/*_macos.json`. The first run found a
+regression; the second is the same tree with it fixed, and is what the
+two files now hold. The first run's files were not kept: its numbers are
+quoted here.
+
+### Rebuild counts
+
+Unchanged and deterministic (§1, §10).
+
+### The thirtieth field
+
+The first run's breakdown, against 2.0.0's:
+
+| layer | 2.0.0 | first run |
+|---|---:|---:|
+| telemetry records (3 per event) | 0.056 [0.052–0.121] | **0.180** [0.179–0.212] |
+| send · fresh instance (chatter built) | 0.634 [0.632–0.659] | **0.782** [0.777–0.801] |
+| send · fresh, chatter not built (release default) | 0.427 [0.416–0.448] | 0.425 [0.413–0.453] |
+
+Nothing a release-default app runs had moved. A send with every record
+built had, by 0.15 µs, and the synthetic row that builds three entries
+and nothing else had tripled. The breakdown app was then built against
+`packages/juice` at four commits, in a copy outside the repository:
+
+| built against | records, 3 per event | send, chatter built |
+|---|---:|---:|
+| the 2.0.0 wave tag | 0.055 [0.050–0.084] | 0.647 [0.638–0.674] |
+| step 2 (run ids on emissions) | 0.052 [0.051–0.085] | 0.625 [0.618–0.631] |
+| step 3a (`Reaction`) | **0.181** [0.175–0.186] | **0.777** [0.765–0.783] |
+| branch head | 0.176 [0.170–0.179] | 0.768 [0.762–0.790] |
+
+Step 3a added three stored fields to `JuiceTelemetry`: `reaction`,
+`causeExecutionId`, `hopDepth`. The entry had 29 at 2.0.0. On the step 2
+tree, with dummy `int?` fields added and one reachable call site setting
+them so the compiler keeps them:
+
+| stored fields | records, 3 per event | send, chatter built |
+|---|---:|---:|
+| 29 (as 2.0.0) | 0.054 [0.052–0.064] | 0.645 [0.637–0.651] |
+| 30 | **0.177** [0.175–0.207] | **0.792** [0.774–0.812] |
+| 31 | 0.180 [0.178–0.209] | 0.789 [0.783–0.816] |
+| 32 | 0.185 [0.177–0.214] | 0.778 [0.773–0.799] |
+
+One field is the whole of it: 29 is fast, 30 is three times the cost, and
+31 and 32 cost no more than 30. **Why is not established.** A standalone
+`dart compile exe` of a class with the same fields shows no difference
+between 29 and 32 (0.016 µs for three, either way); the step shows in the
+Flutter AOT build of the benchmark app. This record states the
+measurement and not a mechanism.
+
+The fix keeps the entry under the edge: the five relay-era facts
+(`sourceBloc`, `sourceEvent`, `localEvent`, `destBloc`, `relay`) and the
+three reaction facts are held in one private object beside the entry,
+allocated only for an entry that sets one. `JuiceTelemetry` stores 25
+fields; its getters and constructor parameters are unchanged, and its
+constructor is no longer `const`. The count is pinned by
+`packages/juice/test/bloc/telemetry_record_shape_test.dart`, which fails
+past 29.
+
+### Breakdown — the second run, µs per op, median of 5 [min–max]
+
+| layer | 2.0.0 | first run | fixed |
+|---|---:|---:|---:|
+| stateManager.emit | 0.020 | 0.017 | 0.017 [0.016–0.026] |
+| statusEmitter.emitUpdate | 0.161 | 0.157 | 0.177 [0.126–0.222] |
+| telemetry maps (3 per event) | 1.195 | 1.148 | 1.326 [1.124–1.812] |
+| telemetry records (3 per event) | 0.056 | 0.180 | **0.052** [0.045–0.057] |
+| 2 awaited async hops | 0.368 | 0.353 | 0.357 [0.345–0.400] |
+| send · reused instance (chatter built) | 0.650 | 0.796 | **0.658** [0.647–0.696] |
+| send · fresh instance (chatter built) | 0.634 | 0.782 | **0.658** [0.635–0.674] |
+| send · fresh, chatter not built (release default) | 0.430 | 0.415 | 0.432 [0.413–0.445] |
+| send · fresh, default logger, no knob set | 0.427 | 0.425 | 0.435 [0.417–0.465] |
+| send · fresh, restartable, chatter not built | 0.984 | 0.968 | 1.005 [0.981–1.124] |
+| send · fresh · burst n=20,000 | 1.928 | 1.700 | 1.459 [1.433–1.859] |
+
+### Dispatch — µs per update, 100 cells, 20,000 updates, median of 5 [min–max]
+
+| variant | sequential 2.0.0 → 2.1.0 | burst 2.0.0 → 2.1.0 |
+|---|---:|---:|
+| juice · default logger (the release default: nothing built) | 0.73 → **0.72** [0.72–0.82] | 1.94 → 1.52 [1.38–2.06] |
+| juice · silent logger (chatter BUILT, kept by nobody) | 1.00 → **0.99** [0.97–1.00] | 1.85 → 1.71 [1.66–2.20] |
+| bloc | 1.04 → 1.40 [1.09–1.68] | 0.83 → 0.87 [0.84–2.34] |
+| riverpod | 0.42 → 0.41 [0.40–0.47] | 0.71 → 0.69 [0.65–0.88] |
+
+Harness verdicts, sequential: Riverpod faster than Juice (default logger)
+by 44%; Juice (default logger) faster than Juice (silent logger) by 26%;
+Juice (silent logger) faster than bloc by 30%, ranges apart. In burst all
+four overlap: ties. bloc did not change between the two columns and its
+sequential number did (1.04, then 1.95 in the first run and 1.40 in the
+second): on this machine, on this day, bloc's sequential row is the
+noisy one. §16's "with every record built Juice ties bloc" is the claim
+this record keeps; this run does not overturn it in bloc's favour, and
+one noisy row is not grounds to claim more.
+
+### Frame cost, cells — p50 build µs, N = 1,000, 300 updates, median of 3 [min–max], probe-normalized
+
+| variant | builds/update | 2.0.0 | first run | fixed | normalized |
+|---|---:|---:|---:|---:|---:|
+| juice · groups | 1 | 785 | 996 | 807 [775–823] | 746 |
+| juice · JuiceSelector + groups | 1 | 774 | 1,014 | 770 [714–779] | 702 |
+| juice · JuiceSelector | 1 | 791 | 945 | 777 [770–791] | 719 |
+| riverpod · family | 1 | 781 | 922 | 742 [688–755] | 679 |
+| riverpod · select | 1 | 811 | 1,020 | 758 [758–791] | 689 |
+| bloc · BlocSelector | 1 | 962 | 1,203 | 943 [934–1,121] | 887 |
+| juice · no groups | 1,000 | 2,148 | 2,347 | 1,966 [1,906–2,108] | 1,951 |
+| riverpod · watch | 1,000 | 2,031 | 2,166 | 1,869 [1,814–1,922] | 1,859 |
+| bloc · BlocBuilder | 1,000 | 2,340 | 2,576 | 2,137 [2,090–2,169] | 2,137 |
+
+The first run was 7 to 31% above 2.0.0 for every framework, bloc and
+Riverpod included, neither of which changed: the machine, an hour of test
+suites behind it. The second run is back in §16's band. Verdicts on it:
+Riverpod family ahead of Riverpod select by 2.1% raw with ranges apart, a
+tie normalized; select, JuiceSelector + groups, JuiceSelector and groups
+tie in a chain (1.6%, 0.9%, 3.7%); **groups ahead of bloc's BlocSelector
+by 14%, ranges apart** (16% normalized). The tuned Juice and Riverpod
+forms tie and BlocSelector trails, as in §16.
+
+### Frame cost, wide — N = 1,000, K = 50 built to hurt groups
+
+| variant | builds/update | 2.0.0 | first run | fixed | normalized |
+|---|---:|---:|---:|---:|---:|
+| wide · riverpod · family | 50 | 1,334 | 1,586 | 1,039 [999–1,259] | 1,039 |
+| wide · juice · JuiceSelector + groups | 50 | 1,457 | 1,638 | 1,348 [1,339–1,355] | 1,089 |
+| wide · juice · groups | 50 | 1,349 | 1,759 | 1,375 [1,310–1,426] | 1,127 |
+| wide · bloc · BlocSelector | 50 | 1,672 | 1,820 | 1,445 [1,443–1,730] | 1,214 |
+| wide · riverpod · select | 50 | 1,531 | 1,883 | 1,573 [1,523–1,573] | 1,304 |
+| wide · juice · no groups | 1,000 | 2,500 | 2,976 | 2,359 [2,261–2,472] | 2,164 |
+| wide · riverpod · watch | 1,000 | 2,742 | 2,740 | 2,323 [2,256–2,371] | 2,100 |
+| wide · bloc · BlocBuilder | 1,000 | 2,802 | 3,131 | 2,500 [2,430–2,550] | 2,302 |
+
+Raw, Riverpod's family form is ahead of JuiceSelector + groups by 23%
+with ranges apart. Its clock probe ran low in this run (499 µs against
+594–618 for the other tuned forms), and normalized the two tie (4.6%,
+ranges overlapping), as do JuiceSelector + groups and groups (3.3%).
+Groups is ahead of BlocSelector by 7% normalized, ranges apart;
+BlocSelector and Riverpod select tie. §16's reading stands: against the
+family form a tie band, against the selector forms groups hold.
+
+### Frame cost, parent rebuild
+
+| variant | leaves | 2.0.0 | first run | fixed |
+|---|---:|---:|---:|---:|
+| parent · juice · groups | 1,000 | 1,962 [1,960–1,967] | 1,816 [1,801–1,857] | 2,113 [2,049–2,188] |
+
+The widget code under this row did not change between the two runs of
+the day, and the row moved 16% between them, in the opposite direction to
+every other frame row. Its within-run ranges are tight and its
+run-to-run spread is not. The +8% against 2.0.0 is inside that spread and
+is not a finding; neither was the first run's −7%.
+
+### Reading
+
+- **2.1.0 costs what 2.0.0 cost.** A release-default send is 0.72 µs in
+  the dispatch scenario (0.73) and 0.44 on the bare breakdown bloc
+  (0.43); with every record built, 0.99 (1.00) and 0.66 (0.63). The probe
+  a test flow reads, the cause a reaction leaves on an event, and the
+  run id on an emission's entry did not show up in the send.
+- **The telemetry entry sits near an edge.** Twenty-nine stored fields
+  cost a third of what thirty do. The entry now stores 25, with the facts
+  only a few kinds carry held beside it; a test pins the count. The
+  reason for the step is unknown, so the rule is the measured one: time
+  the breakdown before adding a stored field to the entry.
+- **A slow machine moves every row together, and the harness cannot say
+  so.** The first run's cell rows were 7 to 31% up across three
+  frameworks. Comparing a run with an earlier day's is a comparison of
+  days unless a control moved with it; bloc's and Riverpod's rows are the
+  control.
+- **What this run is not:** pinned, and not the phone. The clock-pinned
+  iPhone numbers for 2.1.0 are not taken; §17 remains the phone's record.

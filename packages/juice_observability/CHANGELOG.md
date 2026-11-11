@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-11-10
+
+- The DevTools panel colours a timeline row by its level first: only an
+  error-level entry is drawn in the error colour, a warning is amber, and
+  then the type picks a calm tone. The colour switch listed six types and
+  painted every other one as an error, so nine info and warning types
+  showed red (`use_case_superseded`, `state_emission_superseded`,
+  `stream_binding`, the retry kinds).
+- "Leak detection enabled" is not a problem: `leak_detection` leaves the
+  panel's problem names (the only entry juice has ever posted under that
+  type is that info line).
+- juice 2.1.0's new kinds (`event_dropped`, `event_joined`, the
+  `reaction` entries) post like every other entry, with their own level.
+  The extension bundle is rebuilt for this release (`tool/publish.sh`).
+
 ## [0.6.0] - 2026-10-14
 
 - Require `juice ^2.0.0`. `DevtoolsJuiceLogger` implements the new

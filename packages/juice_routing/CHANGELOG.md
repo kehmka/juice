@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-10
+
+### Fixed
+
+- **The initial path runs the guard pipeline.** Initialization seeded the
+  stack with the initial path without running global or route guards, so
+  a guarded home page was shown to anyone. `InitializeRoutingEvent` now
+  resolves it through the guards: redirects are followed and guarded in
+  turn, and a blocked, throwing, looping or unknown initial path seeds
+  nothing and records the error.
+- **A redirect carries `returnTo`.** `RedirectResult.returnTo` was
+  dropped, although the docs tell a login flow to read
+  `state.current.query['returnTo']`. A redirect now lands at
+  `<target>?returnTo=<encoded destination>`; an explicit `returnTo`
+  overwrites one already in the redirect path.
+- A redirected navigation that lands on the current location is a no-op,
+  and the same path with a different query replaces the top entry (a
+  cold-start platform report racing initialization no longer stacks a
+  second login page).
+
+### Changed
+
+- **Initialization takes an async hop and emits a pending state**, even
+  with no guards. A test that read the stack synchronously after
+  initializing must await it.
+
 ## [2.0.0] - 2026-10-14
 
 ### Changed

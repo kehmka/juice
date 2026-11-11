@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-10
+
+### Changed
+
+- **Requires `juice ^2.1.0`, `juice_auth ^0.5.0` and
+  `juice_network ^0.15.0`.**
+- **`AuthBlocRefreshStrategy.refresh` is one
+  `sendForResult(RefreshTokenEvent())`.** It no longer watches the bloc's
+  stream for the `isRefreshing` edge; a refresh requested while one runs
+  joins it. It still answers null on every failure — no refresh token,
+  the provider refused, the bloc closed, the timeout — which is the
+  interceptor's contract.
+- Doc examples build `FetchBloc` with `AuthBlocIdentityProvider`, which
+  juice_network 0.15.0 requires beside an `AuthInterceptor`.
+
+### Fixed
+
+- **The refresh strategy waited the full 30 seconds when the refresh
+  failed.** A refresh with no refresh token fails before `isRefreshing`
+  is ever set, so the edge the strategy waited on never came. It now
+  finishes as soon as the refresh fails.
+
 ## [0.2.0] - 2026-10-14
 
 ### Changed

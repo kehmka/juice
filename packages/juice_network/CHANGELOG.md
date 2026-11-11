@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-11-10
+
+### Breaking
+
+- **An `AuthInterceptor` without an `authIdentityProvider` is refused.**
+  The interceptor adds its header after the cache key is computed, so
+  without an identity two users shared cached and in-flight responses;
+  the docs called the provider required and nothing enforced it.
+  `FetchBloc.withConfig` throws `ArgumentError`; `InitializeFetchEvent`
+  and `ReconfigureInterceptorsEvent` emit a failure with a `StateError`
+  and leave the bloc uninitialized or its interceptors unchanged.
+  *Migration:* pass an `authIdentityProvider` (with juice_auth,
+  `AuthBlocIdentityProvider` from juice_auth_network).
+
+### Fixed
+
+- **`FetchConfig.maxCacheSize` is applied.** It never reached the
+  `CacheManager`, which kept its 50 MB default.
+  `CacheManager.maxCacheSize` is a settable field. The cap still counts
+  bytes written this session only.
+- **Explicit credentials scope the cache key.** A request with its own
+  `Authorization` header and no identity provider was scoped by the
+  literal `bearer`, so two tokens shared responses. The scope is now
+  `cred-` plus the first 16 hex digits of the header's SHA-256; the
+  header name is matched case-insensitively, also for the
+  `cacheAuthResponses` gate.
+
 ## [0.14.1] - 2026-11-08
 
 ### Fixed

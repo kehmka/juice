@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-10
+
+### Changed
+
+- **Requires `juice ^2.1.0`.**
+- **`RefreshPageEvent` is `ResultEvent<void>` and `singleflight`** (it was
+  `droppable`). `await paging.sendForResult(RefreshPageEvent())` completes
+  when the first page is in state and throws what the fetcher threw; a
+  refresh requested while one runs joins it — one fetch.
+- **A refresh during a load-more is refused with an error when awaited.**
+  It is still not run and still emits nothing, and `refresh()` is still a
+  no-op then; `sendForResult(RefreshPageEvent())` now throws a
+  `StateError` saying a page is loading.
+
 ## [0.3.0] - 2026-10-14
 
 ### Changed

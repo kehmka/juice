@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-11-10
+
+### Fixed
+
+- **Nothing is sent while the online signal says offline.** An offline
+  flush burned attempts into the dead letter. Every flush trigger — the
+  periodic retry, the backoff, a manual flush — is skipped with a log
+  line while `state.online` is false, a pass already running stops before
+  its next send when the link drops, and the online edge starts a new
+  flush. Unchanged: `online` defaults to true, so the window before the
+  first signal counts as online, and a send already in flight when the
+  link drops still spends one attempt.
+
+### Changed
+
+- **Requires `juice ^2.1.0`.** The backoff is the bloc's own keyed
+  `sendAfter` and the periodic retry a bound stream. No API change.
+
 ## [0.3.0] - 2026-10-14
 
 ### Changed

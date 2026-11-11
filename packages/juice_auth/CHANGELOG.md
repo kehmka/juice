@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-10
+
+### Changed
+
+- **Requires `juice ^2.1.0`.**
+- **`RefreshTokenEvent` is `ResultEvent<AuthSession>` and `singleflight`**
+  (it was `droppable`). `await auth.sendForResult(RefreshTokenEvent())`
+  returns the refreshed session or throws `NoRefreshTokenError` /
+  `RefreshFailedError`; a refresh requested while one runs joins it — one
+  provider call, every caller answered. `refreshToken()` is unchanged.
+- The token-refresh timer is the bloc's own keyed `sendAfter`.
+
+### Fixed
+
+- **A login cooldown that had run out never cleared.** `loginAttempts`
+  stayed at the maximum, so the first attempt after every cooldown armed
+  the next one and no attempt reached the provider again. An expired
+  cooldown now clears itself and the count before the attempt proceeds.
+  The attempt after the Nth failure still arms the cooldown without
+  reaching the provider.
+
 ## [0.4.0] - 2026-10-14
 
 ### Changed

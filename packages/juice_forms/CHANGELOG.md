@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-10
+
+### Breaking
+
+- **`ValidateFormEvent` and `SubmitFormEvent` have no `completion:`
+  parameter.** They are `ResultEvent<bool>`: the outcome is the event's
+  typed result. *Migration:* `await forms.sendForResult(SubmitFormEvent())`
+  in place of a completer.
+
+### Changed
+
+- **Requires `juice ^2.1.0`.**
+- **`sendForResult(ValidateFormEvent())` and
+  `sendForResult(SubmitFormEvent())`** return whether the form is valid /
+  was submitted. `sendForResult(SubmitFormEvent())` returns false for an
+  invalid form and THROWS when no handler is configured or the handler
+  threw.
+- **`validateNow()` and `submitNow()` are deprecated** for `sendForResult`.
+  `submitNow()` still answers false where the new form throws.
+- The per-field async-validation debounce is the bloc's own keyed
+  `sendAfter`. `FormsBloc` no longer overrides `close`. A replaced
+  debounce is recorded (`event_dropped`, info); it was silent.
+
 ## [0.4.0] - 2026-10-14
 
 ### Changed

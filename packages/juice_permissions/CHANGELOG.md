@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-10
+
+### Breaking
+
+- **`PermissionsBloc.requestsInFlight` is gone.** A request that arrives
+  while the same permission is prompting joins it (below); nothing needs
+  the public map of completers.
+
+### Changed
+
+- **Requires `juice ^2.1.0`.**
+- **`RequestPermissionEvent` is `ResultEvent<PermissionStatus>`** and
+  `singleflight`, keyed by its permission:
+  `await permissions.sendForResult(RequestPermissionEvent(p))` returns the
+  status, and a second request for the same permission while the first
+  prompts joins it — one prompt, both callers answered.
+- **`RequestPermissionsEvent` is
+  `ResultEvent<Map<JuicePermission, PermissionStatus>>`.** An empty set
+  emits once, rebuilding nothing, and returns an empty map.
+- The void convenience methods are unchanged.
+
 ## [0.4.0] - 2026-10-14
 
 ### Changed

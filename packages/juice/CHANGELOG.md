@@ -1,5 +1,119 @@
 # Changelog
 
+## [2.1.0] - 2026-11-10
+
+Bloc to bloc. A bloc can react to another bloc's state, wait for it, ask it
+for a typed answer that several callers share, and send itself an event
+later — each as a declared, owned, recorded thing in place of a
+`stream.listen` and a `Timer`. And a test can hold several blocs at once
+and know when all of them are idle. The migration from the relays is
+[moving-from-relays-to-reactions.md](https://github.com/kehmka/juice/blob/main/doc/guides/moving-from-relays-to-reactions.md) (in the repository, not in this archive).
+
+### Added
+- **`Reaction` and `JuiceBloc.react`** — one bloc's state change becomes
+  another bloc's event. Three forms: `Reaction.becomes(predicate)` (false
+  to true), `Reaction.changes(select)` (the selected value is no longer
+  `==`), `Reaction.edge((oldState, state) => …)`. `becomes` and `changes`
+  take a REQUIRED `atAttach:` — `AtAttach.skip` or `AtAttach.catchUp` — so
+  what the state at attach means is said, never assumed; `edge` has no
+  meaning at attach and takes none. The destination owns the reaction and
+  ends it at the start of its own close; `react` returns a
+  `ReactionBinding` for an early detach. A reaction sees state and nothing
+  else, sends on a microtask after the emission, and sends only an event
+  its bloc has a use case for. A chain past `Reaction.maxHops` (8) is
+  refused and recorded as an error; the reaction stays attached. A throw
+  from a predicate, a selector or `send` is recorded and the reaction
+  stays attached. A source resolved by type with a leased lifecycle
+  throws; a source that closes ends the reaction.
+- **`JuiceBloc.waitFor(predicate, timeout:)`** — the state the predicate
+  first holds for: the current one, or the next emission's. The timeout is
+  required and throws `TimeoutException`; a closed or closing bloc, or a
+  close while pending, throws `StateError`; a throwing predicate fails the
+  wait and never unwinds into the use case that emitted. Inside a
+  `restartable` run the wait belongs to that run and fails with a
+  `CancelledException` when the run is superseded.
+- **`sendAfter(event, delay, {key})` and `cancelSend(key)`** — the bloc
+  sends an event after a delay and owns the timer. A later `sendAfter`
+  with the same key replaces the pending one, which is a debounce;
+  `cancelSend` cancels by name; the returned `DelayedSend` has `cancel`,
+  `isPending` and `key`. A zero delay sends on the next timer turn; a
+  negative one throws `ArgumentError`. A close discards every pending
+  send and records each; `sendAfter` on a closing bloc is refused the
+  same way. A chain of reactions does not continue through a delay.
+- **`EventConcurrency.singleflight`** — an event that arrives while one
+  of its kind runs JOINS it: its `send` completes with the running one's,
+  `sendAndWait` answers with the running one's status, `sendForResult`
+  returns its value or throws its error. One provider call, however many
+  callers. Events join by type; `joinKey:` on `UseCaseBuilder` and
+  `UseCaseBuilder.typed` narrows that to events whose keys are equal. A
+  `joinKey` with any other mode throws at construction.
+- **`juiceFlowTest`, `runJuiceFlow` and `JuiceFlow`**
+  (`package:juice/testing.dart`) — a test of several blocs and the
+  reactions between them. `flow.send` sends and waits until EVERY bloc is
+  idle (a queued event, a pending reaction hop and a pending `sendAfter`
+  all count); `flow.settle` waits alone; `flow.expect` consumes what one
+  bloc emitted; `flow.expectErrors` claims recorded errors; `flow.add`
+  and `flow.register` hand it blocs. The flow owns `BlocScope` and fails
+  the test on an emission nobody consumed, work still in flight, a
+  refused reaction chain or an unclaimed error. A settle not idle after
+  five seconds fails, naming what is in flight.
+- **`juiceFlowTest(virtualTime: true)` and `flow.elapse(duration)`** — the
+  same test with every timer virtual: a five-minute `sendAfter` is tested
+  in no time. A virtual-time test that waits on real I/O fails at once,
+  saying so. `fake_async` is a dependency of the package for this; only
+  `testing.dart` imports it.
+- **Telemetry.** Every status a run emits carries the run's `executionId`
+  on its entry. New kinds: `eventDropped` (a `droppable` drop, a replaced
+  or cancelled `sendAfter` — these were silent), `eventJoined`,
+  `reactionFired`, `reactionRefused`, `reactionEnded`, `reactionFailed`.
+  New fields: `reaction`, `causeExecutionId`, `hopDepth` — a run that a
+  reaction caused names the run it came from. `doc/TELEMETRY.md` has them.
+
+### Deprecated
+- **`StateRelay`, `StatusRelay` and `EventSubscription`**, for `Reaction`;
+  removed in 3.0.0. Their code is untouched. Two uses have no drop-in
+  port and the deprecation messages say so: a relay that maps a waiting
+  or failure STATUS to an event (put the fact in state, or return a typed
+  result with `sendForResult`), and a subscription keyed on a source
+  EVENT type (react to the state that event produces). The guide above
+  has each shape.
+
+### Changed
+- **Two enums gained values**, so an exhaustive `switch` over either
+  needs the new cases: `EventConcurrency.singleflight`, and the six
+  `JuiceTelemetryKind`s above.
+- **`JuiceTelemetry`'s constructor is no longer `const`.** The facts only
+  a relay's, a subscription's or a reaction's entry carries are held in
+  one object beside the entry, built only when one is set (see
+  Performance). Getters, constructor parameters and `toMap()` are
+  unchanged. *Migration:* drop `const` from a `const JuiceTelemetry(…)`.
+- **`sendForResult` throws a use case's own refusal.** A use case that
+  fails its `ResultEvent` and emits nothing — a refusal that should not
+  touch the stream — now surfaces that error to the caller, where 2.0.0
+  reported "finished without a terminal status". An event succeeded
+  without an emission still fails loud.
+- **A superseded `restartable` run that ends on a `CancelledException`
+  is not a failure**: its span closes as completed and superseded, and
+  the error handler is not called. Any other throw from a superseded run
+  still is one.
+- **`BlocScope.reset()` clears every registration even when a close
+  threw** (the error still reaches the caller). `endAll` is unchanged.
+
+### Fixed
+- **A bloc that closed after a result event's first status left
+  `sendForResult` waiting out its timeout.** The close fences the run, so
+  the value never came. The wait now fails at the close with a
+  `StateError`, as a wait on the status already did.
+
+### Performance
+- **A send costs what it did in 2.0.0**
+  ([RESULTS §18](https://github.com/kehmka/juice/blob/main/benchmarks/RESULTS.md),
+  the benchmark Mac, drift toolchain): 0.72 µs release default and 0.99
+  with every telemetry record built, against 0.73 and 1.00. On the way
+  the run found that `JuiceTelemetry` sat on an edge: 29 stored fields
+  cost a third of what 30 do to build. The three reaction fields crossed
+  it; the entry now stores 25 and a test pins the count.
+
 ## [2.0.0] - 2026-10-14
 
 The breaking set, shipped together (ROADMAP "The 2.0 docket"). Each entry

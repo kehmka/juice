@@ -367,6 +367,138 @@ Still parked: `juice_llm` and `juice_llm_llamacpp` use `## 0.4.1` CHANGELOG
 headings where the other 23 use `## [0.4.1] - date`; a CHANGELOG-top check
 would want one style first.
 
+## Found in the November 2026 review and the 2.1 wave
+
+### 24. ~~Six defects in published packages~~ FIXED in the 2.1 wave (unpublished as of 2026-11-10)
+
+Each was confirmed by reading the code, pinned by tests, and fixed in one
+commit.
+
+| Package | Defect | Fixed in | Commit |
+|---|---|---|---|
+| `juice_auth` | A login cooldown that had run out never cleared: the next attempt armed another, and no attempt reached the provider again | 0.5.0 | `dc877ff` |
+| `juice_auth_network` | The refresh strategy waited the full 30 s when the refresh failed before `isRefreshing` was ever set | 0.3.0 | `14ee728` |
+| `juice_sync` | Flushes ran while offline and burned attempts into the dead letter | 0.3.1 | `d5cb3f2` |
+| `juice_routing` | The initial path ran no guards, so a guarded home page was shown to anyone; `RedirectResult.returnTo` was dropped | 2.1.0 | `852e83d` |
+| `juice_network` | `FetchConfig.maxCacheSize` never reached the cache manager | 0.15.0 | `028d55d` |
+| `juice_network` | Two bearer tokens shared cached and in-flight responses; an `AuthInterceptor` without an identity provider was accepted | 0.15.0 | `028d55d` |
+
+Still as they were, by decision at the time: juice_sync's `online`
+defaults to true, so the window before the first signal counts as
+online; juice_network's cache cap counts bytes written this session
+only.
+
+### 25. ~~Core: three silent or stuck paths~~ FIXED in juice 2.1.0
+
+- **A bloc that closed after a result event's first status left
+  `sendForResult` waiting out its timeout.** Found when
+  `AuthBlocRefreshStrategy` was ported to one `sendForResult`. The wait
+  now fails at the close with a `StateError` (`b81465c`).
+- **`BlocScope.reset()` left every registration in place when a close
+  threw.** It clears in a `finally` now (`b94ee39`). `endAll` does not:
+  #27.
+- **A `droppable` drop was silent.** It is recorded as `eventDropped`
+  (`2e1210c`), as a replaced or cancelled `sendAfter` is.
+
+### 26. ~~Adding a stored field to `JuiceTelemetry` tripled the cost of building one~~ FIXED in juice 2.1.0; the cause is OPEN
+
+**Found:** the benchmark run before the 2.1 wave. A send with every
+telemetry record built went 0.63 → 0.78 µs; the release-default send did
+not move. A bisect put it at the commit that added three fields for
+reactions, and a dummy field on the fast baseline showed that a
+THIRTIETH stored field alone is enough (`benchmarks/RESULTS.md` §18).
+
+**Fixed (`52674b2`):** the eight facts only a relay's, a subscription's
+or a reaction's entry carries are held in one object beside the entry.
+It stores 25 fields. `test/bloc/telemetry_record_shape_test.dart` counts
+them in the source and fails past 29.
+
+**Open:** why. A standalone `dart compile exe` of the same shape shows no
+step between 29 and 32 fields; the Flutter AOT build of the benchmark app
+does. Until that is understood the rule is the measured one: time
+`benchmarks/lib/breakdown_main.dart` before adding a stored field to the
+entry. Not re-measured on the pinned toolchain or on the phone.
+
+### 27. `BlocScope.endAll()` leaves every registration in place when a close throws
+
+**File:** `packages/juice/lib/src/bloc/src/bloc_scope.dart`
+
+`endAll` awaits `Future.wait` over the closes and clears the registry on
+the next line; a close that throws skips the clear. `reset()` had the
+same shape and was fixed in 2.1.0 (#25). `endAll` was left as it was
+because changing it was not asked for; it is the same defect.
+
+### 28. `BlocScope.register` discards a second registration silently
+
+**File:** `packages/juice/lib/src/bloc/src/bloc_scope.dart`
+
+A second `register<T>` with the same lifecycle returns without a word and
+drops the new factory ("idempotent"). A test that registers its own bloc
+after an earlier test registered one keeps running against the first —
+Amoli's suite carries a `BlocScope.reset()` with a comment saying so. A
+different lifecycle does throw. Under the house rule a discarded factory
+is a silent fallback: it should be loud, or there should be an explicit
+`override` for tests (ROADMAP, "Not in this wave" item 2).
+
+### 29. `AuthBlocAuthGuard` treats a session still being restored as signed out
+
+**File:** `packages/juice_auth_routing/lib/src/auth_bloc_auth_guard.dart`
+
+The guard asks `authBloc.state.isAuthenticated`, which is true only for
+`AuthStatus.authenticated`. `AuthState.initial` is `AuthStatus.unknown`,
+so until a session restore finishes the guard answers "not signed in".
+**This matters more from juice_routing 2.1.0**, where the initial path
+runs the guard pipeline: an app that initializes routing before its
+session restore has finished would send a signed-in user to the login
+page at cold start (read from the code; not reproduced in a test). An
+app that awaits the restore first is unaffected. Not fixed: what a guard should do while the answer is unknown (wait with
+`waitFor`, block, or redirect) is a design decision.
+
+### 30. The family's tests hand-roll `settle()`; nothing outside the core uses the test harnesses
+
+603 `settle()` calls across `packages/*/test`, each a real-clock sleep.
+`juiceTest` and `juiceFlowTest` are used only in the core's own tests,
+and every package card still teaches `settle()`, while `AGENTS.md` says
+to prefer the harnesses. With a virtual clock in 2.1.0 the debounces,
+backoffs and polls the family now owns through `sendAfter` can be tested
+without waiting.
+
+### 31. Tracked `pubspec.lock` files are stale, and drift on every repo-wide run
+
+The lock files are committed and no wave has updated them (one records
+`juice` at 1.7.2). `melos run analyze` or `melos run test` rewrites
+thirty to forty of them, which then have to be reverted by hand before a
+commit. Either stop tracking the lock files of packages (the usual
+practice for a library; an app's example may keep its own), or commit
+them with each wave.
+
+### 32. Checks that exist and are not in CI; one gate that disagrees with itself
+
+- `tool/check_cards.sh` and `tool/sync_skill.sh --check` are run by hand
+  and by the one scripted publish path. CI runs neither (#23 left that as
+  a decision).
+- `melos.yaml`'s `coverage:juice` script gates at 90; CI gates at 99
+  (`tool/coverage_check.sh 99`). The melos script is the stale one.
+
+### 33. The same exported name in more than one package
+
+`SetPermissionStatusEvent` is declared in juice_location, juice_media and
+juice_notifications; `CacheStats` in juice_network and juice_storage. An
+app that imports two of them unprefixed gets an ambiguous-name error.
+
+### 34. `rollups/` holds pre-2.0 source concatenations
+
+Ten files, none with a `concurrency:` in it — every builder in them
+would fail to compile on 2.0.0. They are bait for anything that greps
+the repository for an example, an AI agent included.
+
+### 35. Reported by the November audit, not re-verified
+
+Listed so they are not lost; each needs reading before it is believed. A
+transient session-restore or refresh failure is treated as session
+expiry and evicts to login (juice_auth); `permissionGranted` is written
+and never read in three packages.
+
 ## Summary
 
 | Priority | Count | Status |
@@ -375,9 +507,10 @@ would want one style first.
 | Medium | 5 | All Fixed (#4-8) |
 | Low | 6 | All Fixed (#9-14) |
 | Tests | 4 | All Fixed (#15-18) |
-| Docs | 3 | Open |
-| Family debt | 1 | Open (#22) |
-| **Total** | **22** | **18 Fixed, 4 Open** |
+| Docs | 3 | Open (#19-21) |
+| Family debt | 2 | Resolved (#22, #23) |
+| November 2026 review and the 2.1 wave | 12 | 3 Fixed (#24-26; #26's cause open), 9 Open (#27-35) |
+| **Total** | **35** | **23 Fixed or resolved, 12 Open** |
 
 ---
 
@@ -391,3 +524,6 @@ would want one style first.
 6. **Finally:** Address documentation gaps (#19-21)
 7. ~~**Family sweep:** #22 — concurrency modes + `juice: ^1.6.0` across the 2 remaining packages that predate 1.5.0, then the two constraint-only auth glue packages~~ DONE 2026-09-15
 8. ~~**Card mechanism:** #23 — card-version-equals-pubspec check as a melos script + publish-gate step (cards themselves refreshed 2026-09-15)~~ DONE 2026-09-16
+9. ~~**The 2.1 wave:** #24-26 — six published defects, three core paths, the telemetry entry's cost~~ BUILT 2026-11-10, unpublished
+10. **Before or with the 2.1 publish:** #29 — decide what `AuthBlocAuthGuard` does while the session is unknown, now that the initial path is guarded
+11. **Next:** #27 and #28 (one file, both loud-failure fixes), then #31 and #32 (repository hygiene), then #30 (the family's tests onto the harness)

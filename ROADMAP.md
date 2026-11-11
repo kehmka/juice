@@ -389,6 +389,109 @@ flows; require fixing only if an app hits them):
   between the executor await and the durable delete; add a post-await
   `isClosing` guard when hardening.
 
+## The 2.1 wave — bloc to bloc (built 2026-11-10, unpublished)
+
+A review of the framework in November 2026 found that Juice's guarantees
+stopped at the bloc boundary: inside one bloc an event is owned, ordered,
+recorded and testable, and between two blocs the family and the dogfood
+app had reached for `stream.listen`, a hand-kept "what was it last time"
+field and a `Timer`. Three relay primitives existed and were barely used.
+This wave is the answer, built on the `bloc-to-bloc` branch in ten steps,
+each behind Kevin's ruling.
+
+**Core, juice 2.1.0** (CHANGELOG has the contracts):
+
+- `Reaction` and `bloc.react` — `becomes`, `changes`, `edge`; a required
+  `atAttach` (`skip` or `catchUp`); owned by the destination; a hop bound
+  of 8 that refuses loudly; the cause carried into the telemetry of the
+  run a reaction starts.
+- `bloc.waitFor(predicate, timeout:)` — await a state, every exit loud.
+- `sendAfter` / `cancelSend` — a delayed send the bloc owns; a key makes
+  it a debounce.
+- `EventConcurrency.singleflight` with `joinKey:` — a second caller joins
+  the running event and gets its outcome.
+- `juiceFlowTest` — several blocs in one test, idle known from the core
+  and not guessed with a sleep; `virtualTime: true` and `flow.elapse` for
+  anything with a timer.
+- `StateRelay`, `StatusRelay` and `EventSubscription` are deprecated for
+  `Reaction` and go in 3.0.0. Guide:
+  `doc/guides/moving-from-relays-to-reactions.md`. `AGENTS.md` §4e teaches
+  the whole of it.
+
+**Family.** Six events return typed results (`sendForResult`): forms
+validate and submit, permissions request and request-all, auth refresh,
+paging refresh. Three of them are `singleflight`. Five one-shot timers
+are keyed `sendAfter` calls and three periodic timers are bound streams
+(connectivity, forms, auth, realtime, sync; power, storage, sync). One
+`Timer` is left in a family bloc: juice_llm's stream throttle, which is a
+throttle and not a delayed send. `AuthBlocRefreshStrategy` is one
+`sendForResult`. Ruled and left as they are: `AuthBlocRoutingBridge` and
+`PermissionBinding`.
+
+**Six defects in published packages, fixed** (ISSUES #24): the auth
+login cooldown that never cleared; the auth_network refresh that waited
+out 30 seconds; the sync flush that burned attempts while offline; the
+routing initial path that ran no guards, and `returnTo` that was dropped;
+network's ignored `maxCacheSize` and its cache key shared across
+credentials.
+
+**The gate was Amoli.** On a branch against this checkout: its fifteen
+relays are reactions; its coordinator class is deleted, each job moved to
+the bloc that owns it (Kevin: "remove coordinator completely" — the
+review had proposed a coordinator bloc, and the port showed that most of
+what a coordinator does is one bloc's own work); fourteen copies of a
+model-ready wait are one `waitFor`; nine screen debounce timers are
+keyed `sendAfter`; the one screen that had no bloc has one. 2,848 tests.
+No raw `stream.listen` remains between two blocs there.
+
+**Benchmarks** (`benchmarks/RESULTS.md` §18, Mac, drift toolchain): 2.1.0
+costs what 2.0.0 cost — 0.72 µs a release-default send, 0.99 with every
+telemetry record built. The run found one regression first: three fields
+added to `JuiceTelemetry` tripled the cost of building an entry, and a
+bisect showed a thirtieth stored field alone does it. The entry stores
+25 now, with the facts only a few kinds carry held beside it, and
+`test/bloc/telemetry_record_shape_test.dart` fails past 29. Why the step
+exists is not established. **Rule: time the breakdown before adding a
+stored field to the entry.**
+
+**Versions, accepted by Kevin 2026-11-10** — juice 2.1.0; forms,
+permissions and auth 0.5.0; paging 0.4.0; network 0.15.0; routing 2.1.0;
+sync, connectivity and realtime 0.3.1; power 0.2.1; storage 3.0.1;
+auth_network and auth_routing 0.3.0; observability 0.6.1. Eight packages
+require `juice ^2.1.0` (the ones whose code uses the new API); the other
+ten published packages are untouched and are not republished.
+
+**Before the first publish** (pub.dev is permanent; each on Kevin's
+word): the branch pushed and CI green on the pinned 3.47.5 toolchain
+with the lint gate; Amoli clean on the 17; the clock-pinned phone
+benchmark for 2.1.0; the DevTools extension bundle rebuilt; the hygiene
+gate per package. Order, each level after the previous is indexed:
+juice; then storage, routing, observability, connectivity, forms,
+paging, permissions, power, realtime; then auth, network, sync; then
+auth_network and auth_routing. Tag `<pkg>-v<ver>` as it goes.
+
+**Not in this wave, in the order the review ranked them:**
+
+1. Lanes and per-key concurrency. Queues are per event type; the family
+   has built a cross-type FIFO tail by hand four times and a flag three
+   more (the review's count). `debounce:` / `throttle:` as a builder
+   property was the review's proposal for timing; `sendAfter` is what was
+   built, and it covered every debounce, backoff and delay the family and
+   Amoli had. It does not express a throttle: juice_llm's is still a
+   `Timer`.
+2. Composition: `whenReady` (item L), a test `override`, a loud error on
+   a silent re-register (ISSUES #28), dependency-ordered teardown.
+3. A configured-bloc base for init-once-with-config and memoised close,
+   which the family's blocs each implement by hand.
+4. The family's own tests onto `juiceFlowTest` and the cards with them
+   (ISSUES #30).
+5. Lint rules the doctrine implies and nothing checks: a
+   `StreamSubscription` or `Timer` field on a bloc, a raw `stream.listen`
+   on another bloc, a sleep in a test.
+6. DevTools: the causal chain a reaction now records, instance identity,
+   export. State hydration (E) and per-event status (H) as specified.
+7. 3.0.0 removes the three deprecated primitives.
+
 ## Tier 2 — capability (2026-09-28, in progress)
 
 - **Benchmarks ✅ (through 2026-09-29)** — `benchmarks/` (outside

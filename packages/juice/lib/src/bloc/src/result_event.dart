@@ -107,8 +107,12 @@ extension ResultEventOps<TState extends BlocState> on JuiceBloc<TState> {
   /// `droppable` builder or whose use case emitted nothing, all throw
   /// [StateError] (the event's `result` is failed with it too); a
   /// superseded `restartable` run answers canceled. A close AFTER the use
-  /// case's first status and before its value throws [StateError] too —
-  /// the run is fenced and will never succeed the event. One exception: a use
+  /// case's first status and before its value throws [StateError] too, at
+  /// the close — and its message says the outcome is UNKNOWN: a
+  /// `restartable` run is fenced and will never succeed the event, but any
+  /// other run goes on after the close has begun and may still finish. The
+  /// wait cannot tell which, and a value given after it has failed is not
+  /// delivered. One exception: a use
   /// case that emitted nothing but FAILED the event itself (`event.fail`) —
   /// a refusal that should not touch the stream — throws that error. On success the wait on
   /// the value is bounded by [timeout] as well, in case the use case
@@ -152,7 +156,9 @@ extension ResultEventOps<TState extends BlocState> on JuiceBloc<TState> {
     // to the timeout.
     void failClosed() => event.fail(
         StateError('$runtimeType closed while ${event.runtimeType} was '
-            'waiting for its result'),
+            'waiting for its result. Whether it completed is unknown: the '
+            'use case may still finish after the close began, and its value '
+            'would not be delivered.'),
         StackTrace.current);
     if (isClosing) failClosed();
     final forget = onClose(failClosed);

@@ -81,7 +81,9 @@ and know when all of them are idle. The migration from the relays is
 - **Telemetry.** Every status a run emits carries the run's `executionId`
   on its entry. New kinds: `eventDropped` (a `droppable` drop, a replaced
   or cancelled `sendAfter` — these were silent), `eventJoined`,
-  `reactionFired`, `reactionRefused`, `reactionEnded`, `reactionFailed`.
+  `joinKeyFailed` (a `joinKey` that threw: recorded, and the send's
+  future fails), `reactionFired`, `reactionRefused`, `reactionEnded`,
+  `reactionFailed`.
   New fields: `reaction`, `causeExecutionId`, `hopDepth` — a run that a
   reaction caused names the run it came from. `doc/TELEMETRY.md` has them.
 
@@ -96,7 +98,7 @@ and know when all of them are idle. The migration from the relays is
 
 ### Changed
 - **Two enums gained values**, so an exhaustive `switch` over either
-  needs the new cases: `EventConcurrency.singleflight`, and the six
+  needs the new cases: `EventConcurrency.singleflight`, and the seven
   `JuiceTelemetryKind`s above.
 - **`JuiceTelemetry`'s constructor is no longer `const`.** The facts only
   a relay's, a subscription's or a reaction's entry carries are held in
@@ -118,9 +120,11 @@ and know when all of them are idle. The migration from the relays is
 
 ### Fixed
 - **A bloc that closed after a result event's first status left
-  `sendForResult` waiting out its timeout.** The close fences the run, so
-  the value never came. The wait now fails at the close with a
-  `StateError`, as a wait on the status already did.
+  `sendForResult` waiting out its timeout.** The wait now fails at the
+  close with a `StateError`, as a wait on the status already did, and its
+  message says the outcome is UNKNOWN: a `restartable` run is fenced and
+  will never give the value, but any other run goes on after the close
+  began and may still finish — its value is not delivered.
 
 ### Performance
 - **A send costs what it did in 2.0.0**

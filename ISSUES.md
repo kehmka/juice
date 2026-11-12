@@ -589,15 +589,24 @@ second tap added them again). The default stays; `AGENTS.md` and the
 permissions docs say to size the timeout to the wait, and Amoli's picker
 waits one preview bound per pick.
 
-### 41. Smaller, open
+### 41. Smaller items — two FIXED in juice 2.1.0, one DEFERRED by ruling
 
-- A `joinKey` that throws comes back only as a failed future; nothing
-  records it (`event_dispatcher.dart`).
-- `sendAndWaitResult`'s close path is documented as "fenced and will never
-  succeed"; a non-restartable use case keeps running after close starts, so
-  a save that completes is reported to its caller as a `StateError`.
-- Imperative rings (a use case calling `otherBloc.send` back to its source)
-  are unbounded and unsignalled; only reaction chains have the hop bound.
+- ~~A `joinKey` that throws comes back only as a failed future; nothing
+  records it.~~ FIXED: recorded as `joinKeyFailed` (`join_key_error`,
+  error level), and the send's future still fails with it.
+- ~~`sendAndWaitResult`'s close path is documented as "fenced and will
+  never succeed"; a non-restartable use case keeps running after close
+  starts, so a save that completes is reported to its caller as a
+  `StateError`.~~ FIXED in what it SAYS: the doc and the `StateError`'s
+  message say the outcome is unknown, and that a value given after the
+  close is not delivered. The behaviour stays: the wait cannot know.
+- **Open, deferred by ruling:** imperative rings (a use case calling
+  `otherBloc.send` back to its source) are unbounded and unsignalled; only
+  reaction chains have the hop bound. Bounding them is stage two of P4 — a
+  zone around every run so an imperative send carries a cause — which the
+  bloc-to-bloc plan put out of scope, benchmark-gated (R7). Kevin kept R7
+  for the 2.1 wave (2026-11-11): no such ring was found in Amoli or the
+  family, and the zone costs every send. It returns with stage two of P4.
 
 ## Summary
 
@@ -610,7 +619,7 @@ waits one preview bound per pick.
 | Docs | 3 | Open (#19-21) |
 | Family debt | 2 | Resolved (#22, #23) |
 | November 2026 review and the 2.1 wave | 12 | 4 Fixed (#24-26, #29; #26's cause open), 8 Open (#27, #28, #30-35) |
-| The review before publishing | 6 | 5 Fixed (#36-40; #36's ruling open), 1 Open (#41) |
+| The review before publishing | 6 | 5 Fixed (#36-40; #36's ruling open), 1 Partly fixed (#41: two of three; the third deferred under R7) |
 | **Total** | **41** | **29 Fixed or resolved, 12 Open** |
 
 ---

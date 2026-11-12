@@ -51,6 +51,10 @@ enum JuiceTelemetryKind {
       'sequential_run_error', 'Sequential run failed outside the executor',
       level: Level.error),
 
+  /// A `singleflight` builder's `joinKey` threw for an event: the event is
+  /// not run, and its send's future fails with that error.
+  joinKeyFailed('join_key_error', 'Join key threw', level: Level.error),
+
   /// A `restartable` run was superseded by a newer same-type event.
   useCaseSuperseded('use_case_superseded', 'Use case superseded'),
 

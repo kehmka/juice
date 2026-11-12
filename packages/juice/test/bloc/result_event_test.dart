@@ -200,8 +200,13 @@ void main() {
         b.sendForResult(event, timeout: const Duration(seconds: 30));
     final outcome = expectLater(
         waiting,
-        throwsA(isA<StateError>().having((e) => e.message, 'message',
-            '_B closed while _Progress was waiting for its result')));
+        throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+                startsWith(
+                    '_B closed while _Progress was waiting for its result.'),
+                contains('Whether it completed is unknown')))));
     await Future<void>.delayed(Duration.zero);
     expect(b.state.n, 1, reason: 'the first status is out');
 
@@ -224,8 +229,11 @@ void main() {
         timeout: const Duration(seconds: 30));
     final outcome = expectLater(
         waiting,
-        throwsA(isA<StateError>().having((e) => e.message, 'message',
-            '_B closed while _Progress was waiting for its result')));
+        throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            startsWith(
+                '_B closed while _Progress was waiting for its result.'))));
     // …and the bloc starts closing before the waiter has resumed.
     final closing = b.close();
     await outcome;

@@ -117,6 +117,7 @@ per kind: the facts are the fields.
 | `sequentialRunFailed` | `sequential_run_error` | error | `event`, `error`, `stackTrace` | a `sequential` run's failure escaped the executor (an `onError` override that throws); the queue goes on; no span |
 | `useCaseSuperseded` | `use_case_superseded` | info | `event`, `cancellable` | a `restartable` run was superseded by a newer same-type event |
 | `eventDropped` | `event_dropped` | info | `event`, `reason`; for a delayed send also `bloc`, and `key` when it had one | an event was dropped before any use case ran for it: a `droppable` builder had an earlier one of its type still running, or a `sendAfter` was replaced by a later one with its key (`sendAfter: replaced by a later <Event>`) or cancelled (`sendAfter: cancelled`). Not an error |
+| `joinKeyFailed` | `join_key_error` | error | `event`, `error`, `stackTrace` | a `singleflight` builder's `joinKey` threw for an event: the event is not run, and its send's future fails with that error (2.1.0) |
 | `eventJoined` | `event_joined` | info | `bloc`, `event`, `key` (the join key as text, when the builder has a `joinKey`) | an event joined the `singleflight` run already in flight for its type (and key) instead of running: it is answered with that run's outcome. Not an error |
 | `supersedeFailed` | `supersede_error` | error | `event`, `error`, `stackTrace` | superseding threw (a throwing `cancel()`, logger or binding cancel); the new run still starts |
 

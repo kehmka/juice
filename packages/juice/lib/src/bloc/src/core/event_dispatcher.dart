@@ -307,8 +307,16 @@ class EventDispatcher<Event extends Object> {
     try {
       key = joinKey?.call(event);
     } catch (e, st) {
-      // Delivered as a failed future, like every other dispatch failure:
+      // Recorded — a send's future is usually not awaited, and the failure
+      // would otherwise reach nothing but an uncaught-error handler — and
+      // delivered as a failed future, like every other dispatch failure:
       // never thrown into the sender's frame.
+      _log.record(JuiceTelemetry(
+        JuiceTelemetryKind.joinKeyFailed,
+        event: typeName(type),
+        error: e,
+        stackTrace: st,
+      ));
       return Future<void>.error(e, st);
     }
     final running = _flights[(type, key)];

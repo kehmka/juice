@@ -435,6 +435,19 @@ void main() {
           throwsA(isA<StateError>()
               .having((e) => e.message, 'message', 'the key broke')));
     });
+
+    test('a join key that throws is RECORDED, not only a failed future',
+        () async {
+      // The usual send is not awaited: without the record the failure
+      // would reach nothing but an uncaught-error handler.
+      final sent = bloc.send(_BadKey());
+      await expectLater(sent, throwsStateError);
+
+      final recorded = log.where('join_key_error').toList();
+      expect(recorded, hasLength(1));
+      expect(recorded.single['event'], '_BadKey');
+      expect(recorded.single['error'], isA<StateError>());
+    });
   });
 
   group('telemetry', () {

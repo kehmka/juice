@@ -5,7 +5,7 @@ version: 0.2.1
 requires:
   juice: ">=2.0.0"
   battery_plus: ">=6.2.0 <8.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_power — AI card
@@ -81,7 +81,7 @@ Future<void> close();         // cancels poll + subscription, disposes provider
 
 | Event | Effect | Concurrency | Groups |
 |---|---|---|---|
-| `InitializePowerEvent(config)` | configure, subscribe, start poll, emit immediate reading | `droppable` (a second init would leak a timer) | changed groups |
+| `InitializePowerEvent(config)` | configure, subscribe, start the poll (a keyed `bindStream`: a second init replaces it), emit immediate reading | `droppable` (a second init while one runs is the same init) | changed groups |
 | `PowerChangedEvent(snapshot)` *internal* | emit only on actual change | `sequential` (read-compare-emit) | changed groups only |
 | `CheckPowerEvent` | one-shot re-read; also the poll tick | `droppable` (coinciding reads report the same instant) | changed groups only |
 
@@ -132,7 +132,8 @@ Only groups that actually changed are emitted; an unchanged reading is a no-op
 
 ```dart
 // 1. Gate expensive work on a reaction — NOT a stream.listen with a
-//    _wasPlugged field. In the constructor of the bloc that does the work:
+//    _wasPlugged field. In the constructor of the bloc that does the work
+//    (Reaction: juice 2.1.0 and later):
 react(Reaction<PowerBloc, PowerState>.edge(
   (old, now) => old.isPluggedIn && !now.isPluggedIn,
   send: (_) => PauseWellEvent(),
@@ -203,7 +204,7 @@ fake.setSilently(...);   // a level that moves with NO status change → only th
   reading `initial` as an answer. `withConfig` issues that check for exactly
   this; give it a tick.
 - ❌ Constructing a second `PowerBloc` for a second consumer — that is a second
-  poll timer. One bloc, many relays.
+  poll. One bloc, many reactions.
 
 ## Invariants
 

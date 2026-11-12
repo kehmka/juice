@@ -25,9 +25,14 @@ class CheckPermissionEvent extends PermissionsEvent {
 /// request arriving while one for the SAME permission is prompting joins
 /// it, and gets its answer).
 ///
-/// A result event: `await bloc.sendForResult(RequestPermissionEvent(p))` is
-/// the status the user left the permission in. It throws what the provider
-/// threw.
+/// A result event: `await bloc.sendForResult(RequestPermissionEvent(p),
+/// timeout: …)` is the status the user left the permission in. It throws
+/// what the provider threw.
+///
+/// The wait is on a PERSON answering the OS prompt: give it a timeout sized
+/// to that (`sendForResult` waits 30 seconds unless told otherwise, then
+/// throws `TimeoutException` while the prompt is still on screen; the
+/// answer then lands in state only).
 class RequestPermissionEvent extends ResultEvent<PermissionStatus>
     implements PermissionsEvent {
   final JuicePermission permission;
@@ -39,9 +44,11 @@ class RequestPermissionEvent extends ResultEvent<PermissionStatus>
 
 /// Prompt the user for several permissions at once.
 ///
-/// A result event: `await bloc.sendForResult(RequestPermissionsEvent(ps))`
-/// is the status of each permission asked for (empty for an empty set). It
-/// throws what the provider threw.
+/// A result event: `await bloc.sendForResult(RequestPermissionsEvent(ps),
+/// timeout: …)` is the status of each permission asked for (empty for an
+/// empty set). It throws what the provider threw. As for
+/// [RequestPermissionEvent], size the timeout to a person answering
+/// prompts.
 class RequestPermissionsEvent
     extends ResultEvent<Map<JuicePermission, PermissionStatus>>
     implements PermissionsEvent {

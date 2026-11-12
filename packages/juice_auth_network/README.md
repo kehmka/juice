@@ -15,8 +15,8 @@ Integration glue between [`juice_auth`](https://pub.dev/packages/juice_auth) and
 | `AuthInterceptor.tokenProvider` | `session.accessToken` — injects the current Bearer token |
 | `RefreshTokenInterceptor.refreshToken` | `AuthBloc`'s singleflight refresh — handles 401s and retries |
 
-Without this package you'd hand-wire those three callbacks and reimplement the
-fire-and-forget → awaitable bridge for refresh. With it, it's three adapters.
+Without this package you'd hand-wire those three callbacks. With it, it's
+three adapters.
 
 ## Installation
 
@@ -79,13 +79,15 @@ refresh. Adds no header when there is no session. Accepts the usual
 ### `AuthBlocRefreshInterceptor` / `AuthBlocRefreshStrategy`
 
 `AuthBlocRefreshInterceptor` is a `RefreshTokenInterceptor` that, on a 401,
-drives `AuthBloc.refreshToken()` and retries the failed request with the new
-token. The bridge lives in `AuthBlocRefreshStrategy`: because
-`AuthBloc.refreshToken()` is fire-and-forget, the strategy **watches the bloc's
-state stream** and resolves with the new access token once the refresh
-completes (`isRefreshing` → `false`), or `null` if the session expires. Pass the
-same `Dio` instance you gave `FetchBloc` so the retried request goes through the
-same transport.
+refreshes through `AuthBloc` and retries the failed request with the new
+token. The bridge is `AuthBlocRefreshStrategy`, which is one call:
+`authBloc.sendForResult(RefreshTokenEvent(), timeout: timeout)` returns the
+refreshed session, and because the refresh is `singleflight`, a refresh asked
+for while one runs joins it — one provider call for every 401 at once. It
+resolves with the new access token, or `null` on every failure (no refresh
+token, the provider refused, the bloc closed, the timeout), logging what the
+wait threw. Pass the same `Dio` instance you gave `FetchBloc` so the retried
+request goes through the same transport.
 
 ## License
 

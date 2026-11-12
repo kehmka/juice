@@ -13,7 +13,8 @@ import 'session_known.dart';
 /// (the guard throws) if that takes longer than [restoreTimeout].
 ///
 /// ```dart
-/// RouteConfig('/login', guards: [AuthBlocGuestGuard(authBloc)]);
+/// RouteConfig(path: '/login', builder: (_) => const LoginScreen(),
+///     guards: [AuthBlocGuestGuard(authBloc)]);
 /// ```
 class AuthBlocGuestGuard extends GuestGuard {
   AuthBlocGuestGuard(

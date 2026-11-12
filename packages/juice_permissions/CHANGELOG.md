@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `singleflight`, keyed by its permission:
   `await permissions.sendForResult(RequestPermissionEvent(p))` returns the
   status, and a second request for the same permission while the first
-  prompts joins it — one prompt, both callers answered.
+  prompts joins it — one prompt, both callers answered. Give that wait a
+  `timeout:` sized to a person answering the OS prompt; the default is 30
+  seconds.
 - **`RequestPermissionsEvent` is
   `ResultEvent<Map<JuicePermission, PermissionStatus>>`.** An empty set
   emits once, rebuilding nothing, and returns an empty map.

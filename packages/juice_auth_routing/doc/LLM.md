@@ -5,8 +5,8 @@ version: 0.3.0
 requires:
   juice: ">=2.1.0"
   juice_auth: ">=0.5.0"
-  juice_routing: ">=2.0.0"
-updated: 2026-11-10
+  juice_routing: ">=2.1.0"
+updated: 2026-11-11
 ---
 
 # juice_auth_routing — AI card

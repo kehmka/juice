@@ -5,7 +5,7 @@ version: 0.5.0
 requires:
   juice: ">=2.1.0"
   permission_handler: ">=11.3.0 <14.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_permissions — AI card
@@ -117,6 +117,9 @@ class PermissionsState extends BlocState {
 arriving while one for the same `JuicePermission` is prompting joins it — one
 OS prompt, and every caller of `sendForResult(RequestPermissionEvent(p))` gets
 its `PermissionStatus` — while different permissions proceed independently.
+The wait is on a person answering the prompt: pass `sendForResult` a
+`timeout:` sized to that (its default is 30 seconds, after which it throws
+while the prompt is still up).
 `CheckPermissionEvent` is also `concurrent` and merges current state only after
 its provider await. Batch requests mutate a shared in-flight set and therefore
 run `sequential`ly; they do not coalesce. Initialization and opening app

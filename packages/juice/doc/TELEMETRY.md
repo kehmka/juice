@@ -89,7 +89,9 @@ whose `status` is `failure`. Every other kind is gated at its level.
 
 ### Cost
 
-A chatter entry is one object allocation with its fields set; the type names
+A chatter entry is one object allocation with its fields set (two for a
+relay's, a subscription's or a reaction's entry, whose wiring facts are held
+beside it — RESULTS §18 has why); the type names
 come from a memo (`Map<Type, String>`). On the benchmark Mac
 (`benchmarks/RESULTS.md` §16–§17b) a send is 0.66 µs with the chatter built
 and consumed by a silent logger and 0.44 µs with it not built (the release
@@ -168,7 +170,7 @@ adopts the caller's set, later emits merge into a new one.
 | `leasedBlocGot` | `bloc_lifecycle` · `get_on_leased` | warning | `bloc` | `BlocScope.get` on a bloc registered `leased` (debug builds assert instead) |
 | `featureScopeEnded` | `bloc_lifecycle` · `end_feature` | info | `scope` (the scope's name), `blocCount` | a feature scope ended its blocs |
 | `allBlocsEnded` | `bloc_lifecycle` · `end_all` | info | — | `BlocScope.endAll` closed every bloc |
-| `blocCloseFailed` | `bloc_close_error` | error | `bloc`, `error`, `stackTrace` | a bloc's `close()` threw; the scope still cleared its entry and rethrows |
+| `blocCloseFailed` | `bloc_close_error` | error | `bloc`, `error`, `stackTrace`; `reason` for a hook | a bloc's `close()` threw — the scope still cleared its entry and rethrows; or (`reason: 'a close hook threw'`) one of the hooks a close runs for another bloc — a reaction's end, a pending wait — threw, and the close went on |
 
 ### Errors
 

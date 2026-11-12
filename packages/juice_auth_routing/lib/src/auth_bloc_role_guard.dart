@@ -14,7 +14,8 @@ import 'session_known.dart';
 /// longer than [restoreTimeout].
 ///
 /// ```dart
-/// RouteConfig('/admin', guards: [AuthBlocRoleGuard(authBloc, 'admin')]);
+/// RouteConfig(path: '/admin', builder: (_) => const AdminScreen(),
+///     guards: [AuthBlocRoleGuard(authBloc, 'admin')]);
 /// ```
 class AuthBlocRoleGuard extends RoleGuard {
   AuthBlocRoleGuard(

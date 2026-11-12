@@ -95,7 +95,7 @@ exists for.
 
 | Event | Mode | Why |
 |---|---|---|
-| `InitializePowerEvent` | `droppable` | initializing twice would double-subscribe and start a second poll timer whose handle overwrites the first, leaking past `close()` |
+| `InitializePowerEvent` | `droppable` | a second init while one runs is the same init. The poll is a keyed `bindStream` the bloc owns, so a later init replaces it rather than leaking a second one |
 | `PowerChangedEvent` | `sequential` | it reads state, compares, and emits — a read-modify-write that is atomic today only because `execute` never awaits. `sequential` makes that structural rather than incidental |
 | `CheckPowerEvent` | `droppable` | a poll tick and a manual check can coincide; the second platform read reports the same instant |
 
@@ -113,10 +113,9 @@ nothing new.
 
 ## Lifecycle
 
-`close()` cancels the poll timer, cancels the provider subscription, and
-disposes the provider before `super.close()`. A surviving `Timer.periodic`
-would re-enter a closed bloc; the test suite asserts no reads occur after
-close.
+The poll and the provider subscription are stream bindings the bloc owns:
+`close()` cancels them, and disposes the provider, before `super.close()`
+finishes. The test suite asserts no reads occur after close.
 
 ## Out of scope
 

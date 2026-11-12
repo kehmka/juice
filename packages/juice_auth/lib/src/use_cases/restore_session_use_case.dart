@@ -109,8 +109,17 @@ class RestoreSessionUseCase extends BlocUseCase<AuthBloc, InitializeAuthEvent> {
       log('Session restored for user ${result.user.id}');
     } catch (e, st) {
       logError(e, st);
-      // Restore failed — go to unauthenticated, clear stale tokens
-      await bloc.clearStoredTokens();
+      // Restore failed — clear the stale tokens, and go to unauthenticated.
+      // The status LEAVES `unknown` whatever else fails here: route guards
+      // wait for it (juice_auth_routing), and a restore that never answered
+      // would leave every guarded route — the login page included — waiting
+      // until it timed out, with nothing to retry it. A clear that fails is
+      // recorded, and the stale tokens are tried again at the next launch.
+      try {
+        await bloc.clearStoredTokens();
+      } catch (clearError, clearStack) {
+        logError(clearError, clearStack);
+      }
       emitUpdate(
         newState: const AuthState(status: AuthStatus.unauthenticated),
         groupsToRebuild: {AuthGroups.status},

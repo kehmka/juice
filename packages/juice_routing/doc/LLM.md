@@ -4,7 +4,7 @@ package: juice_routing
 version: 2.1.0
 requires:
   juice: ">=2.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_routing — AI card
@@ -47,6 +47,7 @@ final routing = RoutingBloc.withConfig(
     globalGuards: [],          // run before route guards, every navigation
     notFoundRoute: null,       // null → RouteNotFoundError instead of a 404 screen
     initialPath: '/', maxRedirects: 5, maxHistorySize: 100,
+    errorBuilder: null,        // the page for a refused start; null → a plain page naming the error
   ),
   initialPath: '/',           // optional override
 );
@@ -91,7 +92,7 @@ RoutingConfig get config; PathResolver get pathResolver;
 
 | Event | Concurrency | Effect |
 |---|---|---|
-| `InitializeRoutingEvent(config, initialPath?)` | `droppable` | resolve initial path, build initial stack |
+| `InitializeRoutingEvent(config, initialPath?)` | `droppable` | resolve the initial path THROUGH THE GUARDS (2.1.0: redirects followed, a block/throw/loop seeds nothing and sets `state.error`), build the initial stack; an async hop, with a `pending` state meanwhile |
 | `NavigateEvent(path, extra?, replace?, transition?)` | `concurrent` | run guards → push/replace; later pending requests replace the queue |
 | `PopEvent(result?)` | `sequential` | pop top; **bypasses guards**; `CannotPopError` at root |
 | `PopUntilEvent(predicate)` | `sequential` | pop until predicate true; bypasses guards |
@@ -188,6 +189,10 @@ expect(routing.state.error, isA<GuardBlockedError>());
   block/exception the stack is unchanged and `state.error` is set.
 - A guard returning `redirect(path)` restarts the pipeline against `path`,
   counting toward `maxRedirects`.
+- A refused START (the initial path blocked, a guard threw, a redirect loop,
+  an unknown path with no `notFoundRoute`) leaves the stack empty with
+  `state.error` set: `JuiceRouterDelegate` then shows `config.errorBuilder`'s
+  page (or a plain one naming the error), never the loading page for ever.
 
 ## Anti-patterns
 

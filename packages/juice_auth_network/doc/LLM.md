@@ -6,7 +6,7 @@ requires:
   juice: ">=2.1.0"
   juice_auth: ">=0.5.0"
   juice_network: ">=0.15.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_auth_network — AI card
@@ -60,7 +60,7 @@ fetchBloc.send(InitializeFetchEvent(
 |---|---|---|
 | `AuthBlocIdentityProvider(authBloc)` | `AuthBloc` → `AuthIdentityProvider` (`String? Function()`) | `.call()` returns `authBloc.state.userId` (or `null`). Pass as `authIdentityProvider: provider.call`. **Required** when injecting auth, or cached responses leak across users. |
 | `AuthBlocAuthInterceptor(authBloc, {headerName, prefix, skipAuth})` | `AuthBloc` → `AuthInterceptor` | `tokenProvider: () async => authBloc.state.session?.accessToken`. No session → no `Authorization` header. Reads the token per request, so it's always current after a refresh. |
-| `AuthBlocRefreshStrategy(authBloc, {timeout})` | `AuthBloc.refreshToken()` (fire-and-forget) → `Future<String?> Function()` | Subscribes to `authBloc.stream`, triggers refresh, resolves with the new `accessToken` when `isRefreshing` goes true→false; returns `null` on `sessionExpired`/timeout. |
+| `AuthBlocRefreshStrategy(authBloc, {timeout})` | `AuthBloc`'s refresh → `Future<String?> Function()` | One `authBloc.sendForResult(RefreshTokenEvent(), timeout:)`: resolves with the refreshed `accessToken`; a refresh already running is joined (`singleflight`). Returns `null` on every failure — no refresh token, refusal, the bloc closed, timeout — and logs what the wait threw. |
 | `AuthBlocRefreshInterceptor(authBloc, {required dio, timeout, onRefreshFailed, headerName, prefix, refreshOnStatusCodes})` | `AuthBloc` → `RefreshTokenInterceptor` | On a refresh-triggering status (401 by default) runs the strategy (AuthBloc's own singleflight), then retries the failed request via `dio` with the new token. |
 
 ## API
@@ -108,11 +108,13 @@ expect(id.call(), 'u1');                   // now scoped to the user
 
 ## Failure modes
 
-- `AuthBlocRefreshStrategy.refresh()` returns **`null`** (never throws) on session
-  expiry / timeout — matching `RefreshTokenInterceptor`'s contract: a null token
-  means refresh-failed, the original 401 propagates, and `onRefreshFailed` fires.
-- It seeds `sawRefreshing` from the current state so an already-in-flight refresh
-  started by another caller is still observed (no missed edge).
+- `AuthBlocRefreshStrategy.refresh()` returns **`null`** (never throws) on every
+  failure — no refresh token, the provider refused, the bloc closed, the timeout —
+  matching `RefreshTokenInterceptor`'s contract: a null token means
+  refresh-failed, the original 401 propagates, and `onRefreshFailed` fires. What
+  the wait threw is logged at error level.
+- A refresh already in flight (another 401, the bloc's own expiry timer) is
+  joined, not repeated: `RefreshTokenEvent` is `singleflight`.
 - Identity is `null` when unauthenticated → `FetchBloc` uses its shared/unscoped
   cache; that's intended, not a fallback to another user's data.
 
@@ -123,7 +125,7 @@ expect(id.call(), 'u1');                   // now scoped to the user
 - ❌ Passing a different `Dio` to `AuthBlocRefreshInterceptor` than the one
   `FetchBloc` uses — the retry must go through the configured client.
 - ❌ Re-implementing refresh singleflight here — it lives in `AuthBloc`; this
-  package only observes it.
+  package only asks for it.
 - ❌ Adding auth or network *domain* logic to this package — it is adapters only.
 
 ## Integrates with

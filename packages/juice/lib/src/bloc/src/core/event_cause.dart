@@ -7,7 +7,10 @@ import 'package:meta/meta.dart';
 /// drop flag is), never as a field: `EventBase` is subclassed by every
 /// application, and a base field of any public name would be shadowed
 /// silently by an event that already has one. Written only when a reaction
-/// sends; an event sent by anything else has no cause and is at depth zero.
+/// sends, and released when the run that send caused ends ([release]): the
+/// cause belongs to that run, not to the instance, so an instance the app
+/// sends again later — or a cached one a reaction sends each time — starts
+/// at depth zero. An event sent by anything else has no cause.
 ///
 /// Internal. Reached by `JuiceBloc.react` and the use case executor only.
 @internal
@@ -33,11 +36,18 @@ final class EventCause {
   /// Stamps [cause] on [event].
   static void stamp(Object event, EventCause cause) => _of[event] = cause;
 
-  /// The hop depth of [event]: zero for no event, or one no reaction sent.
+  /// The run [cause] caused is over: forget it — unless [event] has been
+  /// stamped again since (the same instance sent by another hop while this
+  /// run ran), which is that later run's.
+  static void release(Object event, EventCause cause) {
+    if (identical(_of[event], cause)) _of[event] = null;
+  }
+
   /// Forget [event]'s cause: an event sent after a delay starts a chain of
   /// its own.
   static void clear(Object event) => _of[event] = null;
 
+  /// The hop depth of [event]: zero for no event, or one no reaction sent.
   static int depthOf(Object? event) =>
       event == null ? 0 : (_of[event]?.hopDepth ?? 0);
 }

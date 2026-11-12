@@ -17,14 +17,20 @@ and know when all of them are idle. The migration from the relays is
   take a REQUIRED `atAttach:` — `AtAttach.skip` or `AtAttach.catchUp` — so
   what the state at attach means is said, never assumed; `edge` has no
   meaning at attach and takes none. The destination owns the reaction and
-  ends it at the start of its own close; `react` returns a
+  ends it at the start of its own close — and a close goes on past a
+  hook another bloc owns that throws (recorded as `bloc_close_error`);
+  `react` returns a
   `ReactionBinding` for an early detach. A reaction sees state and nothing
-  else, sends on a microtask after the emission, and sends only an event
-  its bloc has a use case for. A chain past `Reaction.maxHops` (8) is
+  else, and sends on a microtask after the emission. The event it sends
+  must be one its bloc handles: another is recorded as an
+  `unhandled_event` error. A chain past `Reaction.maxHops` (8) is
   refused and recorded as an error; the reaction stays attached. A throw
   from a predicate, a selector or `send` is recorded and the reaction
   stays attached. A source resolved by type with a leased lifecycle
-  throws; a source that closes ends the reaction.
+  throws; a source that closes ends the reaction. The chain's depth
+  belongs to the run a reaction caused, not to the event instance: one
+  instance a reaction sends every time still counts toward the bound, and
+  sent later by the app itself starts again at zero.
 - **`JuiceBloc.waitFor(predicate, timeout:)`** — the state the predicate
   first holds for: the current one, or the next emission's. The timeout is
   required and throws `TimeoutException`; a closed or closing bloc, or a
@@ -46,7 +52,9 @@ and know when all of them are idle. The migration from the relays is
   returns its value or throws its error. One provider call, however many
   callers. Events join by type; `joinKey:` on `UseCaseBuilder` and
   `UseCaseBuilder.typed` narrows that to events whose keys are equal. A
-  `joinKey` with any other mode throws at construction.
+  `joinKey` with any other mode throws at construction. Each SEND is
+  judged on its own: an event instance an app keeps and sends again leads
+  its own flight, never answered by one it joined before.
 - **`juiceFlowTest`, `runJuiceFlow` and `JuiceFlow`**
   (`package:juice/testing.dart`) — a test of several blocs and the
   reactions between them. `flow.send` sends and waits until EVERY bloc is
@@ -54,13 +62,21 @@ and know when all of them are idle. The migration from the relays is
   all count); `flow.settle` waits alone; `flow.expect` consumes what one
   bloc emitted; `flow.expectErrors` claims recorded errors; `flow.add`
   and `flow.register` hand it blocs. The flow owns `BlocScope` and fails
-  the test on an emission nobody consumed, work still in flight, a
-  refused reaction chain or an unclaimed error. A settle not idle after
-  five seconds fails, naming what is in flight.
+  the test on an emission nobody consumed, work still in flight or begun
+  after the body (checked by the same one-turn idle rule `settle` uses,
+  and again while the blocs close), a refused reaction chain or an
+  unclaimed error — every error, the same object failing twice being two.
+  A settle not idle after five seconds fails, naming what is in flight.
+  A flow that never ends (its test timed out) is handed back at the
+  test's teardown, so the tests after it start clean.
 - **`juiceFlowTest(virtualTime: true)` and `flow.elapse(duration)`** — the
   same test with every timer virtual: a five-minute `sendAfter` is tested
   in no time. A virtual-time test that waits on real I/O fails at once,
-  saying so. `fake_async` is a dependency of the package for this; only
+  saying so, as does one whose blocs never go idle for an hour of virtual
+  time while the body waits outside every flow call (a `sendAfter` poll
+  re-arming itself). A timer still pending when the flow ends — work a
+  use case started and nothing awaited — fails the test, named.
+  `fake_async` is a dependency of the package for this; only
   `testing.dart` imports it.
 - **Telemetry.** Every status a run emits carries the run's `executionId`
   on its entry. New kinds: `eventDropped` (a `droppable` drop, a replaced
@@ -85,8 +101,9 @@ and know when all of them are idle. The migration from the relays is
 - **`JuiceTelemetry`'s constructor is no longer `const`.** The facts only
   a relay's, a subscription's or a reaction's entry carries are held in
   one object beside the entry, built only when one is set (see
-  Performance). Getters, constructor parameters and `toMap()` are
-  unchanged. *Migration:* drop `const` from a `const JuiceTelemetry(…)`.
+  Performance). No getter, constructor parameter or `toMap()` key was
+  removed or renamed (three were added: `reaction`, `causeExecutionId`,
+  `hopDepth`). *Migration:* drop `const` from a `const JuiceTelemetry(…)`.
 - **`sendForResult` throws a use case's own refusal.** A use case that
   fails its `ResultEvent` and emits nothing — a refusal that should not
   touch the stream — now surfaces that error to the caller, where 2.0.0

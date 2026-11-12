@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'route_context.dart';
 import 'route_guard.dart';
+import 'routing_errors.dart';
 import 'routing_types.dart';
 
 /// Builder function for creating route widgets.
@@ -127,6 +128,16 @@ class RoutingConfig {
   /// Defaults to 100.
   final int maxHistorySize;
 
+  /// The page `JuiceRouterDelegate` shows when there is NO page to show:
+  /// the initial path was refused — a guard blocked it or threw (a session
+  /// that never became known), a redirect looped, the path is unknown and
+  /// there is no [notFoundRoute] — and no navigation is under way. Handed
+  /// the error; the routing state's `error` holds it too.
+  ///
+  /// Null shows a plain page that names the error. It is never the loading
+  /// page: a refused start is said, not left to spin for ever.
+  final Widget Function(BuildContext context, RoutingError error)? errorBuilder;
+
   const RoutingConfig({
     required this.routes,
     this.globalGuards = const [],
@@ -134,6 +145,7 @@ class RoutingConfig {
     this.initialPath = '/',
     this.maxRedirects = 5,
     this.maxHistorySize = 100,
+    this.errorBuilder,
   });
 
   @override

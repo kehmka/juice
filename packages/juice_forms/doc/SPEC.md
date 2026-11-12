@@ -128,13 +128,17 @@ no-handler/throw, submit-awaits-async, serialized submissions,
 register/unregister, reset. 21 tests.
 
 
-## Awaitable validate/submit (0.2)
+## Awaitable validate/submit (0.2; typed results since 0.5)
 
-Dogfood-driven (Glean F3): `validateNow()` / `submitNow()` return a
-`Future<bool>` completed by the use case (isValid / handler-succeeded), via an
-optional `completion` Completer on `ValidateFormEvent` / `SubmitFormEvent` —
-removes the settle-delay race in "validate, then save" flows. The completer is
-always completed (or completed with the error), never left hanging.
+Dogfood-driven (Glean F3): "validate, then save" must await the outcome, not
+settle for a delay. Since 0.5.0 `ValidateFormEvent` and `SubmitFormEvent` are
+`ResultEvent<bool>`: `await forms.sendForResult(ValidateFormEvent())` is
+whether the form is valid, `await forms.sendForResult(SubmitFormEvent())`
+whether it was submitted (false for an invalid form; it THROWS when no handler
+is configured or the handler threw). The event is always completed, never left
+hanging. The 0.2 `completion:` Completer is gone; `validateNow()` /
+`submitNow()` are deprecated for `sendForResult` (`submitNow()` still answers
+false where the new form throws).
 
 ## Spec Version
 

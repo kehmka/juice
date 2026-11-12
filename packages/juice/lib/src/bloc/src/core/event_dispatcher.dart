@@ -317,6 +317,9 @@ class EventDispatcher<Event extends Object> {
       _onJoined?.call(event, running);
       return running.done;
     }
+    // A leader joined nothing — whatever this instance joined on an earlier
+    // send is over, and must not answer for this run.
+    _joined[event] = null;
     // In the table BEFORE the handler runs: a same-key event sent from
     // inside the use case joins this flight rather than starting another.
     final flight = Flight<Event>(event, key);

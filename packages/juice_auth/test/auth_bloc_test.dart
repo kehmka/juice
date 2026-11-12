@@ -444,6 +444,24 @@ void main() {
         expect(bloc.state.status, AuthStatus.unauthenticated);
         verify(() => storageBloc.secureDelete(any())).called(greaterThan(0));
       });
+
+      test(
+          'storage that fails to read AND to clear still answers: '
+          'unauthenticated, never left at unknown', () async {
+        // The keychain is unreadable at cold start, and clearing the stale
+        // tokens fails too. Route guards wait for the status to leave
+        // `unknown`: a restore that never answered would refuse every
+        // guarded route, the login page included.
+        when(() => storageBloc.secureRead(any()))
+            .thenThrow(StateError('keychain unavailable'));
+        when(() => storageBloc.secureDelete(any()))
+            .thenThrow(StateError('keychain unavailable'));
+
+        bloc = AuthBloc.withConfig(config, storageBloc: storageBloc);
+        await Future.delayed(_delay);
+
+        expect(bloc.state.status, AuthStatus.unauthenticated);
+      });
     });
 
     group('login', () {

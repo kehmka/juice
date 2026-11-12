@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stream for the `isRefreshing` edge; a refresh requested while one runs
   joins it. It still answers null on every failure — no refresh token,
   the provider refused, the bloc closed, the timeout — which is the
-  interceptor's contract.
+  interceptor's contract, and now logs what the wait threw at error level:
+  a timeout or a close was otherwise recorded nowhere.
 - Doc examples build `FetchBloc` with `AuthBlocIdentityProvider`, which
   juice_network 0.15.0 requires beside an `AuthInterceptor`.
 

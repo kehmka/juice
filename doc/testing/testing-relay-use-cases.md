@@ -39,7 +39,8 @@ void main() {
 
 Register a source before the bloc that reacts to it, as an app would.
 
-Build blocs inside the flow and without a `logger:` of their own. The flow
+Build blocs inside the flow and without a logger of their own (the
+`customLogger` constructor argument). The flow
 reads errors from its own logger and refuses to watch a bloc that reports
 elsewhere.
 

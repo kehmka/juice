@@ -562,7 +562,7 @@ Shipping event concurrency:
 | `InitializeAuthEvent` | `droppable` |
 | `LoginEvent` | `droppable` |
 | `LogoutEvent` | `droppable` |
-| `RefreshTokenEvent` | `droppable` |
+| `RefreshTokenEvent` | `singleflight` |
 | `UpdateUserEvent` | `sequential` |
 | `TokenExpiryEvent` | `droppable` |
 
@@ -590,9 +590,9 @@ class LogoutEvent extends EventBase {
   LogoutEvent({this.force = false});
 }
 
-/// Manually trigger a token refresh.
-/// Usually not needed — AuthBloc refreshes proactively.
-class RefreshTokenEvent extends EventBase {}
+/// Manually trigger a token refresh; `await auth.sendForResult(...)` is the
+/// refreshed session. Usually not needed — AuthBloc refreshes proactively.
+class RefreshTokenEvent extends ResultEvent<AuthSession> {}
 
 /// Update user profile in state (after profile edit, etc.)
 class UpdateUserEvent extends EventBase {
@@ -1530,7 +1530,7 @@ test('rate limiting after max login attempts', () async {
 | `SwitchAccountEvent` | Switch stored account (Phase 3) |
 | `LoginUseCase` | Handles `LoginEvent` |
 | `LogoutUseCase` | Handles `LogoutEvent` |
-| `RefreshTokenUseCase` | Handles the `droppable` `RefreshTokenEvent` singleflight |
+| `RefreshTokenUseCase` | Handles `RefreshTokenEvent` (`singleflight`: a refresh asked for while one runs joins it) |
 | `RestoreSessionUseCase` | Handles `InitializeAuthEvent`, restores stored session |
 | `UpdateUserUseCase` | Handles `UpdateUserEvent` |
 
@@ -1542,12 +1542,15 @@ These are the intentional divergences between this design contract and the
 shipping implementation. **The code is the source of truth**; this section
 documents where it deviates and why.
 
-### Events extend `EventBase`, not `ResultEvent`
+### One event returns a result: `RefreshTokenEvent`
 
-Auth events (`LoginEvent`, `LogoutEvent`, `RefreshTokenEvent`, …) extend the
-core Juice `EventBase`. There is no per-event `result` future to await — outcomes
-are observed via `AuthState` (`status`, `lastError`, `user`, `session`) and the
-bloc's `StreamStatus` rebuild groups.
+`RefreshTokenEvent` is a `ResultEvent<AuthSession>` (0.5.0):
+`await auth.sendForResult(RefreshTokenEvent())` is the refreshed session, or
+throws `NoRefreshTokenError` / `RefreshFailedError` (and, as every
+`sendForResult`, `TimeoutException` past its timeout or `StateError` if the
+bloc closes). The other auth events (`LoginEvent`, `LogoutEvent`, …) extend
+`EventBase`; their outcomes are observed via `AuthState` (`status`,
+`lastError`, `user`, `session`) and the bloc's `StreamStatus` rebuild groups.
 
 ### Phase 3 features not implemented
 
@@ -1558,10 +1561,11 @@ present in the shipping code. The current implementation corresponds to Phase 1
 
 ### Refresh singleflight is dispatcher-owned
 
-`RefreshTokenEvent` uses `EventConcurrency.droppable`, so overlapping timer,
-manual, and network-triggered refresh requests collapse before another use case
-can reach the provider. Consumers observe `AuthState.isRefreshing` and the
-resulting session state; the bloc no longer exposes an in-flight completer.
+`RefreshTokenEvent` uses `EventConcurrency.singleflight`, so an overlapping
+timer, manual or network-triggered refresh JOINS the one running before
+another use case can reach the provider, and every caller gets that
+refresh's outcome. `AuthState.isRefreshing` and the session state still show
+it; the bloc exposes no in-flight completer.
 
 ---
 

@@ -5,7 +5,7 @@ version: 0.3.1
 requires:
   juice: ">=2.1.0"
   web_socket_channel: ">=3.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_realtime — AI card

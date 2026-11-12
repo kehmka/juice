@@ -210,6 +210,7 @@ Subscribe to specific state changes:
 | **Redirect cap** | Max 5 redirects before `RedirectLoopError` |
 | **Guard errors** | Exception becomes `GuardExceptionError`, navigation aborted |
 | **Pop behavior** | Pop events bypass guards, execute immediately |
+| **Guarded start** | The initial path runs the guards too (2.1.0); a refused start shows `RoutingConfig.errorBuilder`'s page (or a plain one naming the error), not the loading page |
 
 ## Documentation
 

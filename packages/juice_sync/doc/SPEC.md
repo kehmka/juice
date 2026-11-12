@@ -68,7 +68,8 @@ order); per mutation: skip if its partition is in `skip` or under a backoff
 - **retryable** → if `attempts >= maxAttempts` dead-letter; else persist, set
   `_partitionRetryAt[partition] = now + backoff`, add to `skip`.
 
-A single `_backoffTimer` is scheduled for the soonest blocked partition.
+A single backoff — a keyed `sendAfter(…, key: 'backoff')` the bloc owns — is
+armed for the soonest blocked partition; arming it again replaces it.
 `backoff = min(maxBackoff, initialBackoff·2^(attempts-1))` (deterministic; jitter
 is post-0.1).
 

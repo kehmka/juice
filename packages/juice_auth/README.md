@@ -134,17 +134,22 @@ class AuthGate extends StatelessJuiceWidget<AuthBloc> {
 
 ### 5. Integrate with Route Guards
 
+Use [`juice_auth_routing`](https://pub.dev/packages/juice_auth_routing)'s
+guards:
+
 ```dart
 RouteConfig(
   path: '/profile',
   builder: (ctx) => ProfileScreen(),
-  guards: [
-    AuthGuard(
-      isAuthenticated: () => BlocScope.get<AuthBloc>().state.isAuthenticated,
-    ),
-  ],
+  guards: [AuthBlocAuthGuard(BlocScope.get<AuthBloc>())],
 )
 ```
+
+They wait until the session is known. A hand-wired
+`AuthGuard(isAuthenticated: () => authBloc.state.isAuthenticated)` does not:
+`AuthBloc` is `AuthStatus.unknown` until its stored session is restored, the
+guard reads that as "signed out", and since juice_routing 2.1.0 guards the
+initial path, a signed-in user's cold start lands on the login page.
 
 ## Rebuild Groups
 

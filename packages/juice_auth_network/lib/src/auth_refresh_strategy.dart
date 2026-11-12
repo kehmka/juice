@@ -17,8 +17,10 @@ import 'package:juice_network/juice_network.dart';
 /// the original 401 propagates and `onRefreshFailed` fires. Every way a
 /// refresh can fail to produce a token is that one signal: no refresh token,
 /// the provider refused (the session expired), the bloc is closed or closes
-/// meanwhile, or [timeout] ran out. The bloc itself has already said why —
-/// in its state (`lastError`) and its telemetry.
+/// meanwhile, or [timeout] ran out. Each is logged here, at error level,
+/// with what the wait threw: for a missing token or a refusal the bloc has
+/// said why too (its state's `lastError`, its telemetry), but a timeout or
+/// a close is known only to this wait.
 class AuthBlocRefreshStrategy {
   /// The auth bloc whose refresh is driven.
   final AuthBloc authBloc;
@@ -38,7 +40,11 @@ class AuthBlocRefreshStrategy {
       final session =
           await authBloc.sendForResult(RefreshTokenEvent(), timeout: timeout);
       return session.accessToken;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      JuiceLoggerConfig.logger.logError(
+          'AuthBlocRefreshStrategy: the refresh produced no token',
+          error,
+          stackTrace);
       return null;
     }
   }

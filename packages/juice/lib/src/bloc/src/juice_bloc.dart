@@ -355,7 +355,8 @@ class JuiceBloc<TState extends BlocState>
             failed('send', error, stackTrace);
             return;
           }
-          EventCause.stamp(event, EventCause(causeExecutionId, depth));
+          final cause = EventCause(causeExecutionId, depth);
+          EventCause.stamp(event, cause);
           if (JuiceLoggerConfig.logs(Level.info)) {
             _logger.record(JuiceTelemetry(
               JuiceTelemetryKind.reactionFired,
@@ -368,7 +369,10 @@ class JuiceBloc<TState extends BlocState>
               reason: atAttach ? 'attach' : null,
             ));
           }
-          send(event);
+          // The cause belongs to the run it causes, not to the instance:
+          // when that run ends it is released, so the same instance sent
+          // again later by anything else starts at depth zero.
+          send(event).whenComplete(() => EventCause.release(event, cause));
         } finally {
           if (work != null) probe!.ended(work);
         }
@@ -1069,9 +1073,22 @@ class JuiceBloc<TState extends BlocState>
     }
 
     await _cancelBindings();
-    // Whoever was waiting on this bloc or reacting to it is told.
+    // Whoever was waiting on this bloc or reacting to it is told. A hook
+    // runs code another bloc owns (a reaction's destination records into
+    // ITS logger): one that throws is recorded and the close goes on, so
+    // the waits behind it are still failed and this bloc still closes.
     for (final hook in _closeHooks.toList()) {
-      hook();
+      try {
+        hook();
+      } catch (error, stackTrace) {
+        _logger.record(JuiceTelemetry(
+          JuiceTelemetryKind.blocCloseFailed,
+          bloc: _blocName,
+          reason: 'a close hook threw',
+          error: error,
+          stackTrace: stackTrace,
+        ));
+      }
     }
     await _useCaseRegistry.closeAll();
     await _aviatorManager.closeAll();

@@ -53,7 +53,7 @@ so Juice's type-keyed dispatch matches cleanly; the use cases carry `<T>`.
 | Event | Concurrency | Behavior |
 |---|---|---|
 | `InitializePagingEvent` | `droppable` | Await first-page refresh when configured |
-| `RefreshPageEvent` | `droppable` | Fetch and replace the first page |
+| `RefreshPageEvent` | `singleflight` | Fetch and replace the first page; a refresh asked for while one runs joins it. Its result (`ResultEvent<void>`) completes when the page is in state; during a load-more it is refused with a `StateError` |
 | `LoadMoreEvent` | `droppable` | Fetch and append the next page |
 | `RetryPageEvent` | `droppable` | Await the appropriate delegated load |
 

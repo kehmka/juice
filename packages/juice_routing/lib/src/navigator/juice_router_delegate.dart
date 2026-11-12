@@ -2,6 +2,7 @@ import 'package:juice/juice.dart';
 
 import '../route_context.dart';
 import '../routing_bloc.dart';
+import '../routing_errors.dart';
 import '../routing_events.dart';
 import '../routing_state.dart';
 import '../routing_types.dart';
@@ -65,6 +66,25 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
   Widget build(BuildContext context) {
     final state = routingBloc.state;
 
+    final error = state.error;
+    if (state.isInitialized &&
+        state.stack.isEmpty &&
+        error != null &&
+        !state.isNavigating) {
+      // Initialized with nothing to show and nothing under way: the initial
+      // path was refused. Said on screen — a spinner here would never end.
+      final builder = routingBloc.config.errorBuilder ?? _refusedStartPage;
+      return Navigator(
+        pages: [
+          MaterialPage(
+            key: const ValueKey('routing-error'),
+            child: Builder(builder: (context) => builder(context, error)),
+          ),
+        ],
+        onDidRemovePage: (_) {},
+      );
+    }
+
     if (!state.isInitialized || state.stack.isEmpty) {
       // Show loading or empty state while initializing
       return Navigator(
@@ -90,6 +110,22 @@ class JuiceRouterDelegate extends RouterDelegate<RoutePath>
       observers: [_observer],
     );
   }
+
+  /// The page shown for a refused start when the config gives no
+  /// `errorBuilder`: plain, and it names the error.
+  static Widget _refusedStartPage(BuildContext context, RoutingError error) =>
+      Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'The app could not open its first page.\n\n$error',
+              key: const ValueKey('routing-error-text'),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
 
   Page<dynamic> _buildPage(StackEntry entry) {
     final route = entry.route;

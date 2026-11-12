@@ -48,7 +48,8 @@ class ChargeBadge extends StatelessJuiceWidget<PowerBloc> {
 
 The usual reason to reach for this package is gating expensive background work.
 Express that as a reaction, not a listener — in the constructor of the bloc
-that does the work:
+that does the work (`Reaction` is juice 2.1.0 and later; this package itself
+needs only juice 2.0.0):
 
 ```dart
 // Stop when the cable comes out; start again when it goes back in.

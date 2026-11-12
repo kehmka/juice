@@ -17,7 +17,7 @@ import 'use_cases/power_changed_use_case.dart';
 /// ```dart
 /// final power = PowerBloc.withConfig(PowerConfig());
 /// // ... a bloc that does expensive work reacts to the edge, in its own
-/// // constructor:
+/// // constructor (Reaction: juice 2.1.0 and later):
 /// react(Reaction<PowerBloc, PowerState>.edge(
 ///   (old, now) => old.isPluggedIn && !now.isPluggedIn,
 ///   send: (_) => PauseWellEvent(),

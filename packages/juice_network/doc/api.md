@@ -330,7 +330,7 @@ typedef AuthIdentityProvider = String? Function();
 
 Provides a user-specific identity for cache isolation. **Required** when using `AuthInterceptor` to prevent cross-user cache leaks.
 
-**Enforced:** `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had.
+**Enforced:** `FetchBloc` refuses an `AuthInterceptor` (or a subclass) when no `authIdentityProvider` was given. `FetchBloc.withConfig` throws an `ArgumentError`. `InitializeFetchEvent` (on a bloc not yet initialized; on an initialized one it does nothing) and `ReconfigureInterceptorsEvent` log the error and emit a failure carrying a `StateError`; the bloc stays uninitialized, or keeps the interceptors it already had. Only `AuthInterceptor` and its subclasses are detected; `ApiKeyInterceptor`, `RefreshTokenInterceptor` and custom interceptors that add credentials are not.
 
 ```dart
 FetchBloc(

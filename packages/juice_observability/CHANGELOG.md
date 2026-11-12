@@ -10,15 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DevTools panel colours a timeline row by its level first: only an
   error-level entry is drawn in the error colour, a warning is amber, and
   then the type picks a calm tone. The colour switch listed six types and
-  painted every other one as an error, so nine info and warning types
-  showed red (`use_case_superseded`, `state_emission_superseded`,
-  `stream_binding`, the retry kinds).
+  painted every other one as an error, so the info and warning entries of
+  `use_case_superseded`, `state_emission_superseded`,
+  `emission_after_close`, `stream_binding`, the three `retry_*` kinds and
+  `leak_detection` showed red.
 - "Leak detection enabled" is not a problem: `leak_detection` leaves the
   panel's problem names (the only entry juice has ever posted under that
   type is that info line).
 - juice 2.1.0's new kinds (`event_dropped`, `event_joined`, the
   `reaction` entries) post like every other entry, with their own level.
-  The extension bundle is rebuilt for this release (`tool/publish.sh`).
+  The extension bundle in this archive is rebuilt from these sources by
+  `tool/publish.sh`, the only way this package is published.
 
 ## [0.6.0] - 2026-10-14
 

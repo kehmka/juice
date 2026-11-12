@@ -5,7 +5,7 @@ version: 0.3.1
 requires:
   juice: ">=2.1.0"
   juice_storage: ">=1.2.0 <4.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_sync — AI card

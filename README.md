@@ -37,7 +37,7 @@ If you only need simple local state or straightforward CRUD screens, mainstream 
 - **Lifecycle ownership**: `BlocScope` supports `permanent`, `feature`, and `leased` lifecycles
 - **Targeted rebuilds**: rebuild groups let widgets opt into only the state changes they care about. Measured against bloc and Riverpod in [`benchmarks/`](benchmarks/RESULTS.md): 1 build and 0 selector calls per update (Riverpod's provider-per-cell family matches those counts), groups tie Riverpod's select and family forms per frame on a Mac and a clock-pinned iPhone and lead bloc's BlocSelector, untargeted defaults ~2.5×. Sequential dispatch is under bloc's on both machines since 2.0.0 — the table below
 - **Status-aware state**: `StreamStatus` separates persistent state from transient states like waiting, failure, and canceling
-- **Cross-bloc orchestration**: event subscriptions, state relays, and status relays are first-class patterns
+- **Bloc to bloc** (2.1.0): a bloc follows another bloc's state with `bloc.react(Reaction…)`, awaits one with `waitFor`, asks for a typed result with `sendForResult`, and sends itself an event later with `sendAfter`; `juiceFlowTest` tests several blocs at once. The relays and `EventSubscription` are deprecated for these ([guide](doc/guides/moving-from-relays-to-reactions.md))
 
 ## Performance against bloc and Riverpod
 

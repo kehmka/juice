@@ -4,7 +4,7 @@ package: juice_forms
 version: 0.5.0
 requires:
   juice: ">=2.1.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_forms — AI card
@@ -131,8 +131,8 @@ intentionally `concurrent`: independent fields can validate together, while a
 **monotonic per-field token** makes same-field stale answers harmless. Every
 change bumps the token and re-arms the debounce; validation checks the token
 before and after its await. Whole-form validate and submit passes are
-`sequential`, so they never overlap and every awaitable event's `Completer`
-resolves; they cannot be `droppable` without stranding callers.
+`sequential`, so they never overlap and every awaitable event's result is
+completed; they cannot be `droppable` without stranding callers.
 
 ## Recipes
 
@@ -188,7 +188,8 @@ expect(form.state.submitted, isTrue);
 - `submit()` valid but **no `onSubmit`** → `emitFailure` with
   `submitError: 'No submit handler configured'` — never a silent no-op.
 - `onSubmit` throws → `submitError = e.toString()`, `submitting=false`.
-- `close()` cancels all debounce timers.
+- A debounce still waiting at `close()` is discarded with the bloc (each is a
+  keyed `sendAfter` the bloc owns).
 
 ## Anti-patterns
 

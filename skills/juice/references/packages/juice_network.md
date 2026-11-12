@@ -5,7 +5,7 @@ version: 0.15.0
 requires:
   juice: ">=2.0.0"
   juice_storage: ">=1.2.0 <4.0.0"
-updated: 2026-11-08
+updated: 2026-11-11
 ---
 
 # juice_network — AI card
@@ -36,7 +36,7 @@ errors / dedup / observability. A single endpoint utility can just use Dio.
 dependencies:
   juice_network: ^0.15.0
   juice_storage: ^3.0.1   # required — cache persistence
-  dio: ^5.4.0             # the injected transport
+  dio: ^5.10.0            # the injected transport
 ```
 
 **Prerequisite:** register `ScopeLifecycleBloc` (core juice) *before* `FetchBloc`
@@ -48,7 +48,8 @@ so scope-based auto-cancel works. `StorageBloc` must also be registered/passed.
 `Dio()` is created). If any interceptor injects auth, you **must** also pass
 `authIdentityProvider` or cache/coalescing would leak responses across users.
 This is enforced for `AuthInterceptor` and its subclasses: `withConfig` throws
-`ArgumentError`; `InitializeFetchEvent` / `ReconfigureInterceptorsEvent` emit a
+`ArgumentError`; `InitializeFetchEvent` (on a bloc not yet initialized — on an
+initialized one it does nothing) / `ReconfigureInterceptorsEvent` emit a
 failure with a `StateError` and install nothing.
 
 ```dart
@@ -215,8 +216,10 @@ expect(fetch.state.stats.successCount, 1);
 
 - ❌ Injecting an `AuthInterceptor` without an `authIdentityProvider` — refused
   (the bloc stays uninitialized), because cached responses would leak across
-  users after logout/login on the same device. A custom interceptor that adds
-  credentials is not detected; pass the provider yourself.
+  users after logout/login on the same device. Only `AuthInterceptor` and its
+  subclasses are detected: `ApiKeyInterceptor`, `RefreshTokenInterceptor` and
+  any custom interceptor that adds credentials are not — pass the provider
+  yourself.
 - ❌ Treating a request event as awaitable (`await event.result`) — it isn't;
   observe the `fetch:request:<canonical>` group / `state.getStatus(key)`.
 - ❌ `retryable: true` on `PostEvent`/`PatchEvent` without an `idempotencyKey` —

@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without an identity two users shared cached and in-flight responses;
   the docs called the provider required and nothing enforced it.
   `FetchBloc.withConfig` throws `ArgumentError`; `InitializeFetchEvent`
-  and `ReconfigureInterceptorsEvent` emit a failure with a `StateError`
-  and leave the bloc uninitialized or its interceptors unchanged.
-  *Migration:* pass an `authIdentityProvider` (with juice_auth,
+  (on a bloc not yet initialized) and `ReconfigureInterceptorsEvent` emit
+  a failure with a `StateError` and leave the bloc uninitialized or its
+  interceptors unchanged. Only `AuthInterceptor` and its subclasses are
+  detected; `ApiKeyInterceptor`, `RefreshTokenInterceptor` and custom
+  interceptors that add credentials are not. *Migration:* pass an `authIdentityProvider` (with juice_auth,
   `AuthBlocIdentityProvider` from juice_auth_network).
 
 ### Fixed

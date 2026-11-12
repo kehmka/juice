@@ -5,7 +5,7 @@ version: 0.5.0
 requires:
   juice: ">=2.1.0"
   juice_storage: ">=1.2.0 <4.0.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_auth — AI card
@@ -80,7 +80,9 @@ void loginWithOAuth(String provider, String idToken, {String? accessToken});
 void logout({bool force = false});      // force → skip provider revocation
 void refreshToken();                    // usually automatic; manual override
 // Awaitable: await auth.sendForResult(RefreshTokenEvent()) → the refreshed AuthSession;
-// throws NoRefreshTokenError / RefreshFailedError. Callers during a refresh join it.
+// throws NoRefreshTokenError / RefreshFailedError (and, as any sendForResult,
+// TimeoutException past its timeout, StateError if the bloc closes).
+// Callers during a refresh join it.
 void updateUser(AuthUser user);
 AuthConfig get config;
 ```
@@ -124,10 +126,11 @@ class AuthState extends BlocState {              // immutable
 
 ## Concurrency
 
-Token refresh is **singleflight** via `EventConcurrency.droppable`: overlapping
-triggers (the timer, a manual call, a `juice_auth_network` 401) collapse into
-one provider `refreshToken` call. Consumers observe the shared `isRefreshing`
-and session-state lifecycle; there is no public in-flight completer.
+Token refresh is `EventConcurrency.singleflight`: overlapping triggers (the
+timer, a manual call, a `juice_auth_network` 401) join the refresh already
+running — one provider `refreshToken` call — and every caller of
+`sendForResult(RefreshTokenEvent())` gets that refresh's `AuthSession`, or its
+error. `isRefreshing` and the session state still show it to the UI.
 
 ## Recipes
 
@@ -190,7 +193,7 @@ expect(auth.state.isAuthenticated, isTrue);
 - ❌ Importing a vendor auth SDK into a bloc/use-case — put it behind an
   `AuthProvider` impl.
 - ❌ Adding a refresh path outside `RefreshTokenEvent` — bypasses the
-  `droppable` singleflight and can cause a refresh storm.
+  `singleflight` join and can cause a refresh storm.
 - ❌ Storing the access token in `AuthState` and reading it from elsewhere as the
   *persistence* — persistence is secure storage; state is the live view.
 - ❌ Treating `sessionExpired` as `unauthenticated` — they're deliberately

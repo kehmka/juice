@@ -20,7 +20,8 @@ import 'session_known.dart';
 /// `TimeoutException`. The guard never falls back to "signed out".
 ///
 /// ```dart
-/// RouteConfig('/profile', guards: [AuthBlocAuthGuard(authBloc)]);
+/// RouteConfig(path: '/profile', builder: (_) => const ProfileScreen(),
+///     guards: [AuthBlocAuthGuard(authBloc)]);
 /// ```
 class AuthBlocAuthGuard extends AuthGuard {
   AuthBlocAuthGuard(

@@ -247,7 +247,11 @@ rules it must follow:
 - To REFUSE an event without touching the stream, `event.fail(error)` and
   emit nothing: `sendForResult` throws that error.
 A failure status throws from `sendForResult`; so does a close before the
-value arrives.
+value arrives. The wait has a `timeout` (30 seconds unless given) and throws
+`TimeoutException` past it, while the use case runs on: **size it to what the
+event waits on.** A person answering an OS prompt or picking photos can take
+longer than a network call — pass a timeout sized to that, or the caller
+gives up while the work still lands.
 
 When you *do* stay `concurrent`, follow the discipline:
 
@@ -524,13 +528,18 @@ WITHOUT waiting (act in the middle of a debounce, then settle);
 `flow.expect(bloc, [...])` consumes what that bloc emitted since its last
 expect; `flow.expectErrors` claims recorded errors. The test fails on
 anything it did not account for: an unconsumed emission, work in flight at
-the end, a refused reaction chain, an unclaimed error. `flow.register`
+the end or begun after it (a stream item still on its way), a refused
+reaction chain, an unclaimed error. `flow.register`
 registers in `BlocScope` (what a type-resolved reaction finds); `flow.add`
-watches an instance; build blocs INSIDE the flow, without a `logger:`.
+watches an instance; build blocs INSIDE the flow, without a logger of
+their own (`customLogger`).
 `virtualTime: true` makes every timer virtual — a 300 ms debounce takes no
 time — but real I/O (Hive, sqflite, a platform channel) never completes
 under it and the test fails saying so: fake the seam, or stay on the real
-clock.
+clock. Work a use case starts and does not await (an unawaited
+`Future.delayed`, a raw `Timer`) is not a send: a virtual-time flow fails on
+a timer it left pending, and a real-clock one cannot see it — use
+`sendAfter`.
 
 Examples are **juice-pure**: only the juice family + flutter; a `Demo*` seam impl
 so the app runs with no device/backend; a trivial smoke test.

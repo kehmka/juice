@@ -4,7 +4,7 @@ package: juice_paging
 version: 0.4.0
 requires:
   juice: ">=2.1.0"
-updated: 2026-10-13
+updated: 2026-11-11
 ---
 
 # juice_paging — AI card

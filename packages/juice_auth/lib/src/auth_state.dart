@@ -6,7 +6,15 @@ import 'auth_user.dart';
 
 /// Authentication status.
 enum AuthStatus {
-  /// Initial state — before session restore attempt.
+  /// Initial state — before the session restore has answered.
+  ///
+  /// `AuthBloc` leaves it once, when the restore run by
+  /// `InitializeAuthEvent` (sent by `AuthBloc.withConfig`) has answered:
+  /// [authenticated] for a restored session, [unauthenticated] for none, a
+  /// refused one, or one that could not be read — whatever fails on the
+  /// way. Route guards wait on that (juice_auth_routing), so a bloc that is
+  /// never sent `InitializeAuthEvent` stays here and they wait out their
+  /// timeout.
   unknown,
 
   /// No active session.

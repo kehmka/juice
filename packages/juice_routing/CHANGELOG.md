@@ -13,17 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stack with the initial path without running global or route guards, so
   a guarded home page was shown to anyone. `InitializeRoutingEvent` now
   resolves it through the guards: redirects are followed and guarded in
-  turn, and a blocked, throwing, looping or unknown initial path seeds
-  nothing and records the error.
+  turn, and a blocked, throwing or looping initial path — or an unknown
+  one, when there is no `notFoundRoute` (with one, the 404 route is
+  resolved, guarded and seeded) — seeds nothing and records the error.
 - **A redirect carries `returnTo`.** `RedirectResult.returnTo` was
   dropped, although the docs tell a login flow to read
   `state.current.query['returnTo']`. A redirect now lands at
   `<target>?returnTo=<encoded destination>`; an explicit `returnTo`
   overwrites one already in the redirect path.
 - A redirected navigation that lands on the current location is a no-op,
-  and the same path with a different query replaces the top entry (a
-  cold-start platform report racing initialization no longer stacks a
-  second login page).
+  and one that lands on the same path with a different query replaces the
+  top entry (a cold-start platform report racing initialization no longer
+  stacks a second login page). A plain navigation still pushes.
+- **A refused start is shown, not left on the loading page.**
+  `JuiceRouterDelegate` showed its loading page for as long as the stack
+  was empty, so a start the guards refused spun for ever while the error
+  sat in state. It now shows an error page once routing is initialized
+  with an empty stack, an error, and no navigation under way.
+
+### Added
+
+- **`RoutingConfig.errorBuilder`** — the page shown for a refused start,
+  handed the `RoutingError`. Without one, a plain page names the error.
 
 ### Changed
 

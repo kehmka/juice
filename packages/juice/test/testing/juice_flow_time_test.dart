@@ -305,13 +305,16 @@ void main() {
       final fired = <int>[];
       Timer(_msec(349), () => fired.add(349));
       Timer(_msec(350), () => fired.add(350));
-      Timer(_msec(351), () => fired.add(351));
+      final after = Timer(_msec(351), () => fired.add(351));
 
       shelf.typed('exact'); // 300 ms debounce + 50 ms search
       await flow.settle();
 
       flow.expect(shelf, [_results('exact')]);
       expect(fired, [349, 350]);
+      // A timer still pending when the flow ends fails it: this one has
+      // done its job by NOT firing.
+      after.cancel();
     }, virtualTime: true);
 
     juiceFlowTest('elapse moves the clock by exactly what it was given',
@@ -366,13 +369,15 @@ void main() {
         'queue — runs to its end before the clock moves', (flow) async {
       final shelf = flow.add(_Shelf());
       final fired = <String>[];
-      Timer(const Duration(milliseconds: 1), () => fired.add('1 ms'));
+      final probe =
+          Timer(const Duration(milliseconds: 1), () => fired.add('1 ms'));
 
       await flow.send(shelf, _Unsubscribe());
 
       flow.expect(
           shelf, [isUpdatingStatus(state: const _S(results: 'unsubscribed'))]);
       expect(fired, isEmpty, reason: 'no virtual time passed');
+      probe.cancel();
     }, virtualTime: true);
 
     test(

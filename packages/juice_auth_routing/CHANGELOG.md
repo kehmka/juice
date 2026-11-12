@@ -30,8 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Requires `juice ^2.1.0`** (`waitFor`) and `juice_auth ^0.5.0` (a caret
-  on 0.4 does not admit 0.5).
+- **Requires `juice ^2.1.0`** (`waitFor`), `juice_auth ^0.5.0` (a caret on
+  0.4 does not admit 0.5) and `juice_routing ^2.1.0`, which guards the
+  initial path — the wait exists for that — and shows a refused start on
+  screen.
 
 ## [0.2.0] - 2026-10-14
 

@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cooldown now clears itself and the count before the attempt proceeds.
   The attempt after the Nth failure still arms the cooldown without
   reaching the provider.
+- **A failed restore whose cleanup also failed left the status `unknown`
+  for ever.** When reading the stored session threw and clearing the stale
+  tokens then threw too, the restore ended without emitting. The cleanup is
+  now guarded and recorded, and the status always leaves `unknown` —
+  `unauthenticated` here — once the restore has answered. Route guards that
+  wait for the session (juice_auth_routing) depend on it; the contract is
+  documented on `AuthStatus.unknown`.
 
 ## [0.4.0] - 2026-10-14
 

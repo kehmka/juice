@@ -1229,7 +1229,7 @@ The first run's breakdown, against 2.0.0's:
 |---|---:|---:|
 | telemetry records (3 per event) | 0.056 [0.052–0.121] | **0.180** [0.179–0.212] |
 | send · fresh instance (chatter built) | 0.634 [0.632–0.659] | **0.782** [0.777–0.801] |
-| send · fresh, chatter not built (release default) | 0.427 [0.416–0.448] | 0.425 [0.413–0.453] |
+| send · fresh, default logger, no knob set (the release default) | 0.427 [0.416–0.448] | 0.425 [0.413–0.453] |
 
 Nothing a release-default app runs had moved. A send with every record
 built had, by 0.15 µs, and the synthetic row that builds three entries
@@ -1298,8 +1298,9 @@ past 29.
 
 Harness verdicts, sequential: Riverpod faster than Juice (default logger)
 by 44%; Juice (default logger) faster than Juice (silent logger) by 26%;
-Juice (silent logger) faster than bloc by 30%, ranges apart. In burst all
-four overlap: ties. bloc did not change between the two columns and its
+Juice (silent logger) faster than bloc by 30%, ranges apart. In burst the
+pairs the harness compares all tie (bloc's range, 0.84–2.34, is wide);
+Riverpod's range is apart from both Juice variants'. bloc did not change between the two columns and its
 sequential number did (1.04, then 1.95 in the first run and 1.40 in the
 second): on this machine, on this day, bloc's sequential row is the
 noisy one. §16's "with every record built Juice ties bloc" is the claim

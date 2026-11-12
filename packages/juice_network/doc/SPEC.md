@@ -2814,7 +2814,7 @@ dependencies:
     sdk: flutter
   juice: ^2.0.0
   juice_storage: ^3.0.1  # For cache persistence
-  dio: ^5.4.0
+  dio: ^5.10.0
   crypto: ^3.0.3         # For body hashing
 
 dev_dependencies:
@@ -3174,8 +3174,10 @@ see it. `FetchBloc` therefore refuses an `AuthInterceptor` (or a subclass) when
 no `authIdentityProvider` was given: `FetchBloc.withConfig` throws
 `ArgumentError`; `InitializeFetchEvent` and `ReconfigureInterceptorsEvent` log
 and emit a failure carrying a `StateError`, leaving the bloc uninitialized or
-its installed interceptors unchanged. A custom interceptor that injects
-credentials is not detected.
+its installed interceptors unchanged (an `InitializeFetchEvent` on a bloc
+already initialized does nothing). Only `AuthInterceptor` and its subclasses
+are detected: `ApiKeyInterceptor`, `RefreshTokenInterceptor` and a custom
+interceptor that injects credentials are not.
 
 ### `maxCacheSize` is applied at initialization
 

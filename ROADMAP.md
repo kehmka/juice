@@ -465,9 +465,14 @@ stored field to the entry.**
 **Versions, accepted by Kevin 2026-11-10** — juice 2.1.0; forms,
 permissions and auth 0.5.0; paging 0.4.0; network 0.15.0; routing 2.1.0;
 sync, connectivity and realtime 0.3.1; power 0.2.1; storage 3.0.1;
-auth_network and auth_routing 0.3.0; observability 0.6.1. Nine packages
-require `juice ^2.1.0` (the ones whose code uses the new API); the other
-ten published packages are untouched and are not republished.
+auth_network and auth_routing 0.3.0; observability 0.6.1 — and
+juice_auth_routing **0.2.1** for apps on the 0.2 line (the review of
+2026-11-11: routing 2.1.0 would otherwise reach them, guarding the initial
+path, with the guards that read a session still restoring as "signed out").
+Nine packages require `juice ^2.1.0` (the ones whose code uses the new API);
+five more are republished on `^2.0.0` (network, routing, power, storage,
+observability); the remaining ten published packages are untouched and are
+not republished.
 
 **Before the first publish** (pub.dev is permanent; each on Kevin's
 word): the branch pushed and CI green on the pinned 3.47.5 toolchain
@@ -476,7 +481,30 @@ benchmark for 2.1.0; the DevTools extension bundle rebuilt; the hygiene
 gate per package. Order, each level after the previous is indexed:
 juice; then storage, routing, observability, connectivity, forms,
 paging, permissions, power, realtime; then auth, network, sync; then
-auth_network and auth_routing. Tag `<pkg>-v<ver>` as it goes.
+auth_network and auth_routing 0.3.0, and auth_routing 0.2.1 from its
+`juice_auth_routing-0.2.x` branch (cut from the 0.2.0 tag). Tag
+`<pkg>-v<ver>` as it goes.
+
+**The review before publishing (2026-11-11).** Five independent reviewers
+— core, the test harness, the family, the Amoli port, the docs — found
+what the suites had not; each finding was reproduced before it was fixed
+(ISSUES #36–#40):
+
+- core: per-send state kept per instance (a reused event answered by an
+  old singleflight flight; charged an old reaction chain's depth), and a
+  close that one throwing hook could stop;
+- the harness: three false greens (errors counted once per object for the
+  whole flow; leftover virtual timers dropped; work set off after the body
+  or during the close unseen), a hang the stuck rule missed, and global
+  state a timed-out flow left to the next test;
+- auth: a restore whose cleanup failed left the session `unknown` for
+  ever — every guarded route, the login page included, refused — and a
+  refused start showed the loading page for ever; the release order
+  above;
+- `sendForResult`'s 30-second default against waits on a person (the
+  permission prompt, Amoli's photo picker);
+- about twenty statements in the docs that would have frozen into the
+  archives.
 
 **Not in this wave, in the order the review ranked them:**
 

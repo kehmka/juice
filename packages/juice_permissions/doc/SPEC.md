@@ -67,17 +67,19 @@ class PermissionsState extends BlocState {
 |-------|-------------|--------|--------|
 | `InitializePermissionsEvent(config)` | `droppable` | store provider, optionally pre-read `precheck` | `permissions:status`, per-permission |
 | `CheckPermissionEvent(p)` | `concurrent` | read status, no prompt | `permissions:status`, `permissions:status:<p>` |
-| `RequestPermissionEvent(p)` | `concurrent` | prompt (singleflight per permission) | above + `permissions:inflight` |
-| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no singleflight) | as above |
+| `RequestPermissionEvent(p)` | `singleflight`, `joinKey`: the permission | prompt; its result is the status | above + `permissions:inflight` |
+| `RequestPermissionsEvent(set)` | `sequential` | batch prompt (no singleflight); its result is a status per permission | as above |
 | `OpenAppSettingsEvent` | `droppable` | open OS settings | — |
 
 ## Singleflight
 
-Concurrent `RequestPermissionEvent`s for the same permission collapse to one OS
-prompt via `PermissionsBloc.requestsInFlight` (a per-permission `Completer` map),
-while different permissions can proceed independently. `state.inFlight` mirrors
-the map for the UI. Batch requests do not coalesce, but run sequentially so
-their shared state mutations cannot interleave.
+`RequestPermissionEvent` is `EventConcurrency.singleflight` with the
+permission as its `joinKey` (0.5.0): a request for a permission already
+prompting JOINS that run — one OS prompt — and every caller of
+`sendForResult(RequestPermissionEvent(p))` gets its status, while different
+permissions proceed independently. `state.inFlight` shows the prompting
+permissions to the UI. Batch requests do not coalesce, but run sequentially
+so their shared state mutations cannot interleave.
 
 ## Testing
 

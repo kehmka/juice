@@ -523,6 +523,82 @@ transient session-restore or refresh failure is treated as session
 expiry and evicts to login (juice_auth); `permissionGranted` is written
 and never read in three packages.
 
+## Found by the review before publishing (2026-11-11)
+
+Five independent reviewers read the 2.1 branch and the Amoli port before
+anything was published. Each defect below was reproduced first.
+
+### 36. ~~Per-send state kept per event instance~~ FIXED in juice 2.1.0 (unpublished)
+
+The framework keeps a send's facts OFF the event, in Expandos keyed on the
+instance. Two outlived the send: an instance that once JOINED a
+singleflight flight, sent again later as a leader, was answered by the
+dead flight (`event_dispatcher.dart`); and a reaction's hop depth stayed on
+the instance, so the app sending it again was charged the old chain's depth
+and could be refused. The join is cleared when a send leads; the depth is
+released when the run it caused ends (an identity check keeps a depth a
+later hop stamped meanwhile — without it, a ring sending one cached
+instance escaped the bound). `test/bloc/reused_event_test.dart`.
+
+**Open, a ruling:** R12 put the cause in an Expando, which makes an
+event instance's identity part of the semantics. Per-run state carried by
+the run (as `executionId` is) would remove the class.
+
+### 37. ~~One throwing close hook stopped a close~~ FIXED in juice 2.1.0
+
+A close runs hooks another bloc owns (a reaction's end records into the
+destination's logger). One that threw left the bloc half-closed and the
+waits behind it pending until their timeouts. Each hook is guarded and
+recorded (`bloc_close_error`, `reason: 'a close hook threw'`).
+
+### 38. ~~`juiceFlowTest` could pass when it should fail~~ FIXED in juice 2.1.0
+
+Errors were counted once per error OBJECT for the whole flow (a const error
+failing twice was one; claimed once, never again); under virtual time a
+timer a use case left pending was dropped; work set off after the body —
+a stream item still on its way, or set off by another bloc's close — ran
+unseen. Also a `sendAfter` poll defeated the stuck rule (a hang until the
+runner's timeout), and a timed-out flow left the probe, the logger and
+BlocScope to every later test in the file. All fixed;
+`test/testing/juice_flow_false_green_test.dart`. Still not seen, by design
+and documented: a fire-and-forget timer on the REAL clock.
+
+### 39. ~~The auth start: `unknown` for ever, and a refused start that spun~~ FIXED (juice_auth 0.5.0, juice_routing 2.1.0)
+
+When reading the stored session threw and clearing the stale tokens threw
+too, the restore ended without emitting: the status stayed `unknown`, and
+the waiting guards (#29) refused every guarded route, the login page
+included, with nothing to retry. The cleanup is guarded; the status always
+leaves `unknown`, documented on `AuthStatus.unknown`. And
+`JuiceRouterDelegate` showed its loading page for as long as the stack was
+empty, so a refused start spun for ever: it shows `RoutingConfig.errorBuilder`
+(new; a plain page naming the error without one).
+
+**Release order:** routing 2.1.0 guards the initial path and would reach
+apps on the published juice_auth_routing 0.2.0, whose guards read a
+session still restoring as "signed out" — the #29 bug, in apps that never
+upgraded. juice_auth_routing 0.2.1 (the 0.2 line, `juice_auth ^0.4.0`)
+carries the waiting guards and ships with routing 2.1.0.
+
+### 40. ~~`sendForResult`'s 30-second default against waits on a person~~ FIXED (docs; Amoli)
+
+The default suits a network call, not a person: the documented permission
+request timed out while the OS prompt was up, and Amoli's photo-picker Add
+gave up on a big pick while the photographs still went into the draft (a
+second tap added them again). The default stays; `AGENTS.md` and the
+permissions docs say to size the timeout to the wait, and Amoli's picker
+waits one preview bound per pick.
+
+### 41. Smaller, open
+
+- A `joinKey` that throws comes back only as a failed future; nothing
+  records it (`event_dispatcher.dart`).
+- `sendAndWaitResult`'s close path is documented as "fenced and will never
+  succeed"; a non-restartable use case keeps running after close starts, so
+  a save that completes is reported to its caller as a `StateError`.
+- Imperative rings (a use case calling `otherBloc.send` back to its source)
+  are unbounded and unsignalled; only reaction chains have the hop bound.
+
 ## Summary
 
 | Priority | Count | Status |
@@ -534,7 +610,8 @@ and never read in three packages.
 | Docs | 3 | Open (#19-21) |
 | Family debt | 2 | Resolved (#22, #23) |
 | November 2026 review and the 2.1 wave | 12 | 4 Fixed (#24-26, #29; #26's cause open), 8 Open (#27, #28, #30-35) |
-| **Total** | **35** | **24 Fixed or resolved, 11 Open** |
+| The review before publishing | 6 | 5 Fixed (#36-40; #36's ruling open), 1 Open (#41) |
+| **Total** | **41** | **29 Fixed or resolved, 12 Open** |
 
 ---
 

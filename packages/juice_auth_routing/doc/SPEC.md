@@ -22,9 +22,9 @@ Each adapter is a thin subclass:
 
 | Adapter | Base guard | Wires |
 |---------|-----------|-------|
-| `AuthBlocAuthGuard(authBloc, {loginPath})` | `AuthGuard` | `isAuthenticated: () => authBloc.state.isAuthenticated` |
-| `AuthBlocGuestGuard(authBloc, {redirectPath})` | `GuestGuard` | same predicate (inverted use) |
-| `AuthBlocRoleGuard(authBloc, roleName)` | `RoleGuard` | `hasRole: () => authBloc.state.hasRole(roleName)` |
+| `AuthBlocAuthGuard(authBloc, {loginPath, restoreTimeout})` | `AuthGuard` | `isAuthenticated: () => authBloc.state.isAuthenticated`, after the wait below |
+| `AuthBlocGuestGuard(authBloc, {redirectPath, restoreTimeout})` | `GuestGuard` | same predicate (inverted use), after the wait |
+| `AuthBlocRoleGuard(authBloc, roleName, {restoreTimeout})` | `RoleGuard` | `hasRole: () => authBloc.state.hasRole(roleName)`, after the wait |
 
 Evaluated by the routing pipeline on each navigation; the closures read live
 `AuthBloc` state.
@@ -52,8 +52,7 @@ subscribes to `authBloc.stream` and drives `RoutingBloc.navigate`:
 - → authenticated ⟶ `onAuthenticated(state)`
 
 This covers the gap guards can't: a session ending *while on* a protected route.
-Owns no state — a subscription with `start()` / `dispose()`. (Same stream-watch
-shape as `juice_auth_network`'s refresh strategy.)
+Owns no state — a subscription with `start()` / `dispose()`.
 
 ## Direction
 

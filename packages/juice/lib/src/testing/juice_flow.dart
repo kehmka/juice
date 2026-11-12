@@ -76,7 +76,16 @@ import 'juice_test.dart';
 /// What a virtual clock cannot advance is the real world: Hive, sqflite, a
 /// platform channel, anything that completes on the real event loop. A
 /// virtual-time test that waits on one fails at once, saying so. Keep
-/// those tests on the real clock, or fake the seam.
+/// those tests on the real clock, or fake the seam. While the body waits
+/// on something of its own, outside every flow call, blocs that never go
+/// idle for an hour of virtual time (a `sendAfter` poll that re-arms
+/// itself) are called stuck too, as is a wait beside only periodic timers.
+///
+/// Work a use case starts and nothing awaits — an unawaited
+/// `Future.delayed`, a raw `Timer` — is not a send, and the flow cannot
+/// wait for it. Under virtual time a timer still pending when the flow ends
+/// fails the test. On the real clock it is not seen: it runs after the
+/// test, against closed blocs. Use `sendAfter`, which the flow waits for.
 @isTest
 void juiceFlowTest(
   String description,
@@ -101,11 +110,25 @@ Future<void> runJuiceFlow(
   bool virtualTime = false,
 }) async {
   final flow = JuiceFlow._start(virtualTime);
+  // Whatever stops this test — a timeout, a driver that throws — the
+  // global state the flow took is handed back and BlocScope reset, so the
+  // tests after it start clean. Idempotent: a flow that ended normally has
+  // handed everything back already.
+  scaffolding.addTearDown(flow._abandon);
   if (!virtualTime) return _run(flow, body);
 
   // The whole flow — body, end checks, closing — runs on the virtual
   // clock; what it ended with is reported out here, on the real one.
-  final time = _VirtualTime(FakeAsync());
+  final time = _VirtualTime(FakeAsync(), flow);
+  try {
+    await _runVirtual(flow, body, time);
+  } finally {
+    flow._handBack();
+  }
+}
+
+Future<void> _runVirtual(JuiceFlow flow,
+    FutureOr<void> Function(JuiceFlow flow) body, _VirtualTime time) async {
   var outcome = await time.drive(() => _run(flow, body));
   if (outcome.stuck) {
     // Parked on the real world, for ever: nothing in the body will reach
@@ -122,8 +145,22 @@ Future<void> runJuiceFlow(
                 'either.' : ''}'),
         StackTrace.current);
   }
-  // Whatever happened in there, the logger and the probe go back.
-  flow._handBack();
+  // A timer still pending once everything has closed was started by work
+  // nobody awaited: it would have fired — sent, emitted, thrown — after
+  // the test. On a virtual clock it never fires at all, so say so.
+  final leftover = time.pendingTimers;
+  if (leftover != null) {
+    final problem = '$leftover timer(s) still pending when the flow '
+        'ended — work a use case started and nothing awaited (an unawaited '
+        'Future.delayed, a raw Timer). It never ran. Await it, or use '
+        'sendAfter, which the flow waits for:\n${time.pendingTimersDebug}';
+    if (outcome.error == null) {
+      outcome = _Outcome.threw(
+          TestFailure('juiceFlowTest: $problem'), StackTrace.current);
+    } else {
+      scaffolding.printOnFailure('juiceFlowTest: also, $problem');
+    }
+  }
   final error = outcome.error;
   if (error != null) Error.throwWithStackTrace(error, outcome.stackTrace!);
 }
@@ -133,15 +170,20 @@ Future<void> _run(
   final problems = <String>[];
   try {
     await body(flow);
-    problems.addAll(flow._problemsBeforeClose());
+    problems.addAll(await flow._problemsBeforeClose());
   } catch (_) {
-    // The body's failure is the one to report. What closing found on top of
-    // it is printed with it, not thrown over it.
-    final onTop = await flow._close();
+    // The body's failure is the one to report. What the flow found on top
+    // of it — work left in flight, emissions nobody consumed, errors
+    // nobody claimed, a refused chain, which may well be its cause — is
+    // printed with it, not thrown over it.
+    final onTop = [
+      ...await flow._problemsBeforeClose(),
+      ...await flow._close(),
+      ...flow._problemsAfterClose(),
+    ];
     if (onTop.isNotEmpty) {
-      scaffolding
-          .printOnFailure('juiceFlowTest: while closing after the failure:\n'
-              '${_bullets(onTop)}');
+      scaffolding.printOnFailure('juiceFlowTest: also found, after the '
+          'failure:\n${_bullets(onTop)}');
     }
     rethrow;
   }
@@ -188,11 +230,22 @@ final class JuiceFlow {
   final Map<JuiceBloc<BlocState>, _Watch> _watched = Map.identity();
   bool _over = false;
 
+  /// Flow calls in progress ([send], [settle], [elapse]), each bounded by
+  /// its own timeout or duration. Under virtual time the driver uses it to
+  /// tell a body waiting on a flow call from one waiting on its own future.
+  int _callsInProgress = 0;
+
+  Future<T> _call<T>(Future<T> Function() call) {
+    _callsInProgress++;
+    return Future.sync(call).whenComplete(() => _callsInProgress--);
+  }
+
   /// Watches [bloc], which the test built: its emissions are recorded from
   /// now on and must all be consumed by [expect]. The flow closes it when
   /// the test ends. Returns [bloc].
   ///
-  /// Build the bloc inside the flow, without a `logger:` of its own: a bloc
+  /// Build the bloc inside the flow, without a logger of its own (the
+  /// `customLogger` constructor argument): a bloc
   /// that reports its telemetry elsewhere would hide its errors from the
   /// flow, and is refused.
   ///
@@ -210,7 +263,7 @@ final class JuiceFlow {
     }
     if (!bloc.reportsTo(_recorder)) {
       throw ArgumentError('juiceFlowTest: this ${bloc.runtimeType} does not '
-          'report to the flow — it was given its own logger:, or built '
+          'report to the flow — it was given its own logger, or built '
           'before the flow started — so its errors would go unseen. Build '
           'it inside the flow, without a logger.');
     }
@@ -246,15 +299,17 @@ final class JuiceFlow {
     Duration timeout = defaultTimeout,
   }) async {
     _checkRunning();
-    Object? error;
-    StackTrace? stackTrace;
-    final sent = bloc.send(event).then<void>((_) {}, onError: (Object e, s) {
-      error = e;
-      stackTrace = s as StackTrace;
+    return _call(() async {
+      Object? error;
+      StackTrace? stackTrace;
+      final sent = bloc.send(event).then<void>((_) {}, onError: (Object e, s) {
+        error = e;
+        stackTrace = s as StackTrace;
+      });
+      await settle(timeout: timeout);
+      await sent;
+      if (error != null) Error.throwWithStackTrace(error!, stackTrace!);
     });
-    await settle(timeout: timeout);
-    await sent;
-    if (error != null) Error.throwWithStackTrace(error!, stackTrace!);
   }
 
   /// Waits until every bloc in the process is idle: no send in flight
@@ -268,6 +323,10 @@ final class JuiceFlow {
   /// time, which takes none.
   Future<void> settle({Duration timeout = defaultTimeout}) {
     _checkRunning();
+    return _call(() => _settle(timeout));
+  }
+
+  Future<void> _settle(Duration timeout) {
     final done = Completer<void>();
     late final Timer timer;
 
@@ -315,7 +374,7 @@ final class JuiceFlow {
       throw ArgumentError.value(
           duration, 'duration', 'juiceFlowTest: time cannot run backwards');
     }
-    return Future<void>.delayed(duration);
+    return _call(() => Future<void>.delayed(duration));
   }
 
   /// Asserts on what [bloc] emitted since its last [expect] (or since it
@@ -360,23 +419,57 @@ final class JuiceFlow {
     }
   }
 
-  /// What is wrong at the end of the body, asked BEFORE anything closes.
-  List<String> _problemsBeforeClose() => [
-        if (!_probe.idle)
-          'still in flight when the test ended: '
-              '${_probe.describeInFlight()}. End on flow.send or '
-              'flow.settle.',
-      ];
+  /// What is wrong at the end of the body, asked BEFORE anything closes —
+  /// by the rule [settle] uses: idle, and still nothing begun one turn of
+  /// the event loop later (a stream item, a microtask chain, an awaiting
+  /// caller that is about to send).
+  Future<List<String>> _problemsBeforeClose() async {
+    if (_probe.idle) {
+      final seen = _probe.begun;
+      final turned = Completer<void>();
+      Timer.run(turned.complete);
+      await turned.future;
+      if (_probe.idle && _probe.begun == seen) return const [];
+      if (_probe.idle) {
+        return [
+          'work began after the test body ended (${_probe.begun - seen} '
+              'piece(s)), and ran unseen. End on flow.send or flow.settle.'
+        ];
+      }
+    }
+    return [
+      'still in flight when the test ended: ${_probe.describeInFlight()}. '
+          'End on flow.send or flow.settle.'
+    ];
+  }
+
+  /// The flow will not end on its own (its test timed out, or the driver
+  /// failed): hand the global state back and reset BlocScope, so the next
+  /// test does not inherit them. Does nothing once the flow has handed
+  /// back.
+  Future<void> _abandon() async {
+    if (!identical(JuiceActivityProbe.current, _probe)) return;
+    _over = true;
+    _handBack();
+    try {
+      // ignore: invalid_use_of_visible_for_testing_member
+      await BlocScope.reset();
+    } catch (_) {
+      // The test has already failed; what a reset of its leftovers throws
+      // is not the cause, and the next test's own BlocScope check is loud.
+    }
+  }
 
   /// Closes everything the flow holds and hands the logger and the probe
   /// back. Never throws: what failed is returned.
   Future<List<String>> _close() async {
     _over = true;
     final problems = <String>[];
-    for (final watch in _watched.values) {
-      watch.untap();
-    }
     _recorder.closing = true;
+    // Taps stay on until every bloc has closed: an emission a watched bloc
+    // makes while another closes is an emission nobody consumed, and work
+    // that begins during the close ran unseen.
+    final begunBefore = _probe.begun;
     // Watched instances first, last handed in first; then everything
     // registered (a registered bloc closed here is skipped there).
     for (final bloc in _watched.keys.toList().reversed) {
@@ -392,6 +485,15 @@ final class JuiceFlow {
       await BlocScope.reset();
     } catch (error) {
       problems.add('resetting BlocScope threw: $error');
+    }
+    for (final watch in _watched.values) {
+      watch.untap();
+    }
+    final begunDuringClose = _probe.begun - begunBefore;
+    if (begunDuringClose > 0) {
+      problems.add('$begunDuringClose piece(s) of work began while the '
+          'blocs were closing, after the test body ended. End on flow.send '
+          'or flow.settle.');
     }
     _handBack();
     return problems;
@@ -469,11 +571,14 @@ class _FlowRecorder implements JuiceLogger {
   _FlowRecorder(this._inner);
   final JuiceLogger _inner;
 
-  /// Unclaimed errors, each ONCE however many entries carry it: a use
-  /// case that throws is recorded as `useCaseFailed` and again, by the
-  /// bloc's error path, as `blocError`.
+  /// Unclaimed errors. A failure is recorded once, though the framework
+  /// writes two entries for it: a use case that throws is recorded as
+  /// `useCaseFailed` and again, by the bloc's error path, as `blocError`
+  /// (a stream binding's error likewise). Only that echo is dropped — a
+  /// `blocError` carrying the very error of the error entry just before
+  /// it. The same error object failing twice is two errors.
   final List<Object> errors = [];
-  final Set<Object> _seen = Set.identity();
+  Object? _lastError;
   final List<Object> refusals = [];
   bool closing = false;
   int emissionsWhileClosing = 0;
@@ -483,8 +588,15 @@ class _FlowRecorder implements JuiceLogger {
     if (entry.kind == JuiceTelemetryKind.reactionRefused) {
       refusals.add(entry.error ?? entry.message);
     } else if (entry.isError) {
-      final error = entry.error ?? entry.message;
-      if (_seen.add(error)) errors.add(error);
+      final error = entry.error;
+      final echo = error != null &&
+          entry.kind == JuiceTelemetryKind.blocError &&
+          identical(error, _lastError);
+      _lastError = error;
+      if (!echo) {
+        // An entry with no error of its own is still one failure.
+        errors.add(error ?? '${entry.kind.name}: ${entry.message}');
+      }
     } else if (closing && entry.kind == JuiceTelemetryKind.emissionAfterClose) {
       emissionsWhileClosing++;
     }
@@ -527,9 +639,16 @@ class _Outcome {
 /// The virtual clock of one flow: runs async work inside `fake_async`,
 /// jumping to the next timer whenever everything is parked.
 class _VirtualTime {
-  _VirtualTime(this._clock);
+  _VirtualTime(this._clock, this._flow);
 
   final FakeAsync _clock;
+  final JuiceFlow _flow;
+
+  /// Timers still pending (null for none), and what they are — read once
+  /// the flow has ended.
+  int? get pendingTimers =>
+      _clock.pendingTimers.isEmpty ? null : _clock.pendingTimers.length;
+  String get pendingTimersDebug => _clock.pendingTimersDebugString.join('\n');
 
   /// When each timer was created, on the virtual clock. `fake_async` does
   /// not say when a timer is next due; from this it follows.
@@ -540,12 +659,13 @@ class _VirtualTime {
     return timer;
   }
 
-  /// How much virtual time a wait may spend with ONLY periodic timers
-  /// pending before it is called stuck. A periodic timer never runs out, so
-  /// a test parked on the real world beside one would otherwise jump the
-  /// clock for ever. The same hour `fake_async` allows its own
-  /// `flushTimers`.
-  static const Duration periodicOnlyLimit = Duration(hours: 1);
+  /// How much virtual time a wait may spend before it is called stuck when
+  /// the clock could otherwise jump for ever: with ONLY periodic timers
+  /// pending, or — while the body waits outside every flow call (a flow
+  /// call is bounded by its own timeout or duration) — with blocs that
+  /// never go idle, a `sendAfter` poll re-arming itself. The same hour
+  /// `fake_async` allows its own `flushTimers`.
+  static const Duration stuckLimit = Duration(hours: 1);
 
   /// When the earliest pending timer is due, or null with none pending.
   Duration? _nextDue() {
@@ -586,6 +706,7 @@ class _VirtualTime {
           ),
         ));
     Duration? periodicOnlySince;
+    Duration? busySince;
     while (true) {
       _clock.flushMicrotasks();
       if (outcome != null) return outcome!;
@@ -599,12 +720,22 @@ class _VirtualTime {
       }
       if (_clock.pendingTimers.every((timer) => timer.isPeriodic)) {
         periodicOnlySince ??= _clock.elapsed;
-        if (next - periodicOnlySince > periodicOnlyLimit) {
+        if (next - periodicOnlySince > stuckLimit) {
           return const _Outcome.parked('only periodic timers were left '
               'beside, for an hour of virtual time');
         }
       } else {
         periodicOnlySince = null;
+      }
+      if (_flow._callsInProgress == 0 && !_flow._probe.idle) {
+        busySince ??= _clock.elapsed;
+        if (next - busySince > stuckLimit) {
+          return _Outcome.parked('outside every flow call, while the blocs '
+              'never went idle for an hour of virtual time (in flight: '
+              '${_flow._probe.describeInFlight()})');
+        }
+      } else {
+        busySince = null;
       }
       // Everything is parked until a timer fires: jump to the next one.
       _clock.elapse(next - _clock.elapsed);

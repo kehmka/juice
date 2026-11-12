@@ -540,9 +540,11 @@ released when the run it caused ends (an identity check keeps a depth a
 later hop stamped meanwhile — without it, a ring sending one cached
 instance escaped the bound). `test/bloc/reused_event_test.dart`.
 
-**Open, a ruling:** R12 put the cause in an Expando, which makes an
+**Deferred by ruling:** R12 put the cause in an Expando, which makes an
 event instance's identity part of the semantics. Per-run state carried by
-the run (as `executionId` is) would remove the class.
+the run (as `executionId` is) would remove the class. Kevin (2026-11-11):
+2.1 ships the Expando with the fix above; run-carried facts come with
+stage two of P4, which changes the same send path (#41).
 
 ### 37. ~~One throwing close hook stopped a close~~ FIXED in juice 2.1.0
 
@@ -619,7 +621,7 @@ waits one preview bound per pick.
 | Docs | 3 | Open (#19-21) |
 | Family debt | 2 | Resolved (#22, #23) |
 | November 2026 review and the 2.1 wave | 12 | 4 Fixed (#24-26, #29; #26's cause open), 8 Open (#27, #28, #30-35) |
-| The review before publishing | 6 | 5 Fixed (#36-40; #36's ruling open), 1 Partly fixed (#41: two of three; the third deferred under R7) |
+| The review before publishing | 6 | 5 Fixed (#36-40; #36's follow-up deferred to P4 stage two), 1 Partly fixed (#41: two of three; the third deferred under R7) |
 | **Total** | **41** | **29 Fixed or resolved, 12 Open** |
 
 ---
